@@ -2,12 +2,13 @@ import { describeSentryAgentReportContract, FINDING_CATEGORIES } from '@qa/schem
 import { agentNetworkPromptLines, type AgentNetworkPromptOptions } from '@qa/shared';
 import type { ObservedOperation } from './pipeline.js';
 import {
+  maxPlannedChecks,
   reportCheckAliases,
   reportCheckAlias,
   DEPTH_COVERAGE_GUIDANCE,
   MAX_APPROACH_ATTEMPTS,
   type FailedAttempt,
-  type TurnStop,
+  type RetryStop,
 } from './depth.js';
 import { REPORT_ENVELOPE_SCHEMA, buildReportCorrectionIntro } from './reporting.js';
 
@@ -49,7 +50,9 @@ export function compactOperationReceipt(
 export function buildQaPlanningPrompt(request: Request): string {
   return [
     QA_SESSION_CONTRACT,
-    'STAGE 1 — PLANNING ONLY. Read project docs, structure and main entry points, then return a short risk-first plan. Do not inventory every file. No tests, builds, lint, typecheck, installs or reproductions in this stage. plannedChecks must be concise future actions, not executed results. Plan at most 8 checks; one check is one decidable question that source tracing or a narrow reproduction in this workspace can settle — merge overlapping checks instead of writing audit-everything checks. Missing paths: locate once with a glob/search; never retry an unchanged failed path.',
+    'STAGE 1 — PLANNING ONLY. Read project docs, structure and main entry points, then return a short risk-first plan. Do not inventory every file. No tests, builds, lint, typecheck, installs or reproductions in this stage. plannedChecks must be concise future actions, not executed results. Plan at most ' +
+      maxPlannedChecks(request.task.context) +
+      ' checks; one check is one decidable question that source tracing or a narrow reproduction in this workspace can settle — merge overlapping checks instead of writing audit-everything checks. Missing paths: locate once with a glob/search; never retry an unchanged failed path.',
     'Return exactly one JSON object; first character is {, last is }. Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}. Check names must be unique and <=500 characters.',
     'Immutable mission context (including preparation and deadline): ' +
       JSON.stringify(request.task.context ?? {}),
@@ -156,7 +159,7 @@ export function buildExecutionNudgePrompt(plan: Plan, index: number): string {
 export function buildAlternativeApproachPrompt(
   plan: Plan,
   index: number,
-  stop: TurnStop,
+  stop: RetryStop,
   attempt: number,
   failed: readonly FailedAttempt[],
 ): string {
@@ -183,6 +186,24 @@ export function buildAlternativeApproachPrompt(
     'Commands that already failed (host ledger): ' + JSON.stringify(failed),
     'Decide the SAME question with a DIFFERENT method: another entry point into the code, a direct probe of the built output or source module, a smaller reproduction, or a different caller path. A new method never means a looser assertion: do not weaken, delete or rewrite a check just to turn it green. First triage why it failed. If the red result is the real behavior of the code under test, stop retrying: reproduce it once minimally and conclude with it as a defect candidate. If setup is the blocker (missing build, wrong import, absent dependency), name the exact cause and route around it. If you have only been reading, write and run a probe now as ONE single non-compound command.',
     'Then stop with 2-3 sentences of conclusion, the approaches you tried this attempt, and a "Breaks attempted:" line. If this approach also cannot decide the check, say it is blocked and why.',
+  ].join('\n');
+}
+
+/**
+ * Final short turn for a check the host ended because it used its time share.
+ * It records what the investigator established so the work is not lost, and
+ * is told not to start anything new.
+ */
+export function buildBudgetWrapUpPrompt(plan: Plan, index: number, minutes: number): string {
+  return [
+    'TIME SHARE REACHED — CHECK ' +
+      reportCheckAlias(plan, index) +
+      '. The host ended your turn on "' +
+      (plan.plannedChecks[index] ?? '') +
+      '" after about ' +
+      minutes +
+      ' minutes so the remaining checks and the report fit in the run. Do NOT start new work and do not run new commands.',
+    'Using only what you already established (the operation receipt and your own observed output above), write 3-5 sentences: what you established for this check, which operations support it, and what remains undecided. If you found a defect, state it precisely with the trigger and the operation that showed it. Then one line starting "Breaks attempted:". If nothing was established, say so plainly.',
   ].join('\n');
 }
 

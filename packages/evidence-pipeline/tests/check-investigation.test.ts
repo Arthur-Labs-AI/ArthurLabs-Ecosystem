@@ -271,3 +271,90 @@ describe('investigateChecks conclusion capture', () => {
     expect(kept).toContain('Breaks attempted:');
   });
 });
+
+describe('investigateChecks soft time share', () => {
+  const MIN = 60_000;
+
+  it('computes a share-based soft budget, floored and capped by what is left', async () => {
+    const { checkSoftBudgetMs } = await import('../src/index.js');
+    expect(checkSoftBudgetMs(160 * MIN, 4)).toBe(80 * MIN);
+    expect(checkSoftBudgetMs(30 * MIN, 8)).toBe(8 * MIN);
+    expect(checkSoftBudgetMs(5 * MIN, 3)).toBe(5 * MIN);
+    expect(checkSoftBudgetMs(100 * MIN, 1)).toBe(100 * MIN);
+    expect(checkSoftBudgetMs(0, 2)).toBe(0);
+  });
+
+  it('ends a check that used twice its share, records its conclusion, and runs the rest', async () => {
+    const start = Date.now();
+    const clock = { t: start };
+    const prompts: string[] = [];
+    const { hooks } = harness(() => ({ text: 'unused' }), {
+      plan: { plannedChecks: ['Check A', 'Check B', 'Check C', 'Check D'] },
+      // 160 minutes of investigation window for 4 checks: share 40, soft limit 80
+      depth: { deadlineAt: start + 172 * MIN },
+      now: () => clock.t,
+      streamTurn: (text: string) =>
+        (async function* () {
+          prompts.push(text);
+          if (text.includes('TIME SHARE REACHED'))
+            return {
+              text: 'WRAP: the lease race looked real. Breaks attempted: concurrent start.',
+            };
+          if (text.includes('INVESTIGATE CHECK check_1')) {
+            for (let i = 0; i < 20; i += 1) {
+              // a real model call takes time: the host sees the pause between steps
+              await new Promise((resolve) => setTimeout(resolve, 200));
+              clock.t += 10 * MIN;
+              addOp(ops(), 'bash', 'node probe-' + i + '.mjs', 0);
+              yield eventOf({ type: 'tool.completed' });
+            }
+            return { text: 'never reached' };
+          }
+          clock.t += 1 * MIN;
+          addOp(ops(), 'bash', 'node quick-' + prompts.length + '.mjs', 0);
+          yield eventOf({ type: 'tool.completed' });
+          return { text: 'done ' + prompts.length };
+        })(),
+    });
+    // the harness helper owns the ledger map; expose it to the script above
+    function ops(): Ops {
+      return hooks.operations as Ops;
+    }
+    const { events, value } = await drain(investigateChecks(hooks));
+    expect(codes(events)).toContain('QA_CHECK_BUDGET_REACHED');
+    expect(codes(events)).not.toContain('QA_APPROACH_CHANGE');
+    expect(codes(events)).not.toContain('QA_INVESTIGATION_INCOMPLETE');
+    expect(prompts.some((p) => p.includes('TIME SHARE REACHED — CHECK check_1'))).toBe(true);
+    expect(value.blockedChecks).toEqual(['Check A']);
+    expect(value.checkConclusions[0]).toContain('WRAP: the lease race looked real');
+    // the other three checks all ran
+    expect(value.checkConclusions.slice(1).every((text) => (text ?? '').startsWith('done'))).toBe(
+      true,
+    );
+    expect(prompts.filter((p) => p.includes('INVESTIGATE CHECK'))).toHaveLength(4);
+  });
+
+  it('applies no soft limit outside depth-policy runs', async () => {
+    const start = Date.now();
+    const clock = { t: start };
+    let steps = 0;
+    const { hooks } = harness(() => ({ text: 'x' }), {
+      plan: { plannedChecks: ['Check A'] },
+      now: () => clock.t,
+      streamTurn: () =>
+        (async function* () {
+          for (let i = 0; i < 30; i += 1) {
+            steps += 1;
+            clock.t += 60 * MIN;
+            addOp(hooks.operations as Ops, 'bash', 'node p' + i + '.mjs', 0);
+            yield eventOf({ type: 'tool.completed' });
+          }
+          return { text: 'finished' };
+        })(),
+    });
+    const { events, value } = await drain(investigateChecks(hooks));
+    expect(steps).toBe(30);
+    expect(codes(events)).not.toContain('QA_CHECK_BUDGET_REACHED');
+    expect(value.checkConclusions[0]).toBe('finished');
+  });
+});

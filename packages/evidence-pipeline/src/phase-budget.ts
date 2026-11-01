@@ -186,7 +186,8 @@ interface ToolNote {
   readonly important: boolean;
 }
 
-const READ_TOOLS = /^(?:read|grep|glob|search|list|view|webfetch|websearch|todowrite|todoread)$/i;
+const READ_TOOLS =
+  /^(?:read(?:_?file)?|grep(?:_search)?|glob|search|(?:file|codebase)_search|list(?:_?(?:dir|directory|files))?|ls|tree|view|find(?:_files)?|webfetch|websearch|todowrite|todoread)$/i;
 const WRITE_TOOLS =
   /^(?:write|edit|patch|apply_patch|write_file|edit_file|create_file|str_replace\w*)$/i;
 const FAILURE_SIGNAL =

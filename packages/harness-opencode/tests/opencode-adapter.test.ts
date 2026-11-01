@@ -635,6 +635,33 @@ describe('OpenCodeHarnessAdapter', () => {
     ).toBe(true);
   });
 
+  it('counts grep calls toward the read-only spiral', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-grepspiral-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: stuckFactory(prompts, (emit) => {
+        // Only greps: the ledger used to skip them, so this never tripped.
+        for (let i = 0; i < 15; i += 1)
+          emit({
+            callID: 'grep_' + i + '_' + prompts.length,
+            tool: 'grep',
+            input: { pattern: 'lease' + i + '_' + prompts.length },
+            status: 'completed',
+            output: 'a.ts:1: lease',
+          });
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(prompts.some((prompt) => prompt.includes('APPROACH CHANGE'))).toBe(true);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_APPROACH_CHANGE' }),
+    );
+  });
+
   it('runs all turns in one OpenCode session with composed model id', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-success-'));
     roots.push(root);

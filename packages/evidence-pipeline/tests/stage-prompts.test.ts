@@ -111,3 +111,33 @@ describe('ordered compact QA stages', () => {
     );
   });
 });
+
+describe('plan size follows the time budget', () => {
+  it('derives the check count from the investigation window', async () => {
+    const { maxPlannedChecks, reportableDepthPlan } = await import('../src/index.js');
+    const at = (minutes: number) => ({
+      qaDepth: { version: 1, deadlineAt: 1_000_000_000 + minutes * 60_000 },
+    });
+    // 3h run: 168 minutes of investigation / 25 -> 6 checks
+    expect(maxPlannedChecks(at(180), 1_000_000_000)).toBe(6);
+    expect(maxPlannedChecks(at(60), 1_000_000_000)).toBe(2);
+    expect(maxPlannedChecks(at(600), 1_000_000_000)).toBe(8);
+    expect(maxPlannedChecks(undefined)).toBe(8);
+    expect(maxPlannedChecks({}, 0)).toBe(8);
+    const plan = { plannedChecks: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] };
+    expect(reportableDepthPlan(plan, true, 5).plannedChecks).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(reportableDepthPlan(plan, true).plannedChecks).toHaveLength(8);
+    expect(reportableDepthPlan(plan, false, 5).plannedChecks).toHaveLength(8);
+  });
+
+  it('tells the planner the budget-derived ceiling', async () => {
+    const { buildQaPlanningPrompt } = await import('../src/index.js');
+    const text = buildQaPlanningPrompt({
+      task: {
+        prompt: 'QA',
+        context: { qaDepth: { version: 1, deadlineAt: Date.now() + 180 * 60_000 } },
+      },
+    });
+    expect(text).toContain('at most 6 checks');
+  });
+});

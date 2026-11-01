@@ -19,6 +19,7 @@ import {
   promisePhase,
   PhaseDeadlineReached,
   ObservedToolNotes,
+  maxPlannedChecks,
   renderCheckConclusions,
   compactToolOutput,
   ContextBudget,
@@ -348,7 +349,7 @@ function commandFromToolInput(
     const parts = argv.filter((entry): entry is string => typeof entry === 'string');
     if (parts.length > 0) return parts.join(' ').slice(0, 500);
   }
-  if (/file|read|write|edit|search|glob|patch/i.test(toolName)) {
+  if (/file|read|write|edit|search|glob|patch|grep|list|view|find/i.test(toolName)) {
     for (const key of ['path', 'file', 'filePath', 'pattern', 'query']) {
       const candidate = typeof input[key] === 'string' ? (input[key] as string).trim() : '';
       if (candidate.length > 0) return candidate.slice(0, 500);
@@ -1132,6 +1133,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
                 parseWholeJson(planning.text, 'planning', pipeline),
               ),
               depthPolicy(request.task.context) !== undefined,
+              maxPlannedChecks(request.task.context),
             );
             break;
           } catch (cause) {
@@ -1419,7 +1421,11 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
                   attempt +
                   ' rejected; retrying report only (' +
                   errors.length +
-                  ' issues).',
+                  ' issues): ' +
+                  errors
+                    .slice(0, 2)
+                    .map((issue) => issue.slice(0, 240))
+                    .join(' | '),
               });
             } else {
               throw new OpenCodeHarnessError(
@@ -1448,7 +1454,13 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
             const reason =
               cause instanceof PhaseDeadlineReached
                 ? 'the reporting stage reached its protected deadline before a complete report was returned.'
-                : 'the reporting stage stayed invalid after ' + MAX_REPORT_ATTEMPTS + ' attempts.';
+                : 'the reporting stage stayed invalid after ' +
+                  MAX_REPORT_ATTEMPTS +
+                  ' attempts (' +
+                  messageOf(cause)
+                    .replace(/^.*?attempts:\s*/, '')
+                    .slice(0, 600) +
+                  ').';
             const fallback = composeHostFallbackReport(
               planResult,
               this.observedOperations,

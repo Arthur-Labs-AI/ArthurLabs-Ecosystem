@@ -19,6 +19,7 @@ import {
   reportAttemptDeadline,
   PhaseDeadlineReached,
   ObservedToolNotes,
+  maxPlannedChecks,
   renderCheckConclusions,
   compactToolOutput,
   ContextBudget,
@@ -1597,6 +1598,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
                 parseWholeJson(planning.text, 'planning', pipeline),
               ),
               depthPolicy(request.task.context) !== undefined,
+              maxPlannedChecks(request.task.context),
             );
             break;
           } catch (cause) {

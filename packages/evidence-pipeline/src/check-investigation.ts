@@ -5,6 +5,8 @@ import type { ContextBudget } from './context-budget.js';
 import { estimatePromptTokens, isContextWindowExceeded } from './context-budget.js';
 import {
   MAX_APPROACH_ATTEMPTS,
+  WRAP_UP_MS,
+  checkSoftBudgetMs,
   closingTriagesFailures,
   failedCommandsSince,
   turnExecutedReproduction,
@@ -22,6 +24,7 @@ import {
 } from './phase-budget.js';
 import {
   buildAlternativeApproachPrompt,
+  buildBudgetWrapUpPrompt,
   buildExecutionNudgePrompt,
   buildQaCheckInvestigationPrompt,
   renderCheckConclusions,
@@ -72,6 +75,8 @@ export interface CheckInvestigationHooks<T extends InvestigationTurn> {
   readonly partialEvents?: (cause: unknown) => Iterable<HarnessEvent>;
   /** Cleanup after the investigation was interrupted (before the report context starts). */
   readonly onInterrupted?: () => void;
+  /** Clock; tests inject one. */
+  readonly now?: () => number;
 }
 
 export interface CheckInvestigationResult {
@@ -119,6 +124,10 @@ export async function* investigateChecks<T extends InvestigationTurn>(
   let steps = 0;
   let seed = '';
   let currentCheck = 0;
+  const now = hooks.now ?? Date.now;
+  /** Wall-clock end of the current check's soft time share (undefined outside depth-policy runs). */
+  let softAt: number | undefined;
+  let checkStartedAt = 0;
   const description = (index: number): string => plan.plannedChecks[index] ?? '';
   const interrupted = (): boolean => hooks.cancelled();
 
@@ -135,12 +144,16 @@ export async function* investigateChecks<T extends InvestigationTurn>(
   ): AsyncGenerator<HarnessEvent, WatchedTurn<T, TurnStop>> => {
     const source = watchTurn(
       hooks.streamTurn(text),
-      () => turnWatchdogStop(beforeKeys, operations),
+      () =>
+        turnWatchdogStop(beforeKeys, operations) ??
+        (softAt !== undefined && now() >= softAt
+          ? { kind: 'over-budget' as const, minutes: Math.round((now() - checkStartedAt) / 60_000) }
+          : undefined),
       hooks.stop,
     );
     return depth === undefined
       ? source
-      : limitPhase(source, investigationDeadline(depth.deadlineAt), hooks.stop);
+      : limitPhase(source, investigationDeadline(depth.deadlineAt, now()), hooks.stop);
   };
 
   /** Runs a turn; a failed turn first flushes the events it never emitted. */
@@ -175,6 +188,15 @@ export async function* investigateChecks<T extends InvestigationTurn>(
           ': ' +
           description(currentCheck).slice(0, 120),
       });
+      checkStartedAt = now();
+      softAt =
+        depth === undefined
+          ? undefined
+          : checkStartedAt +
+            checkSoftBudgetMs(
+              investigationDeadline(depth.deadlineAt, checkStartedAt) - checkStartedAt,
+              plan.plannedChecks.length - currentCheck,
+            );
       const ledgerBeforeTurn = new Set(operations.keys());
       const checkPrompt = buildQaCheckInvestigationPrompt(
         plan,
@@ -226,7 +248,12 @@ export async function* investigateChecks<T extends InvestigationTurn>(
       // failing again and again, or a read-only spiral): grant bounded
       // attempts with a different method, each in a fresh seeded session.
       let approachAttempts = 0;
-      while (tripped !== undefined && approachAttempts < MAX_APPROACH_ATTEMPTS && !interrupted()) {
+      while (
+        tripped !== undefined &&
+        tripped.kind !== 'over-budget' &&
+        approachAttempts < MAX_APPROACH_ATTEMPTS &&
+        !interrupted()
+      ) {
         approachAttempts += 1;
         const attemptBefore = new Set(operations.keys());
         await rotate(currentCheck);
@@ -271,6 +298,45 @@ export async function* investigateChecks<T extends InvestigationTurn>(
           break; // Any other attempt failure keeps the banked work.
         }
       }
+      let budgetEnded = false;
+      if (tripped?.kind === 'over-budget') {
+        // The check used its time share. End it, record what was established
+        // in one short wrap-up turn, and let the remaining checks run.
+        budgetEnded = true;
+        const usedMinutes = tripped.minutes;
+        tripped = undefined;
+        yield hooks.event({
+          type: 'warning',
+          code: 'QA_CHECK_BUDGET_REACHED',
+          message:
+            'Check used its time share (about ' +
+            usedMinutes +
+            ' minutes); ending it so the remaining checks and the report fit. It is reported inconclusive.',
+        });
+        blockedChecks.push(description(currentCheck));
+        if (!interrupted()) {
+          try {
+            await rotate(currentCheck);
+            const wrapText =
+              seed + buildBudgetWrapUpPrompt(plan, currentCheck, Math.max(1, usedMinutes));
+            seed = '';
+            const wrapEnd = Math.min(
+              now() + WRAP_UP_MS,
+              depth === undefined ? Infinity : investigationDeadline(depth.deadlineAt, now()),
+            );
+            const wrapped = yield* limitPhase(hooks.streamTurn(wrapText), wrapEnd, hooks.stop);
+            turn = {
+              ...turn,
+              text: wrapped.text,
+              usage: sumAgentUsage(turn.usage, wrapped.usage ?? {}),
+            };
+            issued += wrapped.steps ?? 1;
+          } catch (cause) {
+            if (interrupted()) throw cause;
+            // A failed wrap-up only loses the closing statement; the digest keeps the evidence.
+          }
+        }
+      }
       if (tripped !== undefined) {
         yield hooks.event({
           type: 'warning',
@@ -285,6 +351,7 @@ export async function* investigateChecks<T extends InvestigationTurn>(
       }
       if (
         tripped === undefined &&
+        !budgetEnded &&
         !turnProducedProof(ledgerBeforeTurn, operations) &&
         !turnExecutedReproduction(ledgerBeforeTurn, operations) &&
         !interrupted()

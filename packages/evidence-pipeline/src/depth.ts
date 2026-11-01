@@ -1,5 +1,6 @@
 import type { SentryAgentReportV2 } from '@qa/schemas';
 import { DEPENDENCY_INSTALL_COMMAND } from '@qa/shared';
+import { investigationDeadline } from './phase-budget.js';
 import type { ObservedOperation } from './pipeline.js';
 
 /** Versioned per-run policy, passed by the coordinator, never by project files. */
@@ -22,10 +23,35 @@ export const DEPTH_PREPARATION_GUIDANCE =
   'but unavailable executable checks must remain not_run or inconclusive. Generated dependencies ' +
   'and build outputs are not original snapshot evidence. Keep planned check names unique and at most 500 characters so reporting can preserve them exactly.';
 
+/** Planned checks the investigation time can honestly cover: a check needs real time to execute. */
+export const MINUTES_PER_PLANNED_CHECK = 25;
+export const MAX_PLANNED_CHECKS = 8;
+export const MIN_PLANNED_CHECKS = 2;
+
+/**
+ * How many checks to plan for this run. A slow model on a deep project cannot
+ * cover eight broad checks in three hours, and checks that never start are
+ * worse than fewer checks that do. Without a deadline (legacy runs) the old
+ * ceiling stays.
+ */
+export function maxPlannedChecks(
+  context: Readonly<Record<string, unknown>> | undefined,
+  now = Date.now(),
+): number {
+  const depth = depthPolicy(context);
+  if (depth === undefined) return MAX_PLANNED_CHECKS;
+  const minutes = (investigationDeadline(depth.deadlineAt, now) - now) / 60_000;
+  return Math.min(
+    MAX_PLANNED_CHECKS,
+    Math.max(MIN_PLANNED_CHECKS, Math.floor(minutes / MINUTES_PER_PLANNED_CHECK)),
+  );
+}
+
 /** The legacy plan schema allows longer names than the report schema. */
 export function reportableDepthPlan<T extends { plannedChecks: readonly string[] }>(
   plan: T,
   enabled: boolean,
+  maxChecks?: number,
 ): T {
   if (
     enabled &&
@@ -33,6 +59,9 @@ export function reportableDepthPlan<T extends { plannedChecks: readonly string[]
       new Set(plan.plannedChecks).size !== plan.plannedChecks.length)
   )
     throw new Error('Planned check names must be unique and at most 500 characters.');
+  // The plan is risk-ordered, so the first checks are the ones worth the time.
+  if (enabled && maxChecks !== undefined && plan.plannedChecks.length > maxChecks)
+    return { ...plan, plannedChecks: plan.plannedChecks.slice(0, maxChecks) };
   return plan;
 }
 
@@ -120,7 +149,7 @@ export function isExecutableProofOperation(op: ObservedOperation): boolean {
     !/[;&|\r\n`<>]|\$\(/.test(
       withoutHarmlessOutputHandling(op.commandText, op.pipefail === true),
     ) &&
-    !/^(read|grep|glob|search|list|view)$/i.test(op.toolName) &&
+    !READ_ONLY_TOOL.test(op.toolName) &&
     !DEPENDENCY_INSTALL_COMMAND.test(op.commandText) &&
     !/^\s*["']?(?:[^\s"']*[\\/])?(?:rg|grep|cat|sed|head|tail|find|ls|pwd|wc|echo|printf|which)(?:\.exe)?(?:["']?\s|$)/i.test(
       op.commandText ?? '',
@@ -167,13 +196,20 @@ export function turnExecutedReproduction(
 ): boolean {
   for (const [key, op] of operations) {
     if (beforeKeys.has(key) || typeof op.exitCode !== 'number') continue;
-    if (/^(read|grep|glob|search|list|view)$/i.test(op.toolName)) continue;
+    if (READ_ONLY_TOOL.test(op.toolName)) continue;
     const text = op.commandText?.trim() ?? '';
     if (text.length > 0 && !READ_ONLY_SHELL.test(text) && !DEPENDENCY_INSTALL_COMMAND.test(text))
       return true;
   }
   return false;
 }
+
+/**
+ * Tools that only look. Harnesses name them differently (read, Read, read_file,
+ * grep, glob, list_dir, ...), and a spiral hides if any of them goes uncounted.
+ */
+export const READ_ONLY_TOOL =
+  /^(?:read(?:_?file)?|grep(?:_search)?|glob|search|(?:file|codebase)_search|list(?:_?(?:dir|directory|files))?|ls|tree|view|find(?:_files)?)$/i;
 
 /** Same proof command failing this many times in one turn is a retry-until-green loop. */
 export const RED_RETRY_THRESHOLD = 3;
@@ -195,7 +231,7 @@ export function turnRepeatedRedProof(
     if (typeof op.exitCode !== 'number' || op.exitCode === 0) continue;
     const raw = op.commandText?.trim();
     if (raw === undefined || raw.length === 0) continue;
-    if (/^(read|grep|glob|search|list|view)$/i.test(op.toolName)) continue;
+    if (READ_ONLY_TOOL.test(op.toolName)) continue;
     const text = retryKey(raw);
     const count = (failures.get(text) ?? 0) + 1;
     if (count >= RED_RETRY_THRESHOLD) return true;
@@ -207,19 +243,44 @@ export function turnRepeatedRedProof(
 /**
  * Consecutive read-only operations (read/grep/glob/search/list/view) without
  * any executed or edited operation in between. Behavioural, not temporal: a
- * large project may legitimately take long, but reading 25 times without
- * running or changing anything is a source-review spiral on any project.
+ * large project may legitimately take long, but reading 15 times without
+ * running or changing anything is a source-review spiral on any project. With
+ * slow model calls (40+ seconds each) 15 reads is already ten minutes with
+ * nothing executed.
  */
-export const NO_PROGRESS_LIMIT = 25;
+export const NO_PROGRESS_LIMIT = 15;
 
 /** Approach changes the host grants one check after its turn was stopped. */
 export const MAX_APPROACH_ATTEMPTS = 3;
 
 export type TurnStop =
   | { readonly kind: 'red-retry'; readonly command: string; readonly failures: number }
-  | { readonly kind: 'no-progress'; readonly reads: number };
+  | { readonly kind: 'no-progress'; readonly reads: number }
+  | { readonly kind: 'over-budget'; readonly minutes: number };
 
-const READ_ONLY_TOOL = /^(read|grep|glob|search|list|view)$/i;
+/** Stops that earn a different-approach attempt; running out of time does not. */
+export type RetryStop = Exclude<TurnStop, { readonly kind: 'over-budget' }>;
+
+/**
+ * Soft per-check time budget, derived from the run itself rather than fixed:
+ * a check may use up to this many times its fair share (remaining
+ * investigation time divided by the checks still to run). A slow model or a
+ * deep project stretches every share equally; one check cannot starve the
+ * rest.
+ */
+export const SOFT_BUDGET_FACTOR = 2;
+/** A check is never cut below this, unless less than this is left. */
+export const MIN_SOFT_BUDGET_MS = 8 * 60_000;
+/** The short, tool-free-in-spirit turn that records a cut-off check's conclusion. */
+export const WRAP_UP_MS = 4 * 60_000;
+
+export function checkSoftBudgetMs(remainingMs: number, checksLeft: number): number {
+  const share = Math.max(0, remainingMs) / Math.max(1, checksLeft);
+  return Math.min(
+    Math.max(0, remainingMs),
+    Math.max(MIN_SOFT_BUDGET_MS, share * SOFT_BUDGET_FACTOR),
+  );
+}
 
 export interface FailedAttempt {
   readonly command: string;

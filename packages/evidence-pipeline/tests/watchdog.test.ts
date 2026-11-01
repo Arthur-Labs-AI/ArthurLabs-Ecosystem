@@ -58,9 +58,9 @@ describe('turn watchdog', () => {
       reads: NO_PROGRESS_LIMIT,
     });
     const mixed = [
-      ...reads.slice(0, 20),
+      ...reads.slice(0, NO_PROGRESS_LIMIT - 5),
       { tool: 'bash', command: 'node p.mjs', exitCode: 0 },
-      ...reads.slice(0, 20),
+      ...reads.slice(0, NO_PROGRESS_LIMIT - 5),
     ];
     expect(turnWatchdogStop(new Set(), ledger(mixed))).toBeUndefined();
   });
@@ -240,4 +240,44 @@ describe('dependency installs never prove a check', () => {
       expect(isExecutableProofOperation(ran(command))).toBe(true);
     },
   );
+});
+
+describe('read-only spiral counts every looking tool', () => {
+  it.each([
+    'read',
+    'Read',
+    'read_file',
+    'grep',
+    'grep_search',
+    'glob',
+    'list_dir',
+    'list',
+    'view',
+    'find',
+  ])('counts %s', (tool) => {
+    const looks = Array.from({ length: NO_PROGRESS_LIMIT }, (_, i) => ({
+      tool,
+      command: 'target-' + i,
+    }));
+    expect(turnWatchdogStop(new Set(), ledger(looks))).toEqual({
+      kind: 'no-progress',
+      reads: NO_PROGRESS_LIMIT,
+    });
+  });
+
+  it('mixes tools: 86 greps and reads in a row is a spiral', () => {
+    const mixed = Array.from({ length: 86 }, (_, i) => ({
+      tool: i % 3 === 0 ? 'read' : 'grep',
+      command: 'q' + i,
+    }));
+    expect(turnWatchdogStop(new Set(), ledger(mixed))).toMatchObject({ kind: 'no-progress' });
+  });
+
+  it('does not count write, edit or bash as looking', () => {
+    const work = Array.from({ length: NO_PROGRESS_LIMIT * 2 }, (_, i) => ({
+      tool: i % 2 === 0 ? 'edit' : 'write',
+      command: 'probe-' + i + '.mjs',
+    }));
+    expect(turnWatchdogStop(new Set(), ledger(work))).toBeUndefined();
+  });
 });

@@ -20,6 +20,7 @@ import {
   promisePhase,
   PhaseDeadlineReached,
   ObservedToolNotes,
+  maxPlannedChecks,
   renderCheckConclusions,
   compactToolOutput,
   ContextBudget,
@@ -1080,6 +1081,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
                 parseWholeJson(planning.text, 'planning', pipeline),
               ),
               depthPolicy(request.task.context) !== undefined,
+              maxPlannedChecks(request.task.context),
             );
             break;
           } catch (cause) {
@@ -1361,7 +1363,11 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
                   attempt +
                   ' rejected; retrying report only (' +
                   errors.length +
-                  ' issues).',
+                  ' issues): ' +
+                  errors
+                    .slice(0, 2)
+                    .map((issue) => issue.slice(0, 240))
+                    .join(' | '),
               });
             } else {
               throw new DeepSeekHarnessError(
