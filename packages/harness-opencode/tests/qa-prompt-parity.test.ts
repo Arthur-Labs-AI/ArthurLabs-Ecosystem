@@ -268,12 +268,15 @@ describe('OpenCode QA prompt parity', () => {
           true,
         );
       // No self-challenge or refinement turn: plan, investigation, report.
-      expect(prompts).toHaveLength(3);
+      // Depth runs with most of the window unused add one deepening turn before the report.
+      const deepened = depth === true;
+      expect(prompts).toHaveLength(deepened ? 4 : 3);
+      expect(prompts.some((prompt) => prompt.includes('DEEPENING PASS'))).toBe(deepened);
       expect(prompts.some((prompt) => prompt.includes('CHALLENGE YOUR OWN INVESTIGATION'))).toBe(
         false,
       );
       const [planning, investigation] = prompts as [string, string];
-      const reporting = prompts[2]!;
+      const reporting = prompts.at(-1)!;
       expect(planning).toContain(QA_SESSION_CONTRACT);
       expect(planning).toContain('No tests, builds, lint, typecheck');
       expect(planning).toContain('future actions');
@@ -290,8 +293,9 @@ describe('OpenCode QA prompt parity', () => {
       expect(reporting).toContain('confirmed requires');
       expect(reporting).toContain('not product findings');
       expect(reporting).toContain('check_1');
-      expect(reporting).not.toContain(QA_SESSION_CONTRACT);
-      expect(prompts.join('\n').split(QA_SESSION_CONTRACT)).toHaveLength(2);
+      // After the deepening turn the report starts in a fresh context that repeats the contract.
+      if (!deepened) expect(reporting).not.toContain(QA_SESSION_CONTRACT);
+      expect(prompts.join('\n').split(QA_SESSION_CONTRACT)).toHaveLength(depth === true ? 4 : 2);
       expect(prompts.join('\n')).not.toContain('sentry-parity-secret-credential');
     },
   );

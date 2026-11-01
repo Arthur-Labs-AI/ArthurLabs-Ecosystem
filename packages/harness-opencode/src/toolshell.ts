@@ -1,6 +1,6 @@
 import { chmod, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { BINARY_DOWNLOAD_SKIP_ENVIRONMENT } from '@qa/shared';
+import { BINARY_DOWNLOAD_SKIP_ENVIRONMENT, NON_INTERACTIVE_ENVIRONMENT } from '@qa/shared';
 
 /**
  * Sentry-owned tool shell wrapper: OS-enforced filesystem view for
@@ -182,6 +182,7 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
           ...Object.entries({
             ...toolShellProxyEnvironment(egress.port),
             ...BINARY_DOWNLOAD_SKIP_ENVIRONMENT,
+            ...NON_INTERACTIVE_ENVIRONMENT,
           }).map(([name, value]) => '  --setenv ' + name + ' ' + q(value) + ' \\'),
         ];
   return [

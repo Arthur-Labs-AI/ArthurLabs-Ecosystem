@@ -46,6 +46,8 @@ describe('agent network policy', () => {
     expect(env['CARGO_HOME']).toBeUndefined();
     // Binary-downloading postinstalls (Electron etc.) would fail on DNS and break the install.
     expect(env['ELECTRON_SKIP_BINARY_DOWNLOAD']).toBe('1');
+    // no terminal: pnpm must never stop at an interactive confirmation
+    expect(env['CI']).toBe('true');
     expect(env['PUPPETEER_SKIP_DOWNLOAD']).toBe('1');
     expect(Object.entries(env).every(([, value]) => !value.startsWith('/home'))).toBe(true);
   });

@@ -87,6 +87,16 @@ export const BINARY_DOWNLOAD_SKIP_ENVIRONMENT: Readonly<Record<string, string>> 
   CYPRESS_INSTALL_BINARY: '0',
 };
 
+/**
+ * Agent shells have no terminal. Without CI set, pnpm stops at an interactive
+ * confirmation (for example "modules directories will be removed and
+ * reinstalled") and exits 0 having installed nothing, which the ledger then
+ * records as a successful install (run_01M6BWBR repeated every install).
+ */
+export const NON_INTERACTIVE_ENVIRONMENT: Readonly<Record<string, string>> = {
+  CI: 'true',
+};
+
 export function dependencyCacheEnvironment(workspacePath: string): Record<string, string> {
   const root = workspacePath.replace(/[\\/]+$/, '') + '/' + DEPENDENCY_CACHE_DIRNAME;
   return {
@@ -103,6 +113,7 @@ export function dependencyCacheEnvironment(workspacePath: string): Record<string
     npm_config_audit: 'false',
     PIP_DISABLE_PIP_VERSION_CHECK: '1',
     ...BINARY_DOWNLOAD_SKIP_ENVIRONMENT,
+    ...NON_INTERACTIVE_ENVIRONMENT,
     // CARGO_HOME is intentionally not set: it would break rustup proxies.
   };
 }
