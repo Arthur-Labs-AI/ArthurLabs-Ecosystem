@@ -12,6 +12,7 @@ import {
   webAccessEnabled,
   type AgentRunId,
   type OperationId,
+  describeSchemaIssues,
 } from '@qa/shared';
 import {
   limitPhase,
@@ -1099,7 +1100,8 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     if (cause instanceof Error && cause.name === 'ZodError')
       return new ClaudeCodeHarnessError(
         'GLM_INVALID_RESULT',
-        'Claude Code returned data that did not match the required schema.',
+        'Claude Code returned data that did not match the required schema' +
+          (describeSchemaIssues(cause) === '' ? '.' : ': ' + describeSchemaIssues(cause) + '.'),
       );
     return new ClaudeCodeHarnessError('GLM_START_FAILED', message, true);
   }

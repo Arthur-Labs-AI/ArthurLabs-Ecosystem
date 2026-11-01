@@ -904,3 +904,22 @@ describe('revision-targeted runs', () => {
     }
   });
 });
+
+describe('schema validation failure summary', () => {
+  it('says where the failure happened and which fields, without values', async () => {
+    const { summarizeValidationFailure } = await import('../src/index.js');
+    const zodLike = Object.assign(new Error('{"received":"super-secret-agent-output"}'), {
+      name: 'ZodError',
+      issues: [{ path: ['tool', 'durationMs'], code: 'invalid_type' }],
+    });
+    const text = summarizeValidationFailure(zodLike, 'tool.completed');
+    expect(text).toBe(
+      'Agent output failed schema validation while handling tool.completed: tool.durationMs [invalid_type].',
+    );
+    expect(text).not.toContain('super-secret');
+    expect(summarizeValidationFailure(zodLike)).toContain('failed schema validation: ');
+    expect(summarizeValidationFailure(new Error('x'))).toBe(
+      'Agent output failed schema validation.',
+    );
+  });
+});

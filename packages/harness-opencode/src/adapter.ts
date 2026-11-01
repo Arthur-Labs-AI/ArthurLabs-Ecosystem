@@ -12,6 +12,7 @@ import {
   PACKAGE_REGISTRY_HOSTS,
   type AgentRunId,
   type OperationId,
+  describeSchemaIssues,
 } from '@qa/shared';
 import {
   limitPhase,
@@ -1613,7 +1614,10 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
             : cause instanceof Error && cause.name === 'ZodError'
               ? new OpenCodeHarnessError(
                   'OPENCODE_INVALID_RESULT',
-                  'OpenCode returned data that did not match the required schema.',
+                  'OpenCode returned data that did not match the required schema' +
+                    (describeSchemaIssues(cause) === ''
+                      ? '.'
+                      : ': ' + describeSchemaIssues(cause) + '.'),
                 )
               : new OpenCodeHarnessError(
                   /auth|credential|sign in|api key|unauthorized|401|apicallerror/i.test(

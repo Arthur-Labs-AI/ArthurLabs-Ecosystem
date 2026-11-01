@@ -12,6 +12,7 @@ import {
   webAccessEnabled,
   type AgentRunId,
   type OperationId,
+  describeSchemaIssues,
 } from '@qa/shared';
 import {
   limitPhase,
@@ -1504,7 +1505,10 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
             : cause instanceof Error && cause.name === 'ZodError'
               ? new DeepSeekHarnessError(
                   'DEEPSEEK_INVALID_RESULT',
-                  'DeepSeek returned data that did not match the required schema.',
+                  'DeepSeek returned data that did not match the required schema' +
+                    (describeSchemaIssues(cause) === ''
+                      ? '.'
+                      : ': ' + describeSchemaIssues(cause) + '.'),
                 )
               : new DeepSeekHarnessError(
                   /auth|credential|sign in|api key|unauthorized|401/i.test(String(cause))

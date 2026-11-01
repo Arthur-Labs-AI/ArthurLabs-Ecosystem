@@ -16,6 +16,7 @@ import {
   type AgentStackId,
   type ProjectId,
   type QARunId,
+  describeSchemaIssues,
 } from '@qa/shared';
 import {
   AgentRunSchema,
@@ -162,6 +163,20 @@ export function silenceWindowMs(runTimeoutMs: number): number {
 }
 
 export const CANCELLATION_POLL_INTERVAL_MS = 500;
+
+/**
+ * Bounded description of a schema validation failure: where it happened and
+ * which fields were rejected, never the offending values (the raw message is
+ * JSON that may contain agent output and must not be persisted verbatim).
+ */
+export function summarizeValidationFailure(cause: unknown, handlingEvent?: string): string {
+  const described = describeSchemaIssues(cause);
+  return (
+    'Agent output failed schema validation' +
+    (handlingEvent === undefined ? '' : ' while handling ' + handlingEvent) +
+    (described.length === 0 ? '.' : ': ' + described + '.')
+  ).slice(0, 500);
+}
 
 export class RunCoordinator {
   private readonly projects: ProjectManager;
@@ -627,6 +642,8 @@ export class RunCoordinator {
           };
     const agentRunId = createAgentRunId();
     const startedAt = nowIsoTimestamp();
+    /** Type of the harness event being handled, so a validation failure can say where it happened. */
+    let handlingEvent: string | undefined;
     let agentRun = AgentRunSchema.parse({
       schemaVersion: 1,
       id: agentRunId,
@@ -778,6 +795,7 @@ export class RunCoordinator {
         request,
         timeoutMs,
         async (event) => {
+          handlingEvent = event.type;
           this.requireRuntimeLease();
           validator.accept(event);
           this.repository.transaction(() => {
@@ -792,6 +810,7 @@ export class RunCoordinator {
             agentRun = this.projectAgentRunEvent(agentRun, event);
           });
           input.onHarnessEventPersisted?.(event, agentRun);
+          handlingEvent = undefined;
         },
       );
       // Race safety (§12): reconcile against durable state before the
@@ -868,7 +887,7 @@ export class RunCoordinator {
           message: timedOut
             ? 'Agent exceeded run budget (' + cause.message + ').'
             : zodFailure
-              ? 'Agent output failed schema validation.'
+              ? summarizeValidationFailure(cause, handlingEvent)
               : protocolViolation
                 ? cause instanceof Error
                   ? cause.message
