@@ -144,3 +144,24 @@ describe('plan size follows the time budget', () => {
     expect(text).toContain('at most 6 checks');
   });
 });
+
+describe('falsification planning and leads', () => {
+  it('asks the planner to falsify properties and cover data-handling code', async () => {
+    const { buildQaPlanningPrompt: planning } = await import('../src/index.js');
+    const text = planning({ task: { prompt: 'QA', context: {} } });
+    expect(text).toContain('FALSIFY');
+    expect(text).toContain('transforms or persists data');
+    expect(text.length).toBeLessThan(3400);
+  });
+
+  it('asks every check turn for a Leads line and follows a lead in its own turn', async () => {
+    const { buildLeadPrompt } = await import('../src/index.js');
+    const multi = { ...plan, plannedChecks: ['Boundary', 'Isolation'] };
+    expect(buildQaCheckInvestigationPrompt(multi, 0, new Map())).toContain('"Leads:"');
+    const lead = buildLeadPrompt(multi, 1, 'import fails on symlinks');
+    expect(lead).toContain('LEAD FOLLOW-UP');
+    expect(lead).toContain('check_2');
+    expect(lead).toContain('import fails on symlinks');
+    expect(lead).toContain('UNVERIFIED');
+  });
+});

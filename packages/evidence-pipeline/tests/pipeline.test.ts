@@ -666,3 +666,18 @@ describe('shared evidence pipeline', () => {
     expect(withoutMatrix).not.toContain(REPORT_STRENGTH_COMPATIBILITY.slice(0, 60));
   });
 });
+
+describe('planning preamble tolerance', () => {
+  it('accepts a short sentence before one complete planning object, never for reports', () => {
+    const ctx = {
+      redactStructured: (value: unknown) => value,
+      redactDiagnostic: (value: string) => value,
+      errors: { invalidResult: (message: string) => new Error(message) },
+    } as never;
+    expect(parseWholeJson('Planning the sweep now.\n{"a":1}', 'planning', ctx)).toEqual({ a: 1 });
+    expect(() => parseWholeJson('Planning the sweep now.\n{"a":1}', 'reporting', ctx)).toThrow(
+      /complete JSON/,
+    );
+    expect(() => parseWholeJson('Planning now.\n{"a":', 'planning', ctx)).toThrow(/complete JSON/);
+  });
+});

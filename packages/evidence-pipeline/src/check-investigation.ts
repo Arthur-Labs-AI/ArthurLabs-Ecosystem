@@ -7,12 +7,14 @@ import {
   DEEPEN_MIN_REMAINING_FRACTION,
   MAX_APPROACH_ATTEMPTS,
   MAX_DEEPEN_CHECKS,
+  MAX_LEAD_TURNS,
   MAX_SECOND_PASS_CHECKS,
   MIN_SOFT_BUDGET_MS,
   SECOND_PASS_MIN_REMAINING_FRACTION,
   WRAP_UP_MS,
   checkSoftBudgetMs,
   closingTriagesFailures,
+  extractLeads,
   failedCommandsSince,
   isExecutableProofOperation,
   turnExecutedReproduction,
@@ -33,6 +35,7 @@ import {
   buildBudgetWrapUpPrompt,
   buildDeepeningPrompt,
   buildExecutionNudgePrompt,
+  buildLeadPrompt,
   buildQaCheckInvestigationPrompt,
   buildSecondPassPrompt,
   renderCheckConclusions,
@@ -128,6 +131,14 @@ export async function* investigateChecks<T extends InvestigationTurn>(
   const unprovenChecks: string[] = [];
   const redRetryChecks: string[] = [];
   const checkConclusions: Array<string | undefined> = [];
+  /** Off-check anomalies the investigator reported on its "Leads:" line (unverified). */
+  const leads: Array<{ index: number; text: string }> = [];
+  const collectLeads = (index: number, statement: string): void => {
+    for (const text of extractLeads(statement)) {
+      if (!leads.some((known) => known.text.toLowerCase() === text.toLowerCase()))
+        leads.push({ index, text });
+    }
+  };
   let usage: AgentUsage | undefined;
   let steps = 0;
   let seed = '';
@@ -266,6 +277,7 @@ export async function* investigateChecks<T extends InvestigationTurn>(
           steps += outcome.value.steps ?? 1;
           const statement = outcome.value.text.trim();
           if (statement.length > 0) checkConclusions[index] = statement.slice(-CONCLUSION_CHARS);
+          collectLeads(index, statement);
         }
         // Only proof produced DURING this pass can settle the check.
         if (turnProducedProof(before, operations)) {
@@ -312,32 +324,59 @@ export async function* investigateChecks<T extends InvestigationTurn>(
       )
       .sort((a, b) => a.proofs - b.proofs || a.index - b.index)
       .slice(0, MAX_DEEPEN_CHECKS);
-    if (candidates.length === 0) return;
+    // Off-check leads come first: something the agent already saw is a better
+    // lead than a fresh angle on a check that passed.
+    const leadTasks = leads.slice(0, MAX_LEAD_TURNS);
+    if (candidates.length === 0 && leadTasks.length === 0) return;
+    interface ExtensionTask {
+      readonly index: number;
+      readonly label: string;
+      readonly prompt: () => string;
+    }
+    const tasks: ExtensionTask[] = [
+      ...leadTasks.map((lead) => ({
+        index: lead.index,
+        label: 'LEAD (' + lead.text + ')',
+        prompt: () => buildLeadPrompt(plan, lead.index, lead.text),
+      })),
+      ...candidates.map(({ index }) => ({
+        index,
+        label: 'DEEPENING (extra angles; the first-pass verdict above stands unless this reproduced a defect)',
+        prompt: () =>
+          buildDeepeningPrompt(
+            plan,
+            index,
+            checkConclusions[index] ?? '',
+            ownOperations(index).flatMap((op) =>
+              typeof op.commandText === 'string' && op.commandText.length > 0
+                ? [op.commandText]
+                : [],
+            ),
+          ),
+      })),
+    ];
     yield hooks.event({
       type: 'warning',
       code: 'QA_DEEPEN_PASS',
       message:
         'About ' +
         Math.round(remaining() / 60_000) +
-        ' minutes of investigation time remain; attacking ' +
+        ' minutes of investigation time remain; following up ' +
+        leadTasks.length +
+        ' lead(s) and attacking ' +
         candidates.length +
         ' decided check(s) from new angles in fresh sessions.',
     });
     let ran = false;
     try {
-      for (let n = 0; n < candidates.length; n += 1) {
-        const index = (candidates[n] as { index: number }).index;
+      for (let n = 0; n < tasks.length; n += 1) {
+        const task = tasks[n] as ExtensionTask;
         const left = remaining();
         if (left < MIN_SOFT_BUDGET_MS || interrupted()) break;
         checkStartedAt = now();
-        softAt = checkStartedAt + checkSoftBudgetMs(left, candidates.length - n);
+        softAt = checkStartedAt + checkSoftBudgetMs(left, tasks.length - n);
         await rotate(plan.plannedChecks.length);
-        const executed = ownOperations(index).flatMap((op) =>
-          typeof op.commandText === 'string' && op.commandText.length > 0 ? [op.commandText] : [],
-        );
-        const text =
-          seed +
-          buildDeepeningPrompt(plan, index, checkConclusions[index] ?? '', executed);
+        const text = seed + task.prompt();
         seed = '';
         const before = new Set(operations.keys());
         const outcome = yield* guarded(text, before);
@@ -347,9 +386,11 @@ export async function* investigateChecks<T extends InvestigationTurn>(
           steps += outcome.value.steps ?? 1;
           const statement = outcome.value.text.trim();
           if (statement.length > 0 && turnProducedProof(before, operations))
-            checkConclusions[index] = (
-              (checkConclusions[index] ?? '').slice(0, 500) +
-              '\nDEEPENING (extra angles; the first-pass verdict above stands unless this reproduced a defect): ' +
+            checkConclusions[task.index] = (
+              (checkConclusions[task.index] ?? '').slice(0, 500) +
+              '\n' +
+              task.label +
+              ': ' +
               statement
             ).slice(-CONCLUSION_CHARS);
         }
@@ -590,6 +631,7 @@ export async function* investigateChecks<T extends InvestigationTurn>(
         redRetryChecks.push(description(currentCheck));
       // The closing statement is at the END of the turn text; the start is narration.
       checkConclusions[currentCheck] = turn.text.trim().slice(-CONCLUSION_CHARS);
+      collectLeads(currentCheck, turn.text);
       usage = sumAgentUsage(usage, turn.usage ?? {});
       steps += issued;
       checkEndKeys[currentCheck] = new Set(operations.keys());

@@ -294,3 +294,16 @@ describe('independent depth policy', () => {
     expect(prompt).toContain('auth');
   });
 });
+
+describe('extractLeads', () => {
+  it('reads the Leads line, drops "none", splits on semicolons and bounds the list', async () => {
+    const { extractLeads } = await import('../src/index.js');
+    expect(extractLeads('Breaks attempted: x\nLeads: none')).toEqual([]);
+    expect(extractLeads('no such line')).toEqual([]);
+    expect(extractLeads('ok\nLeads: symlink import fails; cleanup removes root ;n/a')).toEqual([
+      'symlink import fails',
+      'cleanup removes root',
+    ]);
+    expect(extractLeads('Leads: a long one; second one; third one; fourth one')).toHaveLength(3);
+  });
+});

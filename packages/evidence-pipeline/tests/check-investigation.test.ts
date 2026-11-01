@@ -373,6 +373,7 @@ describe('investigateChecks second pass', () => {
     undecided: string[];
     clockPerTurnMin: number;
     depth?: boolean;
+    leadsOnFirstPass?: boolean;
   }) {
     const start = Date.now();
     const clock = { t: start };
@@ -393,12 +394,18 @@ describe('investigateChecks second pass', () => {
           const deepen = text.includes('DEEPENING PASS');
           const alias = /CHECK (check_\d+)/.exec(text)?.[1] ?? '';
           const name = options.checks[Number(alias.replace('check_', '')) - 1] ?? '';
-          if (second || deepen || !options.undecided.includes(name))
+          if (second || deepen || text.includes('LEAD FOLLOW-UP') || !options.undecided.includes(name))
             addOp(hooks.operations as Ops, 'bash', 'node probe-' + prompts.length + '.mjs', 0);
           else addOp(hooks.operations as Ops, 'read', 'src/' + prompts.length + '.ts');
           yield eventOf({ type: 'tool.completed' });
+          const lead = text.includes('LEAD FOLLOW-UP');
           return {
-            text: (deepen ? 'deepened: ' : second ? 'second pass: ' : 'first pass: ') + name,
+            text:
+              (lead ? 'lead looked at: ' : deepen ? 'deepened: ' : second ? 'second pass: ' : 'first pass: ') +
+              name +
+              (options.leadsOnFirstPass && !deepen && !second && !lead && name === 'Check A'
+                ? '\nLeads: symlink import fails; cleanup removes the root'
+                : ''),
           };
         })(),
     });
@@ -444,6 +451,27 @@ describe('investigateChecks second pass', () => {
     expect(value.checkConclusions[4]).toBe('first pass: Check E');
     expect(reportContexts.at(-1)).toContain('deepened: Check A');
     expect(deepening[0]).toContain('NOT a result');
+  });
+
+  it('follows up off-check leads in their own turns before deepening', async () => {
+    const { hooks, prompts, reportContexts } = scenario({
+      checks: ['Check A', 'Check B', 'Check C'],
+      undecided: [],
+      clockPerTurnMin: 2,
+      leadsOnFirstPass: true,
+    });
+    const { events, value } = await drain(investigateChecks(hooks));
+    expect(codes(events)).toContain('QA_DEEPEN_PASS');
+    const leadTurns = prompts.filter((p) => p.includes('LEAD FOLLOW-UP'));
+    expect(leadTurns).toHaveLength(2);
+    expect(leadTurns[0]).toContain('symlink import fails');
+    expect(leadTurns[0]).toContain('check_1');
+    // leads run before any deepening turn
+    const firstDeepening = prompts.findIndex((p) => p.includes('DEEPENING PASS'));
+    expect(prompts.findIndex((p) => p.includes('LEAD FOLLOW-UP'))).toBeLessThan(firstDeepening);
+    expect(value.checkConclusions[0]).toContain('LEAD (symlink import fails)');
+    expect(value.checkConclusions[0]).toContain('lead looked at: Check A');
+    expect(reportContexts.at(-1)).toContain('LEAD (cleanup removes the root)');
   });
 
   it('does not deepen when half of the window is already used or checks are undecided', async () => {

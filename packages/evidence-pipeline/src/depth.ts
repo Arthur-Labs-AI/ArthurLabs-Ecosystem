@@ -265,6 +265,22 @@ export const MAX_SECOND_PASS_CHECKS = 3;
  */
 export const DEEPEN_MIN_REMAINING_FRACTION = 0.5;
 export const MAX_DEEPEN_CHECKS = 3;
+/** Off-check leads followed up in the extension round, before any deepening. */
+export const MAX_LEAD_TURNS = 4;
+
+/**
+ * Leads an investigator noted on its "Leads:" line (semicolon separated).
+ * Agent-stated and unverified: they only decide what to probe next.
+ */
+export function extractLeads(statement: string): string[] {
+  const match = /^\s*leads:\s*(.+)$/im.exec(statement);
+  if (match === null) return [];
+  return (match[1] ?? '')
+    .split(';')
+    .map((lead) => lead.replace(/\s+/g, ' ').trim().slice(0, 200))
+    .filter((lead) => lead.length > 3 && !/^(none|n\/a|nothing|-)\.?$/i.test(lead))
+    .slice(0, 3);
+}
 
 /** Approach changes the host grants one check after its turn was stopped. */
 export const MAX_APPROACH_ATTEMPTS = 3;

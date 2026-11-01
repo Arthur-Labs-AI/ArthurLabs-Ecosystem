@@ -52,7 +52,7 @@ export function buildQaPlanningPrompt(request: Request): string {
     QA_SESSION_CONTRACT,
     'STAGE 1 — PLANNING ONLY. Read project docs, structure and main entry points, then return a short risk-first plan. Do not inventory every file. No tests, builds, lint, typecheck, installs or reproductions in this stage. plannedChecks must be concise future actions, not executed results. Plan at most ' +
       maxPlannedChecks(request.task.context) +
-      ' checks; one check is one decidable question that source tracing or a narrow reproduction in this workspace can settle — merge overlapping checks instead of writing audit-everything checks. Missing paths: locate once with a glob/search; never retry an unchanged failed path.',
+      ' checks; one check is one decidable question that source tracing or a narrow reproduction in this workspace can settle — merge overlapping checks instead of writing audit-everything checks. Write each check as an attempt to FALSIFY a property (name the input or state that should break it), never as a confirmation. Include at least one check on code that transforms or persists data (file and path naming, hashing, import/export, cleanup and deletion arguments, parsers, migrations); do not spend every check on access-control surfaces. Missing paths: locate once with a glob/search; never retry an unchanged failed path.',
     'Return exactly one JSON object; first character is {, last is }. Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}. Check names must be unique and <=500 characters.',
     'Immutable mission context (including preparation and deadline): ' +
       JSON.stringify(request.task.context ?? {}),
@@ -100,7 +100,7 @@ export function buildQaCheckInvestigationPrompt(
     'A failing run is signal, not noise. When a proof run exits non-zero, triage it before changing anything: read the actual assertion or error and decide whether it is a PRODUCT defect (report it as a finding candidate and reproduce it minimally) or a proven FIXTURE error (missing build, wrong import, wrong API shape — name the exact cause). Never loosen, delete or rewrite an assertion just to turn a run green; an assertion that disagrees with the code under test is a hypothesis to investigate, and behavior you call "by design" must be justified from the documented contract. Your tests must try to break the property, not restate that the guard exists. Prefer running the real code path over a stub of it. Re-running the same failing command three times fails the check turn.',
     ...agentNetworkPromptLines(network),
     'Missing dependencies are a limitation, not a puzzle. If an import or tool is absent and installs are forbidden, confirm it ONCE with a single command, then stop hunting for package managers, site-packages or alternate interpreters. Decide the check by another executable route that needs no new software: parse committed artifacts directly (a .docx or .xlsx is a zip of XML, readable with the built-in unzip or a node/python stdlib script), or drive the logic you can run with stdlib probes and mocks. Record the dependency gap in your closing and in limitations.',
-    'When this check is decided or concretely blocked, stop. End with 2-3 sentences: your conclusion for this check, the key operations that support it, and any remaining gap. Then one line starting "Breaks attempted:" listing each hostile input or transition you actually tried and its outcome. No final JSON report yet.',
+    'When this check is decided or concretely blocked, stop. End with 2-3 sentences: your conclusion for this check, the key operations that support it, and any remaining gap. Then one line starting "Breaks attempted:" listing each hostile input or transition you actually tried and its outcome. Then one last line starting "Leads:" naming, in a few words each separated by semicolons, anything suspicious you noticed OUTSIDE this check (an odd error, an unexpected result, code that looks wrong); write "Leads: none" if there is nothing. No final JSON report yet.',
     'Frozen plan: ' + JSON.stringify(plan),
     'Already observed operations (exitCode:null means unknown): ' +
       compactOperationReceipt(operations),
@@ -236,6 +236,23 @@ export function buildDeepeningPrompt(
     'Commands that already ran for this check (host ledger): ' +
       JSON.stringify(executedCommands.slice(-8).map((c) => c.slice(0, 160))),
     'Try to BREAK the property from angles the first pass did not cover: other entry points that reach the same code, boundary and hostile inputs not yet used, concurrency and ordering, failure and cleanup paths, and the exact wording of the documented behaviour. Execute the REAL code path with a small probe (one single non-compound command) for each angle. A reproduced defect is a finding: state the trigger and the operation that showed it. If every angle holds, say which angles you ran. Your first-pass verdict stands unless this pass reproduces a defect, so a probe that crashes through a bug of your own (a ReferenceError, a wrong path, cleanup code that throws) is NOT a result: fix the probe and rerun it until it exits 0 with its full output, or state plainly that the angle stayed undecided. Never leave your last run of an angle failing. Stop after 2-3 sentences of conclusion and a "Breaks attempted:" line.',
+  ].join('\n');
+}
+
+/**
+ * Extension round, leads: something suspicious the agent noticed outside the
+ * check it was working on. Checks are narrow by design, so an off-check
+ * anomaly would otherwise end up as a limitation nobody follows up.
+ */
+export function buildLeadPrompt(plan: Plan, index: number, lead: string): string {
+  return [
+    'LEAD FOLLOW-UP — noticed during CHECK ' +
+      reportCheckAlias(plan, index) +
+      ' ("' +
+      (plan.plannedChecks[index] ?? '').slice(0, 160) +
+      '"). The lead is outside that check but may be a real defect. Work ONLY on this lead.',
+    'Lead (AGENT-STATED, UNVERIFIED): ' + JSON.stringify(lead.slice(0, 300)),
+    'Execute the REAL code path with a small probe (one single non-compound command) to reproduce it or rule it out. A reproduced defect is a finding even though the check it came from passed: state the trigger and the operation that showed it. A probe that crashes through a bug of your own is not a result: fix it and rerun until it exits 0, or say the lead stayed undecided. Never loosen an assertion. Stop after 2-3 sentences of conclusion and a "Breaks attempted:" line.',
   ].join('\n');
 }
 

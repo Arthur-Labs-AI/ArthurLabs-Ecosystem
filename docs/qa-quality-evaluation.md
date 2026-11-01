@@ -17,3 +17,7 @@ Metrics: defect discovery (hits/misses per fixture), false positives (unsupporte
 Before/after protocol: run deterministic suites, then run the same fixture set against base and improved commits with identical config/model/budget, export the reports, and score them with the evaluator. Do not invent gains.
 
 Unverified here: real-model lift (needs paid runs with owner authorization) and large-repo wall-clock behavior. The evaluator measures reports; it does not prove agents will find more bugs.
+
+## Recall against the Sentry repository itself
+
+`packages/evidence-pipeline/tests/fixtures/qa-eval/sentry-self-known-defects.json` lists defects that earlier QA runs reproduced in this repository and that are still open (currently the backslash-filename collapse in `packages/persistence/src/filesystem.ts` and the missing shape check in `WorkspaceFactory.cleanup`). It uses the same matching rules as the fixture manifest, so a run's recall is `detected / (detected + missed)` from `evaluateFixtureReport`. Importing the repository as a project and running the same agent stack several times shows how often each model finds what is known to be there; a run with 0 findings is only evidence of a clean repository when this recall is high. Remove an entry when its defect is fixed.

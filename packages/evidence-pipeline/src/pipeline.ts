@@ -714,6 +714,19 @@ export function parseWholeJson(
   try {
     return context.redactStructured(JSON.parse(text));
   } catch {
+    // Planning only: some models announce the plan in a short sentence before
+    // the object (run_01M6BZF9). A brief preamble followed by one complete
+    // object is accepted; reports stay strictly whole-document.
+    if (phase === 'planning') {
+      const start = text.indexOf('{');
+      if (start > 0 && start <= 600 && text.trimEnd().endsWith('}')) {
+        try {
+          return context.redactStructured(JSON.parse(text.slice(start)));
+        } catch {
+          // fall through to the diagnostic below
+        }
+      }
+    }
     // Diagnostic shape hint (redacted, bounded): distinguishes empty
     // responses from prose from near-JSON without persisting model text.
     const sample = context
