@@ -143,7 +143,18 @@ export async function* investigateChecks<T extends InvestigationTurn>(
   const description = (index: number): string => plan.plannedChecks[index] ?? '';
   const interrupted = (): boolean => hooks.cancelled();
 
+  /**
+   * Stopping a turn closes its client or session. Any later turn on it fails
+   * ("session was aborted"), so the next turn of ANY kind must start fresh.
+   */
+  let sessionStopped = false;
+  const stopTurn = async (): Promise<void> => {
+    sessionStopped = true;
+    await hooks.stop();
+  };
+
   const rotate = async (completedChecks: number): Promise<void> => {
+    sessionStopped = false;
     await hooks.freshSession();
     seed = hooks.compactionSeed(completedChecks, renderCheckConclusions(plan, checkConclusions));
     contextBudget.reset();
@@ -161,11 +172,11 @@ export async function* investigateChecks<T extends InvestigationTurn>(
         (softAt !== undefined && now() >= softAt
           ? { kind: 'over-budget' as const, minutes: Math.round((now() - checkStartedAt) / 60_000) }
           : undefined),
-      hooks.stop,
+      stopTurn,
     );
     return depth === undefined
       ? source
-      : limitPhase(source, investigationDeadline(depth.deadlineAt, now()), hooks.stop);
+      : limitPhase(source, investigationDeadline(depth.deadlineAt, now()), stopTurn);
   };
 
   /** Runs a turn; a failed turn first flushes the events it never emitted. */
@@ -318,6 +329,7 @@ export async function* investigateChecks<T extends InvestigationTurn>(
       let issued = 0;
       let tripped: TurnStop | undefined;
       let contextRetried = false;
+      if (sessionStopped) await rotate(currentCheck);
       while (turn === undefined) {
         const turnText = seed + checkPrompt;
         seed = '';
@@ -419,7 +431,7 @@ export async function* investigateChecks<T extends InvestigationTurn>(
               now() + WRAP_UP_MS,
               depth === undefined ? Infinity : investigationDeadline(depth.deadlineAt, now()),
             );
-            const wrapped = yield* limitPhase(hooks.streamTurn(wrapText), wrapEnd, hooks.stop);
+            const wrapped = yield* limitPhase(hooks.streamTurn(wrapText), wrapEnd, stopTurn);
             turn = {
               ...turn,
               text: wrapped.text,
@@ -459,10 +471,10 @@ export async function* investigateChecks<T extends InvestigationTurn>(
             'Check turn ended without executable proof; issuing one follow-up turn requiring a real reproduction.',
         });
         try {
-          const nudged = yield* guarded(
-            buildExecutionNudgePrompt(plan, currentCheck),
-            new Set(operations.keys()),
-          );
+          if (sessionStopped) await rotate(currentCheck);
+          const nudgeText = seed + buildExecutionNudgePrompt(plan, currentCheck);
+          seed = '';
+          const nudged = yield* guarded(nudgeText, new Set(operations.keys()));
           if (!nudged.stopped) {
             turn = {
               ...turn,

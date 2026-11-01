@@ -1211,6 +1211,13 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         cancelled: () =>
           entry.controller.signal.aborted || this.cancelledRuns.has(request.agentRunId),
         isTurnTimeout: (cause) => cause instanceof OpenCodeTurnTimeoutError,
+        // A turn on an aborted session reports a cancel failure even though nobody
+        // cancelled the run (the loop rechecks `cancelled`). With banked work that is
+        // infrastructure loss: report what was observed instead of failing the run.
+        isSalvageable: (cause) =>
+          cause instanceof OpenCodeHarnessError &&
+          cause.code === 'OPENCODE_CANCEL_FAILED' &&
+          this.observedOperations.size > 0,
       });
       conclusionBlock = renderCheckConclusions(planResult, investigation.checkConclusions);
       const { blockedChecks, unprovenChecks, redRetryChecks, checkConclusions } = investigation;

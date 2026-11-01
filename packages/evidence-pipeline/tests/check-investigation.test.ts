@@ -477,3 +477,59 @@ describe('investigateChecks second pass', () => {
     expect(value.checkConclusions).toHaveLength(5);
   });
 });
+
+describe('investigateChecks after a stopped turn', () => {
+  /** A session that dies when stopped, like OpenCode's aborted client: later turns on it throw. */
+  function mortalSession(failingChecks: string[]) {
+    let dead = false;
+    let fresh = 0;
+    const prompts: string[] = [];
+    const { hooks } = harness(() => ({ text: 'unused' }), {
+      plan: { plannedChecks: ['Check A', 'Check B', 'Check C'] },
+      stop: async () => {
+        dead = true;
+      },
+      freshSession: async () => {
+        dead = false;
+        fresh += 1;
+      },
+      streamTurn: (text: string) =>
+        (async function* () {
+          prompts.push(text);
+          if (dead) throw new Error('OpenCode session was aborted.');
+          const alias = /CHECK (check_\d)/.exec(text)?.[1] ?? '';
+          const name = 'Check ' + 'ABC'[Number(alias.replace('check_', '')) - 1];
+          if (failingChecks.includes(name)) {
+            // retry-until-green: the same command fails again and again
+            for (let i = 0; i < 6; i += 1) {
+              await new Promise((resolve) => setTimeout(resolve, 200));
+              addOp(hooks.operations as Ops, 'bash', 'vitest run a.test.ts', 1);
+              yield eventOf({ type: 'tool.completed' });
+            }
+            return { text: 'unreached' };
+          }
+          addOp(hooks.operations as Ops, 'bash', 'node probe-' + prompts.length + '.mjs', 0);
+          yield eventOf({ type: 'tool.completed' });
+          return { text: 'ok ' + name };
+        })(),
+    });
+    return { hooks, prompts, fresh: () => fresh };
+  }
+
+  it('starts the next check on a fresh session when the last attempt was stopped', async () => {
+    const { hooks, fresh } = mortalSession(['Check A']);
+    const { events, value } = await drain(investigateChecks(hooks));
+    // every attempt on check A tripped the watchdog again, so check A is exhausted ...
+    expect(codes(events)).toContain('QA_APPROACH_EXHAUSTED');
+    // ... but check B must not run on the dead session (this used to fail the whole run)
+    expect(value.checkConclusions[1]).toBe('ok Check B');
+    expect(value.checkConclusions[2]).toBe('ok Check C');
+    expect(fresh()).toBeGreaterThanOrEqual(4);
+  }, 30_000);
+
+  it('does not rotate when nothing was stopped', async () => {
+    const { hooks, fresh } = mortalSession([]);
+    await drain(investigateChecks(hooks));
+    expect(fresh()).toBe(0);
+  });
+});

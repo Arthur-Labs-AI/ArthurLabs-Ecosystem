@@ -19,6 +19,7 @@ import {
   type OpenCodeHarnessAdapterOptions,
   type OpenCodePromptResult,
 } from '../src/index.js';
+import { OpenCodeHarnessError } from '../src/errors.js';
 
 const SENTINEL_VALUE = 'sentry-test-sentinel-credential';
 const FAKE_SESSION = 'ses_test_111111111111111111111111';
@@ -660,6 +661,86 @@ describe('OpenCodeHarnessAdapter', () => {
     expect(events).toContainEqual(
       expect.objectContaining({ type: 'warning', code: 'QA_APPROACH_CHANGE' }),
     );
+  });
+
+  it('reports banked work instead of failing when an aborted session raises a cancel failure nobody requested', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-falsecancel-'));
+    roots.push(root);
+    const input = await request(root);
+    const factory: OpenCodeClientFactory = async () => ({
+      startSession: async () => ({
+        runPrompt: async (prompt: string, options) => {
+          if (prompt.includes('STAGE 1')) return textTurn(validPlan());
+          if (prompt.includes('STAGE 2')) {
+            options.onTool?.({
+              callID: 'banked_probe',
+              tool: 'bash',
+              input: { command: 'node probe.mjs' },
+              status: 'completed' as const,
+              output: 'ok',
+              exitCode: 0,
+            });
+            // Same error OpenCode's client raises when a stopped session is reused.
+            throw new OpenCodeHarnessError(
+              'OPENCODE_CANCEL_FAILED',
+              'OpenCode session was aborted.',
+            );
+          }
+          return textTurn(JSON.stringify(validReportV2()));
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    });
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_INVESTIGATION_INCOMPLETE' }),
+    );
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+  });
+
+  it('still fails a genuinely cancelled run', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-realcancel-'));
+    roots.push(root);
+    const input = await request(root);
+    const holder: { adapter?: OpenCodeHarnessAdapter } = {};
+    const factory: OpenCodeClientFactory = async () => ({
+      startSession: async () => ({
+        runPrompt: async (prompt: string, options) => {
+          if (prompt.includes('STAGE 1')) return textTurn(validPlan());
+          options.onTool?.({
+            callID: 'cancel_probe',
+            tool: 'bash',
+            input: { command: 'node probe.mjs' },
+            status: 'completed' as const,
+            output: 'ok',
+            exitCode: 0,
+          });
+          await holder.adapter?.cancel(input.agentRunId);
+          throw new OpenCodeHarnessError('OPENCODE_CANCEL_FAILED', 'OpenCode turn was cancelled.');
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    });
+    holder.adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(holder.adapter, input);
+    await holder.adapter.dispose();
+    expect(events).not.toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_INVESTIGATION_INCOMPLETE' }),
+    );
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'OPENCODE_CANCEL_FAILED' },
+    });
   });
 
   it('runs all turns in one OpenCode session with composed model id', async () => {
