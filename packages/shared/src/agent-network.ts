@@ -121,6 +121,8 @@ export interface AgentNetworkPromptOptions {
 export function agentNetworkPromptLines(options: AgentNetworkPromptOptions): string[] {
   const lines = [
     'Install the project’s dependencies inside this workspace with its own package manager and lockfile (for example `pnpm install --frozen-lockfile`, `npm ci`, `yarn install --immutable`, `pip install -r requirements.txt` into a `.venv`, `cargo fetch`, `go mod download`) BEFORE build, lint, typecheck or tests. An install only prepares a check; it is never proof of one. If an install fails inside a package lifecycle script (a postinstall that downloads a binary, for example), rerun it once with `--ignore-scripts` instead of debugging the script.',
+    'Install ONCE per run: when the operation receipt already shows a successful install (exit 0) in this workspace, do not repeat it for later checks; the dependencies are still there.',
+    'Build outputs (dist) are not part of the workspace. Before importing a package or running a suite that needs its build, build just what the probe needs, once (for example `pnpm --filter <package>... build`). A missing build is a setup step to do, never a reason to leave a check unproven.',
     'Shell network access reaches package registries only. Never work around that restriction. If an install fails, record the exact failure as a limitation, continue statically, and never claim a check passed that could not run.',
     'Never run scripts that publish, deploy or contact production systems.',
   ];

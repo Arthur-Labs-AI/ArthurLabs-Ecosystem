@@ -55,6 +55,11 @@ describe('agent network policy', () => {
     expect(off).toContain('pnpm install --frozen-lockfile');
     expect(off).toContain('never proof');
     expect(off).toContain('--ignore-scripts');
+    // one install per run, and builds are a setup step the agent performs
+    expect(off).toContain('Install ONCE per run');
+    expect(off).toContain('operation receipt already shows a successful install');
+    expect(off).toContain('Build outputs (dist) are not part of the workspace');
+    expect(off).toContain('never a reason to leave a check unproven');
     expect(off).toContain('Web access is disabled');
     const on = agentNetworkPromptLines({ webAccess: true }).join('\n');
     expect(on).toContain('Web access is enabled');
