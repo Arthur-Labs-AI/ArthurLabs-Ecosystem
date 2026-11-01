@@ -1654,11 +1654,21 @@ fn the_commit_time_permission_check_includes_the_synthesis_authorizations() {
     kit.verification_auth.revoke().unwrap();
     assert!(!stage.authorized());
     // and the pipeline's own check (the one read inside the commit transaction) is the conjunction
-    let source = include_str!("../distillation/evolution.rs").replace("\r\n", "\n");
+    // Rustfmt can split method chains; require the same complete predicate and
+    // commit sequence without depending on source whitespace.
+    let source: String = include_str!("../distillation/evolution.rs")
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
     assert!(source.contains(
-        "self.base_allowed() && self.synthesis.as_ref().is_none_or(SynthesisStage::authorized)"
+        "self.base_allowed()&&self.synthesis.as_ref().is_none_or(SynthesisStage::authorized)"
     ));
-    assert!(source.contains("let allowed = || pipeline.allowed();\n    let review_first = pipeline.review_first();\n    let committed"), "the commit reads the full check");
+    assert!(
+        source.contains(
+            "letallowed=||pipeline.allowed();letreview_first=pipeline.review_first();letcommitted"
+        ),
+        "the commit reads the full check"
+    );
 }
 
 #[test]
