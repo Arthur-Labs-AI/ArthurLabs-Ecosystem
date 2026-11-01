@@ -527,6 +527,34 @@ describe('investigateChecks after a stopped turn', () => {
     expect(fresh()).toBeGreaterThanOrEqual(4);
   }, 30_000);
 
+  it('records a failed approach attempt and still tries the next one', async () => {
+    let attempts = 0;
+    const { hooks } = harness(() => ({ text: 'unused' }), {
+      plan: { plannedChecks: ['Check A'] },
+      streamTurn: (text: string) =>
+        (async function* () {
+          if (!text.includes('different approach') && attempts === 0) {
+            attempts += 1;
+            for (let i = 0; i < 6; i += 1) {
+              await new Promise((resolve) => setTimeout(resolve, 200));
+              addOp(hooks.operations as Ops, 'bash', 'vitest run a.test.ts', 1);
+              yield eventOf({ type: 'tool.completed' });
+            }
+            return { text: 'unreached' };
+          }
+          attempts += 1;
+          if (attempts === 2) throw new Error('secret provider detail');
+          addOp(hooks.operations as Ops, 'bash', 'node probe.mjs', 0);
+          yield eventOf({ type: 'tool.completed' });
+          return { text: 'ok Check A' };
+        })(),
+    });
+    const { events, value } = await drain(investigateChecks(hooks));
+    expect(codes(events)).toContain('QA_APPROACH_FAILED');
+    expect(JSON.stringify(events)).not.toContain('secret provider detail');
+    expect(value.checkConclusions[0]).toBe('ok Check A');
+  }, 30_000);
+
   it('does not rotate when nothing was stopped', async () => {
     const { hooks, fresh } = mortalSession([]);
     await drain(investigateChecks(hooks));

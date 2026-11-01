@@ -402,7 +402,20 @@ export async function* investigateChecks<T extends InvestigationTurn>(
           }
         } catch (cause) {
           if (isDeadline(cause) || isContextWindowExceeded(cause) || interrupted()) throw cause;
-          break; // Any other attempt failure keeps the banked work.
+          // Any other attempt failure keeps the banked work. Say what failed
+          // (type and code only, never the message) and try the next attempt.
+          const failure = cause as { name?: unknown; code?: unknown } | null;
+          yield hooks.event({
+            type: 'warning',
+            code: 'QA_APPROACH_FAILED',
+            message:
+              'Approach attempt ' +
+              approachAttempts +
+              ' ended with an error (' +
+              String(failure?.name ?? 'Error').slice(0, 60) +
+              (typeof failure?.code === 'string' ? ' ' + failure.code.slice(0, 60) : '') +
+              ').',
+          });
         }
       }
       let budgetEnded = false;

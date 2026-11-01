@@ -125,5 +125,7 @@ describe('check conclusions handoff', () => {
       expect(text).toContain('Race is real.');
     }
     expect(buildRecoveryReportContext(request, '{}')).not.toContain('UNVERIFIED');
+    expect(recovery).not.toContain('stopped at its phase deadline');
+    expect(recovery).toContain('may be reported as passed');
   });
 });

@@ -243,12 +243,12 @@ export function turnRepeatedRedProof(
 /**
  * Consecutive read-only operations (read/grep/glob/search/list/view) without
  * any executed or edited operation in between. Behavioural, not temporal: a
- * large project may legitimately take long, but reading 15 times without
- * running or changing anything is a source-review spiral on any project. With
- * slow model calls (40+ seconds each) 15 reads is already ten minutes with
- * nothing executed.
+ * large project may legitimately take long, and an agent new to a repository
+ * orients itself by reading (run_01M6BPH6 was stopped after 15 reads in three
+ * of six checks), but reading 30 times without running or changing anything
+ * is a source-review spiral on any project.
  */
-export const NO_PROGRESS_LIMIT = 15;
+export const NO_PROGRESS_LIMIT = 30;
 
 /**
  * When the first pass leaves checks undecided and at least this fraction of
