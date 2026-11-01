@@ -7,6 +7,7 @@ import {
   investigateChecks,
   promisePhase,
   type CheckInvestigationHooks,
+  type HazardFile,
   type InvestigationTurn,
 } from '../src/index.js';
 import type { ObservedOperation } from '../src/pipeline.js';
@@ -374,6 +375,7 @@ describe('investigateChecks second pass', () => {
     clockPerTurnMin: number;
     depth?: boolean;
     leadsOnFirstPass?: boolean;
+    hazards?: HazardFile[];
   }) {
     const start = Date.now();
     const clock = { t: start };
@@ -383,6 +385,7 @@ describe('investigateChecks second pass', () => {
       plan: { plannedChecks: options.checks },
       ...(options.depth === false ? {} : { depth: { deadlineAt: start + 172 * MIN } }),
       now: () => clock.t,
+      ...(options.hazards === undefined ? {} : { hazardFiles: async () => options.hazards! }),
       startReportContext: async (conclusions: string) => {
         reportContexts.push(conclusions);
       },
@@ -394,7 +397,13 @@ describe('investigateChecks second pass', () => {
           const deepen = text.includes('DEEPENING PASS');
           const alias = /CHECK (check_\d+)/.exec(text)?.[1] ?? '';
           const name = options.checks[Number(alias.replace('check_', '')) - 1] ?? '';
-          if (second || deepen || text.includes('LEAD FOLLOW-UP') || !options.undecided.includes(name))
+          if (
+            second ||
+            deepen ||
+            text.includes('LEAD FOLLOW-UP') ||
+            text.includes('HAZARD SWEEP') ||
+            !options.undecided.includes(name)
+          )
             addOp(hooks.operations as Ops, 'bash', 'node probe-' + prompts.length + '.mjs', 0);
           else addOp(hooks.operations as Ops, 'read', 'src/' + prompts.length + '.ts');
           yield eventOf({ type: 'tool.completed' });
@@ -472,6 +481,42 @@ describe('investigateChecks second pass', () => {
     expect(value.checkConclusions[0]).toContain('LEAD (symlink import fails)');
     expect(value.checkConclusions[0]).toContain('lead looked at: Check A');
     expect(reportContexts.at(-1)).toContain('LEAD (cleanup removes the root)');
+  });
+
+  it('sweeps host-flagged risky files, unreached ones first, and keeps the statement', async () => {
+    const { hooks, prompts, reportContexts } = scenario({
+      checks: ['Check A', 'Check B'],
+      undecided: [],
+      clockPerTurnMin: 2,
+      hazards: [
+        { file: 'packages/probed/src/index.ts', hazards: ['deletes files or directories'], score: 8 },
+        { file: 'packages/fresh/src/index.ts', hazards: ['hashes or fingerprints content'], score: 4 },
+      ],
+    });
+    (hooks.operations as Ops).set('op_0', {
+      operationId: 'oid_0' as never,
+      operationKey: 'op_0',
+      toolName: 'bash',
+      commandText: 'node probes/probed.mjs',
+      exitCode: 0,
+      isTestOperation: false,
+    });
+    const { events, value } = await drain(investigateChecks(hooks));
+    expect(codes(events)).toContain('QA_HAZARD_SWEEP');
+    const sweep = prompts.filter((p) => p.includes('HAZARD SWEEP'));
+    expect(sweep).toHaveLength(2);
+    // the file no probe has reached goes first
+    expect(sweep[0]).toContain('packages/fresh/src/index.ts');
+    expect(sweep[1]).toContain('packages/probed/src/index.ts');
+    expect(value.checkConclusions[1]).toContain('HAZARD SWEEP (packages/fresh/src/index.ts');
+    expect(reportContexts.at(-1)).toContain('HAZARD SWEEP');
+  });
+
+  it('skips the sweep when the adapter provides no hazard source', async () => {
+    const none = scenario({ checks: ['Check A', 'Check B'], undecided: [], clockPerTurnMin: 2 });
+    expect(codes((await drain(investigateChecks(none.hooks))).events)).not.toContain(
+      'QA_HAZARD_SWEEP',
+    );
   });
 
   it('does not deepen when half of the window is already used or checks are undecided', async () => {

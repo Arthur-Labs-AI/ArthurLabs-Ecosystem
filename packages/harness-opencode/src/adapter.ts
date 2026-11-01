@@ -31,6 +31,7 @@ import {
   buildRecoveryReportContext,
   streamObservedWork,
   investigateChecks,
+  scanHazardFiles,
   buildQaPlanningPrompt,
   applyBlockedChecks,
   applyUnprovenChecks,
@@ -1215,6 +1216,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         startReportContext,
         cancelled: () =>
           entry.controller.signal.aborted || this.cancelledRuns.has(request.agentRunId),
+        hazardFiles: () => scanHazardFiles(request.workspace.runtimePath),
         isTurnTimeout: (cause) => cause instanceof OpenCodeTurnTimeoutError,
         // A turn on an aborted session reports a cancel failure even though nobody
         // cancelled the run (the loop rechecks `cancelled`). With banked work that is

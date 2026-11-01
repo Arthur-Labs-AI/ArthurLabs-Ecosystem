@@ -218,6 +218,44 @@ describe('independent depth policy', () => {
     ).toBe('inconclusive');
     expect(groundCoverage(report, new Map([['op_1', op]])).checks[0]?.status).toBe('passed');
   });
+  it('keeps a pass that also cites a source read, but not one citing only context or unknown keys', () => {
+    const report = {
+      schemaVersion: 2 as const,
+      summary: 'fixture',
+      checks: [
+        {
+          name: 'boundary',
+          status: 'passed' as const,
+          coverage: 'complete' as const,
+          operationKeys: ['op_1', 'op_2'],
+        },
+      ],
+      limitations: [],
+      evidence: [],
+      findings: [],
+      hypotheses: [],
+    };
+    const probe = {
+      operationKey: 'op_1',
+      operationId: 'operation_1' as never,
+      toolName: 'bash',
+      exitCode: 0,
+      isTestOperation: false,
+      commandText: 'node probe.mjs',
+    };
+    const read = {
+      ...probe,
+      operationKey: 'op_2',
+      operationId: 'operation_2' as never,
+      toolName: 'read',
+      commandText: 'src/file.ts',
+    };
+    const status = (ops: Array<[string, typeof probe]>) =>
+      groundCoverage(report, new Map(ops)).checks[0]?.status;
+    expect(status([['op_1', probe], ['op_2', read]])).toBe('passed');
+    expect(status([['op_2', read]])).toBe('inconclusive');
+    expect(status([['op_1', probe]])).toBe('inconclusive');
+  });
   it('stops owned validation on its own timeout rather than consuming finalization time', async () => {
     vi.useFakeTimers();
     let stopped = false;

@@ -269,6 +269,16 @@ export const MAX_DEEPEN_CHECKS = 3;
 export const MAX_LEAD_TURNS = 4;
 
 /**
+ * Hazard sweep: after the extension round, source files the host flagged for risky
+ * operations (deletes, name rewrites, parsers, hashing) get a probe each while at
+ * least this much of the window is unused. It ends early when turns stop producing
+ * executable proof.
+ */
+export const SWEEP_MIN_REMAINING_FRACTION = 0.3;
+export const MAX_SWEEP_TURNS = 8;
+export const SWEEP_IDLE_TURN_LIMIT = 2;
+
+/**
  * Leads an investigator noted on its "Leads:" line (semicolon separated).
  * Agent-stated and unverified: they only decide what to probe next.
  */
@@ -549,8 +559,13 @@ export function groundCoverage(
   const checks = report.checks.map((check) => {
     if (check.status !== 'passed') return check;
     const proof = (check.operationKeys ?? []).map((key) => operations.get(key));
+    // Every cited key must exist in the host ledger (no invented citations), and at least
+    // one must certify executable proof. Context the agent also cited (a source read, an
+    // early probe that failed on a fixture error) neither adds to nor removes that proof.
     const executable =
-      proof.length > 0 && proof.every((op) => op !== undefined && isExecutableProofOperation(op));
+      proof.length > 0 &&
+      proof.every((op) => op !== undefined) &&
+      proof.some((op) => op !== undefined && isExecutableProofOperation(op));
     if (check.coverage === 'complete' && executable) return check;
     downgraded = true;
     return {

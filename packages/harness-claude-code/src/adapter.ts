@@ -18,6 +18,7 @@ import {
 import {
   limitPhase,
   investigateChecks,
+  scanHazardFiles,
   reportAttemptDeadline,
   PhaseDeadlineReached,
   ObservedToolNotes,
@@ -1678,6 +1679,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           ) + '\n',
         startReportContext,
         cancelled: () => this.cancelled,
+        hazardFiles: () => scanHazardFiles(request.workspace.runtimePath),
         isTurnTimeout: (cause) => cause instanceof ClaudeTurnTimeoutError,
         // A spawn failure (E2BIG, EAGAIN, ...) after banked operations, or a
         // sandbox that died mid-run after commands already executed (a

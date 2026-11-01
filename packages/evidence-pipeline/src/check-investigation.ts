@@ -9,8 +9,11 @@ import {
   MAX_DEEPEN_CHECKS,
   MAX_LEAD_TURNS,
   MAX_SECOND_PASS_CHECKS,
+  MAX_SWEEP_TURNS,
   MIN_SOFT_BUDGET_MS,
   SECOND_PASS_MIN_REMAINING_FRACTION,
+  SWEEP_IDLE_TURN_LIMIT,
+  SWEEP_MIN_REMAINING_FRACTION,
   WRAP_UP_MS,
   checkSoftBudgetMs,
   closingTriagesFailures,
@@ -23,6 +26,7 @@ import {
   turnWatchdogStop,
   type TurnStop,
 } from './depth.js';
+import { hazardModuleKey, type HazardFile } from './hazard-scan.js';
 import {
   PhaseDeadlineReached,
   investigationDeadline,
@@ -35,6 +39,7 @@ import {
   buildBudgetWrapUpPrompt,
   buildDeepeningPrompt,
   buildExecutionNudgePrompt,
+  buildHazardPrompt,
   buildLeadPrompt,
   buildQaCheckInvestigationPrompt,
   buildSecondPassPrompt,
@@ -86,6 +91,11 @@ export interface CheckInvestigationHooks<T extends InvestigationTurn> {
   readonly partialEvents?: (cause: unknown) => Iterable<HarnessEvent>;
   /** Cleanup after the investigation was interrupted (before the report context starts). */
   readonly onInterrupted?: () => void;
+  /**
+   * Source files worth a hostile probe (see scanHazardFiles). Omitted when the adapter
+   * has no readable project copy; the hazard sweep is then skipped.
+   */
+  readonly hazardFiles?: () => Promise<readonly HazardFile[]>;
   /** Clock; tests inject one. */
   readonly now?: () => number;
 }
@@ -365,7 +375,11 @@ export async function* investigateChecks<T extends InvestigationTurn>(
         leadTasks.length +
         ' lead(s) and attacking ' +
         candidates.length +
-        ' decided check(s) from new angles in fresh sessions.',
+        ' decided check(s) from new angles in fresh sessions.' +
+        (leadTasks.length === 0
+          ? ''
+          : ' Leads (agent-stated): ' +
+            leadTasks.map((lead) => lead.text).join(' | ').slice(0, 700)),
     });
     let ran = false;
     try {
@@ -398,6 +412,98 @@ export async function* investigateChecks<T extends InvestigationTurn>(
     } catch (cause) {
       if (interrupted()) throw cause;
       // A deadline or provider failure only ends the extra work; earlier verdicts are banked.
+    }
+    if (ran) await hooks.startReportContext(renderCheckConclusions(plan, checkConclusions));
+  }
+
+  /**
+   * Hazard sweep. The host, not the model, picks source files with risky
+   * operations and asks for each to be exercised with hostile input. Files no
+   * probe has reached come first. It runs while the window is mostly unused and
+   * stops after a few turns in a row that produced no executable proof.
+   */
+  async function* sweepRound(): AsyncGenerator<HarnessEvent, void> {
+    if (depth === undefined || hooks.hazardFiles === undefined || interrupted()) return;
+    const remaining = (): number => investigationDeadline(depth.deadlineAt, now()) - now();
+    if (windowMs <= 0 || remaining() < SWEEP_MIN_REMAINING_FRACTION * windowMs) return;
+    let flagged: readonly HazardFile[];
+    try {
+      flagged = await hooks.hazardFiles();
+    } catch {
+      return;
+    }
+    const reached = [...operations.values()]
+      .filter(isExecutableProofOperation)
+      .map((op) => (op.commandText ?? '') + ' ' + (op.argsText ?? ''))
+      .join('\n');
+    const ranked = flagged
+      .map((file) => ({
+        file,
+        touches: reached.split(hazardModuleKey(file.file)).length - 1,
+      }))
+      .sort((a, b) => a.touches - b.touches || b.file.score - a.file.score)
+      .slice(0, MAX_SWEEP_TURNS);
+    if (ranked.length === 0) return;
+    // Sweep findings are not tied to one planned check; the last check carries the statement.
+    const carrier = plan.plannedChecks.length - 1;
+    yield hooks.event({
+      type: 'warning',
+      code: 'QA_HAZARD_SWEEP',
+      message:
+        'About ' +
+        Math.round(remaining() / 60_000) +
+        ' minutes remain; probing up to ' +
+        ranked.length +
+        ' source file(s) flagged for risky operations: ' +
+        ranked
+          .map(({ file }) => file.file)
+          .join(', ')
+          .slice(0, 700),
+    });
+    let ran = false;
+    let idle = 0;
+    try {
+      for (let n = 0; n < ranked.length; n += 1) {
+        const { file } = ranked[n] as { file: HazardFile };
+        const left = remaining();
+        if (
+          left < MIN_SOFT_BUDGET_MS ||
+          left < SWEEP_MIN_REMAINING_FRACTION * windowMs ||
+          interrupted() ||
+          idle >= SWEEP_IDLE_TURN_LIMIT
+        )
+          break;
+        checkStartedAt = now();
+        softAt = checkStartedAt + checkSoftBudgetMs(left, ranked.length - n);
+        await rotate(plan.plannedChecks.length);
+        const text = seed + buildHazardPrompt(file.file, file.hazards);
+        seed = '';
+        const before = new Set(operations.keys());
+        const outcome = yield* guarded(text, before);
+        ran = true;
+        if (outcome.stopped) {
+          idle += 1;
+          continue;
+        }
+        usage = sumAgentUsage(usage, outcome.value.usage ?? {});
+        steps += outcome.value.steps ?? 1;
+        const statement = outcome.value.text.trim();
+        if (statement.length > 0 && turnProducedProof(before, operations)) {
+          idle = 0;
+          checkConclusions[carrier] = (
+            (checkConclusions[carrier] ?? '').slice(0, 500) +
+            '\nHAZARD SWEEP (' +
+            file.file +
+            '; extra angles, earlier verdicts stand unless this reproduced a defect): ' +
+            statement
+          ).slice(-CONCLUSION_CHARS);
+        } else {
+          idle += 1;
+        }
+      }
+    } catch (cause) {
+      if (interrupted()) throw cause;
+      // Extra work only; a deadline or provider failure leaves earlier verdicts banked.
     }
     if (ran) await hooks.startReportContext(renderCheckConclusions(plan, checkConclusions));
   }
@@ -638,6 +744,7 @@ export async function* investigateChecks<T extends InvestigationTurn>(
     }
     yield* secondPass();
     yield* deepenRound();
+    yield* sweepRound();
   } catch (cause) {
     if (
       (depth === undefined && !recoverable(cause)) ||

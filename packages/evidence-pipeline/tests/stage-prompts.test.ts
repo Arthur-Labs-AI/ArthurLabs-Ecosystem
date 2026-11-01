@@ -164,4 +164,19 @@ describe('falsification planning and leads', () => {
     expect(lead).toContain('import fails on symlinks');
     expect(lead).toContain('UNVERIFIED');
   });
+
+  it('tells follow-up turns to probe every input class and not to argue a violation away', async () => {
+    const { buildLeadPrompt, buildDeepeningPrompt, buildHazardPrompt } = await import(
+      '../src/index.js'
+    );
+    const prompts = [
+      buildLeadPrompt(plan, 0, 'x'),
+      buildDeepeningPrompt(plan, 0, '', []),
+      buildHazardPrompt('src/a.ts', ['deletes files or directories']),
+      buildQaCheckInvestigationPrompt(plan, 0, new Map()),
+    ];
+    for (const prompt of prompts) expect(prompt).toContain('Do not argue a reproduced violation');
+    for (const prompt of prompts.slice(0, 3)) expect(prompt).toContain('the root or container itself');
+    expect(prompts[2]).toContain('src/a.ts');
+  });
 });

@@ -18,6 +18,7 @@ import {
 import {
   limitPhase,
   investigateChecks,
+  scanHazardFiles,
   reportAttemptDeadline,
   promisePhase,
   PhaseDeadlineReached,
@@ -1161,6 +1162,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
           ) + '\n',
         startReportContext,
         cancelled: () => this.cancelled,
+        hazardFiles: () => scanHazardFiles(request.workspace.runtimePath),
         isTurnTimeout: (cause) => cause instanceof DeepSeekTurnTimeoutError,
         onInterrupted: () => this.liveOpenOperations.clear(),
       });

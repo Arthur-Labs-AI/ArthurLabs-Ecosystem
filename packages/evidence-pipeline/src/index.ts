@@ -7,4 +7,5 @@ export * from './stage-prompts.js';
 export * from './phase-budget.js';
 export * from './tool-output.js';
 export * from './check-investigation.js';
+export * from './hazard-scan.js';
 export * from './context-budget.js';
