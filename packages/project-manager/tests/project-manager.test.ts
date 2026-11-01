@@ -1,4 +1,15 @@
-import { mkdtemp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import {
+  lstat,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -9,7 +20,12 @@ import {
   projectDataPaths,
   scanTree,
 } from '@qa/persistence';
-import { ProjectManager, ProjectManagerError, type ProjectMutationStage } from '../src/index.js';
+import {
+  ProjectManager,
+  ProjectManagerError,
+  revisionMaterialPath,
+  type ProjectMutationStage,
+} from '../src/index.js';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -443,5 +459,86 @@ describe('managed project lifecycle', () => {
     expect(await readFile(join(f.source, 'README.md'), 'utf8')).toContain('Factual sample purpose');
     observer.release();
     f.database.close();
+  });
+
+  describe('sources containing external or broken symlinks', () => {
+    /** Symlinks need developer mode on Windows; skip where the platform refuses them. */
+    async function withLinks(f: Awaited<ReturnType<typeof fixture>>): Promise<boolean> {
+      try {
+        await writeFile(join(f.root, 'outside.txt'), 'outside the project');
+        await symlink(join('..', 'outside.txt'), join(f.source, 'external.txt'));
+        await symlink('missing.txt', join(f.source, 'broken.txt'));
+        await symlink('README.md', join(f.source, 'internal.txt'));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    it('imports the source, keeps inert links out of the retained revision and still validates it', async () => {
+      const f = await fixture();
+      if (!(await withLinks(f))) return;
+      // Used to throw REVISION_MATERIAL_CORRUPT: the retained copy drops external and broken
+      // links by design while the revision hash covered the working copy that has them.
+      const added = await f.manager.addProject(f.source);
+      const material = revisionMaterialPath(f.dataRoot, added.project.id, added.revision.id);
+      const retained = await readdir(material);
+      expect(retained).toContain('README.md');
+      expect(retained).toContain('internal.txt');
+      expect(retained).not.toContain('external.txt');
+      expect(retained).not.toContain('broken.txt');
+      expect((await lstat(join(material, 'internal.txt'))).isSymbolicLink()).toBe(true);
+      // The mutable working copy keeps them, and the blocked-link metadata says what was dropped.
+      const working = projectDataPaths(f.dataRoot, added.project.id).workingCopy;
+      expect((await lstat(join(working, 'external.txt'))).isSymbolicLink()).toBe(true);
+      const blocked = await readdir(material + '.blocked-links');
+      expect(blocked).toHaveLength(2);
+      // Later runs on this revision re-hash the retained view, which differs from the revision hash.
+      const expected = await f.manager.expectedRetainedHash(added.project.id, added.revision);
+      expect(expected).not.toBe(added.revision.contentHash);
+      expect(expected).toBe((await scanTree(material)).contentHash);
+      // Real corruption is still caught when inert links are present.
+      await writeFile(join(material, 'README.md'), 'tampered');
+      await expect(
+        f.manager.validateRetainedMaterial(added.project.id, added.revision, working),
+      ).rejects.toMatchObject({ code: 'REVISION_MATERIAL_CORRUPT' });
+      f.database.close();
+    });
+
+    it('updates a source that gains a broken link', async () => {
+      const f = await fixture();
+      const added = await f.manager.addProject(f.source);
+      try {
+        await symlink('nowhere.txt', join(f.source, 'dangling.txt'));
+      } catch {
+        f.database.close();
+        return;
+      }
+      const updated = await f.manager.updateProjectCopy(added.project.id);
+      expect(updated.revision.id).not.toBe(added.revision.id);
+      const material = revisionMaterialPath(f.dataRoot, added.project.id, updated.revision.id);
+      expect(await readdir(material)).not.toContain('dangling.txt');
+      expect(f.repository.listRevisions(added.project.id)).toHaveLength(2);
+      f.database.close();
+    });
+
+    it('still detects a tampered revision when no links are involved', async () => {
+      const f = await fixture();
+      const added = await f.manager.addProject(f.source);
+      // Without inert links the retained hash is simply the revision hash.
+      expect(await f.manager.expectedRetainedHash(added.project.id, added.revision)).toBe(
+        added.revision.contentHash,
+      );
+      const material = revisionMaterialPath(f.dataRoot, added.project.id, added.revision.id);
+      await writeFile(join(material, 'README.md'), 'tampered');
+      await expect(
+        f.manager.validateRetainedMaterial(
+          added.project.id,
+          added.revision,
+          projectDataPaths(f.dataRoot, added.project.id).workingCopy,
+        ),
+      ).rejects.toMatchObject({ code: 'REVISION_MATERIAL_CORRUPT' });
+      f.database.close();
+    });
   });
 });

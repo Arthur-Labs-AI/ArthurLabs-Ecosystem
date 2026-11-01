@@ -253,6 +253,8 @@ export class RunCoordinator {
       // the working copy is never moved, so concurrent state stays intact.
       let revision: ProjectRevision;
       let sourceRoot: string;
+      /** What the frozen snapshot must hash to: the revision hash, or its retained view. */
+      let expectedSnapshotHash: string | undefined;
       const currentId = project.revision.id;
       if (options.revisionId === undefined || options.revisionId === currentId) {
         revision = await this.projects.assertWorkingCopyIntegrity(projectId);
@@ -282,6 +284,7 @@ export class RunCoordinator {
         }
         revision = stored;
         sourceRoot = material;
+        expectedSnapshotHash = await this.projects.expectedRetainedHash(projectId, stored);
       }
       const context = project.context ?? this.repository.getContextForRevision(revision.id);
       if (context === undefined) throw new Error('PROJECT_CONTEXT_NOT_FOUND: ' + revision.id);
@@ -297,7 +300,8 @@ export class RunCoordinator {
           ? { exclude: (relativePath: string) => matchImportExclusion(relativePath) }
           : {}),
       });
-      if (snapshot.contentHash !== revision.contentHash) throw new Error('PROJECT_COPY_DRIFT');
+      if (snapshot.contentHash !== (expectedSnapshotHash ?? revision.contentHash))
+        throw new Error('PROJECT_COPY_DRIFT');
       const createdAt = nowIsoTimestamp();
       // Persist the initial QARun row before target validation. Status
       // agents_running is the pre-execution state; the same row is updated

@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -845,6 +845,36 @@ describe('revision-targeted runs', () => {
           'utf8',
         ),
       ).toBe('B');
+    } finally {
+      f.lease.release();
+      f.database.close();
+    }
+  });
+
+  it('runs an older revision whose retained copy left external and broken links out', async () => {
+    const f = await fixture();
+    try {
+      try {
+        await writeFile(join(f.root, 'outside.txt'), 'outside the project');
+        await symlink(join('..', 'outside.txt'), join(f.source, 'external.txt'));
+        await symlink('missing.txt', join(f.source, 'broken.txt'));
+      } catch {
+        return; // this platform refuses symlinks without privileges
+      }
+      // Revision B contains inert links; its retained copy omits them by design.
+      const withLinks = await f.manager.updateProjectCopy(f.added.project.id);
+      await writeFile(join(f.source, 'src', 'value.txt'), 'C');
+      const current = await f.manager.updateProjectCopy(f.added.project.id);
+      expect(current.revision.id).not.toBe(withLinks.revision.id);
+      // Used to throw PROJECT_COPY_DRIFT: the snapshot of the retained view was compared with
+      // the revision hash that still covered the omitted links.
+      const result = await coordinator(f).simulate(f.added.project.id, {
+        revisionId: withLinks.revision.id,
+      });
+      expect(result.run.status).toBe('completed');
+      expect(f.repository.getSnapshot(result.run.snapshotId)?.projectRevisionId).toBe(
+        withLinks.revision.id,
+      );
     } finally {
       f.lease.release();
       f.database.close();

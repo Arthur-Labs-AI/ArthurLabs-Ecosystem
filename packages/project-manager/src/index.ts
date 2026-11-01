@@ -1,5 +1,16 @@
 import { basename, dirname, resolve } from 'node:path';
-import { access, constants, mkdir, rename, rm, stat, statfs } from 'node:fs/promises';
+import {
+  access,
+  constants,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  stat,
+  statfs,
+  writeFile,
+} from 'node:fs/promises';
 import {
   createOperationId,
   createProjectId,
@@ -122,6 +133,29 @@ function sourceExclusionPredicate(
   includeAll?: boolean,
 ): ((relativePath: string) => boolean) | undefined {
   return includeAll === true ? undefined : excludeGeneratedSource;
+}
+
+/** Sidecar holding the hash of the retained view when inert links were left out. */
+const RETAINED_VIEW_SUFFIX = '.retained-view.json';
+
+/** Relative paths of the links a retained revision deliberately left out (sorted, may be empty). */
+async function readInertLinkPaths(blockedLinksRoot: string): Promise<ReadonlySet<string>> {
+  let names: string[];
+  try {
+    names = await readdir(blockedLinksRoot);
+  } catch {
+    return new Set();
+  }
+  const paths = new Set<string>();
+  for (const name of names.filter((entry) => entry.endsWith('.json')).sort()) {
+    const parsed: unknown = JSON.parse(await readFile(resolve(blockedLinksRoot, name), 'utf8'));
+    const relativePath =
+      parsed !== null && typeof parsed === 'object'
+        ? (parsed as { relativePath?: unknown }).relativePath
+        : undefined;
+    if (typeof relativePath === 'string' && relativePath.length > 0) paths.add(relativePath);
+  }
+  return paths;
 }
 
 export class ProjectManager {
@@ -253,22 +287,46 @@ export class ProjectManager {
 
   /** Validate retained material (§50): rescan the retained bytes and
    *  compare contentHash with the revision record. Copy completion
-   *  alone is never trusted. Throws on mismatch. */
+   *  alone is never trusted. Throws on mismatch.
+   *
+   *  The retained copy leaves external and broken symlinks out on purpose
+   *  (inert, exactly like agent workspaces; each one is recorded under
+   *  <material>.blocked-links). The revision hash covers the working copy
+   *  that still has them, so when links were left out the retained bytes are
+   *  compared with the same view of the working copy: everything except those
+   *  recorded links must be byte-identical. Without inert links the revision
+   *  hash is compared directly. */
   async validateRetainedMaterial(
     projectId: ProjectId,
-    revision: { id: string; contentHash: string },
+    revision: { id: string; contentHash: string; hashVersion?: number | undefined },
     workingCopyPath: string,
   ): Promise<void> {
-    void workingCopyPath;
     const materialRoot = revisionMaterialPath(this.dataRoot, projectId, revision.id);
+    const inertLinks = await readInertLinkPaths(materialRoot + '.blocked-links');
+    let expectedHash = revision.contentHash;
+    if (inertLinks.size > 0) {
+      const revisionExclude = revision.hashVersion === 2 ? exclusionPredicate(false) : undefined;
+      const view = await this.snapshots.scanRevision(workingCopyPath, undefined, {
+        exclude: (relativePath) =>
+          inertLinks.has(relativePath) || (revisionExclude?.(relativePath) ?? false),
+      });
+      expectedHash = view.contentHash;
+    }
     const scan = await this.snapshots.scanRevision(materialRoot);
-    if (scan.contentHash !== revision.contentHash) {
+    if (scan.contentHash === expectedHash && inertLinks.size > 0) {
+      // Later runs on this revision re-hash the retained material; remember what it must equal.
+      await writeFile(
+        materialRoot + RETAINED_VIEW_SUFFIX,
+        JSON.stringify({ schemaVersion: 1, contentHash: expectedHash }) + '\n',
+      );
+    }
+    if (scan.contentHash !== expectedHash) {
       throw new ProjectManagerError(
         'REVISION_MATERIAL_CORRUPT',
         'Retained revision bytes do not match revision ' +
           revision.id +
           ' (expected ' +
-          revision.contentHash +
+          expectedHash +
           ', got ' +
           scan.contentHash +
           ')',
@@ -307,6 +365,31 @@ export class ProjectManager {
       throw cause;
     }
     return materialRoot;
+  }
+
+  /**
+   * The content hash a rescan of this revision's retained material must
+   * produce. It is the revision hash, except when external or broken links
+   * were deliberately left out of the retained copy: then it is the hash of
+   * that view, recorded when the material was validated.
+   */
+  async expectedRetainedHash(
+    projectId: ProjectId,
+    revision: { id: string; contentHash: string },
+  ): Promise<string> {
+    const sidecar =
+      revisionMaterialPath(this.dataRoot, projectId, revision.id) + RETAINED_VIEW_SUFFIX;
+    try {
+      const parsed: unknown = JSON.parse(await readFile(sidecar, 'utf8'));
+      const recorded =
+        parsed !== null && typeof parsed === 'object'
+          ? (parsed as { contentHash?: unknown }).contentHash
+          : undefined;
+      if (typeof recorded === 'string' && recorded.length > 0) return recorded;
+    } catch {
+      // No inert links were left out (or the sidecar predates them): the revision hash applies.
+    }
+    return revision.contentHash;
   }
 
   /** Resolve retained material for a revision, or undefined when the
