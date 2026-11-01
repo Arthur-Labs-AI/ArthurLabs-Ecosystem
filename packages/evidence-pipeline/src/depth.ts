@@ -250,6 +250,14 @@ export function turnRepeatedRedProof(
  */
 export const NO_PROGRESS_LIMIT = 15;
 
+/**
+ * When the first pass leaves checks undecided and at least this fraction of
+ * the investigation window is still unused, the host gives the weakest checks
+ * a second pass instead of reporting them inconclusive with hours to spare.
+ */
+export const SECOND_PASS_MIN_REMAINING_FRACTION = 0.4;
+export const MAX_SECOND_PASS_CHECKS = 3;
+
 /** Approach changes the host grants one check after its turn was stopped. */
 export const MAX_APPROACH_ATTEMPTS = 3;
 

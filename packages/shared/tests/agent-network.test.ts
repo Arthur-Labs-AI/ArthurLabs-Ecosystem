@@ -44,6 +44,9 @@ describe('agent network policy', () => {
     expect(env['npm_config_cache']).toBe('/data/runs/ws/' + DEPENDENCY_CACHE_DIRNAME + '/npm');
     expect(env['PIP_CACHE_DIR']).toContain('/data/runs/ws/.sentry-cache/');
     expect(env['CARGO_HOME']).toBeUndefined();
+    // Binary-downloading postinstalls (Electron etc.) would fail on DNS and break the install.
+    expect(env['ELECTRON_SKIP_BINARY_DOWNLOAD']).toBe('1');
+    expect(env['PUPPETEER_SKIP_DOWNLOAD']).toBe('1');
     expect(Object.entries(env).every(([, value]) => !value.startsWith('/home'))).toBe(true);
   });
 
@@ -51,6 +54,7 @@ describe('agent network policy', () => {
     const off = agentNetworkPromptLines({ webAccess: false }).join('\n');
     expect(off).toContain('pnpm install --frozen-lockfile');
     expect(off).toContain('never proof');
+    expect(off).toContain('--ignore-scripts');
     expect(off).toContain('Web access is disabled');
     const on = agentNetworkPromptLines({ webAccess: true }).join('\n');
     expect(on).toContain('Web access is enabled');

@@ -325,12 +325,17 @@ describe('investigateChecks soft time share', () => {
     expect(codes(events)).not.toContain('QA_APPROACH_CHANGE');
     expect(codes(events)).not.toContain('QA_INVESTIGATION_INCOMPLETE');
     expect(prompts.some((p) => p.includes('TIME SHARE REACHED — CHECK check_1'))).toBe(true);
-    expect(value.blockedChecks).toEqual(['Check A']);
-    expect(value.checkConclusions[0]).toContain('WRAP: the lease race looked real');
+    // 46% of the window is left, so the second pass retries the cut-off check and settles it.
+    expect(codes(events)).toContain('QA_SECOND_PASS');
+    expect(prompts.some((p) => p.includes('SECOND PASS — CHECK check_1'))).toBe(true);
+    expect(value.blockedChecks).toEqual([]);
+    expect(value.checkConclusions[0]).toBe('done 6');
     // the other three checks all ran
     expect(value.checkConclusions.slice(1).every((text) => (text ?? '').startsWith('done'))).toBe(
       true,
     );
+    // the second pass sees the wrap-up statement as the earlier (unverified) conclusion
+    expect(prompts.find((p) => p.includes('SECOND PASS'))).toContain('WRAP: the lease race');
     expect(prompts.filter((p) => p.includes('INVESTIGATE CHECK'))).toHaveLength(4);
   });
 
@@ -356,5 +361,119 @@ describe('investigateChecks soft time share', () => {
     expect(steps).toBe(30);
     expect(codes(events)).not.toContain('QA_CHECK_BUDGET_REACHED');
     expect(value.checkConclusions[0]).toBe('finished');
+  });
+});
+
+describe('investigateChecks second pass', () => {
+  const MIN = 60_000;
+
+  /** Scripted turns: undecided checks do read-only work first time, then a probe on the second pass. */
+  function scenario(options: {
+    checks: string[];
+    undecided: string[];
+    clockPerTurnMin: number;
+    depth?: boolean;
+  }) {
+    const start = Date.now();
+    const clock = { t: start };
+    const prompts: string[] = [];
+    const reportContexts: string[] = [];
+    const { hooks } = harness(() => ({ text: 'unused' }), {
+      plan: { plannedChecks: options.checks },
+      ...(options.depth === false ? {} : { depth: { deadlineAt: start + 172 * MIN } }),
+      now: () => clock.t,
+      startReportContext: async (conclusions: string) => {
+        reportContexts.push(conclusions);
+      },
+      streamTurn: (text: string) =>
+        (async function* () {
+          prompts.push(text);
+          clock.t += options.clockPerTurnMin * MIN;
+          const second = text.includes('SECOND PASS');
+          const alias = /CHECK (check_\d+)/.exec(text)?.[1] ?? '';
+          const name = options.checks[Number(alias.replace('check_', '')) - 1] ?? '';
+          if (second || !options.undecided.includes(name))
+            addOp(hooks.operations as Ops, 'bash', 'node probe-' + prompts.length + '.mjs', 0);
+          else addOp(hooks.operations as Ops, 'read', 'src/' + prompts.length + '.ts');
+          yield eventOf({ type: 'tool.completed' });
+          return { text: (second ? 'second pass: ' : 'first pass: ') + name };
+        })(),
+    });
+    return { hooks, prompts, reportContexts };
+  }
+
+  it('retries undecided checks while most of the window is unused, then restarts the report context', async () => {
+    const { hooks, prompts, reportContexts } = scenario({
+      checks: ['Check A', 'Check B', 'Check C'],
+      undecided: ['Check B'],
+      clockPerTurnMin: 2,
+    });
+    const { events, value } = await drain(investigateChecks(hooks));
+    expect(codes(events)).toContain('QA_SECOND_PASS');
+    const second = prompts.filter((p) => p.includes('SECOND PASS'));
+    expect(second).toHaveLength(1);
+    expect(second[0]).toContain('CHECK check_2');
+    expect(second[0]).toContain('first pass: Check B');
+    // the pass produced a successful probe, so the check is no longer unproven
+    expect(value.unprovenChecks).toEqual([]);
+    expect(value.checkConclusions[1]).toBe('second pass: Check B');
+    // the report is written from a fresh context carrying the updated statements
+    expect(reportContexts).toHaveLength(1);
+    expect(reportContexts[0]).toContain('second pass: Check B');
+  });
+
+  it('does not run when most of the window is already used', async () => {
+    const { hooks, prompts, reportContexts } = scenario({
+      checks: ['Check A', 'Check B'],
+      undecided: ['Check B'],
+      clockPerTurnMin: 70,
+    });
+    const { events, value } = await drain(investigateChecks(hooks));
+    expect(codes(events)).not.toContain('QA_SECOND_PASS');
+    expect(prompts.some((p) => p.includes('SECOND PASS'))).toBe(false);
+    expect(value.unprovenChecks).toEqual(['Check B']);
+    expect(reportContexts).toHaveLength(0);
+  });
+
+  it('never runs outside depth-policy runs and never when every check is decided', async () => {
+    const legacy = scenario({
+      checks: ['Check A', 'Check B'],
+      undecided: ['Check B'],
+      clockPerTurnMin: 1,
+      depth: false,
+    });
+    const first = await drain(investigateChecks(legacy.hooks));
+    expect(codes(first.events)).not.toContain('QA_SECOND_PASS');
+    const decided = scenario({ checks: ['Check A', 'Check B'], undecided: [], clockPerTurnMin: 1 });
+    const second = await drain(investigateChecks(decided.hooks));
+    expect(codes(second.events)).not.toContain('QA_SECOND_PASS');
+  });
+
+  it('caps the second pass at three checks and keeps going if a pass fails', async () => {
+    const checks = ['A', 'B', 'C', 'D', 'E'].map((x) => 'Check ' + x);
+    const { hooks, prompts } = scenario({ checks, undecided: checks, clockPerTurnMin: 1 });
+    const stream = hooks.streamTurn;
+    let calls = 0;
+    const { value } = await drain(
+      investigateChecks({
+        ...hooks,
+        streamTurn: (text: string) => {
+          calls += 1;
+          // the second second-pass turn fails; the pass loop must not fail the run
+          if (
+            text.includes('SECOND PASS') &&
+            prompts.filter((p) => p.includes('SECOND PASS')).length === 1 &&
+            calls > 5
+          )
+            return (async function* (): AsyncGenerator<HarnessEvent, InvestigationTurn> {
+              yield* [];
+              throw new Error('provider hiccup');
+            })();
+          return stream(text);
+        },
+      }),
+    );
+    expect(prompts.filter((p) => p.includes('SECOND PASS')).length).toBeLessThanOrEqual(3);
+    expect(value.checkConclusions).toHaveLength(5);
   });
 });

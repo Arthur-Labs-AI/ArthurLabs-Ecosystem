@@ -190,6 +190,30 @@ export function buildAlternativeApproachPrompt(
 }
 
 /**
+ * Second pass over a check the first pass could not decide, while the run
+ * still has time. The earlier statement and failed commands come from the
+ * host so the investigator does not repeat itself.
+ */
+export function buildSecondPassPrompt(
+  plan: Plan,
+  index: number,
+  earlierStatement: string,
+  failed: readonly FailedAttempt[],
+): string {
+  return [
+    'SECOND PASS — CHECK ' +
+      reportCheckAlias(plan, index) +
+      '. Your first pass on "' +
+      (plan.plannedChecks[index] ?? '') +
+      '" could not decide the check, and the run still has time. Work ONLY on this check.',
+    'What you concluded earlier (AGENT-STATED, UNVERIFIED): ' +
+      JSON.stringify(earlierStatement.slice(-800)),
+    'Commands that failed earlier on this check (host ledger): ' + JSON.stringify(failed),
+    'Decide the check with a method that has not failed yet: execute the REAL code path with a small probe (one single non-compound command), try to break the property, and triage every non-zero exit as a product defect or a proven fixture error. Never loosen an assertion to turn a run green. If setup was the blocker, name the exact cause and route around it. Stop when the check is decided or concretely blocked, with 2-3 sentences of conclusion and a "Breaks attempted:" line.',
+  ].join('\n');
+}
+
+/**
  * Final short turn for a check the host ended because it used its time share.
  * It records what the investigator established so the work is not lost, and
  * is told not to start anything new.

@@ -244,6 +244,7 @@ describe('tool shell wrapper egress', () => {
     expect(script).toContain('UNIX-CONNECT:' + TOOL_SHELL_EGRESS_SOCKET);
     expect(script).toContain('HTTPS_PROXY');
     expect(script).toContain('http://127.0.0.1:' + TOOL_SHELL_EGRESS_PORT);
+    expect(script).toContain('ELECTRON_SKIP_BINARY_DOWNLOAD');
     // The socket is bound after the private /tmp, or the tmp bind would hide it.
     expect(script.indexOf('--bind "$SENTRY_RUN_TMP" /tmp')).toBeLessThan(
       script.indexOf('--bind "$SENTRY_EGRESS_SOCKET"'),

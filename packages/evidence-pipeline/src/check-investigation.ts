@@ -5,6 +5,9 @@ import type { ContextBudget } from './context-budget.js';
 import { estimatePromptTokens, isContextWindowExceeded } from './context-budget.js';
 import {
   MAX_APPROACH_ATTEMPTS,
+  MAX_SECOND_PASS_CHECKS,
+  MIN_SOFT_BUDGET_MS,
+  SECOND_PASS_MIN_REMAINING_FRACTION,
   WRAP_UP_MS,
   checkSoftBudgetMs,
   closingTriagesFailures,
@@ -27,6 +30,7 @@ import {
   buildBudgetWrapUpPrompt,
   buildExecutionNudgePrompt,
   buildQaCheckInvestigationPrompt,
+  buildSecondPassPrompt,
   renderCheckConclusions,
 } from './stage-prompts.js';
 
@@ -128,6 +132,14 @@ export async function* investigateChecks<T extends InvestigationTurn>(
   /** Wall-clock end of the current check's soft time share (undefined outside depth-policy runs). */
   let softAt: number | undefined;
   let checkStartedAt = 0;
+  /** Ledger keys before and after each check, to find that check's own commands later. */
+  const checkStartKeys: Array<ReadonlySet<string>> = [];
+  const checkEndKeys: Array<ReadonlySet<string>> = [];
+  const loopStartedAt = now();
+  const windowMs =
+    depth === undefined
+      ? 0
+      : Math.max(0, investigationDeadline(depth.deadlineAt, loopStartedAt) - loopStartedAt);
   const description = (index: number): string => plan.plannedChecks[index] ?? '';
   const interrupted = (): boolean => hooks.cancelled();
 
@@ -174,6 +186,88 @@ export async function* investigateChecks<T extends InvestigationTurn>(
   const recoverable = (cause: unknown): boolean =>
     isContextWindowExceeded(cause) || (hooks.isSalvageable?.(cause) ?? false);
 
+  const drop = (list: string[], name: string): void => {
+    for (let at = list.indexOf(name); at >= 0; at = list.indexOf(name)) list.splice(at, 1);
+  };
+
+  /**
+   * Fast models finish the first pass with most of the budget unused and
+   * several checks undecided. Spend part of what is left on the weakest ones
+   * rather than reporting them inconclusive.
+   */
+  async function* secondPass(): AsyncGenerator<HarnessEvent, void> {
+    if (depth === undefined || interrupted()) return;
+    const remaining = (): number => investigationDeadline(depth.deadlineAt, now()) - now();
+    if (windowMs <= 0 || remaining() < SECOND_PASS_MIN_REMAINING_FRACTION * windowMs) return;
+    const weak = plan.plannedChecks
+      .flatMap((name, index) =>
+        unprovenChecks.includes(name) ||
+        blockedChecks.includes(name) ||
+        redRetryChecks.includes(name)
+          ? [index]
+          : [],
+      )
+      .slice(0, MAX_SECOND_PASS_CHECKS);
+    if (weak.length === 0) return;
+    yield hooks.event({
+      type: 'warning',
+      code: 'QA_SECOND_PASS',
+      message:
+        weak.length +
+        ' check(s) stayed undecided and about ' +
+        Math.round(remaining() / 60_000) +
+        ' minutes of investigation time remain; giving them a second pass in fresh sessions.',
+    });
+    let ran = false;
+    try {
+      for (let n = 0; n < weak.length; n += 1) {
+        const index = weak[n] as number;
+        const left = remaining();
+        if (left < MIN_SOFT_BUDGET_MS || interrupted()) break;
+        checkStartedAt = now();
+        softAt = checkStartedAt + checkSoftBudgetMs(left, weak.length - n);
+        await rotate(plan.plannedChecks.length);
+        const own = new Map(
+          [...operations].filter(
+            ([key]) =>
+              (checkEndKeys[index]?.has(key) ?? false) &&
+              !(checkStartKeys[index]?.has(key) ?? false),
+          ),
+        );
+        const text =
+          seed +
+          buildSecondPassPrompt(
+            plan,
+            index,
+            checkConclusions[index] ?? '',
+            failedCommandsSince(new Set(), own),
+          );
+        seed = '';
+        const before = new Set(operations.keys());
+        const outcome = yield* guarded(text, before);
+        ran = true;
+        if (!outcome.stopped) {
+          usage = sumAgentUsage(usage, outcome.value.usage ?? {});
+          steps += outcome.value.steps ?? 1;
+          const statement = outcome.value.text.trim();
+          if (statement.length > 0) checkConclusions[index] = statement.slice(-CONCLUSION_CHARS);
+        }
+        // Only proof produced DURING this pass can settle the check.
+        if (turnProducedProof(before, operations)) {
+          const name = description(index);
+          drop(unprovenChecks, name);
+          drop(blockedChecks, name);
+          if (!turnRepeatedRedProof(before, operations)) drop(redRetryChecks, name);
+        }
+      }
+    } catch (cause) {
+      if (interrupted()) throw cause;
+      // A deadline or provider failure here only ends the extra work; the first pass is banked.
+    }
+    // The report starts from a fresh report-only context seeded with the digest and statements.
+    if (ran) await hooks.startReportContext(renderCheckConclusions(plan, checkConclusions));
+  }
+
   try {
     for (; currentCheck < plan.plannedChecks.length; currentCheck += 1) {
       yield hooks.event({
@@ -198,6 +292,7 @@ export async function* investigateChecks<T extends InvestigationTurn>(
               plan.plannedChecks.length - currentCheck,
             );
       const ledgerBeforeTurn = new Set(operations.keys());
+      checkStartKeys[currentCheck] = ledgerBeforeTurn;
       const checkPrompt = buildQaCheckInvestigationPrompt(
         plan,
         currentCheck,
@@ -390,7 +485,9 @@ export async function* investigateChecks<T extends InvestigationTurn>(
       checkConclusions[currentCheck] = turn.text.trim().slice(-CONCLUSION_CHARS);
       usage = sumAgentUsage(usage, turn.usage ?? {});
       steps += issued;
+      checkEndKeys[currentCheck] = new Set(operations.keys());
     }
+    yield* secondPass();
   } catch (cause) {
     if (
       (depth === undefined && !recoverable(cause)) ||

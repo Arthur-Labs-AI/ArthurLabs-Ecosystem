@@ -74,6 +74,19 @@ export function webAccessEnabled(
 /** Package-manager caches live inside the workspace, the only place shells may write. */
 export const DEPENDENCY_CACHE_DIRNAME = '.sentry-cache';
 
+/**
+ * Packages that download a platform binary in a postinstall script (Electron,
+ * Puppeteer, Playwright, Cypress) fetch it from hosts outside the registry
+ * allowlist and from clients that ignore the proxy variables, so the install
+ * fails on DNS. QA reads and probes source; it never needs those binaries.
+ */
+export const BINARY_DOWNLOAD_SKIP_ENVIRONMENT: Readonly<Record<string, string>> = {
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1',
+  PUPPETEER_SKIP_DOWNLOAD: '1',
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1',
+  CYPRESS_INSTALL_BINARY: '0',
+};
+
 export function dependencyCacheEnvironment(workspacePath: string): Record<string, string> {
   const root = workspacePath.replace(/[\\/]+$/, '') + '/' + DEPENDENCY_CACHE_DIRNAME;
   return {
@@ -89,6 +102,7 @@ export function dependencyCacheEnvironment(workspacePath: string): Record<string
     npm_config_fund: 'false',
     npm_config_audit: 'false',
     PIP_DISABLE_PIP_VERSION_CHECK: '1',
+    ...BINARY_DOWNLOAD_SKIP_ENVIRONMENT,
     // CARGO_HOME is intentionally not set: it would break rustup proxies.
   };
 }
@@ -106,7 +120,7 @@ export interface AgentNetworkPromptOptions {
 /** Identical network guidance for every agent's investigation prompt. */
 export function agentNetworkPromptLines(options: AgentNetworkPromptOptions): string[] {
   const lines = [
-    'Install the project’s dependencies inside this workspace with its own package manager and lockfile (for example `pnpm install --frozen-lockfile`, `npm ci`, `yarn install --immutable`, `pip install -r requirements.txt` into a `.venv`, `cargo fetch`, `go mod download`) BEFORE build, lint, typecheck or tests. An install only prepares a check; it is never proof of one.',
+    'Install the project’s dependencies inside this workspace with its own package manager and lockfile (for example `pnpm install --frozen-lockfile`, `npm ci`, `yarn install --immutable`, `pip install -r requirements.txt` into a `.venv`, `cargo fetch`, `go mod download`) BEFORE build, lint, typecheck or tests. An install only prepares a check; it is never proof of one. If an install fails inside a package lifecycle script (a postinstall that downloads a binary, for example), rerun it once with `--ignore-scripts` instead of debugging the script.',
     'Shell network access reaches package registries only. Never work around that restriction. If an install fails, record the exact failure as a limitation, continue statically, and never claim a check passed that could not run.',
     'Never run scripts that publish, deploy or contact production systems.',
   ];
