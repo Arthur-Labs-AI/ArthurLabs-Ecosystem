@@ -460,7 +460,7 @@ describe('OpenCodeHarnessAdapter', () => {
       clientFactory: stuckFactory(
         prompts,
         (emit) => {
-          for (let i = 0; i < 25; i += 1)
+          for (let i = 0; i < 35; i += 1)
             emit({
               callID: 'read_' + i + '_' + prompts.length,
               tool: 'read',
@@ -645,7 +645,7 @@ describe('OpenCodeHarnessAdapter', () => {
       ...logicalAdapterDefaults(),
       clientFactory: stuckFactory(prompts, (emit) => {
         // Only greps: the ledger used to skip them, so this never tripped.
-        for (let i = 0; i < 15; i += 1)
+        for (let i = 0; i < 31; i += 1)
           emit({
             callID: 'grep_' + i + '_' + prompts.length,
             tool: 'grep',

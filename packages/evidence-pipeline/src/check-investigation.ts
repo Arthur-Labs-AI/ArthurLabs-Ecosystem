@@ -4,7 +4,9 @@ import type { ObservedOperation } from './pipeline.js';
 import type { ContextBudget } from './context-budget.js';
 import { estimatePromptTokens, isContextWindowExceeded } from './context-budget.js';
 import {
+  DEEPEN_MIN_REMAINING_FRACTION,
   MAX_APPROACH_ATTEMPTS,
+  MAX_DEEPEN_CHECKS,
   MAX_SECOND_PASS_CHECKS,
   MIN_SOFT_BUDGET_MS,
   SECOND_PASS_MIN_REMAINING_FRACTION,
@@ -12,6 +14,7 @@ import {
   checkSoftBudgetMs,
   closingTriagesFailures,
   failedCommandsSince,
+  isExecutableProofOperation,
   turnExecutedReproduction,
   turnProducedProof,
   turnRepeatedRedProof,
@@ -28,6 +31,7 @@ import {
 import {
   buildAlternativeApproachPrompt,
   buildBudgetWrapUpPrompt,
+  buildDeepeningPrompt,
   buildExecutionNudgePrompt,
   buildQaCheckInvestigationPrompt,
   buildSecondPassPrompt,
@@ -279,6 +283,84 @@ export async function* investigateChecks<T extends InvestigationTurn>(
     if (ran) await hooks.startReportContext(renderCheckConclusions(plan, checkConclusions));
   }
 
+  /**
+   * Extension round. Fast models can decide every check with most of the
+   * window unused. The thinnest decided checks (fewest certified proof
+   * operations) get one more turn aimed at breaking them from new angles.
+   * The frozen plan stays as it is; a check's earlier statement is replaced
+   * only when this turn produced proof of its own.
+   */
+  async function* deepenRound(): AsyncGenerator<HarnessEvent, void> {
+    if (depth === undefined || interrupted()) return;
+    const remaining = (): number => investigationDeadline(depth.deadlineAt, now()) - now();
+    if (windowMs <= 0 || remaining() < DEEPEN_MIN_REMAINING_FRACTION * windowMs) return;
+    const ownOperations = (index: number): ObservedOperation[] =>
+      [...operations]
+        .filter(
+          ([key]) =>
+            (checkEndKeys[index]?.has(key) ?? false) && !(checkStartKeys[index]?.has(key) ?? false),
+        )
+        .map(([, op]) => op);
+    const candidates = plan.plannedChecks
+      .flatMap((name, index) =>
+        unprovenChecks.includes(name) ||
+        blockedChecks.includes(name) ||
+        redRetryChecks.includes(name) ||
+        checkEndKeys[index] === undefined
+          ? []
+          : [{ index, proofs: ownOperations(index).filter(isExecutableProofOperation).length }],
+      )
+      .sort((a, b) => a.proofs - b.proofs || a.index - b.index)
+      .slice(0, MAX_DEEPEN_CHECKS);
+    if (candidates.length === 0) return;
+    yield hooks.event({
+      type: 'warning',
+      code: 'QA_DEEPEN_PASS',
+      message:
+        'About ' +
+        Math.round(remaining() / 60_000) +
+        ' minutes of investigation time remain; attacking ' +
+        candidates.length +
+        ' decided check(s) from new angles in fresh sessions.',
+    });
+    let ran = false;
+    try {
+      for (let n = 0; n < candidates.length; n += 1) {
+        const index = (candidates[n] as { index: number }).index;
+        const left = remaining();
+        if (left < MIN_SOFT_BUDGET_MS || interrupted()) break;
+        checkStartedAt = now();
+        softAt = checkStartedAt + checkSoftBudgetMs(left, candidates.length - n);
+        await rotate(plan.plannedChecks.length);
+        const executed = ownOperations(index).flatMap((op) =>
+          typeof op.commandText === 'string' && op.commandText.length > 0 ? [op.commandText] : [],
+        );
+        const text =
+          seed +
+          buildDeepeningPrompt(plan, index, checkConclusions[index] ?? '', executed);
+        seed = '';
+        const before = new Set(operations.keys());
+        const outcome = yield* guarded(text, before);
+        ran = true;
+        if (!outcome.stopped) {
+          usage = sumAgentUsage(usage, outcome.value.usage ?? {});
+          steps += outcome.value.steps ?? 1;
+          const statement = outcome.value.text.trim();
+          if (statement.length > 0 && turnProducedProof(before, operations))
+            checkConclusions[index] = (
+              (checkConclusions[index] ?? '').slice(0, 500) +
+              '\nDEEPENING: ' +
+              statement
+            ).slice(-CONCLUSION_CHARS);
+        }
+      }
+    } catch (cause) {
+      if (interrupted()) throw cause;
+      // A deadline or provider failure only ends the extra work; earlier verdicts are banked.
+    }
+    if (ran) await hooks.startReportContext(renderCheckConclusions(plan, checkConclusions));
+  }
+
   try {
     for (; currentCheck < plan.plannedChecks.length; currentCheck += 1) {
       yield hooks.event({
@@ -513,6 +595,7 @@ export async function* investigateChecks<T extends InvestigationTurn>(
       checkEndKeys[currentCheck] = new Set(operations.keys());
     }
     yield* secondPass();
+    yield* deepenRound();
   } catch (cause) {
     if (
       (depth === undefined && !recoverable(cause)) ||

@@ -258,6 +258,14 @@ export const NO_PROGRESS_LIMIT = 30;
 export const SECOND_PASS_MIN_REMAINING_FRACTION = 0.4;
 export const MAX_SECOND_PASS_CHECKS = 3;
 
+/**
+ * Extension round: when at least this much of the window is still unused after
+ * every check has had its turn (and any second pass), the thinnest decided
+ * checks are attacked again from new angles.
+ */
+export const DEEPEN_MIN_REMAINING_FRACTION = 0.5;
+export const MAX_DEEPEN_CHECKS = 3;
+
 /** Approach changes the host grants one check after its turn was stopped. */
 export const MAX_APPROACH_ATTEMPTS = 3;
 

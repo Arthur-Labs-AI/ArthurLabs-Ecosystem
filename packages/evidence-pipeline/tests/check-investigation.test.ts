@@ -390,13 +390,16 @@ describe('investigateChecks second pass', () => {
           prompts.push(text);
           clock.t += options.clockPerTurnMin * MIN;
           const second = text.includes('SECOND PASS');
+          const deepen = text.includes('DEEPENING PASS');
           const alias = /CHECK (check_\d+)/.exec(text)?.[1] ?? '';
           const name = options.checks[Number(alias.replace('check_', '')) - 1] ?? '';
-          if (second || !options.undecided.includes(name))
+          if (second || deepen || !options.undecided.includes(name))
             addOp(hooks.operations as Ops, 'bash', 'node probe-' + prompts.length + '.mjs', 0);
           else addOp(hooks.operations as Ops, 'read', 'src/' + prompts.length + '.ts');
           yield eventOf({ type: 'tool.completed' });
-          return { text: (second ? 'second pass: ' : 'first pass: ') + name };
+          return {
+            text: (deepen ? 'deepened: ' : second ? 'second pass: ' : 'first pass: ') + name,
+          };
         })(),
     });
     return { hooks, prompts, reportContexts };
@@ -416,10 +419,47 @@ describe('investigateChecks second pass', () => {
     expect(second[0]).toContain('first pass: Check B');
     // the pass produced a successful probe, so the check is no longer unproven
     expect(value.unprovenChecks).toEqual([]);
-    expect(value.checkConclusions[1]).toBe('second pass: Check B');
+    expect(value.checkConclusions[1]).toContain('second pass: Check B');
     // the report is written from a fresh context carrying the updated statements
-    expect(reportContexts).toHaveLength(1);
+    expect(reportContexts.length).toBeGreaterThanOrEqual(1);
     expect(reportContexts[0]).toContain('second pass: Check B');
+  });
+
+  it('deepens the thinnest decided checks when most of the window is unused', async () => {
+    const { hooks, prompts, reportContexts } = scenario({
+      checks: ['Check A', 'Check B', 'Check C', 'Check D', 'Check E'],
+      undecided: [],
+      clockPerTurnMin: 2,
+    });
+    const { events, value } = await drain(investigateChecks(hooks));
+    expect(codes(events)).toContain('QA_DEEPEN_PASS');
+    const deepening = prompts.filter((p) => p.includes('DEEPENING PASS'));
+    expect(deepening).toHaveLength(3);
+    // every check has exactly one proof, so ties go to the earliest checks
+    expect(deepening[0]).toContain('CHECK check_1');
+    expect(deepening[0]).toContain('first pass: Check A');
+    expect(value.checkConclusions[0]).toContain('first pass: Check A');
+    expect(value.checkConclusions[0]).toContain('DEEPENING: deepened: Check A');
+    expect(value.checkConclusions[4]).toBe('first pass: Check E');
+    expect(reportContexts.at(-1)).toContain('DEEPENING: deepened: Check A');
+  });
+
+  it('does not deepen when half of the window is already used or checks are undecided', async () => {
+    const used = scenario({
+      checks: ['Check A', 'Check B', 'Check C'],
+      undecided: [],
+      clockPerTurnMin: 40,
+    });
+    const first = await drain(investigateChecks(used.hooks));
+    expect(codes(first.events)).not.toContain('QA_DEEPEN_PASS');
+    const legacy = scenario({
+      checks: ['Check A', 'Check B'],
+      undecided: [],
+      clockPerTurnMin: 1,
+      depth: false,
+    });
+    const second = await drain(investigateChecks(legacy.hooks));
+    expect(codes(second.events)).not.toContain('QA_DEEPEN_PASS');
   });
 
   it('does not run when most of the window is already used', async () => {

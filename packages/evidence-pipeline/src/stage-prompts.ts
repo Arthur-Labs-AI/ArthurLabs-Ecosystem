@@ -214,6 +214,32 @@ export function buildSecondPassPrompt(
 }
 
 /**
+ * Extension round: a check that was already decided keeps its verdict, but the
+ * run still has most of its window, so the agent is asked to attack the same
+ * property from angles the first pass did not try. The frozen plan is not
+ * changed; only evidence produced in this turn can add to the earlier verdict.
+ */
+export function buildDeepeningPrompt(
+  plan: Plan,
+  index: number,
+  earlierStatement: string,
+  executedCommands: readonly string[],
+): string {
+  return [
+    'DEEPENING PASS — CHECK ' +
+      reportCheckAlias(plan, index) +
+      '. Your first pass on "' +
+      (plan.plannedChecks[index] ?? '') +
+      '" was decided quickly and the run has plenty of time left. Work ONLY on this check; do not add new checks.',
+    'What you concluded earlier (AGENT-STATED, UNVERIFIED): ' +
+      JSON.stringify(earlierStatement.slice(-800)),
+    'Commands that already ran for this check (host ledger): ' +
+      JSON.stringify(executedCommands.slice(-8).map((c) => c.slice(0, 160))),
+    'Try to BREAK the property from angles the first pass did not cover: other entry points that reach the same code, boundary and hostile inputs not yet used, concurrency and ordering, failure and cleanup paths, and the exact wording of the documented behaviour. Execute the REAL code path with a small probe (one single non-compound command) for each angle. A reproduced defect is a finding: state the trigger and the operation that showed it. If every angle holds, say which angles you ran. Stop after 2-3 sentences of conclusion and a "Breaks attempted:" line.',
+  ].join('\n');
+}
+
+/**
  * Final short turn for a check the host ended because it used its time share.
  * It records what the investigator established so the work is not lost, and
  * is told not to start anything new.
