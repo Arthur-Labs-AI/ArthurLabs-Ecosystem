@@ -22,14 +22,33 @@ pub fn review_packet(revision: &[(&str, &[RevCase])], identity: &[(&str, &[IdCas
         out.push_str(&format!("## Revision cases: {split}\n\n| id | lang | change | existing text | new note | proposed text | author label | author class | validator | reviewer verdict (safe/unsafe) | reviewer note |\n|---|---|---|---|---|---|---|---|---|---|---|\n"));
         for c in cases.iter() {
             let det = deterministic(c).err().unwrap_or("accepted");
-            out.push_str(&format!("| {} | {} | {} | {} | {} | {} | {} | {} | {} | | |\n", c.id, c.lang, c.change, esc(&c.base), esc(&c.claim), esc(&c.draft.revised_body), c.label, c.unsafe_class.as_deref().unwrap_or("-"), det));
+            out.push_str(&format!(
+                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | | |\n",
+                c.id,
+                c.lang,
+                c.change,
+                esc(&c.base),
+                esc(&c.claim),
+                esc(&c.draft.revised_body),
+                c.label,
+                c.unsafe_class.as_deref().unwrap_or("-"),
+                det
+            ));
         }
         out.push('\n');
     }
     for (split, cases) in identity {
         out.push_str(&format!("## Identity cases: {split}\n\n| id | lang | new note | candidates | author expectation | resolver result | reviewer expectation | reviewer note |\n|---|---|---|---|---|---|---|---|\n"));
         for c in cases.iter() {
-            out.push_str(&format!("| {} | {} | {} | {} | {} | {} | | |\n", c.id, c.lang, esc(&c.claim), c.candidates.join(","), c.expect, identity_result(c)));
+            out.push_str(&format!(
+                "| {} | {} | {} | {} | {} | {} | | |\n",
+                c.id,
+                c.lang,
+                esc(&c.claim),
+                c.candidates.join(","),
+                c.expect,
+                identity_result(c)
+            ));
         }
         out.push('\n');
     }

@@ -955,8 +955,12 @@ fn x17_production_v9_due_query_remains_reporting_only() {
 fn x18_executor_has_no_production_callsite_or_scheduler() {
     // The physical-admission integration suites exercise expiry but must stay
     // test-only; its new callsite does not authorize production scheduling.
-    assert!(include_str!("mod.rs").replace("\r\n", "\n").contains("#[cfg(test)]\nmod admission_tests;"));
-    assert!(include_str!("mod.rs").replace("\r\n", "\n").contains("#[cfg(test)]\nmod physical_tests;"));
+    assert!(include_str!("mod.rs")
+        .replace("\r\n", "\n")
+        .contains("#[cfg(test)]\nmod admission_tests;"));
+    assert!(include_str!("mod.rs")
+        .replace("\r\n", "\n")
+        .contains("#[cfg(test)]\nmod physical_tests;"));
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut paths = vec![root];
     while let Some(path) = paths.pop() {
@@ -968,7 +972,14 @@ fn x18_executor_has_no_production_callsite_or_scheduler() {
             continue;
         }
         let name = path.file_name().unwrap().to_str().unwrap();
-        if matches!(name, "expiry.rs" | "expiry_tests.rs" | "writers.rs" | "admission_tests.rs" | "physical_tests.rs") {
+        if matches!(
+            name,
+            "expiry.rs"
+                | "expiry_tests.rs"
+                | "writers.rs"
+                | "admission_tests.rs"
+                | "physical_tests.rs"
+        ) {
             continue;
         }
         let source = std::fs::read_to_string(&path).unwrap();

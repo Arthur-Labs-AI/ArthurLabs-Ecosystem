@@ -81,6 +81,11 @@ impl Drop for Apartment {
 }
 pub(super) struct Watch {
     handles: Vec<HANDLE>,
+    // Native callbacks retain a pointer to this Arc slot while Watch itself can move.
+    #[expect(
+        clippy::redundant_allocation,
+        reason = "Box pins the Arc slot passed to Windows callbacks until cancellation or quarantine"
+    )]
     context: Option<Box<Arc<Signal>>>,
     profile: Option<(IConnectionPoint, u32, INetworkEvents)>,
     signal: Arc<Signal>,

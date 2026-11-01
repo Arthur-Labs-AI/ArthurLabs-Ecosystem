@@ -22,15 +22,17 @@
 pub mod authorization;
 pub mod disclosure;
 pub mod openai;
+pub mod openai_verifier;
 pub mod prompt;
 pub mod stage;
 pub mod validate;
-pub mod verifier;
-pub mod openai_verifier;
 pub mod verdict;
+pub mod verifier;
 
 #[cfg(test)]
 mod architecture_tests;
+#[cfg(test)]
+mod eval;
 #[cfg(test)]
 pub mod fake;
 #[cfg(test)]
@@ -39,8 +41,6 @@ mod tests;
 mod tests_4c;
 #[cfg(test)]
 mod tests_p5;
-#[cfg(test)]
-mod eval;
 
 use crate::async_util::BoxFuture;
 
@@ -79,7 +79,9 @@ impl ChangeClass {
         }
     }
     pub fn parse(raw: &str) -> Option<Self> {
-        [Self::Additive, Self::Correction, Self::Replacement].into_iter().find(|c| c.as_str() == raw)
+        [Self::Additive, Self::Correction, Self::Replacement]
+            .into_iter()
+            .find(|c| c.as_str() == raw)
     }
 }
 
@@ -150,7 +152,10 @@ pub enum SynthesisFailure {
 pub trait RevisionSynthesizer: Send + Sync {
     fn identity(&self) -> ModelIdentity;
     /// Proposes a revision. It is told nothing it could use to pick another object and returns text and assertions only.
-    fn synthesize<'a>(&'a self, request: &'a SynthesisRequest) -> BoxFuture<'a, Result<SynthesisDraft, SynthesisFailure>>;
+    fn synthesize<'a>(
+        &'a self,
+        request: &'a SynthesisRequest,
+    ) -> BoxFuture<'a, Result<SynthesisDraft, SynthesisFailure>>;
 }
 
 /// Why a verifier refuses a proposal.

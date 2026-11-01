@@ -40,9 +40,16 @@ Return only JSON that matches the schema.",
 }
 
 /// The two objects of a candidate in the order they are listed to the verifier. Never the order Stage A chose.
-pub fn presented(candidate: &VerifyCandidate, presentation: Presentation) -> (&KnowledgeObject, &KnowledgeObject) {
+pub fn presented(
+    candidate: &VerifyCandidate,
+    presentation: Presentation,
+) -> (&KnowledgeObject, &KnowledgeObject) {
     let ascending = candidate.source.id <= candidate.target.id;
-    let (low, high) = if ascending { (&candidate.source, &candidate.target) } else { (&candidate.target, &candidate.source) };
+    let (low, high) = if ascending {
+        (&candidate.source, &candidate.target)
+    } else {
+        (&candidate.target, &candidate.source)
+    };
     match presentation {
         Presentation::LowerIdFirst => (low, high),
         Presentation::HigherIdFirst => (high, low),
@@ -70,7 +77,10 @@ pub fn user_message(candidates: &[VerifyCandidate], presentation: Presentation) 
             json!({ "index": candidate.index, "first": object(first), "second": object(second), "proposedKind": candidate.kind })
         })
         .collect();
-    format!("Candidates:\n<<<CANDIDATES\n{}\nCANDIDATES>>>", serde_json::Value::Array(items))
+    format!(
+        "Candidates:\n<<<CANDIDATES\n{}\nCANDIDATES>>>",
+        serde_json::Value::Array(items)
+    )
 }
 
 /// JSON Schema for strict structured output.
@@ -112,13 +122,31 @@ mod tests {
     use crate::storage::relation_store::KINDS;
 
     fn object(id: &str, title: &str) -> KnowledgeObject {
-        KnowledgeObject { id: id.into(), kind: "idea".into(), title: title.into(), body: "body".into(), created_at: "2026-10-04T10:00:00Z".into(), provenance: Provenance { capture_id: "secret-capture".into(), source_start: 0, source_end: 1 }, project_id: "p".into() }
+        KnowledgeObject {
+            id: id.into(),
+            kind: "idea".into(),
+            title: title.into(),
+            body: "body".into(),
+            created_at: "2026-10-04T10:00:00Z".into(),
+            provenance: Provenance {
+                capture_id: "secret-capture".into(),
+                source_start: 0,
+                source_end: 1,
+            },
+            project_id: "p".into(),
+        }
     }
 
     #[test]
     fn the_verifier_is_offered_exactly_the_relation_kinds() {
         let schema = response_schema();
-        let offered: Vec<&str> = schema["properties"]["verdicts"]["items"]["properties"]["kind"]["enum"].as_array().unwrap().iter().map(|k| k.as_str().unwrap()).collect();
+        let offered: Vec<&str> = schema["properties"]["verdicts"]["items"]["properties"]["kind"]
+            ["enum"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|k| k.as_str().unwrap())
+            .collect();
         assert_eq!(offered, KINDS);
     }
 
@@ -145,17 +173,35 @@ mod tests {
             assert!(prompt.contains(rule), "missing rule: {rule}");
         }
         for kind in KINDS {
-            assert!(prompt.contains(&format!("- {kind} = ")), "the verifier prompt does not define {kind}");
+            assert!(
+                prompt.contains(&format!("- {kind} = ")),
+                "the verifier prompt does not define {kind}"
+            );
         }
-        assert!(prompt.contains(&super::super::semantics::rubric()), "the definitions are the shared ones");
+        assert!(
+            prompt.contains(&super::super::semantics::rubric()),
+            "the definitions are the shared ones"
+        );
     }
 
     #[test]
     fn the_verifier_sees_the_minimum_needed_and_nothing_else() {
-        let candidate = VerifyCandidate { index: 3, source: object("11111111-1111-4111-8111-111111111111", "src title"), target: object("22222222-2222-4222-8222-222222222222", "tgt title"), kind: "depends_on".into(), source_written_at: None, target_written_at: None };
+        let candidate = VerifyCandidate {
+            index: 3,
+            source: object("11111111-1111-4111-8111-111111111111", "src title"),
+            target: object("22222222-2222-4222-8222-222222222222", "tgt title"),
+            kind: "depends_on".into(),
+            source_written_at: None,
+            target_written_at: None,
+        };
         let message = user_message(&[candidate], Presentation::LowerIdFirst);
-        assert!(message.contains("\"index\":3") && message.contains("\"proposedKind\":\"depends_on\""));
-        assert!(!message.contains("\"source\"") && !message.contains("\"target\""), "the proposed direction is not shown");
+        assert!(
+            message.contains("\"index\":3") && message.contains("\"proposedKind\":\"depends_on\"")
+        );
+        assert!(
+            !message.contains("\"source\"") && !message.contains("\"target\""),
+            "the proposed direction is not shown"
+        );
         assert!(message.contains("src title") && message.contains("tgt title"));
         for hidden in ["secret-capture", "createdAt", "provenance", "reason"] {
             assert!(!message.contains(hidden), "{hidden} must not be sent");
@@ -169,17 +215,63 @@ mod order_tests {
     use crate::storage::knowledge_store::{KnowledgeObject, Provenance};
 
     fn object(id: &str) -> KnowledgeObject {
-        KnowledgeObject { id: id.into(), kind: "idea".into(), title: id.into(), body: "b".into(), created_at: "x".into(), provenance: Provenance { capture_id: "c".into(), source_start: 0, source_end: 1 }, project_id: "p".into() }
+        KnowledgeObject {
+            id: id.into(),
+            kind: "idea".into(),
+            title: id.into(),
+            body: "b".into(),
+            created_at: "x".into(),
+            provenance: Provenance {
+                capture_id: "c".into(),
+                source_start: 0,
+                source_end: 1,
+            },
+            project_id: "p".into(),
+        }
     }
 
     #[test]
     fn the_listing_order_is_by_id_whichever_way_stage_a_oriented_the_pair() {
-        let (low, high) = ("11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222");
-        let render = |source: &str, target: &str, presentation| user_message(&[VerifyCandidate { index: 0, source: object(source), target: object(target), kind: "depends_on".into(), source_written_at: None, target_written_at: None }], presentation);
+        let (low, high) = (
+            "11111111-1111-4111-8111-111111111111",
+            "22222222-2222-4222-8222-222222222222",
+        );
+        let render = |source: &str, target: &str, presentation| {
+            user_message(
+                &[VerifyCandidate {
+                    index: 0,
+                    source: object(source),
+                    target: object(target),
+                    kind: "depends_on".into(),
+                    source_written_at: None,
+                    target_written_at: None,
+                }],
+                presentation,
+            )
+        };
         for presentation in [Presentation::LowerIdFirst, Presentation::HigherIdFirst] {
-            assert_eq!(render(low, high, presentation), render(high, low, presentation), "forward and backward proposals look identical to the verifier");
+            assert_eq!(
+                render(low, high, presentation),
+                render(high, low, presentation),
+                "forward and backward proposals look identical to the verifier"
+            );
         }
-        assert!(render(high, low, Presentation::LowerIdFirst).find(low).unwrap() < render(high, low, Presentation::LowerIdFirst).find(high).unwrap());
-        assert!(render(high, low, Presentation::HigherIdFirst).find(high).unwrap() < render(high, low, Presentation::HigherIdFirst).find(low).unwrap(), "the second vote lists them the other way round");
+        assert!(
+            render(high, low, Presentation::LowerIdFirst)
+                .find(low)
+                .unwrap()
+                < render(high, low, Presentation::LowerIdFirst)
+                    .find(high)
+                    .unwrap()
+        );
+        assert!(
+            render(high, low, Presentation::HigherIdFirst)
+                .find(high)
+                .unwrap()
+                < render(high, low, Presentation::HigherIdFirst)
+                    .find(low)
+                    .unwrap(),
+            "the second vote lists them the other way round"
+        );
     }
 }

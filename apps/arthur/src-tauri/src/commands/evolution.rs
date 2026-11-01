@@ -12,7 +12,10 @@ use crate::evolution_runtime::{ConsentKind, EvolutionRuntime, EvolutionStatus, R
 use crate::graph::integration::ChangedKnowledge;
 use crate::runtime::RuntimeHandle;
 use crate::storage::lineage_store::{ReviseConflict, Revision};
-use crate::storage::proposal_store::{ApprovalInfo, ClaimAction, ProposalView, ReviewAction, ReviewError, ReviewRequest, UnresolvedClaimView};
+use crate::storage::proposal_store::{
+    ApprovalInfo, ClaimAction, ProposalView, ReviewAction, ReviewError, ReviewRequest,
+    UnresolvedClaimView,
+};
 
 // --- settings, consent, credential ------------------------------------------------------------------------------------------
 
@@ -23,24 +26,37 @@ pub fn get_evolution_status(runtime: State<'_, EvolutionRuntime>) -> EvolutionSt
 
 /// ON needs every consent and credential (`not_ready` otherwise). OFF always works.
 #[tauri::command]
-pub fn set_evolution_enabled(runtime: State<'_, EvolutionRuntime>, enabled: bool) -> Result<EvolutionStatus, RuntimeError> {
+pub fn set_evolution_enabled(
+    runtime: State<'_, EvolutionRuntime>,
+    enabled: bool,
+) -> Result<EvolutionStatus, RuntimeError> {
     runtime.set_enabled(enabled)
 }
 
 /// One explicit, revocable choice. Granting must name the disclosure version the person was shown (`disclosure_outdated` otherwise).
 #[tauri::command]
-pub fn set_evolution_consent(runtime: State<'_, EvolutionRuntime>, kind: ConsentKind, granted: bool, disclosure_version: Option<String>) -> Result<EvolutionStatus, RuntimeError> {
+pub fn set_evolution_consent(
+    runtime: State<'_, EvolutionRuntime>,
+    kind: ConsentKind,
+    granted: bool,
+    disclosure_version: Option<String>,
+) -> Result<EvolutionStatus, RuntimeError> {
     runtime.set_consent(kind, granted, disclosure_version.as_deref())
 }
 
 /// Write-only: the key is moved into the native credential store and never returned.
 #[tauri::command]
-pub fn set_typesafe_credential(runtime: State<'_, EvolutionRuntime>, secret: String) -> Result<EvolutionStatus, RuntimeError> {
+pub fn set_typesafe_credential(
+    runtime: State<'_, EvolutionRuntime>,
+    secret: String,
+) -> Result<EvolutionStatus, RuntimeError> {
     runtime.set_typesafe_credential(&secret)
 }
 
 #[tauri::command]
-pub fn delete_typesafe_credential(runtime: State<'_, EvolutionRuntime>) -> Result<EvolutionStatus, RuntimeError> {
+pub fn delete_typesafe_credential(
+    runtime: State<'_, EvolutionRuntime>,
+) -> Result<EvolutionStatus, RuntimeError> {
     runtime.delete_typesafe_credential()
 }
 
@@ -57,7 +73,9 @@ impl Serialize for ReviewFailure {
         state.serialize_field("code", self.0.code())?;
         state.serialize_field("message", &self.0.message())?;
         let current = match &self.0 {
-            ReviewError::Stale { current_revision_id } => Some(current_revision_id.as_str()),
+            ReviewError::Stale {
+                current_revision_id,
+            } => Some(current_revision_id.as_str()),
             _ => None,
         };
         state.serialize_field("currentRevisionId", &current)?;
@@ -81,20 +99,32 @@ type Reviewed<T> = Result<T, ReviewFailure>;
 
 /// Proposals, oldest first. `states` omitted: all of them (history included).
 #[tauri::command]
-pub fn list_revision_proposals(store: State<'_, RuntimeHandle>, project_id: Option<String>, states: Option<Vec<String>>) -> Reviewed<Vec<ProposalView>> {
+pub fn list_revision_proposals(
+    store: State<'_, RuntimeHandle>,
+    project_id: Option<String>,
+    states: Option<Vec<String>>,
+) -> Reviewed<Vec<ProposalView>> {
     let states = states.unwrap_or_default();
     let refs: Vec<&str> = states.iter().map(String::as_str).collect();
     Ok(store.list_revision_proposals(project_id.as_deref(), &refs)?)
 }
 
 #[tauri::command]
-pub fn get_revision_proposal(store: State<'_, RuntimeHandle>, proposal_id: String) -> Reviewed<ProposalView> {
-    store.get_revision_proposal(&proposal_id)?.ok_or(ReviewFailure(ReviewError::NotFound))
+pub fn get_revision_proposal(
+    store: State<'_, RuntimeHandle>,
+    proposal_id: String,
+) -> Reviewed<ProposalView> {
+    store
+        .get_revision_proposal(&proposal_id)?
+        .ok_or(ReviewFailure(ReviewError::NotFound))
 }
 
 /// Claims waiting for a decision, with or without a suggested text. Nothing is hidden by age or quota.
 #[tauri::command]
-pub fn list_unresolved_claims(store: State<'_, RuntimeHandle>, project_id: Option<String>) -> Reviewed<Vec<UnresolvedClaimView>> {
+pub fn list_unresolved_claims(
+    store: State<'_, RuntimeHandle>,
+    project_id: Option<String>,
+) -> Reviewed<Vec<UnresolvedClaimView>> {
     Ok(store.list_unresolved_claims(project_id.as_deref())?)
 }
 
@@ -125,10 +155,17 @@ pub struct ReviewOutcome {
 fn action_of(input: &ReviewInput) -> Result<ReviewAction, ReviewError> {
     Ok(match input.action.as_str() {
         "approve" => ReviewAction::Approve,
-        "edit_approve" => ReviewAction::EditAndApprove { body: input.edited_body.clone().ok_or_else(|| ReviewError::Invalid("the edited text is missing".into()))? },
+        "edit_approve" => ReviewAction::EditAndApprove {
+            body: input
+                .edited_body
+                .clone()
+                .ok_or_else(|| ReviewError::Invalid("the edited text is missing".into()))?,
+        },
         "reject" => ReviewAction::Reject,
         "keep_separate" => ReviewAction::KeepSeparate,
-        "defer" => ReviewAction::Defer { due_at: input.due_at.clone() },
+        "defer" => ReviewAction::Defer {
+            due_at: input.due_at.clone(),
+        },
         "reopen" => ReviewAction::Reopen,
         _ => return Err(ReviewError::Invalid("unknown review action".into())),
     })
@@ -136,12 +173,27 @@ fn action_of(input: &ReviewInput) -> Result<ReviewAction, ReviewError> {
 
 /// One decision, atomically. Graph Integration hears about a change only AFTER the transaction committed.
 #[tauri::command]
-pub fn review_revision_proposal(app: AppHandle, store: State<'_, RuntimeHandle>, input: ReviewInput) -> Reviewed<ReviewOutcome> {
-    let request = ReviewRequest { proposal_id: input.proposal_id.clone(), action: action_of(&input)?, reviewed_revision_id: input.reviewed_revision_id.clone() };
+pub fn review_revision_proposal(
+    app: AppHandle,
+    store: State<'_, RuntimeHandle>,
+    input: ReviewInput,
+) -> Reviewed<ReviewOutcome> {
+    let request = ReviewRequest {
+        proposal_id: input.proposal_id.clone(),
+        action: action_of(&input)?,
+        reviewed_revision_id: input.reviewed_revision_id.clone(),
+    };
     let result = store.review_revision_proposal(&request)?;
     if result.applied {
         if let Some(applied) = &result.revision {
-            integration::notify(&app, ChangedKnowledge::revised(&applied.object_id, &applied.previous_revision_id, &applied.revision_id));
+            integration::notify(
+                &app,
+                ChangedKnowledge::revised(
+                    &applied.object_id,
+                    &applied.previous_revision_id,
+                    &applied.revision_id,
+                ),
+            );
         }
         if let Some(object_id) = &result.created_object_id {
             if let Ok(Some(revision_id)) = store.current_revision_id_of(object_id) {
@@ -149,7 +201,12 @@ pub fn review_revision_proposal(app: AppHandle, store: State<'_, RuntimeHandle>,
             }
         }
     }
-    Ok(ReviewOutcome { proposal: result.proposal, applied: result.applied, revision_id: result.revision.map(|r| r.revision_id), created_object_id: result.created_object_id })
+    Ok(ReviewOutcome {
+        proposal: result.proposal,
+        applied: result.applied,
+        revision_id: result.revision.map(|r| r.revision_id),
+        created_object_id: result.created_object_id,
+    })
 }
 
 #[derive(Debug, Deserialize)]
@@ -172,10 +229,16 @@ pub struct ClaimOutcome {
 /// Resolves a claim explicitly. No text is invented and nothing is merged: the person keeps the claim as its own idea, defers it, or
 /// reopens it.
 #[tauri::command]
-pub fn resolve_unresolved_claim(app: AppHandle, store: State<'_, RuntimeHandle>, input: ResolveClaimInput) -> Reviewed<ClaimOutcome> {
+pub fn resolve_unresolved_claim(
+    app: AppHandle,
+    store: State<'_, RuntimeHandle>,
+    input: ResolveClaimInput,
+) -> Reviewed<ClaimOutcome> {
     let action = match input.action.as_str() {
         "keep_separate" => ClaimAction::KeepSeparate,
-        "defer" => ClaimAction::Defer { due_at: input.due_at.clone() },
+        "defer" => ClaimAction::Defer {
+            due_at: input.due_at.clone(),
+        },
         "reopen" => ClaimAction::Reopen,
         _ => return Err(ReviewError::Invalid("unknown action".into()).into()),
     };
@@ -187,14 +250,21 @@ pub fn resolve_unresolved_claim(app: AppHandle, store: State<'_, RuntimeHandle>,
             }
         }
     }
-    Ok(ClaimOutcome { claim_state: resolution.claim_state, created_object_id: resolution.created_object_id, applied: resolution.applied })
+    Ok(ClaimOutcome {
+        claim_state: resolution.claim_state,
+        created_object_id: resolution.created_object_id,
+        applied: resolution.applied,
+    })
 }
 
 // --- history ----------------------------------------------------------------------------------------------------------------------
 
 /// Which revisions of an object a person approved from a suggestion, and whether they changed the words.
 #[tauri::command]
-pub fn list_object_approvals(store: State<'_, RuntimeHandle>, object_id: String) -> Reviewed<Vec<ApprovalInfo>> {
+pub fn list_object_approvals(
+    store: State<'_, RuntimeHandle>,
+    object_id: String,
+) -> Reviewed<Vec<ApprovalInfo>> {
     Ok(store.approvals_for_object(&object_id)?)
 }
 
@@ -207,14 +277,44 @@ pub struct RestoreFailure {
 /// Undo: a NEW revision that goes back to an earlier text. History is never rewritten; a revision that moved on since the person looked
 /// is refused (`stale`).
 #[tauri::command]
-pub fn restore_revision(app: AppHandle, store: State<'_, RuntimeHandle>, object_id: String, target_revision_id: String, expected_current_revision_id: String) -> Result<Revision, RestoreFailure> {
-    let revision = store.restore_revision(&object_id, &target_revision_id, &expected_current_revision_id).map_err(|error| match error {
-        ReviseConflict::Stale { .. } => RestoreFailure { code: "stale", message: "This idea changed since you opened its history. Open it again.".into() },
-        ReviseConflict::ProjectArchived => RestoreFailure { code: "project_archived", message: "Restore the project to change this idea.".into() },
-        ReviseConflict::ObjectNotFound => RestoreFailure { code: "object_not_found", message: "That idea no longer exists.".into() },
-        ReviseConflict::Rejected(reason) => RestoreFailure { code: "invalid", message: format!("Nothing to undo: {reason}.") },
-        _ => RestoreFailure { code: "storage_failed", message: "The change could not be saved.".into() },
-    })?;
-    integration::notify(&app, ChangedKnowledge::revised(&object_id, &expected_current_revision_id, &revision.id));
+pub fn restore_revision(
+    app: AppHandle,
+    store: State<'_, RuntimeHandle>,
+    object_id: String,
+    target_revision_id: String,
+    expected_current_revision_id: String,
+) -> Result<Revision, RestoreFailure> {
+    let revision = store
+        .restore_revision(
+            &object_id,
+            &target_revision_id,
+            &expected_current_revision_id,
+        )
+        .map_err(|error| match error {
+            ReviseConflict::Stale { .. } => RestoreFailure {
+                code: "stale",
+                message: "This idea changed since you opened its history. Open it again.".into(),
+            },
+            ReviseConflict::ProjectArchived => RestoreFailure {
+                code: "project_archived",
+                message: "Restore the project to change this idea.".into(),
+            },
+            ReviseConflict::ObjectNotFound => RestoreFailure {
+                code: "object_not_found",
+                message: "That idea no longer exists.".into(),
+            },
+            ReviseConflict::Rejected(reason) => RestoreFailure {
+                code: "invalid",
+                message: format!("Nothing to undo: {reason}."),
+            },
+            _ => RestoreFailure {
+                code: "storage_failed",
+                message: "The change could not be saved.".into(),
+            },
+        })?;
+    integration::notify(
+        &app,
+        ChangedKnowledge::revised(&object_id, &expected_current_revision_id, &revision.id),
+    );
     Ok(revision)
 }

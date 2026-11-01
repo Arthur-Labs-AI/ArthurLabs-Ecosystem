@@ -18,12 +18,35 @@ pub struct ScriptedSynthesizer {
 }
 
 impl ScriptedSynthesizer {
-    pub fn new(answer: impl Fn(&SynthesisRequest) -> Result<SynthesisDraft, SynthesisFailure> + Send + Sync + 'static) -> Arc<Self> {
-        Arc::new(Self { answer: Mutex::new(Box::new(answer)), calls: AtomicUsize::new(0), seen: Mutex::new(vec![]), hook: Mutex::new(None), family: "fake-synthesis-family" })
+    pub fn new(
+        answer: impl Fn(&SynthesisRequest) -> Result<SynthesisDraft, SynthesisFailure>
+            + Send
+            + Sync
+            + 'static,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            answer: Mutex::new(Box::new(answer)),
+            calls: AtomicUsize::new(0),
+            seen: Mutex::new(vec![]),
+            hook: Mutex::new(None),
+            family: "fake-synthesis-family",
+        })
     }
     /// A synthesizer that claims a model family, to build same-family pairings.
-    pub fn in_family(family: &'static str, answer: impl Fn(&SynthesisRequest) -> Result<SynthesisDraft, SynthesisFailure> + Send + Sync + 'static) -> Arc<Self> {
-        Arc::new(Self { answer: Mutex::new(Box::new(answer)), calls: AtomicUsize::new(0), seen: Mutex::new(vec![]), hook: Mutex::new(None), family })
+    pub fn in_family(
+        family: &'static str,
+        answer: impl Fn(&SynthesisRequest) -> Result<SynthesisDraft, SynthesisFailure>
+            + Send
+            + Sync
+            + 'static,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            answer: Mutex::new(Box::new(answer)),
+            calls: AtomicUsize::new(0),
+            seen: Mutex::new(vec![]),
+            hook: Mutex::new(None),
+            family,
+        })
     }
     pub fn calls(&self) -> usize {
         self.calls.load(Ordering::SeqCst)
@@ -36,10 +59,17 @@ impl ScriptedSynthesizer {
 
 impl RevisionSynthesizer for ScriptedSynthesizer {
     fn identity(&self) -> ModelIdentity {
-        ModelIdentity { provider: "fake", family: self.family, model: SYNTH_MODEL.into() }
+        ModelIdentity {
+            provider: "fake",
+            family: self.family,
+            model: SYNTH_MODEL.into(),
+        }
     }
 
-    fn synthesize<'a>(&'a self, request: &'a SynthesisRequest) -> BoxFuture<'a, Result<SynthesisDraft, SynthesisFailure>> {
+    fn synthesize<'a>(
+        &'a self,
+        request: &'a SynthesisRequest,
+    ) -> BoxFuture<'a, Result<SynthesisDraft, SynthesisFailure>> {
         Box::pin(async move {
             self.calls.fetch_add(1, Ordering::SeqCst);
             self.seen.lock().unwrap().push(request.clone());
@@ -62,14 +92,26 @@ pub struct ScriptedVerifier {
 
 impl ScriptedVerifier {
     pub fn new(verdict: impl Fn(&VerifyRequest) -> Verdict + Send + Sync + 'static) -> Arc<Self> {
-        Arc::new(Self { verdict: Mutex::new(Box::new(verdict)), calls: AtomicUsize::new(0), seen: Mutex::new(vec![]), hook: Mutex::new(None), family: "fake-verifier-family" })
+        Arc::new(Self {
+            verdict: Mutex::new(Box::new(verdict)),
+            calls: AtomicUsize::new(0),
+            seen: Mutex::new(vec![]),
+            hook: Mutex::new(None),
+            family: "fake-verifier-family",
+        })
     }
     pub fn passing() -> Arc<Self> {
         Self::new(|_| Verdict::Pass)
     }
     /// A verifier of the SYNTHESIZER's family, to prove such a pairing is refused.
     pub fn same_family_as_synthesizer() -> Arc<Self> {
-        Arc::new(Self { verdict: Mutex::new(Box::new(|_| Verdict::Pass)), calls: AtomicUsize::new(0), seen: Mutex::new(vec![]), hook: Mutex::new(None), family: "fake-synthesis-family" })
+        Arc::new(Self {
+            verdict: Mutex::new(Box::new(|_| Verdict::Pass)),
+            calls: AtomicUsize::new(0),
+            seen: Mutex::new(vec![]),
+            hook: Mutex::new(None),
+            family: "fake-synthesis-family",
+        })
     }
     pub fn calls(&self) -> usize {
         self.calls.load(Ordering::SeqCst)
@@ -81,7 +123,11 @@ impl ScriptedVerifier {
 
 impl RevisionVerifier for ScriptedVerifier {
     fn identity(&self) -> ModelIdentity {
-        ModelIdentity { provider: "fake", family: self.family, model: "verifier-1".into() }
+        ModelIdentity {
+            provider: "fake",
+            family: self.family,
+            model: "verifier-1".into(),
+        }
     }
 
     fn verify<'a>(&'a self, request: &'a VerifyRequest) -> BoxFuture<'a, Verdict> {
@@ -98,7 +144,10 @@ impl RevisionVerifier for ScriptedVerifier {
 }
 
 pub fn assertion(text: &str, source: &str) -> Assertion {
-    Assertion { text: text.into(), source: source.into() }
+    Assertion {
+        text: text.into(),
+        source: source.into(),
+    }
 }
 
 /// A well-formed additive draft with the given body, citing the base text and the new note.

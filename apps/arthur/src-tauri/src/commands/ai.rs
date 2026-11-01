@@ -19,7 +19,11 @@ pub fn get_ai_config(ai: Ai<'_>) -> AiConfig {
 /// Stores the credential for a provider account and returns the configuration WITHOUT it. `secret` is moved into secure storage
 /// and is never logged or echoed, including in errors.
 #[tauri::command]
-pub fn set_provider_credential(ai: Ai<'_>, provider: String, secret: String) -> Result<AiConfig, AiError> {
+pub fn set_provider_credential(
+    ai: Ai<'_>,
+    provider: String,
+    secret: String,
+) -> Result<AiConfig, AiError> {
     ai.set_credential(&provider, &secret)
 }
 

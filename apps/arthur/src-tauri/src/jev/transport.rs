@@ -25,7 +25,12 @@ pub enum TransportError {
 }
 
 pub trait JevTransport: Send + Sync {
-    fn post<'a>(&'a self, key: &'a ApiKey, body: &'a str, timeout: Duration) -> BoxFuture<'a, Result<RawResponse, TransportError>>;
+    fn post<'a>(
+        &'a self,
+        key: &'a ApiKey,
+        body: &'a str,
+        timeout: Duration,
+    ) -> BoxFuture<'a, Result<RawResponse, TransportError>>;
 }
 
 /// The real transport: rustls, no redirects (the key can never follow one to another host), bounded read. The endpoint is a constant.
@@ -39,18 +44,29 @@ const CLIENT_CEILING: Duration = Duration::from_secs(60);
 
 impl ReqwestTransport {
     pub fn production() -> Result<Self, reqwest::Error> {
-        Ok(Self { endpoint: super::JEV_ENDPOINT.to_string(), client: crate::providers::http::client(CLIENT_CEILING)? })
+        Ok(Self {
+            endpoint: super::JEV_ENDPOINT.to_string(),
+            client: crate::providers::http::client(CLIENT_CEILING)?,
+        })
     }
 
     /// Tests only: a localhost endpoint.
     #[cfg(test)]
     pub fn with_endpoint(endpoint: String) -> Self {
-        Self { endpoint, client: crate::providers::http::client(CLIENT_CEILING).expect("client") }
+        Self {
+            endpoint,
+            client: crate::providers::http::client(CLIENT_CEILING).expect("client"),
+        }
     }
 }
 
 impl JevTransport for ReqwestTransport {
-    fn post<'a>(&'a self, key: &'a ApiKey, body: &'a str, timeout: Duration) -> BoxFuture<'a, Result<RawResponse, TransportError>> {
+    fn post<'a>(
+        &'a self,
+        key: &'a ApiKey,
+        body: &'a str,
+        timeout: Duration,
+    ) -> BoxFuture<'a, Result<RawResponse, TransportError>> {
         Box::pin(async move {
             let mut response = self
                 .client
@@ -61,20 +77,43 @@ impl JevTransport for ReqwestTransport {
                 .body(body.to_string())
                 .send()
                 .await
-                .map_err(|e| if e.is_timeout() { TransportError::Timeout } else { TransportError::Network })?;
+                .map_err(|e| {
+                    if e.is_timeout() {
+                        TransportError::Timeout
+                    } else {
+                        TransportError::Network
+                    }
+                })?;
             let status = response.status().as_u16();
-            let retry_after_secs = response.headers().get(reqwest::header::RETRY_AFTER).and_then(|v| v.to_str().ok()).and_then(|v| v.trim().parse::<u64>().ok());
-            if response.content_length().is_some_and(|length| length as usize > MAX_RESPONSE_BYTES) {
+            let retry_after_secs = response
+                .headers()
+                .get(reqwest::header::RETRY_AFTER)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.trim().parse::<u64>().ok());
+            if response
+                .content_length()
+                .is_some_and(|length| length as usize > MAX_RESPONSE_BYTES)
+            {
                 return Err(TransportError::TooLarge);
             }
             let mut bytes: Vec<u8> = Vec::new();
-            while let Some(chunk) = response.chunk().await.map_err(|e| if e.is_timeout() { TransportError::Timeout } else { TransportError::Network })? {
+            while let Some(chunk) = response.chunk().await.map_err(|e| {
+                if e.is_timeout() {
+                    TransportError::Timeout
+                } else {
+                    TransportError::Network
+                }
+            })? {
                 if bytes.len() + chunk.len() > MAX_RESPONSE_BYTES {
                     return Err(TransportError::TooLarge);
                 }
                 bytes.extend_from_slice(&chunk);
             }
-            Ok(RawResponse { status, body: String::from_utf8_lossy(&bytes).into_owned(), retry_after_secs })
+            Ok(RawResponse {
+                status,
+                body: String::from_utf8_lossy(&bytes).into_owned(),
+                retry_after_secs,
+            })
         })
     }
 }

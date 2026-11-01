@@ -1479,7 +1479,11 @@ fn parity_scenario(s: &CaptureStore, k: Option<&JournalKernel<'_>>) -> Vec<Strin
         .collect()
 }
 
-pub(super) fn decision_for(capture_id: &str, ordinal: i64, candidates: Vec<String>) -> crate::storage::identity_store::IdentityDecisionInput {
+pub(super) fn decision_for(
+    capture_id: &str,
+    ordinal: i64,
+    candidates: Vec<String>,
+) -> crate::storage::identity_store::IdentityDecisionInput {
     use crate::storage::identity_store::{DecisionAudit, DecisionOutcome, IdentityDecisionInput};
     IdentityDecisionInput {
         capture_id: capture_id.into(),
@@ -1493,10 +1497,17 @@ pub(super) fn decision_for(capture_id: &str, ordinal: i64, candidates: Vec<Strin
         policy_version: "test".into(),
         model_id: Some("synthetic".into()),
         vetoes: vec![],
-        audit: DecisionAudit { candidates_sent: candidates, runs: 1, ..DecisionAudit::default() },
+        audit: DecisionAudit {
+            candidates_sent: candidates,
+            runs: 1,
+            ..DecisionAudit::default()
+        },
     }
 }
-pub(super) fn pending_for(decision: crate::storage::identity_store::IdentityDecisionInput, candidates: Vec<String>) -> crate::storage::identity_store::PendingClaimInput {
+pub(super) fn pending_for(
+    decision: crate::storage::identity_store::IdentityDecisionInput,
+    candidates: Vec<String>,
+) -> crate::storage::identity_store::PendingClaimInput {
     use crate::storage::identity_store::PendingClaimInput;
     PendingClaimInput {
         decision,
@@ -1515,14 +1526,20 @@ fn w15_identity_decision_and_claim_adapters_commit_with_idempotence() {
     let (s, cap, o) = graph(2);
     let k = JournalKernel::activate(&s).unwrap();
     let prop = commit(&s, &k, |w| {
-        w.stage_uncertain_claim(pending_for(decision_for(&cap.id, 0, vec![o[0].id.clone()]), vec![o[0].id.clone()]))
+        w.stage_uncertain_claim(pending_for(
+            decision_for(&cap.id, 0, vec![o[0].id.clone()]),
+            vec![o[0].id.clone()],
+        ))
     });
     assert!(prop.1);
     let core = audit(&s).pop().expect("decision and claim bundle commits");
     assert_eq!(core.operations.len(), 2);
     let n = count(&s, "sync_bundles");
     let repeat = commit(&s, &k, |w| {
-        w.stage_uncertain_claim(pending_for(decision_for(&cap.id, 0, vec![o[0].id.clone()]), vec![o[0].id.clone()]))
+        w.stage_uncertain_claim(pending_for(
+            decision_for(&cap.id, 0, vec![o[0].id.clone()]),
+            vec![o[0].id.clone()],
+        ))
     });
     assert!(!repeat.1);
     assert_eq!(count(&s, "sync_bundles"), n);
@@ -1535,7 +1552,10 @@ fn w15_identity_decision_and_claim_adapters_commit_with_idempotence() {
     assert_eq!(stored.input.ordinal, 1);
     let before = snapshot(&s);
     assert!(matches!(
-        k.write(|w| w.stage_uncertain_claim(pending_for(decision_for(&cap.id, 0, vec![o[1].id.clone()]), vec![o[1].id.clone()]))),
+        k.write(|w| w.stage_uncertain_claim(pending_for(
+            decision_for(&cap.id, 0, vec![o[1].id.clone()]),
+            vec![o[1].id.clone()]
+        ))),
         Err(E::Identity(_))
     ));
     assert_eq!(snapshot(&s), before);
@@ -1560,7 +1580,13 @@ fn w01_public_v9_and_dormant_v10_share_domain_rows_results_errors_and_side_effec
     audit(&v10);
 }
 
-pub(super) fn proposal_for(claim_id: &str, object_id: &str, base: &str, body: &str, capture_id: &str) -> crate::storage::proposal_store::NewProposal {
+pub(super) fn proposal_for(
+    claim_id: &str,
+    object_id: &str,
+    base: &str,
+    body: &str,
+    capture_id: &str,
+) -> crate::storage::proposal_store::NewProposal {
     use crate::storage::proposal_store::{EvidenceRef, NewProposal};
     NewProposal {
         pending_claim_id: claim_id.into(),
@@ -1570,7 +1596,12 @@ pub(super) fn proposal_for(claim_id: &str, object_id: &str, base: &str, body: &s
         kind: "idea".into(),
         title: "Draft".into(),
         proposed_body: body.into(),
-        evidence: vec![EvidenceRef { role: "claim".into(), capture_id: capture_id.into(), start: 0, end: 4 }],
+        evidence: vec![EvidenceRef {
+            role: "claim".into(),
+            capture_id: capture_id.into(),
+            start: 0,
+            end: 4,
+        }],
         retracts: None,
         synthesis_model: "synthetic".into(),
         verifier_model: "synthetic".into(),
@@ -1578,12 +1609,27 @@ pub(super) fn proposal_for(claim_id: &str, object_id: &str, base: &str, body: &s
         policy_version: "test".into(),
     }
 }
-fn staged_claim(s: &CaptureStore, k: &JournalKernel<'_>, cap_id: &str, object_id: &str) -> crate::storage::identity_store::PendingClaim {
+fn staged_claim(
+    s: &CaptureStore,
+    k: &JournalKernel<'_>,
+    cap_id: &str,
+    object_id: &str,
+) -> crate::storage::identity_store::PendingClaim {
     staged_claim_ordinal(s, k, cap_id, object_id, 0)
 }
-fn staged_claim_ordinal(s: &CaptureStore, k: &JournalKernel<'_>, cap_id: &str, object_id: &str, ordinal: i64) -> crate::storage::identity_store::PendingClaim {
+fn staged_claim_ordinal(
+    s: &CaptureStore,
+    k: &JournalKernel<'_>,
+    cap_id: &str,
+    object_id: &str,
+    ordinal: i64,
+) -> crate::storage::identity_store::PendingClaim {
     commit(s, k, |w| {
-        Ok(w.stage_uncertain_claim(pending_for(decision_for(cap_id, ordinal, vec![object_id.into()]), vec![object_id.into()]))?.0)
+        Ok(w.stage_uncertain_claim(pending_for(
+            decision_for(cap_id, ordinal, vec![object_id.into()]),
+            vec![object_id.into()],
+        ))?
+        .0)
     })
 }
 #[test]
@@ -1596,13 +1642,35 @@ fn w16_proposal_creation_is_idempotent_and_rejects_stale_base() {
     let head = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
     assert_ne!(head, base);
     assert!(matches!(
-        k.write(|w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &base, "Stale draft", &cap.id))),
+        k.write(|w| w.insert_proposal(proposal_for(
+            &claim.id,
+            &o[0].id,
+            &base,
+            "Stale draft",
+            &cap.id
+        ))),
         Err(E::Identity(_)) | Err(E::Journal(_))
     ));
-    let first = commit(&s, &k, |w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &head, "Draft body", &cap.id)));
+    let first = commit(&s, &k, |w| {
+        w.insert_proposal(proposal_for(
+            &claim.id,
+            &o[0].id,
+            &head,
+            "Draft body",
+            &cap.id,
+        ))
+    });
     assert!(first.1);
     let n = count(&s, "sync_bundles");
-    let repeat = commit(&s, &k, |w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &head, "Draft body", &cap.id)));
+    let repeat = commit(&s, &k, |w| {
+        w.insert_proposal(proposal_for(
+            &claim.id,
+            &o[0].id,
+            &head,
+            "Draft body",
+            &cap.id,
+        ))
+    });
     assert!(!repeat.1);
     assert_eq!(count(&s, "sync_bundles"), n);
     assert_eq!(repeat.0.id, first.0.id);
@@ -1615,30 +1683,55 @@ fn w17_review_approve_closes_full_revision_and_evidence_closure() {
     let k = JournalKernel::activate(&s).unwrap();
     let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
     let base = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
-    let proposal = commit(&s, &k, |w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &base, "Approved text", &cap.id))).0;
+    let proposal = commit(&s, &k, |w| {
+        w.insert_proposal(proposal_for(
+            &claim.id,
+            &o[0].id,
+            &base,
+            "Approved text",
+            &cap.id,
+        ))
+    })
+    .0;
     let out = commit(&s, &k, |w| {
-        w.review_proposal(ReviewRequest { proposal_id: proposal.id.clone(), action: ReviewAction::Approve, reviewed_revision_id: Some(base.clone()) })
+        w.review_proposal(ReviewRequest {
+            proposal_id: proposal.id.clone(),
+            action: ReviewAction::Approve,
+            reviewed_revision_id: Some(base.clone()),
+        })
     });
     assert!(out.applied);
     assert_eq!(out.proposal.state, "approved");
     let core = audit(&s).pop().expect("approval bundle commits");
-    let mut kinds: Vec<(codec::EntityKind, &str)> = core.operations.iter().map(|op| match op {
-        Operation::RecordCreate(r) => (r.entity, "create"),
-        Operation::FacetUpdate(u) => (u.entity, if u.review_proof.is_some() { "proved" } else { "bare" }),
-        Operation::RelationRemove(_) => (K::Relations, "remove"),
-    }).collect();
-    assert!(kinds.iter().any(|(e, k)| *e == K::RevisionProposals && *k == "proved"));
+    let mut kinds: Vec<(codec::EntityKind, &str)> = core
+        .operations
+        .iter()
+        .map(|op| match op {
+            Operation::RecordCreate(r) => (r.entity, "create"),
+            Operation::FacetUpdate(u) => (
+                u.entity,
+                if u.review_proof.is_some() {
+                    "proved"
+                } else {
+                    "bare"
+                },
+            ),
+            Operation::RelationRemove(_) => (K::Relations, "remove"),
+        })
+        .collect();
+    assert!(kinds
+        .iter()
+        .any(|(e, k)| *e == K::RevisionProposals && *k == "proved"));
     let fresh = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
     assert_ne!(fresh, base);
 }
 
-
 #[test]
 fn w19_claim_accept_separate_expiry_and_terminal_idempotence() {
-    use crate::storage::identity_store::AcceptPendingInput;
-    use crate::storage::lineage_store::RevisionContent;
     use crate::storage::evidence_store::EvidenceRole;
+    use crate::storage::identity_store::AcceptPendingInput;
     use crate::storage::lineage_store::ExpectedRevision;
+    use crate::storage::lineage_store::RevisionContent;
     let (s, cap, o) = graph(1);
     let k = JournalKernel::activate(&s).unwrap();
     let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
@@ -1648,7 +1741,11 @@ fn w19_claim_accept_separate_expiry_and_terminal_idempotence() {
             pending_id: claim.id.clone(),
             target_object_id: o[0].id.clone(),
             expected_base_revision_id: base.clone(),
-            content: RevisionContent { kind: "idea".into(), title: "Accepted".into(), body: "Accepted body".into() },
+            content: RevisionContent {
+                kind: "idea".into(),
+                title: "Accepted".into(),
+                body: "Accepted body".into(),
+            },
             role: EvidenceRole::Asserts,
             retracts: None,
             interpretation_label: None,
@@ -1657,8 +1754,14 @@ fn w19_claim_accept_separate_expiry_and_terminal_idempotence() {
     assert!(out.applied);
     assert_eq!(out.claim.state, "accepted");
     let core = audit(&s).pop().expect("accept bundle commits");
-    assert!(core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::ThoughtRevisions)));
-    assert!(core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::RevisionEvidence)));
+    assert!(core
+        .operations
+        .iter()
+        .any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::ThoughtRevisions)));
+    assert!(core
+        .operations
+        .iter()
+        .any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::RevisionEvidence)));
     let n = count(&s, "sync_bundles");
     let current = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
     let repeat = commit(&s, &k, |w| {
@@ -1666,7 +1769,11 @@ fn w19_claim_accept_separate_expiry_and_terminal_idempotence() {
             pending_id: claim.id.clone(),
             target_object_id: o[0].id.clone(),
             expected_base_revision_id: current.clone(),
-            content: RevisionContent { kind: "idea".into(), title: "Accepted".into(), body: "Accepted body".into() },
+            content: RevisionContent {
+                kind: "idea".into(),
+                title: "Accepted".into(),
+                body: "Accepted body".into(),
+            },
             role: EvidenceRole::Asserts,
             retracts: None,
             interpretation_label: None,
@@ -1677,7 +1784,14 @@ fn w19_claim_accept_separate_expiry_and_terminal_idempotence() {
     assert!(sep.applied);
     assert_eq!(sep.claim.state, "separated");
     let core = audit(&s).pop().expect("separate bundle commits");
-    let proof = core.operations.iter().find_map(|op| match op { Operation::FacetUpdate(u) if u.entity == K::PendingClaims => u.review_proof.clone(), _ => None }).expect("separate proof");
+    let proof = core
+        .operations
+        .iter()
+        .find_map(|op| match op {
+            Operation::FacetUpdate(u) if u.entity == K::PendingClaims => u.review_proof.clone(),
+            _ => None,
+        })
+        .expect("separate proof");
 }
 
 #[test]
@@ -1689,13 +1803,26 @@ fn w20_trigger_supersession_captured_with_derived_proof() {
     let k = JournalKernel::activate(&s).unwrap();
     let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
     let base = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
-    let proposal = commit(&s, &k, |w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &base, "Draft text", &cap.id))).0;
+    let proposal = commit(&s, &k, |w| {
+        w.insert_proposal(proposal_for(
+            &claim.id,
+            &o[0].id,
+            &base,
+            "Draft text",
+            &cap.id,
+        ))
+    })
+    .0;
     let out = commit(&s, &k, |w| {
         w.accept_pending_claim(AcceptPendingInput {
             pending_id: claim.id.clone(),
             target_object_id: o[0].id.clone(),
             expected_base_revision_id: base.clone(),
-            content: RevisionContent { kind: "idea".into(), title: "Accepted".into(), body: "Accepted body".into() },
+            content: RevisionContent {
+                kind: "idea".into(),
+                title: "Accepted".into(),
+                body: "Accepted body".into(),
+            },
             role: EvidenceRole::Asserts,
             retracts: None,
             interpretation_label: None,
@@ -1703,16 +1830,26 @@ fn w20_trigger_supersession_captured_with_derived_proof() {
     });
     assert!(out.applied);
     let core = audit(&s).pop().expect("accept with trigger bundle commits");
-    let superseded: Vec<_> = core.operations.iter().filter_map(|op| match op {
-        Operation::FacetUpdate(u) if u.entity == K::RevisionProposals => Some(u),
-        _ => None,
-    }).collect();
+    let superseded: Vec<_> = core
+        .operations
+        .iter()
+        .filter_map(|op| match op {
+            Operation::FacetUpdate(u) if u.entity == K::RevisionProposals => Some(u),
+            _ => None,
+        })
+        .collect();
     assert_eq!(superseded.len(), 1);
-    let proof = superseded[0].review_proof.as_ref().expect("supersede carries derived proof");
+    let proof = superseded[0]
+        .review_proof
+        .as_ref()
+        .expect("supersede carries derived proof");
     assert_eq!(proof.action, codec::ReviewAction::Supersede);
     assert_eq!(proof.proposal_id, Some(proposal.id.clone()));
     assert_eq!(proof.claim_id, Some(claim.id.clone()));
-    assert_eq!(proof.method, Some(codec::ReviewMethod::DerivedClaimResolution));
+    assert_eq!(
+        proof.method,
+        Some(codec::ReviewMethod::DerivedClaimResolution)
+    );
     let fresh = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
 }
 
@@ -1772,22 +1909,33 @@ fn w23_repeated_metadata_writes_emit_proof_free_bundles() {
     let deferred = commit(&s, &k, |w| w.defer_claim(&claim.id, None));
     assert_eq!(deferred.state, "deferred");
     let n = count(&s, "sync_bundles");
-    let again = commit(&s, &k, |w| w.defer_claim(&claim.id, Some("2030-01-01T00:00:00Z")));
+    let again = commit(&s, &k, |w| {
+        w.defer_claim(&claim.id, Some("2030-01-01T00:00:00Z"))
+    });
     assert_eq!(count(&s, "sync_bundles"), n + 1);
     let core = audit(&s).pop().expect("repeat defer bundle commits");
     assert_eq!(core.operations.len(), 1);
-    let Operation::FacetUpdate(update) = &core.operations[0] else { panic!("expected update"); };
+    let Operation::FacetUpdate(update) = &core.operations[0] else {
+        panic!("expected update");
+    };
     assert_eq!(update.entity, K::PendingClaims);
     assert!(update.review_proof.is_none());
 }
 
-pub(super) fn evolution_parts(policy: &str, candidates: Vec<String>) -> crate::distillation::evolution::Parts {
+pub(super) fn evolution_parts(
+    policy: &str,
+    candidates: Vec<String>,
+) -> crate::distillation::evolution::Parts {
     use crate::storage::identity_store::DecisionAudit;
     crate::distillation::evolution::Parts::synthetic(
         policy.into(),
         Some("synthetic".into()),
         vec![],
-        DecisionAudit { candidates_sent: candidates, runs: 1, ..DecisionAudit::default() },
+        DecisionAudit {
+            candidates_sent: candidates,
+            runs: 1,
+            ..DecisionAudit::default()
+        },
     )
 }
 #[test]
@@ -1802,17 +1950,46 @@ fn w24_identity_aware_evolution_commits_multi_claim_bundle() {
     let cap = commit(&s, &k, |w| w.create_capture(input(None)));
     let head = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
     let claims = vec![
-        NewKnowledgeObject { kind: "idea".into(), title: "Fresh Angle".into(), body: "Fresh body text".into(), source_start: 0, source_end: 4 },
-        NewKnowledgeObject { kind: "idea".into(), title: "Refined".into(), body: "Refined body text".into(), source_start: 0, source_end: 4 },
-        NewKnowledgeObject { kind: "idea".into(), title: "Maybe".into(), body: "Maybe body text".into(), source_start: 0, source_end: 4 },
+        NewKnowledgeObject {
+            kind: "idea".into(),
+            title: "Fresh Angle".into(),
+            body: "Fresh body text".into(),
+            source_start: 0,
+            source_end: 4,
+        },
+        NewKnowledgeObject {
+            kind: "idea".into(),
+            title: "Refined".into(),
+            body: "Refined body text".into(),
+            source_start: 0,
+            source_end: 4,
+        },
+        NewKnowledgeObject {
+            kind: "idea".into(),
+            title: "Maybe".into(),
+            body: "Maybe body text".into(),
+            source_start: 0,
+            source_end: 4,
+        },
     ];
     let planned = vec![
-        Planned { plan: Plan::New(None), parts: evolution_parts("test", vec![]) },
+        Planned {
+            plan: Plan::New(None),
+            parts: evolution_parts("test", vec![]),
+        },
         Planned {
             plan: Plan::Revise {
-                target: TargetSnapshot { object_id: o[0].id.clone(), project_id: o[0].project_id.clone(), base_revision_id: head.clone() },
+                target: TargetSnapshot {
+                    object_id: o[0].id.clone(),
+                    project_id: o[0].project_id.clone(),
+                    base_revision_id: head.clone(),
+                },
                 draft: crate::distillation::evolution::RevisionDraft {
-                    content: RevisionContent { kind: "idea".into(), title: o[0].title.clone(), body: "Revised body text".into() },
+                    content: RevisionContent {
+                        kind: "idea".into(),
+                        title: o[0].title.clone(),
+                        body: "Revised body text".into(),
+                    },
                     role: EvidenceRole::Asserts,
                     retracts: None,
                     interpretation_label: None,
@@ -1820,51 +1997,110 @@ fn w24_identity_aware_evolution_commits_multi_claim_bundle() {
             },
             parts: evolution_parts("test", vec![o[0].id.clone()]),
         },
-        Planned { plan: Plan::Uncertain(vec![o[1].id.clone()]), parts: evolution_parts("test", vec![o[1].id.clone()]) },
+        Planned {
+            plan: Plan::Uncertain(vec![o[1].id.clone()]),
+            parts: evolution_parts("test", vec![o[1].id.clone()]),
+        },
     ];
     let out = commit(&s, &k, |w| {
         let granted = || true;
-        w.evolve_capture(&cap.id, claims, planned, &crate::distillation::evolution::EvolutionLimits::default(), &granted, false)
+        w.evolve_capture(
+            &cap.id,
+            claims,
+            planned,
+            &crate::distillation::evolution::EvolutionLimits::default(),
+            &granted,
+            false,
+        )
     });
-    let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
+    let Committed::Fresh {
+        objects,
+        revised,
+        pending,
+        proposals,
+    } = out
+    else {
+        panic!("expected fresh");
+    };
     assert_eq!(objects.len(), 1);
     assert_eq!(revised.len(), 1);
     assert_eq!(pending.len(), 1);
     assert!(proposals.is_empty());
     let core = audit(&s).pop().expect("evolution bundle commits");
-    let kinds: Vec<(codec::EntityKind, &str)> = core.operations.iter().map(|op| match op {
-        Operation::RecordCreate(r) => (r.entity, "create"),
-        Operation::FacetUpdate(u) => (u.entity, if u.review_proof.is_some() { "proved" } else { "bare" }),
-        Operation::RelationRemove(_) => (K::Relations, "remove"),
-    }).collect();
-    assert!(kinds.iter().any(|(e, k)| *e == K::KnowledgeObjects && *k == "create"));
-    assert!(kinds.iter().any(|(e, k)| *e == K::ThoughtRevisions && *k == "create"));
-    assert!(kinds.iter().any(|(e, k)| *e == K::RevisionEvidence && *k == "create"));
-    assert!(kinds.iter().any(|(e, k)| *e == K::IdentityDecisions && *k == "create"));
-    assert!(kinds.iter().any(|(e, k)| *e == K::PendingClaims && *k == "create"));
+    let kinds: Vec<(codec::EntityKind, &str)> = core
+        .operations
+        .iter()
+        .map(|op| match op {
+            Operation::RecordCreate(r) => (r.entity, "create"),
+            Operation::FacetUpdate(u) => (
+                u.entity,
+                if u.review_proof.is_some() {
+                    "proved"
+                } else {
+                    "bare"
+                },
+            ),
+            Operation::RelationRemove(_) => (K::Relations, "remove"),
+        })
+        .collect();
+    assert!(kinds
+        .iter()
+        .any(|(e, k)| *e == K::KnowledgeObjects && *k == "create"));
+    assert!(kinds
+        .iter()
+        .any(|(e, k)| *e == K::ThoughtRevisions && *k == "create"));
+    assert!(kinds
+        .iter()
+        .any(|(e, k)| *e == K::RevisionEvidence && *k == "create"));
+    assert!(kinds
+        .iter()
+        .any(|(e, k)| *e == K::IdentityDecisions && *k == "create"));
+    assert!(kinds
+        .iter()
+        .any(|(e, k)| *e == K::PendingClaims && *k == "create"));
 }
 #[test]
 fn w18_review_reject_defer_reopen_and_keep_separate_paths() {
-    use crate::storage::proposal_store::{ClaimAction, ClaimResolution, ReviewAction, ReviewRequest};
+    use crate::storage::proposal_store::{
+        ClaimAction, ClaimResolution, ReviewAction, ReviewRequest,
+    };
     let (s, cap, o) = graph(1);
     let k = JournalKernel::activate(&s).unwrap();
     let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
     let base = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
-    let proposal = commit(&s, &k, |w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &base, "Draft text", &cap.id))).0;
+    let proposal = commit(&s, &k, |w| {
+        w.insert_proposal(proposal_for(
+            &claim.id,
+            &o[0].id,
+            &base,
+            "Draft text",
+            &cap.id,
+        ))
+    })
+    .0;
     let rejected = commit(&s, &k, |w| {
-        w.review_proposal(ReviewRequest { proposal_id: proposal.id.clone(), action: ReviewAction::Reject, reviewed_revision_id: None })
+        w.review_proposal(ReviewRequest {
+            proposal_id: proposal.id.clone(),
+            action: ReviewAction::Reject,
+            reviewed_revision_id: None,
+        })
     });
     assert!(rejected.applied);
     assert_eq!(rejected.proposal.state, "rejected");
     let core = audit(&s).pop().expect("reject bundle commits");
     assert_eq!(core.operations.len(), 1);
-    let deferred: ClaimResolution = commit(&s, &k, |w| w.resolve_claim(&claim.id, ClaimAction::Defer { due_at: None }));
+    let deferred: ClaimResolution = commit(&s, &k, |w| {
+        w.resolve_claim(&claim.id, ClaimAction::Defer { due_at: None })
+    });
     assert!(deferred.applied);
     assert_eq!(deferred.claim_state, "deferred");
-    let reopened: ClaimResolution = commit(&s, &k, |w| w.resolve_claim(&claim.id, ClaimAction::Reopen));
+    let reopened: ClaimResolution =
+        commit(&s, &k, |w| w.resolve_claim(&claim.id, ClaimAction::Reopen));
     assert!(reopened.applied);
     assert_eq!(reopened.claim_state, "open");
-    let separated: ClaimResolution = commit(&s, &k, |w| w.resolve_claim(&claim.id, ClaimAction::KeepSeparate));
+    let separated: ClaimResolution = commit(&s, &k, |w| {
+        w.resolve_claim(&claim.id, ClaimAction::KeepSeparate)
+    });
     assert!(separated.applied);
     assert_eq!(separated.claim_state, "separated");
     assert!(separated.created_object_id.is_some());
@@ -1881,14 +2117,26 @@ fn w25_stale_evolution_target_falls_back_inside_savepoint() {
     let k = JournalKernel::activate(&s).unwrap();
     let cap = commit(&s, &k, |w| w.create_capture(input(None)));
     let stale_base = "00000000-0000-4000-8000-000000000000".to_string();
-    let claims = vec![
-        NewKnowledgeObject { kind: "idea".into(), title: "Stale".into(), body: "Stale body".into(), source_start: 0, source_end: 4 },
-    ];
+    let claims = vec![NewKnowledgeObject {
+        kind: "idea".into(),
+        title: "Stale".into(),
+        body: "Stale body".into(),
+        source_start: 0,
+        source_end: 4,
+    }];
     let planned = vec![Planned {
         plan: Plan::Revise {
-            target: TargetSnapshot { object_id: o[0].id.clone(), project_id: o[0].project_id.clone(), base_revision_id: stale_base },
+            target: TargetSnapshot {
+                object_id: o[0].id.clone(),
+                project_id: o[0].project_id.clone(),
+                base_revision_id: stale_base,
+            },
             draft: crate::distillation::evolution::RevisionDraft {
-                content: RevisionContent { kind: "idea".into(), title: o[0].title.clone(), body: "Stale attempt body".into() },
+                content: RevisionContent {
+                    kind: "idea".into(),
+                    title: o[0].title.clone(),
+                    body: "Stale attempt body".into(),
+                },
                 role: EvidenceRole::Asserts,
                 retracts: None,
                 interpretation_label: None,
@@ -1897,16 +2145,39 @@ fn w25_stale_evolution_target_falls_back_inside_savepoint() {
         parts: evolution_parts("test", vec![o[0].id.clone()]),
     }];
     let granted = || true; // tests simulate granted permission for the fallback-path fixture
-    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims, planned, &crate::distillation::evolution::EvolutionLimits::default(), &granted, false));
-    let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
+    let out = commit(&s, &k, |w| {
+        w.evolve_capture(
+            &cap.id,
+            claims,
+            planned,
+            &crate::distillation::evolution::EvolutionLimits::default(),
+            &granted,
+            false,
+        )
+    });
+    let Committed::Fresh {
+        objects,
+        revised,
+        pending,
+        proposals,
+    } = out
+    else {
+        panic!("expected fresh");
+    };
     assert!(objects.is_empty());
     assert!(revised.is_empty());
     assert_eq!(pending.len(), 1);
     assert!(proposals.is_empty());
     let core = audit(&s).pop().expect("fallback bundle commits");
-    assert!(core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::PendingClaims)));
+    assert!(core
+        .operations
+        .iter()
+        .any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::PendingClaims)));
     assert!(!core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::ThoughtRevisions && sql::text(&r.after, "origin").unwrap() == "system")));
-    assert!(core.operations.iter().all(|op| !matches!(op, Operation::FacetUpdate(u) if u.review_proof.is_some())));
+    assert!(core
+        .operations
+        .iter()
+        .all(|op| !matches!(op, Operation::FacetUpdate(u) if u.review_proof.is_some())));
 }
 
 #[test]
@@ -1916,11 +2187,24 @@ fn w26_journal_failure_after_complete_review_sql_rolls_back() {
     let k = JournalKernel::activate(&s).unwrap();
     let claim = staged_claim(&s, &k, &cap.id, &o[0].id);
     let base = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
-    let proposal = commit(&s, &k, |w| w.insert_proposal(proposal_for(&claim.id, &o[0].id, &base, "Draft text", &cap.id))).0;
+    let proposal = commit(&s, &k, |w| {
+        w.insert_proposal(proposal_for(
+            &claim.id,
+            &o[0].id,
+            &base,
+            "Draft text",
+            &cap.id,
+        ))
+    })
+    .0;
     let before = snapshot(&s);
     assert!(matches!(
         k.write_fault(Fault::At(Stage::Commit), |w| {
-            w.review_proposal(ReviewRequest { proposal_id: proposal.id.clone(), action: ReviewAction::Approve, reviewed_revision_id: Some(base.clone()) })
+            w.review_proposal(ReviewRequest {
+                proposal_id: proposal.id.clone(),
+                action: ReviewAction::Approve,
+                reviewed_revision_id: Some(base.clone()),
+            })
         }),
         Err(E::Journal(J::Injected))
     ));
@@ -1934,22 +2218,55 @@ fn w27_multi_entity_transaction_finalizes_exactly_one_bundle() {
     let n = count(&s, "sync_bundles");
     let out = commit(&s, &k, |w| {
         let project = w.create_project("Joint space")?;
-        let capture = w.create_capture(CreateCaptureInput { source: "text".into(), content: "Joint capture".into(), project_id: Some(project.id.clone()) })?;
-        let objects = w.record_distillation(&capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: "Joint".into(), body: "Joint body".into(), source_start: 0, source_end: 4 }])?;
-        let edge = w.create_relation(NewRelation { kind: "depends_on".into(), source_object_id: o[0].id.clone(), target_object_id: objects[0].id.clone() }, "model")?;
+        let capture = w.create_capture(CreateCaptureInput {
+            source: "text".into(),
+            content: "Joint capture".into(),
+            project_id: Some(project.id.clone()),
+        })?;
+        let objects = w.record_distillation(
+            &capture.id,
+            vec![NewKnowledgeObject {
+                kind: "idea".into(),
+                title: "Joint".into(),
+                body: "Joint body".into(),
+                source_start: 0,
+                source_end: 4,
+            }],
+        )?;
+        let edge = w.create_relation(
+            NewRelation {
+                kind: "depends_on".into(),
+                source_object_id: o[0].id.clone(),
+                target_object_id: objects[0].id.clone(),
+            },
+            "model",
+        )?;
         Ok((project, capture, objects, edge))
     });
     assert_eq!(count(&s, "sync_bundles"), n + 1);
     let core = audit(&s).pop().expect("joint bundle commits");
-    let mut entities: Vec<codec::EntityKind> = core.operations.iter().map(|op| match op {
-        Operation::RecordCreate(r) => r.entity,
-        Operation::FacetUpdate(u) => u.entity,
-        Operation::RelationRemove(_) => K::Relations,
-    }).collect();
+    let mut entities: Vec<codec::EntityKind> = core
+        .operations
+        .iter()
+        .map(|op| match op {
+            Operation::RecordCreate(r) => r.entity,
+            Operation::FacetUpdate(u) => u.entity,
+            Operation::RelationRemove(_) => K::Relations,
+        })
+        .collect();
     entities.sort();
     entities.dedup();
-    for expected in [K::Projects, K::Captures, K::DistillationRuns, K::KnowledgeObjects, K::Relations] {
-        assert!(entities.contains(&expected), "joint bundle covers {expected:?}");
+    for expected in [
+        K::Projects,
+        K::Captures,
+        K::DistillationRuns,
+        K::KnowledgeObjects,
+        K::Relations,
+    ] {
+        assert!(
+            entities.contains(&expected),
+            "joint bundle covers {expected:?}"
+        );
     }
     assert!(out.1.id != cap.id);
 }
@@ -1966,12 +2283,26 @@ fn w28_withdrawn_revise_permission_falls_back_without_revision() {
     let cap = commit(&s, &k, |w| w.create_capture(input(None)));
     let head = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
     let permitted = Cell::new(true);
-    let claims = vec![NewKnowledgeObject { kind: "idea".into(), title: "Revise".into(), body: "Revise body".into(), source_start: 0, source_end: 4 }];
+    let claims = vec![NewKnowledgeObject {
+        kind: "idea".into(),
+        title: "Revise".into(),
+        body: "Revise body".into(),
+        source_start: 0,
+        source_end: 4,
+    }];
     let planned = vec![Planned {
         plan: Plan::Revise {
-            target: TargetSnapshot { object_id: o[0].id.clone(), project_id: o[0].project_id.clone(), base_revision_id: head.clone() },
+            target: TargetSnapshot {
+                object_id: o[0].id.clone(),
+                project_id: o[0].project_id.clone(),
+                base_revision_id: head.clone(),
+            },
             draft: crate::distillation::evolution::RevisionDraft {
-                content: RevisionContent { kind: "idea".into(), title: o[0].title.clone(), body: "Permitted-then-revoked body".into() },
+                content: RevisionContent {
+                    kind: "idea".into(),
+                    title: o[0].title.clone(),
+                    body: "Permitted-then-revoked body".into(),
+                },
                 role: crate::storage::evidence_store::EvidenceRole::Asserts,
                 retracts: None,
                 interpretation_label: None,
@@ -1980,23 +2311,54 @@ fn w28_withdrawn_revise_permission_falls_back_without_revision() {
         parts: evolution_parts("test", vec![o[0].id.clone()]),
     }];
     permitted.set(false);
-    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims, planned, &EvolutionLimits::default(), &|| permitted.get(), false));
-    let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
+    let out = commit(&s, &k, |w| {
+        w.evolve_capture(
+            &cap.id,
+            claims,
+            planned,
+            &EvolutionLimits::default(),
+            &|| permitted.get(),
+            false,
+        )
+    });
+    let Committed::Fresh {
+        objects,
+        revised,
+        pending,
+        proposals,
+    } = out
+    else {
+        panic!("expected fresh");
+    };
     assert!(objects.is_empty());
     assert!(revised.is_empty(), "revoked permission must not revise");
     assert_eq!(pending.len(), 1);
     assert!(proposals.is_empty());
     assert_eq!(s.current_revision_id_of(&o[0].id).unwrap().unwrap(), head);
     let core = audit(&s).pop().expect("fallback bundle commits");
-    assert!(!core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::ThoughtRevisions)));
-    assert!(!core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::RevisionEvidence)));
-    assert!(core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::PendingClaims)));
-    assert!(core.operations.iter().all(|op| !matches!(op, Operation::FacetUpdate(u) if u.review_proof.is_some())));
+    assert!(!core
+        .operations
+        .iter()
+        .any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::ThoughtRevisions)));
+    assert!(!core
+        .operations
+        .iter()
+        .any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::RevisionEvidence)));
+    assert!(core
+        .operations
+        .iter()
+        .any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::PendingClaims)));
+    assert!(core
+        .operations
+        .iter()
+        .all(|op| !matches!(op, Operation::FacetUpdate(u) if u.review_proof.is_some())));
 }
 
 #[test]
 fn w29_withdrawn_propose_permission_stores_no_proposal() {
-    use crate::distillation::evolution::{Committed, EvolutionLimits, Plan, Planned, ProposalDraft};
+    use crate::distillation::evolution::{
+        Committed, EvolutionLimits, Plan, Planned, ProposalDraft,
+    };
     use crate::identity::TargetSnapshot;
     use crate::storage::evidence_store::EvidenceRole;
     use crate::storage::knowledge_store::NewKnowledgeObject;
@@ -2008,17 +2370,32 @@ fn w29_withdrawn_propose_permission_stores_no_proposal() {
     let cap = commit(&s, &k, |w| w.create_capture(input(None)));
     let head = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
     let permitted = Cell::new(true);
-    let claims = vec![NewKnowledgeObject { kind: "idea".into(), title: "Propose".into(), body: "Propose body".into(), source_start: 0, source_end: 4 }];
+    let claims = vec![NewKnowledgeObject {
+        kind: "idea".into(),
+        title: "Propose".into(),
+        body: "Propose body".into(),
+        source_start: 0,
+        source_end: 4,
+    }];
     let planned = vec![Planned {
         plan: Plan::Propose {
-            target: TargetSnapshot { object_id: o[0].id.clone(), project_id: o[0].project_id.clone(), base_revision_id: head },
+            target: TargetSnapshot {
+                object_id: o[0].id.clone(),
+                project_id: o[0].project_id.clone(),
+                base_revision_id: head,
+            },
             draft: ProposalDraft {
                 change: "additive",
                 kind: "idea".into(),
                 title: "Draft".into(),
                 body: "Proposed text".into(),
                 retracts: None,
-                evidence: vec![EvidenceRef { role: "claim".into(), capture_id: cap.id.clone(), start: 0, end: 4 }],
+                evidence: vec![EvidenceRef {
+                    role: "claim".into(),
+                    capture_id: cap.id.clone(),
+                    start: 0,
+                    end: 4,
+                }],
                 synthesis_model: "synthetic".into(),
                 verifier_model: "synthetic".into(),
                 mode: "same_family_review",
@@ -2027,15 +2404,41 @@ fn w29_withdrawn_propose_permission_stores_no_proposal() {
         parts: evolution_parts("test", vec![o[0].id.clone()]),
     }];
     permitted.set(false);
-    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims, planned, &EvolutionLimits::default(), &|| permitted.get(), false));
-    let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
+    let out = commit(&s, &k, |w| {
+        w.evolve_capture(
+            &cap.id,
+            claims,
+            planned,
+            &EvolutionLimits::default(),
+            &|| permitted.get(),
+            false,
+        )
+    });
+    let Committed::Fresh {
+        objects,
+        revised,
+        pending,
+        proposals,
+    } = out
+    else {
+        panic!("expected fresh");
+    };
     assert!(objects.is_empty());
     assert!(revised.is_empty());
     assert_eq!(pending.len(), 1);
-    assert!(proposals.is_empty(), "withdrawn permission must not store a proposal");
+    assert!(
+        proposals.is_empty(),
+        "withdrawn permission must not store a proposal"
+    );
     let core = audit(&s).pop().expect("fallback bundle commits");
-    assert!(!core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::RevisionProposals)));
-    assert!(core.operations.iter().any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::PendingClaims)));
+    assert!(!core
+        .operations
+        .iter()
+        .any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::RevisionProposals)));
+    assert!(core
+        .operations
+        .iter()
+        .any(|op| matches!(op, Operation::RecordCreate(r) if r.entity == K::PendingClaims)));
 }
 
 #[test]
@@ -2050,12 +2453,26 @@ fn w30_granted_permission_admits_planned_automatic_revision() {
     let cap = commit(&s, &k, |w| w.create_capture(input(None)));
     let head = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
     let permitted = Cell::new(true);
-    let claims = vec![NewKnowledgeObject { kind: "idea".into(), title: "Revise".into(), body: "Revise body".into(), source_start: 0, source_end: 4 }];
+    let claims = vec![NewKnowledgeObject {
+        kind: "idea".into(),
+        title: "Revise".into(),
+        body: "Revise body".into(),
+        source_start: 0,
+        source_end: 4,
+    }];
     let planned = vec![Planned {
         plan: Plan::Revise {
-            target: TargetSnapshot { object_id: o[0].id.clone(), project_id: o[0].project_id.clone(), base_revision_id: head.clone() },
+            target: TargetSnapshot {
+                object_id: o[0].id.clone(),
+                project_id: o[0].project_id.clone(),
+                base_revision_id: head.clone(),
+            },
             draft: crate::distillation::evolution::RevisionDraft {
-                content: RevisionContent { kind: "idea".into(), title: o[0].title.clone(), body: "Granted revision body".into() },
+                content: RevisionContent {
+                    kind: "idea".into(),
+                    title: o[0].title.clone(),
+                    body: "Granted revision body".into(),
+                },
                 role: crate::storage::evidence_store::EvidenceRole::Asserts,
                 retracts: None,
                 interpretation_label: None,
@@ -2063,8 +2480,25 @@ fn w30_granted_permission_admits_planned_automatic_revision() {
         },
         parts: evolution_parts("test", vec![o[0].id.clone()]),
     }];
-    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims, planned, &EvolutionLimits::default(), &|| permitted.get(), false));
-    let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
+    let out = commit(&s, &k, |w| {
+        w.evolve_capture(
+            &cap.id,
+            claims,
+            planned,
+            &EvolutionLimits::default(),
+            &|| permitted.get(),
+            false,
+        )
+    });
+    let Committed::Fresh {
+        objects,
+        revised,
+        pending,
+        proposals,
+    } = out
+    else {
+        panic!("expected fresh");
+    };
     assert!(objects.is_empty());
     assert_eq!(revised.len(), 1);
     assert!(pending.is_empty());
@@ -2083,25 +2517,91 @@ fn w31_non_default_limits_shape_evolution_outcomes() {
     let k = JournalKernel::activate(&s).unwrap();
     let cap = commit(&s, &k, |w| w.create_capture(input(None)));
     let head = s.current_revision_id_of(&o[0].id).unwrap().unwrap();
-    let claims = || vec![NewKnowledgeObject { kind: "idea".into(), title: "Maybe".into(), body: "Maybe body".into(), source_start: 0, source_end: 4 }];
-    let uncertain = |candidates: Vec<String>| Planned { plan: Plan::Uncertain(candidates.clone()), parts: evolution_parts("test", candidates) };
-    let strict = EvolutionLimits { max_unresolved_pending: 0, ..EvolutionLimits::default() };
-    let out = commit(&s, &k, |w| w.evolve_capture(&cap.id, claims(), vec![uncertain(vec![o[0].id.clone()])], &strict, &|| true, false));
-    let Committed::Fresh { objects, revised, pending, proposals } = out else { panic!("expected fresh"); };
+    let claims = || {
+        vec![NewKnowledgeObject {
+            kind: "idea".into(),
+            title: "Maybe".into(),
+            body: "Maybe body".into(),
+            source_start: 0,
+            source_end: 4,
+        }]
+    };
+    let uncertain = |candidates: Vec<String>| Planned {
+        plan: Plan::Uncertain(candidates.clone()),
+        parts: evolution_parts("test", candidates),
+    };
+    let strict = EvolutionLimits {
+        max_unresolved_pending: 0,
+        ..EvolutionLimits::default()
+    };
+    let out = commit(&s, &k, |w| {
+        w.evolve_capture(
+            &cap.id,
+            claims(),
+            vec![uncertain(vec![o[0].id.clone()])],
+            &strict,
+            &|| true,
+            false,
+        )
+    });
+    let Committed::Fresh {
+        objects,
+        revised,
+        pending,
+        proposals,
+    } = out
+    else {
+        panic!("expected fresh");
+    };
     assert_eq!(objects.len(), 1);
     assert!(revised.is_empty());
     assert!(pending.is_empty());
     assert!(proposals.is_empty());
     let decision: (String, Option<String>) = s.connection.lock().unwrap().query_row("SELECT outcome,unchecked_reason FROM identity_decisions WHERE capture_id=?1 AND ordinal=0", [&cap.id], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
-    assert_eq!(decision, ("unchecked".to_string(), Some("review_quota".to_string())));
+    assert_eq!(
+        decision,
+        ("unchecked".to_string(), Some("review_quota".to_string()))
+    );
     let cap2 = commit(&s, &k, |w| w.create_capture(input(None)));
-    let relaxed = EvolutionLimits { pending_due_days: 1, ..EvolutionLimits::default() };
-    let out = commit(&s, &k, |w| w.evolve_capture(&cap2.id, claims(), vec![uncertain(vec![o[0].id.clone()])], &relaxed, &|| true, false));
-    let Committed::Fresh { pending, .. } = out else { panic!("expected fresh"); };
+    let relaxed = EvolutionLimits {
+        pending_due_days: 1,
+        ..EvolutionLimits::default()
+    };
+    let out = commit(&s, &k, |w| {
+        w.evolve_capture(
+            &cap2.id,
+            claims(),
+            vec![uncertain(vec![o[0].id.clone()])],
+            &relaxed,
+            &|| true,
+            false,
+        )
+    });
+    let Committed::Fresh { pending, .. } = out else {
+        panic!("expected fresh");
+    };
     assert_eq!(pending.len(), 1);
-    let due: String = s.connection.lock().unwrap().query_row("SELECT due_at FROM pending_claims WHERE id=?1", [&pending[0].id], |r| r.get(0)).unwrap();
-    let now_secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
-    let due_secs = time::OffsetDateTime::parse(&due, &time::format_description::well_known::Rfc3339).unwrap().unix_timestamp();
+    let due: String = s
+        .connection
+        .lock()
+        .unwrap()
+        .query_row(
+            "SELECT due_at FROM pending_claims WHERE id=?1",
+            [&pending[0].id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    let now_secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    let due_secs =
+        time::OffsetDateTime::parse(&due, &time::format_description::well_known::Rfc3339)
+            .unwrap()
+            .unix_timestamp();
     let day = 24 * 3600;
-    assert!((due_secs - now_secs - day).abs() < 3600, "due date honors the supplied 1-day policy");
+    assert!(
+        (due_secs - now_secs - day).abs() < 3600,
+        "due date honors the supplied 1-day policy"
+    );
 }

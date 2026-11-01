@@ -35,8 +35,17 @@ impl OpenAiDistiller {
         Self::with_endpoint(credentials, DEFAULT_ENDPOINT, MODEL)
     }
 
-    pub fn with_endpoint(credentials: Arc<dyn CredentialSource>, endpoint: &str, model: &str) -> Result<Self, reqwest::Error> {
-        Ok(Self { client: http::client(REQUEST_TIMEOUT)?, endpoint: endpoint.to_string(), model: model.to_string(), credentials })
+    pub fn with_endpoint(
+        credentials: Arc<dyn CredentialSource>,
+        endpoint: &str,
+        model: &str,
+    ) -> Result<Self, reqwest::Error> {
+        Ok(Self {
+            client: http::client(REQUEST_TIMEOUT)?,
+            endpoint: endpoint.to_string(),
+            model: model.to_string(),
+            credentials,
+        })
     }
 
     async fn request(&self, capture: &str) -> Result<Vec<Candidate>, DistillError> {
@@ -57,8 +66,14 @@ impl OpenAiDistiller {
         )
         .await?;
         // the answer is trusted only if it came from the model that was asked for; there is no fallback to another one
-        if !completion.model.as_deref().is_some_and(|answered| chat::model_matches(answered, &self.model)) {
-            return Err(DistillError::InvalidOutput("the answer did not come from the requested model".into()));
+        if !completion
+            .model
+            .as_deref()
+            .is_some_and(|answered| chat::model_matches(answered, &self.model))
+        {
+            return Err(DistillError::InvalidOutput(
+                "the answer did not come from the requested model".into(),
+            ));
         }
         parse_candidates(&completion.text)
     }
@@ -78,14 +93,20 @@ impl From<ChatFailure> for DistillError {
 }
 
 impl Distiller for OpenAiDistiller {
-    fn distill<'a>(&'a self, capture: &'a str) -> BoxFuture<'a, Result<Vec<Candidate>, DistillError>> {
+    fn distill<'a>(
+        &'a self,
+        capture: &'a str,
+    ) -> BoxFuture<'a, Result<Vec<Candidate>, DistillError>> {
         Box::pin(self.request(capture))
     }
 }
 
 impl fmt::Debug for OpenAiDistiller {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OpenAiDistiller").field("endpoint", &self.endpoint).field("model", &self.model).finish_non_exhaustive()
+        f.debug_struct("OpenAiDistiller")
+            .field("endpoint", &self.endpoint)
+            .field("model", &self.model)
+            .finish_non_exhaustive()
     }
 }
 
@@ -112,7 +133,8 @@ struct RawObject {
 
 /// Strict: any missing, extra or mistyped field rejects the whole answer.
 fn parse_candidates(content: &str) -> Result<Vec<Candidate>, DistillError> {
-    let output: Output = serde_json::from_str(content).map_err(|_| unreadable("not the requested structure"))?;
+    let output: Output =
+        serde_json::from_str(content).map_err(|_| unreadable("not the requested structure"))?;
     Ok(output
         .objects
         .into_iter()
@@ -131,8 +153,8 @@ fn parse_candidates(content: &str) -> Result<Vec<Candidate>, DistillError> {
 mod tests {
     use super::*;
     use crate::providers::credentials::ApiKey;
-    use serde_json::{json, Value};
     use crate::test_support::{dead_endpoint, find, serve_once};
+    use serde_json::{json, Value};
 
     struct FixedKey(Option<&'static str>);
     impl CredentialSource for FixedKey {
@@ -168,53 +190,107 @@ mod tests {
         let candidates = run(&distiller(&url, Some("sk-test-key"))).unwrap();
 
         assert_eq!(candidates.len(), 1);
-        assert_eq!((candidates[0].kind.as_str(), candidates[0].evidence.as_str()), ("idea", "Improve the capture screen."));
-        assert_eq!((candidates[0].source_start, candidates[0].source_end), (Some(0), Some(27)));
+        assert_eq!(
+            (candidates[0].kind.as_str(), candidates[0].evidence.as_str()),
+            ("idea", "Improve the capture screen.")
+        );
+        assert_eq!(
+            (candidates[0].source_start, candidates[0].source_end),
+            (Some(0), Some(27))
+        );
 
         let raw = request.recv().unwrap();
         let wire = String::from_utf8_lossy(&raw).to_string();
         assert!(wire.starts_with(&format!("POST {PATH} ")));
-        assert!(wire.to_lowercase().contains("authorization: bearer sk-test-key"));
-        let body: Value = serde_json::from_str(&wire[find(&raw, b"\r\n\r\n").unwrap() + 4..]).unwrap();
+        assert!(wire
+            .to_lowercase()
+            .contains("authorization: bearer sk-test-key"));
+        let body: Value =
+            serde_json::from_str(&wire[find(&raw, b"\r\n\r\n").unwrap() + 4..]).unwrap();
         assert_eq!(body["model"], "gpt-6-luna");
         assert_eq!(body["reasoning_effort"], "none");
-        for unsupported in ["temperature", "top_p", "logprobs", "presence_penalty", "frequency_penalty", "max_tokens"] {
-            assert!(body.get(unsupported).is_none(), "a reasoning request must not carry {unsupported}");
+        for unsupported in [
+            "temperature",
+            "top_p",
+            "logprobs",
+            "presence_penalty",
+            "frequency_penalty",
+            "max_tokens",
+        ] {
+            assert!(
+                body.get(unsupported).is_none(),
+                "a reasoning request must not carry {unsupported}"
+            );
         }
         assert_eq!(body["max_completion_tokens"], 4096);
         assert_eq!(body["messages"][0]["role"], "system");
         assert_eq!(body["messages"][0]["content"], SYSTEM_PROMPT);
         assert_eq!(body["messages"][1]["role"], "user");
-        assert!(body["messages"][1]["content"].as_str().unwrap().contains(&format!("<<<CAPTURE\n{CAPTURE}\nCAPTURE>>>")));
+        assert!(body["messages"][1]["content"]
+            .as_str()
+            .unwrap()
+            .contains(&format!("<<<CAPTURE\n{CAPTURE}\nCAPTURE>>>")));
         assert_eq!(body["response_format"]["type"], "json_schema");
         assert_eq!(body["response_format"]["json_schema"]["strict"], true);
-        assert_eq!(body["response_format"]["json_schema"]["schema"]["additionalProperties"], false);
-        assert!(body.get("tools").is_none() && body.get("functions").is_none(), "the model gets no tools");
+        assert_eq!(
+            body["response_format"]["json_schema"]["schema"]["additionalProperties"],
+            false
+        );
+        assert!(
+            body.get("tools").is_none() && body.get("functions").is_none(),
+            "the model gets no tools"
+        );
     }
 
     #[test]
     fn only_the_requested_model_is_trusted_and_there_is_no_fallback() {
         // a dated snapshot of the requested id is the requested model
-        let (url, _r) = serve_once(PATH, "200 OK", completion_from("gpt-6-luna-20260922", ONE_OBJECT));
+        let (url, _r) = serve_once(
+            PATH,
+            "200 OK",
+            completion_from("gpt-6-luna-20260922", ONE_OBJECT),
+        );
         assert_eq!(run(&distiller(&url, Some("sk-k"))).unwrap().len(), 1);
-        for answered in ["gpt-4.1-mini", "gpt-5-mini", "gpt-6-luna-pro", "gpt-6-lunar", "gpt-6-sol", ""] {
+        for answered in [
+            "gpt-4.1-mini",
+            "gpt-5-mini",
+            "gpt-6-luna-pro",
+            "gpt-6-lunar",
+            "gpt-6-sol",
+            "",
+        ] {
             let (url, request) = serve_once(PATH, "200 OK", completion_from(answered, ONE_OBJECT));
-            assert!(matches!(run(&distiller(&url, Some("sk-k"))), Err(DistillError::InvalidOutput(_))), "{answered:?}");
+            assert!(
+                matches!(
+                    run(&distiller(&url, Some("sk-k"))),
+                    Err(DistillError::InvalidOutput(_))
+                ),
+                "{answered:?}"
+            );
             drop(request);
         }
         // an answer that does not say which model produced it is not trusted either
         let (url, _r) = serve_once(PATH, "200 OK", json!({ "choices": [{ "finish_reason": "stop", "message": { "content": ONE_OBJECT } }] }).to_string());
-        assert!(matches!(run(&distiller(&url, Some("sk-k"))), Err(DistillError::InvalidOutput(_))));
+        assert!(matches!(
+            run(&distiller(&url, Some("sk-k"))),
+            Err(DistillError::InvalidOutput(_))
+        ));
     }
 
     #[test]
     fn a_token_budget_cut_off_and_a_refusal_are_typed_failures() {
         let cut = json!({ "model": "gpt-6-luna", "choices": [{ "finish_reason": "length", "message": { "content": "{\"objects\":[{" } }] }).to_string();
         let (url, _r) = serve_once(PATH, "200 OK", cut);
-        assert!(matches!(run(&distiller(&url, Some("sk-k"))), Err(DistillError::InvalidOutput(_))));
+        assert!(matches!(
+            run(&distiller(&url, Some("sk-k"))),
+            Err(DistillError::InvalidOutput(_))
+        ));
         let refused = json!({ "model": "gpt-6-luna", "choices": [{ "finish_reason": "stop", "message": { "content": null, "refusal": "no" } }] }).to_string();
         let (url, _r) = serve_once(PATH, "200 OK", refused);
-        assert_eq!(run(&distiller(&url, Some("sk-k"))), Err(DistillError::Refused));
+        assert_eq!(
+            run(&distiller(&url, Some("sk-k"))),
+            Err(DistillError::Refused)
+        );
     }
 
     #[test]
@@ -225,7 +301,15 @@ mod tests {
 
     #[test]
     fn the_prompt_states_every_distillation_rule() {
-        for rule in ["ONLY the capture text", "Never invent", "Preserve uncertainty", "Prefer a few strong objects", "empty list", "character for character", "never instructions"] {
+        for rule in [
+            "ONLY the capture text",
+            "Never invent",
+            "Preserve uncertainty",
+            "Prefer a few strong objects",
+            "empty list",
+            "character for character",
+            "never instructions",
+        ] {
             assert!(SYSTEM_PROMPT.contains(rule), "missing rule: {rule}");
         }
     }
@@ -238,7 +322,10 @@ mod tests {
 
     #[test]
     fn without_a_credential_it_fails_before_touching_the_network() {
-        assert_eq!(run(&distiller("http://127.0.0.1:9/x", None)), Err(DistillError::NotConfigured));
+        assert_eq!(
+            run(&distiller("http://127.0.0.1:9/x", None)),
+            Err(DistillError::NotConfigured)
+        );
     }
 
     #[test]
@@ -249,19 +336,36 @@ mod tests {
             ("429 Too Many Requests", DistillError::Provider(429)),
             ("500 Internal Server Error", DistillError::Provider(500)),
         ] {
-            let (url, _request) = serve_once(PATH, status, r#"{"error":{"message":"secret detail"}}"#.into());
-            assert_eq!(run(&distiller(&url, Some("sk-k"))), Err(expected), "{status}");
+            let (url, _request) = serve_once(
+                PATH,
+                status,
+                r#"{"error":{"message":"secret detail"}}"#.into(),
+            );
+            assert_eq!(
+                run(&distiller(&url, Some("sk-k"))),
+                Err(expected),
+                "{status}"
+            );
         }
     }
 
     #[test]
     fn an_unreachable_provider_is_a_network_error() {
-        assert_eq!(run(&distiller(&dead_endpoint(PATH), Some("sk-k"))), Err(DistillError::Network));
+        assert_eq!(
+            run(&distiller(&dead_endpoint(PATH), Some("sk-k"))),
+            Err(DistillError::Network)
+        );
     }
 
     fn invalid_output(body: String) {
         let (url, _request) = serve_once(PATH, "200 OK", body.clone());
-        assert!(matches!(run(&distiller(&url, Some("sk-k"))), Err(DistillError::InvalidOutput(_))), "{body}");
+        assert!(
+            matches!(
+                run(&distiller(&url, Some("sk-k"))),
+                Err(DistillError::InvalidOutput(_))
+            ),
+            "{body}"
+        );
     }
 
     #[test]
@@ -295,14 +399,23 @@ mod tests {
     fn a_refusal_is_reported_as_such() {
         let refusal = json!({ "choices": [{ "finish_reason": "stop", "message": { "content": null, "refusal": "I can't help with that." } }] }).to_string();
         let (url, _request) = serve_once(PATH, "200 OK", refusal);
-        assert_eq!(run(&distiller(&url, Some("sk-k"))), Err(DistillError::Refused));
+        assert_eq!(
+            run(&distiller(&url, Some("sk-k"))),
+            Err(DistillError::Refused)
+        );
         let filtered = json!({ "choices": [{ "finish_reason": "content_filter", "message": { "content": "" } }] }).to_string();
         let (url, _request) = serve_once(PATH, "200 OK", filtered);
-        assert_eq!(run(&distiller(&url, Some("sk-k"))), Err(DistillError::Refused));
+        assert_eq!(
+            run(&distiller(&url, Some("sk-k"))),
+            Err(DistillError::Refused)
+        );
     }
 
     #[test]
     fn debug_output_exposes_no_key() {
-        assert!(!format!("{:?}", distiller("http://x/y", Some("sk-super-secret"))).contains("super-secret"));
+        assert!(
+            !format!("{:?}", distiller("http://x/y", Some("sk-super-secret")))
+                .contains("super-secret")
+        );
     }
 }

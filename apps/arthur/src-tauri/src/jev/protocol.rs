@@ -39,7 +39,11 @@ pub struct Mapping {
 
 impl Default for Mapping {
     fn default() -> Self {
-        Self { risky_relation: 0.3, referent_resolved: 0.7, explicit_supersession: 0.7 }
+        Self {
+            risky_relation: 0.3,
+            referent_resolved: 0.7,
+            explicit_supersession: 0.7,
+        }
     }
 }
 
@@ -63,23 +67,48 @@ struct Request {
 }
 
 enum Question {
-    Noul { instructions: String, criteria_true: String, criteria_false: String },
-    Choice { instructions: String, criteria: Vec<(String, String)> },
+    Noul {
+        instructions: String,
+        criteria_true: String,
+        criteria_false: String,
+    },
+    Choice {
+        instructions: String,
+        criteria: Vec<(String, String)>,
+    },
 }
 
 impl Serialize for Question {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(Some(3))?;
         match self {
-            Question::Noul { instructions, criteria_true, criteria_false } => {
+            Question::Noul {
+                instructions,
+                criteria_true,
+                criteria_false,
+            } => {
                 map.serialize_entry("type", "noul")?;
                 map.serialize_entry("instructions", instructions)?;
-                map.serialize_entry("criteria", &json!({ "true": criteria_true, "false": criteria_false }))?;
+                map.serialize_entry(
+                    "criteria",
+                    &json!({ "true": criteria_true, "false": criteria_false }),
+                )?;
             }
-            Question::Choice { instructions, criteria } => {
+            Question::Choice {
+                instructions,
+                criteria,
+            } => {
                 map.serialize_entry("type", "choice")?;
                 map.serialize_entry("instructions", instructions)?;
-                map.serialize_entry("criteria", &Ordered(criteria.iter().map(|(k, v)| (k.clone(), Value::String(v.clone()))).collect()))?;
+                map.serialize_entry(
+                    "criteria",
+                    &Ordered(
+                        criteria
+                            .iter()
+                            .map(|(k, v)| (k.clone(), Value::String(v.clone())))
+                            .collect(),
+                    ),
+                )?;
             }
         }
         map.end()
@@ -140,7 +169,13 @@ pub fn build_run(claim: &Claim, candidates: &[Candidate], run: usize) -> Result<
     if candidates.iter().any(|c| c.project.id != claim.project.id) {
         return Err(JevError::CrossProject);
     }
-    let total = chars(&claim.title) + chars(&claim.body) + chars(&claim.evidence_text) + candidates.iter().map(|c| chars(&c.revision.title) + chars(&c.revision.body)).sum::<usize>();
+    let total = chars(&claim.title)
+        + chars(&claim.body)
+        + chars(&claim.evidence_text)
+        + candidates
+            .iter()
+            .map(|c| chars(&c.revision.title) + chars(&c.revision.body))
+            .sum::<usize>();
     if total > MAX_STATE_CHARS {
         return Err(JevError::InputTooLarge);
     }
@@ -185,8 +220,7 @@ pub fn build_run(claim: &Claim, candidates: &[Candidate], run: usize) -> Result<
             },
         ),
     ];
-    for i in 0..n {
-        let id = LETTERS[i];
+    for &id in &LETTERS[..n] {
         questions.push((
             format!("redef_{id}"),
             Question::Noul {
@@ -203,8 +237,13 @@ pub fn build_run(claim: &Claim, candidates: &[Candidate], run: usize) -> Result<
         questions.push((
             format!("kind_{id}"),
             Question::Choice {
-                instructions: format!("What kind of change does `new_capture` make to the idea with id \"{id}\"?"),
-                criteria: permutation(kinds.len(), run).into_iter().map(|k| (kinds[k].0.to_string(), kinds[k].1.to_string())).collect(),
+                instructions: format!(
+                    "What kind of change does `new_capture` make to the idea with id \"{id}\"?"
+                ),
+                criteria: permutation(kinds.len(), run)
+                    .into_iter()
+                    .map(|k| (kinds[k].0.to_string(), kinds[k].1.to_string()))
+                    .collect(),
             },
         ));
         let changes = [
@@ -217,13 +256,23 @@ pub fn build_run(claim: &Claim, candidates: &[Candidate], run: usize) -> Result<
         questions.push((
             format!("change_{id}"),
             Question::Choice {
-                instructions: format!("Which best describes how `new_capture` changes the idea with id \"{id}\"?"),
-                criteria: permutation(changes.len(), run).into_iter().map(|k| (changes[k].0.to_string(), changes[k].1.to_string())).collect(),
+                instructions: format!(
+                    "Which best describes how `new_capture` changes the idea with id \"{id}\"?"
+                ),
+                criteria: permutation(changes.len(), run)
+                    .into_iter()
+                    .map(|k| (changes[k].0.to_string(), changes[k].1.to_string()))
+                    .collect(),
             },
         ));
     }
-    let body = serde_json::to_string(&Request { state, questions }).map_err(|_| JevError::Malformed("request"))?;
-    Ok(RunPlan { body, candidates: n, relation_options: options })
+    let body = serde_json::to_string(&Request { state, questions })
+        .map_err(|_| JevError::Malformed("request"))?;
+    Ok(RunPlan {
+        body,
+        candidates: n,
+        relation_options: options,
+    })
 }
 
 /// Token usage when the provider reports it.
@@ -239,31 +288,62 @@ pub struct ParsedRun {
 }
 
 fn unit(value: &Value) -> Option<f64> {
-    value.as_f64().filter(|x| x.is_finite() && (0.0..=1.0).contains(x))
+    value
+        .as_f64()
+        .filter(|x| x.is_finite() && (0.0..=1.0).contains(x))
 }
 
 fn noul(answers: &serde_json::Map<String, Value>, key: &str) -> Result<f64, JevError> {
-    let answer = answers.get(key).and_then(Value::as_object).ok_or(JevError::Malformed("missing answer"))?;
+    let answer = answers
+        .get(key)
+        .and_then(Value::as_object)
+        .ok_or(JevError::Malformed("missing answer"))?;
     if answer.get("type").and_then(Value::as_str) != Some("noul") {
         return Err(JevError::Malformed("wrong answer type"));
     }
-    answer.get("noul").and_then(unit).ok_or(JevError::Malformed("bad probability"))
+    answer
+        .get("noul")
+        .and_then(unit)
+        .ok_or(JevError::Malformed("bad probability"))
 }
 
-fn choice(answers: &serde_json::Map<String, Value>, key: &str, options: &[&str]) -> Result<BTreeMap<String, f64>, JevError> {
-    let answer = answers.get(key).and_then(Value::as_object).ok_or(JevError::Malformed("missing answer"))?;
+fn choice(
+    answers: &serde_json::Map<String, Value>,
+    key: &str,
+    options: &[&str],
+) -> Result<BTreeMap<String, f64>, JevError> {
+    let answer = answers
+        .get(key)
+        .and_then(Value::as_object)
+        .ok_or(JevError::Malformed("missing answer"))?;
     if answer.get("type").and_then(Value::as_str) != Some("choice") {
         return Err(JevError::Malformed("wrong answer type"));
     }
-    let chosen = answer.get("choice").and_then(Value::as_str).ok_or(JevError::Malformed("missing choice"))?;
-    answer.get("confidence").and_then(unit).ok_or(JevError::Malformed("bad confidence"))?;
-    let raw = answer.get("probabilities").and_then(Value::as_object).ok_or(JevError::Malformed("missing probabilities"))?;
+    let chosen = answer
+        .get("choice")
+        .and_then(Value::as_str)
+        .ok_or(JevError::Malformed("missing choice"))?;
+    answer
+        .get("confidence")
+        .and_then(unit)
+        .ok_or(JevError::Malformed("bad confidence"))?;
+    let raw = answer
+        .get("probabilities")
+        .and_then(Value::as_object)
+        .ok_or(JevError::Malformed("missing probabilities"))?;
     if raw.len() != options.len() || !options.iter().all(|option| raw.contains_key(*option)) {
-        return Err(JevError::Malformed("probabilities do not match the options"));
+        return Err(JevError::Malformed(
+            "probabilities do not match the options",
+        ));
     }
     let mut probabilities = BTreeMap::new();
     for option in options {
-        probabilities.insert((*option).to_string(), raw.get(*option).and_then(unit).ok_or(JevError::Malformed("bad probability"))?);
+        probabilities.insert(
+            (*option).to_string(),
+            raw.get(*option)
+                .and_then(unit)
+                .ok_or(JevError::Malformed("bad probability"))?,
+        );
     }
     if (probabilities.values().sum::<f64>() - 1.0).abs() > SUM_TOLERANCE {
         return Err(JevError::Malformed("probabilities do not sum to one"));
@@ -271,12 +351,18 @@ fn choice(answers: &serde_json::Map<String, Value>, key: &str, options: &[&str])
     let top = probabilities.values().cloned().fold(0.0, f64::max);
     match probabilities.get(chosen) {
         None => Err(JevError::Malformed("unknown choice")),
-        Some(p) if top - p > ARGMAX_TOLERANCE => Err(JevError::Malformed("choice contradicts probabilities")),
+        Some(p) if top - p > ARGMAX_TOLERANCE => {
+            Err(JevError::Malformed("choice contradicts probabilities"))
+        }
         Some(_) => Ok(probabilities),
     }
 }
 
-fn relation_of(kind: &BTreeMap<String, f64>, change: &BTreeMap<String, f64>, mapping: &Mapping) -> Relation {
+fn relation_of(
+    kind: &BTreeMap<String, f64>,
+    change: &BTreeMap<String, f64>,
+    mapping: &Mapping,
+) -> Relation {
     let risky = mapping.risky_relation;
     if kind["reframing"] >= risky {
         Relation::Reframing
@@ -294,17 +380,31 @@ fn relation_of(kind: &BTreeMap<String, f64>, change: &BTreeMap<String, f64>, map
 }
 
 /// Validates one answer and turns it into one `CandidateSignal` per candidate (in candidate order, ids = `candidate_ids`).
-pub fn parse_run(plan: &RunPlan, candidate_ids: &[String], text: &str, mapping: &Mapping) -> Result<ParsedRun, JevError> {
+pub fn parse_run(
+    plan: &RunPlan,
+    candidate_ids: &[String],
+    text: &str,
+    mapping: &Mapping,
+) -> Result<ParsedRun, JevError> {
     let value: Value = serde_json::from_str(text).map_err(|_| JevError::Malformed("not json"))?;
-    let root = value.as_object().ok_or(JevError::Malformed("not an object"))?;
+    let root = value
+        .as_object()
+        .ok_or(JevError::Malformed("not an object"))?;
     if root.get("model").and_then(Value::as_str) != Some(JEV_MODEL) {
         return Err(JevError::UnexpectedModel);
     }
-    let answers = root.get("answers").and_then(Value::as_object).ok_or(JevError::Malformed("no answers"))?;
+    let answers = root
+        .get("answers")
+        .and_then(Value::as_object)
+        .ok_or(JevError::Malformed("no answers"))?;
     let n = plan.candidates;
     let mut expected: Vec<String> = vec!["relation".into(), "referent".into(), "supersedes".into()];
     for letter in LETTERS.iter().take(n) {
-        expected.extend([format!("redef_{letter}"), format!("kind_{letter}"), format!("change_{letter}")]);
+        expected.extend([
+            format!("redef_{letter}"),
+            format!("kind_{letter}"),
+            format!("change_{letter}"),
+        ]);
     }
     if answers.len() != expected.len() || !expected.iter().all(|key| answers.contains_key(key)) {
         return Err(JevError::Malformed("answers do not match the questions"));
@@ -317,8 +417,16 @@ pub fn parse_run(plan: &RunPlan, candidate_ids: &[String], text: &str, mapping: 
     let mut signals = Vec::with_capacity(n);
     for (i, letter) in LETTERS.iter().take(n).enumerate() {
         let redef = noul(answers, &format!("redef_{letter}"))?;
-        let kind = choice(answers, &format!("kind_{letter}"), &["detail_update", "reframing", "other"])?;
-        let change = choice(answers, &format!("change_{letter}"), &["additive", "correction", "replacement", "subtask", "other"])?;
+        let kind = choice(
+            answers,
+            &format!("kind_{letter}"),
+            &["detail_update", "reframing", "other"],
+        )?;
+        let change = choice(
+            answers,
+            &format!("change_{letter}"),
+            &["additive", "correction", "replacement", "subtask", "other"],
+        )?;
         signals.push(CandidateSignal {
             candidate_id: candidate_ids[i].clone(),
             same_proposition: relation[&format!("revise_{letter}")],
@@ -328,6 +436,11 @@ pub fn parse_run(plan: &RunPlan, candidate_ids: &[String], text: &str, mapping: 
             explicit_supersession: Some(supersedes >= mapping.explicit_supersession),
         });
     }
-    let usage = root.get("usage").and_then(Value::as_object).and_then(|u| Some(Usage { input_tokens: u.get("input_tokens")?.as_u64()?, output_tokens: u.get("output_tokens").and_then(Value::as_u64).unwrap_or(0) }));
+    let usage = root.get("usage").and_then(Value::as_object).and_then(|u| {
+        Some(Usage {
+            input_tokens: u.get("input_tokens")?.as_u64()?,
+            output_tokens: u.get("output_tokens").and_then(Value::as_u64).unwrap_or(0),
+        })
+    });
     Ok(ParsedRun { signals, usage })
 }

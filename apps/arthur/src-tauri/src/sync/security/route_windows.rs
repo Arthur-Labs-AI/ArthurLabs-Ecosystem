@@ -46,7 +46,7 @@ fn inside<T>(p: *const T, buffer: &[u64]) -> bool {
     let a = p as usize;
     a >= start
         && a.checked_add(size_of::<T>()).is_some_and(|b| b <= end)
-        && a % std::mem::align_of::<T>() == 0
+        && a.is_multiple_of(std::mem::align_of::<T>())
 }
 // Only an exact, unique NLM connection for this adapter establishes category.
 // COM apartment is borrowed if already initialized differently; only our own
@@ -98,8 +98,10 @@ unsafe fn profile(luid: &windows_sys::Win32::NetworkManagement::Ndis::NET_LUID_L
     None
 }
 unsafe fn interface(route: &MIB_IPFORWARD_ROW2) -> std::result::Result<MIB_IF_ROW2, U> {
-    let mut row = MIB_IF_ROW2::default();
-    row.InterfaceLuid = route.InterfaceLuid;
+    let mut row = MIB_IF_ROW2 {
+        InterfaceLuid: route.InterfaceLuid,
+        ..Default::default()
+    };
     let code = GetIfEntry2(&mut row);
     if code != 0 {
         return Err(U::Os(code));

@@ -14,10 +14,10 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::migrations::{migrate, INBOX_PROJECT_ID};
-use super::ownership::DataRootOwnership;
 #[cfg(test)]
 use super::migrations::SCHEMA_VERSION;
+use super::migrations::{migrate, INBOX_PROJECT_ID};
+use super::ownership::DataRootOwnership;
 
 /// Mirrors `MAX_CAPTURE_CONTENT_CHARS` in `packages/contracts/capture.ts`.
 pub const MAX_CAPTURE_CONTENT_CHARS: usize = 20_000;
@@ -88,7 +88,8 @@ impl From<rusqlite::Error> for StoreError {
 
 pub struct CaptureStore {
     pub(super) connection: Mutex<Connection>,
-    transport: std::sync::OnceLock<std::sync::Weak<crate::sync::security::transport_candidate::Pool>>,
+    transport:
+        std::sync::OnceLock<std::sync::Weak<crate::sync::security::transport_candidate::Pool>>,
     // Fields drop in declaration order: close the connection before releasing its root lock.
     _ownership: Option<DataRootOwnership>,
     #[cfg(test)]
@@ -96,11 +97,21 @@ pub struct CaptureStore {
 }
 
 impl CaptureStore {
-    pub(crate) fn bind_transport(&self, pool: &std::sync::Arc<crate::sync::security::transport_candidate::Pool>) -> Result<(), StoreError> {
-        self.transport.set(std::sync::Arc::downgrade(pool)).map_err(|_|StoreError::Invalid("transport already bound".into()))
+    pub(crate) fn bind_transport(
+        &self,
+        pool: &std::sync::Arc<crate::sync::security::transport_candidate::Pool>,
+    ) -> Result<(), StoreError> {
+        self.transport
+            .set(std::sync::Arc::downgrade(pool))
+            .map_err(|_| StoreError::Invalid("transport already bound".into()))
     }
-    pub(super) fn revoked(&self, expected: crate::sync::security::transport_candidate::Expected) -> crate::sync::security::Result<()> {
-        if let Some(pool) = self.transport.get().and_then(std::sync::Weak::upgrade) { pool.revoke(expected)?; }
+    pub(super) fn revoked(
+        &self,
+        expected: crate::sync::security::transport_candidate::Expected,
+    ) -> crate::sync::security::Result<()> {
+        if let Some(pool) = self.transport.get().and_then(std::sync::Weak::upgrade) {
+            pool.revoke(expected)?;
+        }
         Ok(())
     }
     /// Native storage policy may only query the root held by this owner.
@@ -126,9 +137,15 @@ impl CaptureStore {
             vfs.name(),
         )?;
         let mut store = Self {
-            connection: Mutex::new(c), transport: Default::default(), _ownership: Some(ownership), _io_vfs: Some(vfs),
+            connection: Mutex::new(c),
+            transport: Default::default(),
+            _ownership: Some(ownership),
+            _io_vfs: Some(vfs),
         };
-        let c = store.connection.get_mut().map_err(|_| StoreError::Poisoned)?;
+        let c = store
+            .connection
+            .get_mut()
+            .map_err(|_| StoreError::Poisoned)?;
         c.pragma_update(None, "foreign_keys", true)?;
         c.pragma_update(None, "synchronous", "FULL")?;
         if reopen {
@@ -154,13 +171,23 @@ impl CaptureStore {
 
     /// Synthetic-v10 recovery only. Never called by production's v9 opener.
     #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
-    pub(crate) fn reopen_candidate_owned_for_test(ownership: DataRootOwnership) -> Result<Self, StoreError> {
+    pub(crate) fn reopen_candidate_owned_for_test(
+        ownership: DataRootOwnership,
+    ) -> Result<Self, StoreError> {
         let connection = Connection::open(ownership.data_root().join("arthur.db"))?;
         let version: i64 = connection.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        if version != 10 { return Err(StoreError::Invalid("expected synthetic v10".into())); }
+        if version != 10 {
+            return Err(StoreError::Invalid("expected synthetic v10".into()));
+        }
         connection.pragma_update(None, "synchronous", "FULL")?;
         connection.pragma_update(None, "foreign_keys", "ON")?;
-        Ok(Self { connection: Mutex::new(connection), transport: Default::default(), _ownership: Some(ownership), #[cfg(test)] _io_vfs:None })
+        Ok(Self {
+            connection: Mutex::new(connection),
+            transport: Default::default(),
+            _ownership: Some(ownership),
+            #[cfg(test)]
+            _io_vfs: None,
+        })
     }
 
     /// Lets other modules' tests inject faults (triggers, corruption) without owning the connection.
@@ -172,14 +199,30 @@ impl CaptureStore {
     /// Test helper: the single integer a query returns.
     #[cfg(test)]
     pub fn query_i64_for_test(&self, sql: &str) -> i64 {
-        self.connection.lock().unwrap().query_row(sql, [], |row| row.get(0)).unwrap()
+        self.connection
+            .lock()
+            .unwrap()
+            .query_row(sql, [], |row| row.get(0))
+            .unwrap()
     }
 
-    fn from_connection(connection: Connection, ownership: Option<DataRootOwnership>) -> Result<Self, StoreError> {
+    fn from_connection(
+        connection: Connection,
+        ownership: Option<DataRootOwnership>,
+    ) -> Result<Self, StoreError> {
         // Construct the owner BEFORE any fallible setup, so failures also close SQLite before
         // releasing the OS lock. The same field drop order applies to a successfully opened store.
-        let mut store = Self { connection: Mutex::new(connection), transport: Default::default(), _ownership: ownership, #[cfg(test)] _io_vfs:None };
-        let connection = store.connection.get_mut().map_err(|_| StoreError::Poisoned)?;
+        let mut store = Self {
+            connection: Mutex::new(connection),
+            transport: Default::default(),
+            _ownership: ownership,
+            #[cfg(test)]
+            _io_vfs: None,
+        };
+        let connection = store
+            .connection
+            .get_mut()
+            .map_err(|_| StoreError::Poisoned)?;
         // A successful insert must be on disk before `create` returns.
         connection.pragma_update(None, "synchronous", "FULL")?;
         // SQLite ignores foreign keys unless asked, per connection.
@@ -197,9 +240,19 @@ impl CaptureStore {
     pub fn get_capture(&self, id: &str) -> Result<Option<Capture>, StoreError> {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let found = connection
-            .query_row("SELECT id, source, content, created_at, project_id FROM captures WHERE id = ?1", [id], |row| {
-                Ok(Capture { id: row.get(0)?, source: row.get(1)?, content: row.get(2)?, created_at: row.get(3)?, project_id: row.get(4)? })
-            })
+            .query_row(
+                "SELECT id, source, content, created_at, project_id FROM captures WHERE id = ?1",
+                [id],
+                |row| {
+                    Ok(Capture {
+                        id: row.get(0)?,
+                        source: row.get(1)?,
+                        content: row.get(2)?,
+                        created_at: row.get(3)?,
+                        project_id: row.get(4)?,
+                    })
+                },
+            )
             .map(Some)
             .or_else(|error| match error {
                 rusqlite::Error::QueryReturnedNoRows => Ok(None),
@@ -215,7 +268,9 @@ impl CaptureStore {
     /// project: provenance must open the original Capture wherever the idea derived from it now lives.
     pub fn get_captures(&self, ids: &[String]) -> Result<Vec<Capture>, StoreError> {
         if ids.len() > MAX_CAPTURE_LOOKUP {
-            return Err(StoreError::Invalid(format!("more than {MAX_CAPTURE_LOOKUP} ids")));
+            return Err(StoreError::Invalid(format!(
+                "more than {MAX_CAPTURE_LOOKUP} ids"
+            )));
         }
         if ids.is_empty() {
             return Ok(Vec::new());
@@ -227,7 +282,13 @@ impl CaptureStore {
         );
         let mut statement = connection.prepare(&sql)?;
         let rows = statement.query_map(rusqlite::params_from_iter(ids.iter()), |row| {
-            Ok(Capture { id: row.get(0)?, source: row.get(1)?, content: row.get(2)?, created_at: row.get(3)?, project_id: row.get(4)? })
+            Ok(Capture {
+                id: row.get(0)?,
+                source: row.get(1)?,
+                content: row.get(2)?,
+                created_at: row.get(3)?,
+                project_id: row.get(4)?,
+            })
         })?;
         let mut captures = Vec::new();
         for row in rows {
@@ -251,7 +312,13 @@ impl CaptureStore {
             "SELECT id, source, content, created_at, project_id FROM captures WHERE (?1 IS NULL OR project_id = ?1) ORDER BY seq DESC",
         )?;
         let rows = statement.query_map([project_id], |row| {
-            Ok(Capture { id: row.get(0)?, source: row.get(1)?, content: row.get(2)?, created_at: row.get(3)?, project_id: row.get(4)? })
+            Ok(Capture {
+                id: row.get(0)?,
+                source: row.get(1)?,
+                content: row.get(2)?,
+                created_at: row.get(3)?,
+                project_id: row.get(4)?,
+            })
         })?;
         let mut captures = Vec::new();
         for row in rows {
@@ -312,13 +379,18 @@ pub(super) fn now_rfc3339() -> Result<String, StoreError> {
 
 fn validate_input(input: &CreateCaptureInput) -> Result<(), StoreError> {
     if !SOURCES.contains(&input.source.as_str()) {
-        return Err(StoreError::Invalid(format!("unknown source \"{}\"", input.source)));
+        return Err(StoreError::Invalid(format!(
+            "unknown source \"{}\"",
+            input.source
+        )));
     }
     if input.content.trim().is_empty() {
         return Err(StoreError::Invalid("content is empty".into()));
     }
     if input.content.chars().count() > MAX_CAPTURE_CONTENT_CHARS {
-        return Err(StoreError::Invalid(format!("content exceeds {MAX_CAPTURE_CONTENT_CHARS} characters")));
+        return Err(StoreError::Invalid(format!(
+            "content exceeds {MAX_CAPTURE_CONTENT_CHARS} characters"
+        )));
     }
     Ok(())
 }
@@ -349,12 +421,19 @@ mod tests {
     use std::collections::HashSet;
 
     fn text(content: &str) -> CreateCaptureInput {
-        CreateCaptureInput { source: "text".into(), content: content.into(), project_id: None }
+        CreateCaptureInput {
+            source: "text".into(),
+            content: content.into(),
+            project_id: None,
+        }
     }
 
     #[test]
     fn an_empty_database_lists_nothing() {
-        assert_eq!(CaptureStore::open_in_memory().unwrap().list().unwrap(), vec![]);
+        assert_eq!(
+            CaptureStore::open_in_memory().unwrap().list().unwrap(),
+            vec![]
+        );
     }
 
     #[test]
@@ -363,7 +442,10 @@ mod tests {
         let created = store.create(text("  benchmark EMG latency\n")).unwrap();
 
         assert_eq!(created.source, "text");
-        assert_eq!(created.content, "  benchmark EMG latency\n", "raw content is stored untouched");
+        assert_eq!(
+            created.content, "  benchmark EMG latency\n",
+            "raw content is stored untouched"
+        );
         assert!(OffsetDateTime::parse(&created.created_at, &Rfc3339).is_ok());
         assert_eq!(store.list().unwrap(), vec![created]);
     }
@@ -371,7 +453,10 @@ mod tests {
     #[test]
     fn list_is_newest_first_and_deterministic_even_with_identical_timestamps() {
         let store = CaptureStore::open_in_memory().unwrap();
-        let ids: Vec<String> = ["a", "b", "c"].iter().map(|c| store.create(text(c)).unwrap().id).collect();
+        let ids: Vec<String> = ["a", "b", "c"]
+            .iter()
+            .map(|c| store.create(text(c)).unwrap().id)
+            .collect();
 
         let listed: Vec<String> = store.list().unwrap().into_iter().map(|c| c.id).collect();
         let expected: Vec<String> = ids.into_iter().rev().collect();
@@ -382,7 +467,9 @@ mod tests {
     #[test]
     fn ids_are_unique() {
         let store = CaptureStore::open_in_memory().unwrap();
-        let ids: HashSet<String> = (0..50).map(|i| store.create(text(&format!("n{i}"))).unwrap().id).collect();
+        let ids: HashSet<String> = (0..50)
+            .map(|i| store.create(text(&format!("n{i}"))).unwrap().id)
+            .collect();
         assert_eq!(ids.len(), 50);
     }
 
@@ -393,7 +480,13 @@ mod tests {
 
         let first = CaptureStore::open(&path).unwrap();
         let a = first.create(text("first thought")).unwrap();
-        let b = first.create(CreateCaptureInput { source: "voice".into(), content: "second".into(), project_id: None }).unwrap();
+        let b = first
+            .create(CreateCaptureInput {
+                source: "voice".into(),
+                content: "second".into(),
+                project_id: None,
+            })
+            .unwrap();
         drop(first);
 
         let reopened = CaptureStore::open(&path).unwrap();
@@ -404,15 +497,23 @@ mod tests {
     fn initialisation_is_idempotent() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
-        let created = CaptureStore::open(&path).unwrap().create(text("keep me")).unwrap();
+        let created = CaptureStore::open(&path)
+            .unwrap()
+            .create(text("keep me"))
+            .unwrap();
 
         for _ in 0..3 {
             CaptureStore::open(&path).unwrap();
         }
         let connection = Connection::open(&path).unwrap();
-        let version: i64 = connection.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+        let version: i64 = connection
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(version, SCHEMA_VERSION);
-        assert_eq!(CaptureStore::open(&path).unwrap().list().unwrap(), vec![created]);
+        assert_eq!(
+            CaptureStore::open(&path).unwrap().list().unwrap(),
+            vec![created]
+        );
     }
 
     #[test]
@@ -423,12 +524,18 @@ mod tests {
             text(""),
             text("   \n\t"),
             text(&too_long),
-            CreateCaptureInput { source: "telepathy".into(), content: "hi".into(), project_id: None },
+            CreateCaptureInput {
+                source: "telepathy".into(),
+                content: "hi".into(),
+                project_id: None,
+            },
         ] {
             assert!(matches!(store.create(bad), Err(StoreError::Invalid(_))));
         }
         assert!(store.list().unwrap().is_empty());
-        assert!(store.create(text(&"x".repeat(MAX_CAPTURE_CONTENT_CHARS))).is_ok());
+        assert!(store
+            .create(text(&"x".repeat(MAX_CAPTURE_CONTENT_CHARS)))
+            .is_ok());
     }
 
     #[test]
@@ -454,10 +561,19 @@ mod tests {
     fn a_database_from_a_newer_version_is_refused_not_modified() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
-        Connection::open(&path).unwrap().pragma_update(None, "user_version", 99).unwrap();
+        Connection::open(&path)
+            .unwrap()
+            .pragma_update(None, "user_version", 99)
+            .unwrap();
 
-        assert!(matches!(CaptureStore::open(&path), Err(StoreError::Corrupt(_))));
-        let version: i64 = Connection::open(&path).unwrap().query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+        assert!(matches!(
+            CaptureStore::open(&path),
+            Err(StoreError::Corrupt(_))
+        ));
+        let version: i64 = Connection::open(&path)
+            .unwrap()
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(version, 99);
     }
 
@@ -472,9 +588,11 @@ mod tests {
 
     #[test]
     fn create_input_rejects_unknown_fields() {
-        let ok: Result<CreateCaptureInput, _> = serde_json::from_str(r#"{"source":"text","content":"hi"}"#);
+        let ok: Result<CreateCaptureInput, _> =
+            serde_json::from_str(r#"{"source":"text","content":"hi"}"#);
         assert!(ok.is_ok());
-        let extra: Result<CreateCaptureInput, _> = serde_json::from_str(r#"{"source":"text","content":"hi","id":"forged"}"#);
+        let extra: Result<CreateCaptureInput, _> =
+            serde_json::from_str(r#"{"source":"text","content":"hi","id":"forged"}"#);
         assert!(extra.is_err(), "callers cannot choose ids");
     }
 }

@@ -19,24 +19,30 @@
 pub mod codec;
 pub mod reducer;
 
+mod admission;
+mod admission_session;
+#[cfg(all(
+    any(windows, target_os = "android"),
+    any(test, all(target_os = "android", feature = "android-identity-tests"))
+))]
+pub(crate) mod cross_device_qualification;
 mod expiry;
 mod snapshot;
 mod sql_effects;
 mod storage;
 mod stream;
-mod writers;
-#[cfg(all(any(windows, target_os = "android"), any(test, all(target_os = "android", feature = "android-identity-tests"))))]
+#[cfg(all(
+    any(windows, target_os = "android"),
+    any(test, all(target_os = "android", feature = "android-identity-tests"))
+))]
 pub(crate) mod tls_qualification;
-#[cfg(all(any(windows, target_os = "android"), any(test, all(target_os = "android", feature = "android-identity-tests"))))]
-pub(crate) mod cross_device_qualification;
-mod admission;
-mod admission_session;
-pub(in crate::storage) use admission_session::PhysicalAdmission;
-pub(in crate::storage) use admission::Operation as StorageOperation;
+mod writers;
 pub(in crate::storage) use admission::AdmissionError as PhysicalAdmissionError;
+pub(in crate::storage) use admission::Operation as StorageOperation;
+pub(in crate::storage) use admission_session::PhysicalAdmission;
 mod capacity;
-pub(super) mod import_view;
 pub(super) mod g3;
+pub(super) mod import_view;
 #[cfg(test)]
 pub(crate) mod sync_fixtures;
 

@@ -101,9 +101,13 @@ impl Serialize for VoiceError {
 /// What went wrong with the speech service, in words that are safe to show.
 fn stt_cause_message(cause: &SttError) -> String {
     match cause {
-        SttError::Network => "Could not reach the speech service. Check the connection and try again.".into(),
+        SttError::Network => {
+            "Could not reach the speech service. Check the connection and try again.".into()
+        }
         SttError::Auth(_) => "The speech service rejected the configured credentials.".into(),
-        SttError::Provider(status) => format!("The speech service failed (HTTP {status}). Try again."),
+        SttError::Provider(status) => {
+            format!("The speech service failed (HTTP {status}). Try again.")
+        }
         SttError::Protocol => "The speech service returned an unreadable response.".into(),
         SttError::NotConfigured => "Speech-to-text is not configured on this device.".into(),
     }

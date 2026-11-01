@@ -9,34 +9,34 @@
 //! 8. Compatibility: test-installed forward-only SQL, no production migration/routing.
 //! 9. Observation: categories only; secrets have neither Debug nor Serialize.
 //! 10. Security: pinned admin, shared durable attempt reservation, exact-key approval.
-pub(crate) mod enrollment;
-pub(crate) mod identity;
 #[cfg(target_os = "android")]
 pub(crate) mod android;
-pub(crate) mod signed;
-#[cfg(test)]
-mod tests;
+pub(crate) mod composition;
+pub(crate) mod connected_endpoint;
 #[cfg(test)]
 #[path = "../../storage/security_e2_tests.rs"]
 mod e2_tests;
-pub(crate) mod transport;
-pub(crate) mod route_candidate;
-pub(crate) mod route_observer;
-pub(crate) mod network_watch;
-pub(crate) mod connected_endpoint;
-#[cfg(any(test, all(target_os="android", feature="android-identity-tests")))]
-pub(crate) mod native_io_lab;
-pub(crate) mod transport_candidate;
-#[cfg(any(test, all(target_os="android",feature="android-identity-tests")))]
+pub(crate) mod enrollment;
+pub(crate) mod identity;
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod n7a_tests;
-pub(crate) mod tls;
-pub(crate) mod composition;
+#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
+pub(crate) mod native_io_lab;
+pub(crate) mod network_watch;
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod pake_qualification;
+pub(crate) mod route_candidate;
+pub(crate) mod route_observer;
+pub(crate) mod signed;
+#[cfg(test)]
+mod tests;
+pub(crate) mod tls;
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod tls_lab;
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod tls_socket_lab;
+pub(crate) mod transport;
+pub(crate) mod transport_candidate;
 #[cfg(windows)]
 pub(crate) mod windows;
 

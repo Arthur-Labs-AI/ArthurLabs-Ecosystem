@@ -1,9 +1,15 @@
 # apps/arthur
 
 The single A.R.T.H.U.R. product application: Tauri v2 + React + TypeScript + Vite.
-One shared UI for Linux, Windows and (later) Android; macOS and iOS after that.
+One shared UI for desktop and Android; platform qualification is tracked separately.
 
-**Status:** shell with runtime info, local text capture, Android voice capture (microphone -> cloud STT -> transcript), Thought Distillation (capture -> cloud LLM -> structured knowledge objects with provenance), a Cognitive Graph (typed relations between knowledge objects, written by the user or proposed by the model), and Thought Lineage (a revision DAG for each knowledge object), all persisted in app-local SQLite. Sync, recall and EMG are not implemented.
+**Status:** local text capture, Android voice capture, validated Thought Distillation,
+projects, Cognitive Graph relations, immutable Thought Lineage, recall and
+review-first evolution, persisted in app-local SQLite. M05 sync is a dormant
+qualification candidate: production stays schema v9 with closed trust/LAN
+activation. EMG integration is not implemented. See the
+[current product overview](../../README.md) and
+[M05 readiness gates](../../docs/architecture/m05-activation-readiness.md).
 
 ```text
 src/                  React UI (platform-independent)

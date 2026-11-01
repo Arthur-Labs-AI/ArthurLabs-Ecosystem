@@ -24,7 +24,11 @@ pub struct RetryPolicy {
 
 impl Default for RetryPolicy {
     fn default() -> Self {
-        Self { max_attempts: 3, base_delay: Duration::from_millis(500), max_delay: Duration::from_secs(5) }
+        Self {
+            max_attempts: 3,
+            base_delay: Duration::from_millis(500),
+            max_delay: Duration::from_secs(5),
+        }
     }
 }
 
@@ -56,18 +60,25 @@ pub(super) struct Meter {
 
 impl Meter {
     pub(super) fn fail(&self, code: &'static str) {
-        *self.failures.lock().unwrap_or_else(|p| p.into_inner()).entry(code).or_insert(0) += 1;
+        *self
+            .failures
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .entry(code)
+            .or_insert(0) += 1;
     }
 
     pub(super) fn usage(&self, input: Option<u64>, output: Option<u64>, estimated_input: u64) {
         match input {
             Some(tokens) => {
                 self.input_tokens.fetch_add(tokens, Ordering::Relaxed);
-                self.output_tokens.fetch_add(output.unwrap_or(0), Ordering::Relaxed);
+                self.output_tokens
+                    .fetch_add(output.unwrap_or(0), Ordering::Relaxed);
             }
             None => {
                 self.usage_missing.fetch_add(1, Ordering::Relaxed);
-                self.input_tokens.fetch_add(estimated_input, Ordering::Relaxed);
+                self.input_tokens
+                    .fetch_add(estimated_input, Ordering::Relaxed);
             }
         }
     }
@@ -82,14 +93,21 @@ impl Meter {
             output_tokens: self.output_tokens.load(Ordering::Relaxed),
             usage_missing: self.usage_missing.load(Ordering::Relaxed),
             estimated_cost_usd: input_tokens as f64 * PRICE_PER_INPUT_TOKEN_USD,
-            failures: self.failures.lock().unwrap_or_else(|p| p.into_inner()).clone(),
+            failures: self
+                .failures
+                .lock()
+                .unwrap_or_else(|p| p.into_inner())
+                .clone(),
             last_latency_ms: (last != u64::MAX).then_some(last),
         }
     }
 
     /// Counts one request against the rolling UTC-day cap; `false` when the cap is reached.
     fn take_daily(&self, cap: u64) -> bool {
-        let today = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() / 86_400).unwrap_or(0);
+        let today = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs() / 86_400)
+            .unwrap_or(0);
         let mut day = self.day.lock().unwrap_or_else(|p| p.into_inner());
         if day.0 != today {
             *day = (today, 0);
@@ -109,7 +127,9 @@ pub struct Budget {
 
 impl Budget {
     pub fn new(requests: u64) -> Self {
-        Self { remaining: AtomicU64::new(requests) }
+        Self {
+            remaining: AtomicU64::new(requests),
+        }
     }
 
     fn take(&self) -> bool {
@@ -118,7 +138,11 @@ impl Budget {
             if n == 0 {
                 return false;
             }
-            if self.remaining.compare_exchange(n, n - 1, Ordering::SeqCst, Ordering::SeqCst).is_ok() {
+            if self
+                .remaining
+                .compare_exchange(n, n - 1, Ordering::SeqCst, Ordering::SeqCst)
+                .is_ok()
+            {
                 return true;
             }
         }
@@ -136,10 +160,24 @@ pub struct JevClient {
 }
 
 impl JevClient {
-    pub fn new(transport: Arc<dyn JevTransport>, retry: RetryPolicy, timeout: Duration, max_in_flight: usize, daily_cap: u64) -> Self {
+    pub fn new(
+        transport: Arc<dyn JevTransport>,
+        retry: RetryPolicy,
+        timeout: Duration,
+        max_in_flight: usize,
+        daily_cap: u64,
+    ) -> Self {
         let meter = Arc::new(Meter::default());
         meter.last_latency_ms.store(u64::MAX, Ordering::Relaxed);
-        Self { transport, retry, timeout, permits: Arc::new(Semaphore::new(max_in_flight.max(1))), meter, cancel: Arc::new(AtomicBool::new(false)), daily_cap }
+        Self {
+            transport,
+            retry,
+            timeout,
+            permits: Arc::new(Semaphore::new(max_in_flight.max(1))),
+            meter,
+            cancel: Arc::new(AtomicBool::new(false)),
+            daily_cap,
+        }
     }
 
     pub fn diagnostics(&self) -> Diagnostics {
@@ -175,7 +213,12 @@ impl JevClient {
     }
 
     /// One logical request with bounded retries. Returns the 2xx body.
-    pub async fn send(&self, key: &ApiKey, body: &str, budget: &Budget) -> Result<String, JevError> {
+    pub async fn send(
+        &self,
+        key: &ApiKey,
+        body: &str,
+        budget: &Budget,
+    ) -> Result<String, JevError> {
         let mut last: Option<JevError> = None;
         for attempt in 1..=self.retry.max_attempts.max(1) {
             if self.cancel.load(Ordering::SeqCst) {
@@ -191,16 +234,27 @@ impl JevClient {
             self.meter.requests.fetch_add(1, Ordering::Relaxed);
             let started = Instant::now();
             let outcome = {
-                let _permit = self.permits.acquire().await.map_err(|_| JevError::Cancelled)?;
-                tokio::time::timeout(self.timeout, self.transport.post(key, body, self.timeout)).await
+                let _permit = self
+                    .permits
+                    .acquire()
+                    .await
+                    .map_err(|_| JevError::Cancelled)?;
+                tokio::time::timeout(self.timeout, self.transport.post(key, body, self.timeout))
+                    .await
             };
-            self.meter.last_latency_ms.store(started.elapsed().as_millis() as u64, Ordering::Relaxed);
+            self.meter
+                .last_latency_ms
+                .store(started.elapsed().as_millis() as u64, Ordering::Relaxed);
             let (error, retry_after) = match outcome {
                 Err(_) => (JevError::Timeout, None),
                 Ok(Err(TransportError::Timeout)) => (JevError::Timeout, None),
                 Ok(Err(TransportError::Network)) => (JevError::Network, None),
                 Ok(Err(TransportError::TooLarge)) => (JevError::ResponseTooLarge, None),
-                Ok(Ok(RawResponse { status, body, retry_after_secs })) => match status {
+                Ok(Ok(RawResponse {
+                    status,
+                    body,
+                    retry_after_secs,
+                })) => match status {
                     200..=299 => return Ok(body),
                     401 | 403 => (JevError::Auth, None),
                     400 | 404 | 422 => (JevError::Rejected, None),
@@ -216,7 +270,10 @@ impl JevClient {
             }
             last = Some(error);
             if attempt < self.retry.max_attempts {
-                let wait = retry_after.map(Duration::from_secs).unwrap_or_else(|| self.retry.base_delay * 2u32.saturating_pow(attempt - 1)).min(self.retry.max_delay);
+                let wait = retry_after
+                    .map(Duration::from_secs)
+                    .unwrap_or_else(|| self.retry.base_delay * 2u32.saturating_pow(attempt - 1))
+                    .min(self.retry.max_delay);
                 self.pause(wait).await?;
             }
         }

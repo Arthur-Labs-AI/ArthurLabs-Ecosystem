@@ -10,8 +10,14 @@ pub(crate) const BOOTSTRAP_BYTES: usize = 4 * 1024 * 1024;
 pub(crate) const BOOTSTRAP_EVENTS: usize = 64;
 pub(crate) const BOOTSTRAP_ROWS: usize = 2048;
 #[derive(Clone, PartialEq, Eq)]
-#[cfg_attr(any(test, all(target_os = "android", feature = "android-identity-tests")), derive(Serialize, Deserialize))]
-#[cfg_attr(any(test, all(target_os = "android", feature = "android-identity-tests")), serde(deny_unknown_fields))]
+#[cfg_attr(
+    any(test, all(target_os = "android", feature = "android-identity-tests")),
+    derive(Serialize, Deserialize)
+)]
+#[cfg_attr(
+    any(test, all(target_os = "android", feature = "android-identity-tests")),
+    serde(deny_unknown_fields)
+)]
 pub(crate) struct SnapshotOffer {
     pub id: Uuid,
     pub hash: [u8; 32],
@@ -31,8 +37,14 @@ impl SnapshotOffer {
     }
 }
 #[derive(Clone)]
-#[cfg_attr(any(test, all(target_os = "android", feature = "android-identity-tests")), derive(Serialize, Deserialize))]
-#[cfg_attr(any(test, all(target_os = "android", feature = "android-identity-tests")), serde(deny_unknown_fields))]
+#[cfg_attr(
+    any(test, all(target_os = "android", feature = "android-identity-tests")),
+    derive(Serialize, Deserialize)
+)]
+#[cfg_attr(
+    any(test, all(target_os = "android", feature = "android-identity-tests")),
+    serde(deny_unknown_fields)
+)]
 pub(crate) struct SnapshotChunk {
     pub offer: SnapshotOffer,
     pub index: usize,
@@ -40,8 +52,14 @@ pub(crate) struct SnapshotChunk {
     pub bytes: Vec<u8>,
 }
 #[derive(Clone)]
-#[cfg_attr(any(test, all(target_os = "android", feature = "android-identity-tests")), derive(Serialize, Deserialize))]
-#[cfg_attr(any(test, all(target_os = "android", feature = "android-identity-tests")), serde(deny_unknown_fields))]
+#[cfg_attr(
+    any(test, all(target_os = "android", feature = "android-identity-tests")),
+    derive(Serialize, Deserialize)
+)]
+#[cfg_attr(
+    any(test, all(target_os = "android", feature = "android-identity-tests")),
+    serde(deny_unknown_fields)
+)]
 pub(crate) struct SnapshotReceipt {
     pub offer: SnapshotOffer,
     pub outcome: Outcome,
@@ -54,9 +72,18 @@ pub(crate) struct SnapshotExport {
 impl SnapshotExport {
     pub fn chunk(&self, index: usize) -> Option<SnapshotChunk> {
         let start = index.checked_mul(CHUNK)?;
-        let bytes = self.bytes.get(start..self.bytes.len().min(start.checked_add(CHUNK)?))?;
-        if bytes.is_empty() { return None; }
-        Some(SnapshotChunk { offer: self.offer.clone(), index, hash: codec::journal_event_hash(bytes), bytes: bytes.to_vec() })
+        let bytes = self
+            .bytes
+            .get(start..self.bytes.len().min(start.checked_add(CHUNK)?))?;
+        if bytes.is_empty() {
+            return None;
+        }
+        Some(SnapshotChunk {
+            offer: self.offer.clone(),
+            index,
+            hash: codec::journal_event_hash(bytes),
+            bytes: bytes.to_vec(),
+        })
     }
     pub fn chunks(&self) -> Vec<SnapshotChunk> {
         self.bytes
@@ -120,7 +147,7 @@ pub(crate) fn hex(bytes: &[u8]) -> String {
     s
 }
 pub(crate) fn unhex(s: &str) -> Result<Vec<u8>> {
-    if s.len() > codec::MAX_CANONICAL_BYTES * 2 || s.len() % 2 != 0 {
+    if s.len() > codec::MAX_CANONICAL_BYTES * 2 || !s.len().is_multiple_of(2) {
         return Err(Error::SnapshotTooLarge);
     }
     let digit = |b: u8| match b {
@@ -129,7 +156,9 @@ pub(crate) fn unhex(s: &str) -> Result<Vec<u8>> {
         _ => Err(Error::Integrity),
     };
     s.as_bytes()
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|p| Ok(digit(p[0])? * 16 + digit(p[1])?))
         .collect()
 }

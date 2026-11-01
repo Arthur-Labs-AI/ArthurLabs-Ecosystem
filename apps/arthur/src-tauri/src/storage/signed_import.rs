@@ -13,6 +13,8 @@ use crate::sync::{
 use rusqlite::{params, Connection, OptionalExtension};
 use uuid::Uuid;
 
+type StoredSeal = (String, Vec<u8>, i64, Vec<u8>, Vec<u8>);
+
 pub(crate) struct SignedImportStore<'a> {
     db: CandidateSyncStore<'a>,
 }
@@ -106,7 +108,7 @@ fn prefix(
     origin: Uuid,
     author: &PublicIdentity,
 ) -> Result<Option<Prefix>> {
-    let seal: Option<(String, Vec<u8>, i64, Vec<u8>, Vec<u8>)> = c
+    let seal: Option<StoredSeal> = c
         .query_row(
             "SELECT incarnation,author,seq,hash,signature FROM e2_origin_seals WHERE origin=?1",
             [origin.to_string()],

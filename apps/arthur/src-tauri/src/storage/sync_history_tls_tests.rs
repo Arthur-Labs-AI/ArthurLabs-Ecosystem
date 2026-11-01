@@ -20,9 +20,16 @@ async fn history_exchange(
     session: u128,
     bootstrap: bool,
 ) -> [(SyncStatus, bool); 2] {
-    history_exchange_snapshot(a,b,ka,kb,session,bootstrap.then(Uuid::new_v4)).await
+    history_exchange_snapshot(a, b, ka, kb, session, bootstrap.then(Uuid::new_v4)).await
 }
-async fn history_exchange_snapshot(a:&Peer,b:&Peer,ka:&Fixture,kb:&Fixture,session:u128,bootstrap:Option<Uuid>) -> [(SyncStatus,bool);2] {
+async fn history_exchange_snapshot(
+    a: &Peer,
+    b: &Peer,
+    ka: &Fixture,
+    kb: &Fixture,
+    session: u128,
+    bootstrap: Option<Uuid>,
+) -> [(SyncStatus, bool); 2] {
     let allowed = origins(a, b);
     let sa = CandidateSyncStore::synthetic(&a.store);
     let sb = CandidateSyncStore::synthetic(&b.store);

@@ -146,12 +146,11 @@ impl Budget<'_> {
         let image = number(c, "PRAGMA page_count")?
             .checked_mul(number(c, "PRAGMA page_size")?)
             .ok_or(E::Overflow)?;
-        if image.checked_sub(self.image).unwrap_or(0) > self.demand.main.ok_or(E::UnknownDemand)? {
+        if image.saturating_sub(self.image) > self.demand.main.ok_or(E::UnknownDemand)? {
             return Err(E::GrowthExceeded);
         }
         let main_used = allocated_bytes(self.admission.location.database(), false)?
-            .checked_sub(self.file_start)
-            .unwrap_or(0);
+            .saturating_sub(self.file_start);
         let journal_used = allocated_bytes(
             &self
                 .admission
@@ -160,8 +159,7 @@ impl Budget<'_> {
                 .with_file_name("arthur.db-journal"),
             true,
         )?
-        .checked_sub(self.journal_start)
-        .unwrap_or(0);
+        .saturating_sub(self.journal_start);
         let main = self
             .demand
             .main

@@ -24,7 +24,10 @@ use super::authorization::ProviderAuthorization;
 use super::verdict::{parse_verdict, response_schema, user_message, SYSTEM_PROMPT};
 use super::{ModelIdentity, RevisionVerifier, UnavailableReason, Verdict, VerifyRequest};
 use crate::async_util::BoxFuture;
-use crate::providers::chat::{complete_json_detailed, model_matches, ChatFailure, ChatRequest, Completion, Sampling, DEFAULT_ENDPOINT, LUNA_MODEL, LUNA_PRICE_IN, LUNA_PRICE_OUT};
+use crate::providers::chat::{
+    complete_json_detailed, model_matches, ChatFailure, ChatRequest, Completion, Sampling,
+    DEFAULT_ENDPOINT, LUNA_MODEL, LUNA_PRICE_IN, LUNA_PRICE_OUT,
+};
 use crate::providers::credentials::CredentialSource;
 
 pub const MODEL: &str = LUNA_MODEL;
@@ -66,7 +69,11 @@ impl std::fmt::Debug for OpenAiRevisionVerifier {
 }
 
 impl OpenAiRevisionVerifier {
-    pub fn new(credential: Arc<dyn CredentialSource>, authorization: Arc<ProviderAuthorization>, timeout: Duration) -> Result<Self, reqwest::Error> {
+    pub fn new(
+        credential: Arc<dyn CredentialSource>,
+        authorization: Arc<ProviderAuthorization>,
+        timeout: Duration,
+    ) -> Result<Self, reqwest::Error> {
         Ok(Self {
             client: crate::providers::http::client(timeout)?,
             endpoint: DEFAULT_ENDPOINT.to_string(),
@@ -83,7 +90,12 @@ impl OpenAiRevisionVerifier {
 
     /// Tests only: a localhost endpoint and no waiting between attempts.
     #[cfg(test)]
-    pub fn for_test(credential: Arc<dyn CredentialSource>, authorization: Arc<ProviderAuthorization>, endpoint: String, timeout: Duration) -> Self {
+    pub fn for_test(
+        credential: Arc<dyn CredentialSource>,
+        authorization: Arc<ProviderAuthorization>,
+        endpoint: String,
+        timeout: Duration,
+    ) -> Self {
         let mut me = Self::new(credential, authorization, timeout).expect("client");
         me.endpoint = endpoint;
         me.backoff = Duration::ZERO;
@@ -107,15 +119,33 @@ impl OpenAiRevisionVerifier {
     }
 
     fn fail(&self, code: &'static str) {
-        *self.usage.lock().unwrap_or_else(|p| p.into_inner()).failures.entry(code).or_insert(0) += 1;
+        *self
+            .usage
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .failures
+            .entry(code)
+            .or_insert(0) += 1;
     }
 
     /// One attempt, abandoned if `cancel()` is called or the timeout passes while it is in flight.
-    async fn attempt(&self, user: &str) -> Result<Completion, Result<ChatFailure, UnavailableReason>> {
+    async fn attempt(
+        &self,
+        user: &str,
+    ) -> Result<Completion, Result<ChatFailure, UnavailableReason>> {
         let call = complete_json_detailed(
             &self.client,
             self.credential.as_ref(),
-            ChatRequest { endpoint: &self.endpoint, model: MODEL, system: SYSTEM_PROMPT, user, schema_name: "revision_verdict", schema: response_schema(), sampling: Sampling::Reasoning(REASONING_EFFORT), max_output_tokens: Some(MAX_OUTPUT_TOKENS) },
+            ChatRequest {
+                endpoint: &self.endpoint,
+                model: MODEL,
+                system: SYSTEM_PROMPT,
+                user,
+                schema_name: "revision_verdict",
+                schema: response_schema(),
+                sampling: Sampling::Reasoning(REASONING_EFFORT),
+                max_output_tokens: Some(MAX_OUTPUT_TOKENS),
+            },
         );
         let mut call = Box::pin(call);
         let started = Instant::now();
@@ -140,13 +170,18 @@ impl OpenAiRevisionVerifier {
             usage.prompt_tokens += completion.prompt_tokens.unwrap_or(0);
             usage.completion_tokens += completion.completion_tokens.unwrap_or(0);
             usage.reasoning_tokens += completion.reasoning_tokens.unwrap_or(0);
-            usage.estimated_cost_usd = usage.prompt_tokens as f64 * LUNA_PRICE_IN + usage.completion_tokens as f64 * LUNA_PRICE_OUT;
+            usage.estimated_cost_usd = usage.prompt_tokens as f64 * LUNA_PRICE_IN
+                + usage.completion_tokens as f64 * LUNA_PRICE_OUT;
         }
         let invalid = |code: &'static str| {
             self.fail(code);
             Verdict::Unavailable(UnavailableReason::InvalidResponse)
         };
-        if !completion.model.as_deref().is_some_and(|m| model_matches(m, MODEL)) {
+        if !completion
+            .model
+            .as_deref()
+            .is_some_and(|m| model_matches(m, MODEL))
+        {
             return invalid("model_mismatch");
         }
         if completion.finish_reason.as_deref() != Some("stop") {
@@ -185,18 +220,26 @@ impl OpenAiRevisionVerifier {
                 }
             }
             let outcome = {
-                let Ok(_permit) = self.permits.acquire().await else { return Verdict::Unavailable(UnavailableReason::Cancelled) };
+                let Ok(_permit) = self.permits.acquire().await else {
+                    return Verdict::Unavailable(UnavailableReason::Cancelled);
+                };
                 self.attempt(&user).await
             };
             let (reason, retryable) = match outcome {
                 Ok(completion) => return self.read(completion),
-                Err(Err(UnavailableReason::Cancelled)) => return Verdict::Unavailable(UnavailableReason::Cancelled),
+                Err(Err(UnavailableReason::Cancelled)) => {
+                    return Verdict::Unavailable(UnavailableReason::Cancelled)
+                }
                 Err(Err(reason)) => (reason, true),
                 Err(Ok(ChatFailure::NotConfigured)) => (UnavailableReason::NotConfigured, false),
                 Err(Ok(ChatFailure::Auth(_))) => (UnavailableReason::Provider, false),
-                Err(Ok(ChatFailure::Refused | ChatFailure::Unreadable(_))) => (UnavailableReason::InvalidResponse, false),
+                Err(Ok(ChatFailure::Refused | ChatFailure::Unreadable(_))) => {
+                    (UnavailableReason::InvalidResponse, false)
+                }
                 Err(Ok(ChatFailure::Network)) => (UnavailableReason::Provider, true),
-                Err(Ok(ChatFailure::Provider(status))) => (UnavailableReason::Provider, status == 429 || status >= 500),
+                Err(Ok(ChatFailure::Provider(status))) => {
+                    (UnavailableReason::Provider, status == 429 || status >= 500)
+                }
             };
             self.fail(match reason {
                 UnavailableReason::Timeout => "timeout",
@@ -215,7 +258,11 @@ impl OpenAiRevisionVerifier {
 
 impl RevisionVerifier for OpenAiRevisionVerifier {
     fn identity(&self) -> ModelIdentity {
-        ModelIdentity { provider: "openai", family: FAMILY, model: MODEL.to_string() }
+        ModelIdentity {
+            provider: "openai",
+            family: FAMILY,
+            model: MODEL.to_string(),
+        }
     }
 
     fn available(&self) -> bool {

@@ -127,12 +127,19 @@ fn revision_row(connection: &Connection, id: &str) -> Res<RevisionRow> {
             Ok(RevisionRow { id: row.get(0)?, object_id: row.get(1)?, origin: row.get(2)?, span })
         })
         .optional()?;
-    row.ok_or_else(|| IdentityStoreError::Store(StoreError::MissingRevision("revision does not exist".into())))
+    row.ok_or_else(|| {
+        IdentityStoreError::Store(StoreError::MissingRevision(
+            "revision does not exist".into(),
+        ))
+    })
 }
 
 fn parents(connection: &Connection, id: &str) -> Res<Vec<String>> {
-    let mut statement = connection.prepare("SELECT parent_revision_id FROM revision_parents WHERE child_revision_id = ?1")?;
-    let ids = statement.query_map([id], |row| row.get(0))?.collect::<Result<Vec<String>, _>>()?;
+    let mut statement = connection
+        .prepare("SELECT parent_revision_id FROM revision_parents WHERE child_revision_id = ?1")?;
+    let ids = statement
+        .query_map([id], |row| row.get(0))?
+        .collect::<Result<Vec<String>, _>>()?;
     Ok(ids)
 }
 
@@ -142,11 +149,23 @@ fn rows_of(connection: &Connection, revision_id: &str) -> Res<Vec<EvidenceItem>>
     )?;
     let rows = statement
         .query_map([revision_id], |row| {
-            let retracts = match (row.get::<_, Option<String>>(6)?, row.get::<_, Option<i64>>(7)?) {
+            let retracts = match (
+                row.get::<_, Option<String>>(6)?,
+                row.get::<_, Option<i64>>(7)?,
+            ) {
                 (Some(revision), Some(ordinal)) => Some((revision, ordinal)),
                 _ => None,
             };
-            Ok(EvidenceItem { revision_id: row.get(0)?, ordinal: Some(row.get(1)?), capture_id: row.get(2)?, source_start: row.get(3)?, source_end: row.get(4)?, role: row.get(5)?, retracts, interpretation_label: row.get(8)? })
+            Ok(EvidenceItem {
+                revision_id: row.get(0)?,
+                ordinal: Some(row.get(1)?),
+                capture_id: row.get(2)?,
+                source_start: row.get(3)?,
+                source_end: row.get(4)?,
+                role: row.get(5)?,
+                retracts,
+                interpretation_label: row.get(8)?,
+            })
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
@@ -174,35 +193,71 @@ pub fn revision_evidence_in(connection: &Connection, revision_id: &str) -> Res<V
 /// Attaches verbatim capture spans to an AUTOMATIC revision. Idempotent per span: re-attaching the identical evidence is a no-op, a
 /// different role or target for the same span is a conflict. Every span is validated against the stored capture in code points, the
 /// capture must belong to the object's project, and the schema re-checks reference, ancestry, span and immutability rules.
-pub fn attach_revision_evidence_in(connection: &Connection, revision_id: &str, evidence: &[NewEvidence]) -> Res<Vec<EvidenceItem>> {
+pub fn attach_revision_evidence_in(
+    connection: &Connection,
+    revision_id: &str,
+    evidence: &[NewEvidence],
+) -> Res<Vec<EvidenceItem>> {
     if evidence.is_empty() {
-        return Err(IdentityStoreError::Invalid("there is no evidence to attach".into()));
+        return Err(IdentityStoreError::Invalid(
+            "there is no evidence to attach".into(),
+        ));
     }
     let revision = revision_row(connection, revision_id)?;
     if revision.origin != "system" {
-        return Err(IdentityStoreError::Invalid("evidence attaches only to an automatic revision".into()));
+        return Err(IdentityStoreError::Invalid(
+            "evidence attaches only to an automatic revision".into(),
+        ));
     }
-    let object_project: String = connection.query_row("SELECT project_id FROM knowledge_objects WHERE id = ?1", [&revision.object_id], |row| row.get(0))?;
+    let object_project: String = connection.query_row(
+        "SELECT project_id FROM knowledge_objects WHERE id = ?1",
+        [&revision.object_id],
+        |row| row.get(0),
+    )?;
     let mut attached = Vec::with_capacity(evidence.len());
     for item in evidence {
-        let capture: Option<(String, String)> = connection.query_row("SELECT content, project_id FROM captures WHERE id = ?1", [&item.capture_id], |row| Ok((row.get(0)?, row.get(1)?))).optional()?;
-        let (content, capture_project) = capture.ok_or_else(|| IdentityStoreError::Invalid("the evidence capture does not exist".into()))?;
-        validate_span(&content, item.source_start, item.source_end).map_err(IdentityStoreError::Invalid)?;
+        let capture: Option<(String, String)> = connection
+            .query_row(
+                "SELECT content, project_id FROM captures WHERE id = ?1",
+                [&item.capture_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .optional()?;
+        let (content, capture_project) = capture.ok_or_else(|| {
+            IdentityStoreError::Invalid("the evidence capture does not exist".into())
+        })?;
+        validate_span(&content, item.source_start, item.source_end)
+            .map_err(IdentityStoreError::Invalid)?;
         if capture_project != object_project {
-            return Err(IdentityStoreError::Conflict("the evidence capture is not in the object's project".into()));
+            return Err(IdentityStoreError::Conflict(
+                "the evidence capture is not in the object's project".into(),
+            ));
         }
         if item.retracts.is_some() && item.role == EvidenceRole::Asserts {
             return Err(IdentityStoreError::Invalid("`asserts` cannot withdraw evidence: only a correction or replacement may name what it withdraws".into()));
         }
         let existing = rows_of(connection, revision_id)?;
-        if let Some(same_span) = existing.iter().find(|e| e.capture_id == item.capture_id && e.source_start == item.source_start && e.source_end == item.source_end) {
-            if same_span.role == item.role.as_str() && same_span.retracts == item.retracts && same_span.interpretation_label == item.interpretation_label {
+        if let Some(same_span) = existing.iter().find(|e| {
+            e.capture_id == item.capture_id
+                && e.source_start == item.source_start
+                && e.source_end == item.source_end
+        }) {
+            if same_span.role == item.role.as_str()
+                && same_span.retracts == item.retracts
+                && same_span.interpretation_label == item.interpretation_label
+            {
                 attached.push(same_span.clone());
                 continue;
             }
-            return Err(IdentityStoreError::Conflict("that span is already attached to this revision differently".into()));
+            return Err(IdentityStoreError::Conflict(
+                "that span is already attached to this revision differently".into(),
+            ));
         }
-        let ordinal = existing.iter().filter_map(|e| e.ordinal).max().map_or(0, |m| m + 1);
+        let ordinal = existing
+            .iter()
+            .filter_map(|e| e.ordinal)
+            .max()
+            .map_or(0, |m| m + 1);
         connection.execute(
             "INSERT INTO revision_evidence (revision_id, ordinal, object_id, capture_id, source_start, source_end, role, retracts_revision_id, retracts_ordinal, interpretation_label, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             params![
@@ -210,7 +265,12 @@ pub fn attach_revision_evidence_in(connection: &Connection, revision_id: &str, e
                 item.retracts.as_ref().map(|r| r.0.as_str()), item.retracts.as_ref().map(|r| r.1), item.interpretation_label, now_rfc3339()?
             ],
         )?;
-        attached.push(rows_of(connection, revision_id)?.into_iter().find(|e| e.ordinal == Some(ordinal)).expect("just inserted"));
+        attached.push(
+            rows_of(connection, revision_id)?
+                .into_iter()
+                .find(|e| e.ordinal == Some(ordinal))
+                .expect("just inserted"),
+        );
     }
     Ok(attached)
 }
@@ -243,7 +303,9 @@ pub fn evidence_support_in(connection: &Connection, revision_id: &str) -> Res<Ev
     while base.origin == "system" {
         let mut up = parents(connection, &base.id)?;
         if up.len() != 1 {
-            return Err(IdentityStoreError::Store(StoreError::Corrupt("an automatic revision must have exactly one parent".into())));
+            return Err(IdentityStoreError::Store(StoreError::Corrupt(
+                "an automatic revision must have exactly one parent".into(),
+            )));
         }
         let next = revision_row(connection, &up.remove(0))?;
         chain.push(base);
@@ -258,44 +320,82 @@ pub fn evidence_support_in(connection: &Connection, revision_id: &str) -> Res<Ev
         active.extend(origin_item(&base));
         attribution = Attribution::OriginSpan;
     } else {
-        attribution = Attribution::Unknown(format!("the base text is a `{}` revision, which claims no capture", base.origin));
+        attribution = Attribution::Unknown(format!(
+            "the base text is a `{}` revision, which claims no capture",
+            base.origin
+        ));
     }
     let mut inherited_demoted = false;
     for revision in &chain {
         let rows = rows_of(connection, &revision.id)?;
         if rows.is_empty() {
             active.clear();
-            attribution = Attribution::Unknown("an automatic revision has no recorded evidence".into());
+            attribution =
+                Attribution::Unknown("an automatic revision has no recorded evidence".into());
             continue;
         }
-        let unnamed = rows.iter().any(|r| r.role != "asserts" && r.retracts.is_none());
+        let unnamed = rows
+            .iter()
+            .any(|r| r.role != "asserts" && r.retracts.is_none());
         if unnamed {
             inherited_demoted |= !active.is_empty();
             active.clear();
         }
         for row in rows.iter().filter(|r| r.retracts.is_some()) {
             let target = row.retracts.clone().expect("filtered");
-            if let Some(position) = active.iter().position(|a| a.key() == (target.0.clone(), Some(target.1))) {
-                withdrawn.push((active.remove(position), (row.revision_id.clone(), row.ordinal.unwrap_or(0))));
+            if let Some(position) = active
+                .iter()
+                .position(|a| a.key() == (target.0.clone(), Some(target.1)))
+            {
+                withdrawn.push((
+                    active.remove(position),
+                    (row.revision_id.clone(), row.ordinal.unwrap_or(0)),
+                ));
             }
         }
         active.extend(rows);
         if matches!(attribution, Attribution::OriginSpan) {
-            attribution = Attribution::ContributingSpans { inherited_demoted: false };
+            attribution = Attribution::ContributingSpans {
+                inherited_demoted: false,
+            };
         }
     }
-    if let Attribution::ContributingSpans { inherited_demoted: flag } = &mut attribution {
+    if let Attribution::ContributingSpans {
+        inherited_demoted: flag,
+    } = &mut attribution
+    {
         *flag = inherited_demoted;
     }
 
     let withdrawn_keys: Vec<_> = withdrawn.iter().map(|(item, _)| item.key()).collect();
-    let historical: Vec<EvidenceItem> = universe.into_iter().filter(|item| !active.iter().any(|a| a.key() == item.key()) && !withdrawn_keys.contains(&item.key())).collect();
-    Ok(EvidenceSupport { revision_id: revision.id.clone(), object_id: revision.object_id, origin: revision.origin.clone(), synthesized: revision.origin == "system", active, historical, withdrawn, attribution })
+    let historical: Vec<EvidenceItem> = universe
+        .into_iter()
+        .filter(|item| {
+            !active.iter().any(|a| a.key() == item.key()) && !withdrawn_keys.contains(&item.key())
+        })
+        .collect();
+    Ok(EvidenceSupport {
+        revision_id: revision.id.clone(),
+        object_id: revision.object_id,
+        origin: revision.origin.clone(),
+        synthesized: revision.origin == "system",
+        active,
+        historical,
+        withdrawn,
+        attribution,
+    })
 }
 
 impl CaptureStore {
-    pub fn attach_revision_evidence(&self, revision_id: &str, evidence: &[NewEvidence]) -> Res<Vec<EvidenceItem>> {
-        let mut connection = self.connection.lock().map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
+    pub fn attach_revision_evidence(
+        &self,
+        revision_id: &str,
+        evidence: &[NewEvidence],
+    ) -> Res<Vec<EvidenceItem>> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let attached = attach_revision_evidence_in(&transaction, revision_id, evidence)?;
         transaction.commit()?;
@@ -304,13 +404,19 @@ impl CaptureStore {
 
     /// The direct evidence rows of one revision (nothing inherited).
     pub fn revision_evidence(&self, revision_id: &str) -> Res<Vec<EvidenceItem>> {
-        let connection = self.connection.lock().map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
         revision_evidence_in(&connection, revision_id)
     }
 
     /// Historical, active and withdrawn evidence for a revision (default: ask for the current one). Conservative; see the module docs.
     pub fn evidence_support(&self, revision_id: &str) -> Res<EvidenceSupport> {
-        let connection = self.connection.lock().map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
         evidence_support_in(&connection, revision_id)
     }
 }

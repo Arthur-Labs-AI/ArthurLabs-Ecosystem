@@ -24,7 +24,10 @@ pub struct OpenAiAnswerModel {
 
 impl fmt::Debug for OpenAiAnswerModel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OpenAiAnswerModel").field("endpoint", &self.endpoint).field("model", &self.model).finish_non_exhaustive()
+        f.debug_struct("OpenAiAnswerModel")
+            .field("endpoint", &self.endpoint)
+            .field("model", &self.model)
+            .finish_non_exhaustive()
     }
 }
 
@@ -35,15 +38,33 @@ impl OpenAiAnswerModel {
         Self::with_endpoint(credentials, DEFAULT_ENDPOINT, DEFAULT_MODEL)
     }
 
-    pub fn with_endpoint(credentials: Arc<dyn CredentialSource>, endpoint: &str, model: &str) -> Result<Self, reqwest::Error> {
-        Ok(Self { client: http::client(REQUEST_TIMEOUT)?, endpoint: endpoint.to_string(), model: model.to_string(), credentials })
+    pub fn with_endpoint(
+        credentials: Arc<dyn CredentialSource>,
+        endpoint: &str,
+        model: &str,
+    ) -> Result<Self, reqwest::Error> {
+        Ok(Self {
+            client: http::client(REQUEST_TIMEOUT)?,
+            endpoint: endpoint.to_string(),
+            model: model.to_string(),
+            credentials,
+        })
     }
 
     async fn request(&self, request: &SynthesisRequest) -> Result<String, SynthesisFailure> {
         chat::complete_json(
             &self.client,
             self.credentials.as_ref(),
-            ChatRequest { endpoint: &self.endpoint, model: &self.model, system: &request.system, user: &request.user, schema_name: "recall_answer", schema: request.schema.clone(), sampling: Sampling::Deterministic, max_output_tokens: None },
+            ChatRequest {
+                endpoint: &self.endpoint,
+                model: &self.model,
+                system: &request.system,
+                user: &request.user,
+                schema_name: "recall_answer",
+                schema: request.schema.clone(),
+                sampling: Sampling::Deterministic,
+                max_output_tokens: None,
+            },
         )
         .await
         .map_err(|failure| match failure {
@@ -62,7 +83,10 @@ impl AnswerModel for OpenAiAnswerModel {
         self.model.clone()
     }
 
-    fn complete<'a>(&'a self, request: &'a SynthesisRequest) -> BoxFuture<'a, Result<String, SynthesisFailure>> {
+    fn complete<'a>(
+        &'a self,
+        request: &'a SynthesisRequest,
+    ) -> BoxFuture<'a, Result<String, SynthesisFailure>> {
         Box::pin(self.request(request))
     }
 }

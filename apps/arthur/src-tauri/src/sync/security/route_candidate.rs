@@ -226,9 +226,7 @@ impl Candidate {
             }
         }
         match &observed.platform {
-            Platform::WindowsPrivateProfileObserved | Platform::AndroidBroadPermissionObserved => {
-                ()
-            }
+            Platform::WindowsPrivateProfileObserved | Platform::AndroidBroadPermissionObserved => {}
             Platform::AndroidPickerEndpointObserved(a) if *a == endpoint => (),
             Platform::AndroidLegacyInternetObserved if legacy_debug => (),
             _ => return Err(E::N7PolicyPending),

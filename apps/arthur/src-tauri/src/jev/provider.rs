@@ -16,7 +16,7 @@ use super::protocol::{build_run, parse_run, Mapping};
 use super::{JevError, JEV_MODEL};
 use crate::async_util::BoxFuture;
 use crate::distillation::evolution::{AsyncIdentityClassifier, EvolutionSettings};
-use crate::identity::{Candidate, ClassifierFailure, ClassifierOutput, Claim, ResolverPolicy};
+use crate::identity::{Candidate, Claim, ClassifierFailure, ClassifierOutput, ResolverPolicy};
 use crate::providers::credentials::{ApiKey, CredentialSource};
 use crate::providers::registry::ProviderId;
 use crate::providers::secrets::SecretStore;
@@ -49,7 +49,10 @@ pub struct JevLimits {
 
 impl Default for JevLimits {
     fn default() -> Self {
-        Self { runs: 3, max_requests_per_capture: 24 }
+        Self {
+            runs: 3,
+            max_requests_per_capture: 24,
+        }
     }
 }
 
@@ -71,12 +74,27 @@ impl std::fmt::Debug for JevIdentityProvider {
 /// The resolver policy that accepts exactly the pinned model. Thresholds are the unvalidated placeholders of `ResolverPolicy::default`;
 /// they are NOT production-calibrated (see the module docs of `jev`).
 pub fn resolver_policy() -> ResolverPolicy {
-    ResolverPolicy { accepted_models: vec![JEV_MODEL.to_string()], ..ResolverPolicy::default() }
+    ResolverPolicy {
+        accepted_models: vec![JEV_MODEL.to_string()],
+        ..ResolverPolicy::default()
+    }
 }
 
 impl JevIdentityProvider {
-    pub fn new(client: JevClient, credential: Arc<dyn CredentialSource>, consent: Arc<JevConsent>, settings: Arc<EvolutionSettings>) -> Self {
-        Self { client, credential, consent, settings, mapping: Mapping::default(), limits: JevLimits::default() }
+    pub fn new(
+        client: JevClient,
+        credential: Arc<dyn CredentialSource>,
+        consent: Arc<JevConsent>,
+        settings: Arc<EvolutionSettings>,
+    ) -> Self {
+        Self {
+            client,
+            credential,
+            consent,
+            settings,
+            mapping: Mapping::default(),
+            limits: JevLimits::default(),
+        }
     }
 
     pub fn with_limits(mut self, limits: JevLimits) -> Self {
@@ -113,13 +131,23 @@ impl JevIdentityProvider {
         self.credential.api_key().ok_or(JevError::NoCredential)
     }
 
-    async fn classify_one(&self, key: &ApiKey, claim: &Claim, candidates: &[Candidate], budget: &Budget) -> Result<ClassifierOutput, JevError> {
+    async fn classify_one(
+        &self,
+        key: &ApiKey,
+        claim: &Claim,
+        candidates: &[Candidate],
+        budget: &Budget,
+    ) -> Result<ClassifierOutput, JevError> {
         let ids: Vec<String> = candidates.iter().map(|c| c.object_id.clone()).collect();
         let mut runs = Vec::with_capacity(self.limits.runs);
         for run in 0..self.limits.runs {
             // revoked or switched off between runs: stop now, send nothing more
             if !self.still_allowed() {
-                return Err(if self.settings.enabled() { JevError::NoConsent } else { JevError::Disabled });
+                return Err(if self.settings.enabled() {
+                    JevError::NoConsent
+                } else {
+                    JevError::Disabled
+                });
             }
             let plan = build_run(claim, candidates, run)?;
             let text = self.client.send(key, &plan.body, budget).await?;
@@ -131,22 +159,35 @@ impl JevIdentityProvider {
                 }
             };
             let estimated = (plan.body.chars().count() as u64).div_ceil(4);
-            self.client.meter().usage(parsed.usage.map(|u| u.input_tokens), parsed.usage.map(|u| u.output_tokens), estimated);
+            self.client.meter().usage(
+                parsed.usage.map(|u| u.input_tokens),
+                parsed.usage.map(|u| u.output_tokens),
+                estimated,
+            );
             runs.push(parsed.signals);
         }
-        Ok(ClassifierOutput { model_id: JEV_MODEL.to_string(), runs })
+        Ok(ClassifierOutput {
+            model_id: JEV_MODEL.to_string(),
+            runs,
+        })
     }
 }
 
 impl AsyncIdentityClassifier for JevIdentityProvider {
-    fn classify_capture<'a>(&'a self, items: &'a [(Claim, Vec<Candidate>)]) -> BoxFuture<'a, Vec<Result<ClassifierOutput, ClassifierFailure>>> {
+    fn classify_capture<'a>(
+        &'a self,
+        items: &'a [(Claim, Vec<Candidate>)],
+    ) -> BoxFuture<'a, Vec<Result<ClassifierOutput, ClassifierFailure>>> {
         Box::pin(async move {
             // one gate for the whole capture: nothing is sent unless every precondition holds
             let key = match self.preflight() {
                 Ok(key) => key,
                 Err(error) => {
                     self.client.meter().fail(error.code());
-                    return items.iter().map(|_| Err(error.to_classifier_failure())).collect();
+                    return items
+                        .iter()
+                        .map(|_| Err(error.to_classifier_failure()))
+                        .collect();
                 }
             };
             let budget = Budget::new(self.limits.max_requests_per_capture);
@@ -159,9 +200,23 @@ impl AsyncIdentityClassifier for JevIdentityProvider {
                     results.push(Err(error.to_classifier_failure()));
                     continue;
                 }
-                let result = if candidates.is_empty() { Err(JevError::Malformed("no candidates")) } else { self.classify_one(&key, claim, candidates, &budget).await };
+                let result = if candidates.is_empty() {
+                    Err(JevError::Malformed("no candidates"))
+                } else {
+                    self.classify_one(&key, claim, candidates, &budget).await
+                };
                 if let Err(error) = &result {
-                    if matches!(error, JevError::Auth | JevError::RetriesExhausted(_) | JevError::BudgetExceeded | JevError::Cancelled | JevError::Disabled | JevError::NoConsent | JevError::RateLimited | JevError::Overloaded) {
+                    if matches!(
+                        error,
+                        JevError::Auth
+                            | JevError::RetriesExhausted(_)
+                            | JevError::BudgetExceeded
+                            | JevError::Cancelled
+                            | JevError::Disabled
+                            | JevError::NoConsent
+                            | JevError::RateLimited
+                            | JevError::Overloaded
+                    ) {
                         stopped = Some(*error);
                     }
                 }

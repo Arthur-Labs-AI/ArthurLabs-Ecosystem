@@ -20,13 +20,19 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use crate::distillation::evolution::{DraftFailure, DraftRequest, EvolutionLimits, EvolutionPipeline, EvolutionSettings, ClassifierBackend, RevisionDraft, RevisionDrafter};
+use crate::distillation::evolution::{
+    ClassifierBackend, DraftFailure, DraftRequest, EvolutionLimits, EvolutionPipeline,
+    EvolutionSettings, RevisionDraft, RevisionDrafter,
+};
 use crate::jev::{self, JevClient, JevConsent, JevIdentityProvider, ReqwestTransport, RetryPolicy};
 use crate::providers::credentials::{ApiKey, CredentialSource};
 use crate::providers::registry::ProviderId;
 use crate::providers::secrets::SecretStore;
 use crate::synthesis::authorization::{ProviderAuthorization, Purpose};
-use crate::synthesis::disclosure::{SYNTHESIS_DISCLOSURE, SYNTHESIS_DISCLOSURE_VERSION, VERIFICATION_DISCLOSURE, VERIFICATION_DISCLOSURE_VERSION};
+use crate::synthesis::disclosure::{
+    SYNTHESIS_DISCLOSURE, SYNTHESIS_DISCLOSURE_VERSION, VERIFICATION_DISCLOSURE,
+    VERIFICATION_DISCLOSURE_VERSION,
+};
 use crate::synthesis::openai::OpenAiRevisionSynthesizer;
 use crate::synthesis::openai_verifier::OpenAiRevisionVerifier;
 use crate::synthesis::stage::{StageLimits, SynthesisStage};
@@ -96,7 +102,10 @@ pub struct RuntimeError {
 
 impl RuntimeError {
     fn new(code: &'static str, message: impl Into<String>) -> Self {
-        Self { code, message: message.into() }
+        Self {
+            code,
+            message: message.into(),
+        }
     }
 }
 
@@ -116,21 +125,67 @@ pub struct Built {
 }
 
 /// Builds the review-first pipeline and the runtime that controls it from the same shared handles.
-pub fn build(dir: &Path, secrets: Arc<dyn SecretStore>, llm: Arc<dyn CredentialSource>) -> Result<Built, String> {
+pub fn build(
+    dir: &Path,
+    secrets: Arc<dyn SecretStore>,
+    llm: Arc<dyn CredentialSource>,
+) -> Result<Built, String> {
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let settings = Arc::new(EvolutionSettings::new(dir.join("settings.json")));
     let consent = Arc::new(JevConsent::new(dir.join("typesafe-consent.json")));
-    let synthesis_authorization = Arc::new(ProviderAuthorization::new(dir.join("openai-synthesis.json"), "openai", Purpose::Synthesis, SYNTHESIS_DISCLOSURE_VERSION));
-    let verification_authorization = Arc::new(ProviderAuthorization::new(dir.join("openai-verification.json"), "openai", Purpose::Verification, VERIFICATION_DISCLOSURE_VERSION));
+    let synthesis_authorization = Arc::new(ProviderAuthorization::new(
+        dir.join("openai-synthesis.json"),
+        "openai",
+        Purpose::Synthesis,
+        SYNTHESIS_DISCLOSURE_VERSION,
+    ));
+    let verification_authorization = Arc::new(ProviderAuthorization::new(
+        dir.join("openai-verification.json"),
+        "openai",
+        Purpose::Verification,
+        VERIFICATION_DISCLOSURE_VERSION,
+    ));
 
     let transport = ReqwestTransport::production().map_err(|e| e.to_string())?;
-    let client = JevClient::new(Arc::new(transport), RetryPolicy::default(), JEV_TIMEOUT, 2, JEV_DAILY_REQUESTS);
-    let identity = Arc::new(JevIdentityProvider::new(client, Arc::new(jev::provider::TypeSafeCredential::new(secrets.clone())), consent.clone(), settings.clone()));
+    let client = JevClient::new(
+        Arc::new(transport),
+        RetryPolicy::default(),
+        JEV_TIMEOUT,
+        2,
+        JEV_DAILY_REQUESTS,
+    );
+    let identity = Arc::new(JevIdentityProvider::new(
+        client,
+        Arc::new(jev::provider::TypeSafeCredential::new(secrets.clone())),
+        consent.clone(),
+        settings.clone(),
+    ));
 
-    let synthesizer = Arc::new(OpenAiRevisionSynthesizer::new(llm.clone(), synthesis_authorization.clone(), SYNTHESIS_TIMEOUT).map_err(|e| e.to_string())?);
-    let verifier = Arc::new(OpenAiRevisionVerifier::new(llm.clone(), verification_authorization.clone(), VERIFICATION_TIMEOUT).map_err(|e| e.to_string())?);
+    let synthesizer = Arc::new(
+        OpenAiRevisionSynthesizer::new(
+            llm.clone(),
+            synthesis_authorization.clone(),
+            SYNTHESIS_TIMEOUT,
+        )
+        .map_err(|e| e.to_string())?,
+    );
+    let verifier = Arc::new(
+        OpenAiRevisionVerifier::new(
+            llm.clone(),
+            verification_authorization.clone(),
+            VERIFICATION_TIMEOUT,
+        )
+        .map_err(|e| e.to_string())?,
+    );
     // GPT-6 Luna reviewing GPT-6 Luna: the stage records `SameFamilyReview` and can never apply a revision on its own.
-    let stage = SynthesisStage::new_same_family_review(synthesizer, verifier, synthesis_authorization.clone(), verification_authorization.clone(), StageLimits::default()).map_err(|e| format!("{e:?}"))?;
+    let stage = SynthesisStage::new_same_family_review(
+        synthesizer,
+        verifier,
+        synthesis_authorization.clone(),
+        verification_authorization.clone(),
+        StageLimits::default(),
+    )
+    .map_err(|e| format!("{e:?}"))?;
 
     let pipeline = EvolutionPipeline {
         settings: settings.clone(),
@@ -142,7 +197,17 @@ pub fn build(dir: &Path, secrets: Arc<dyn SecretStore>, llm: Arc<dyn CredentialS
         limits: EvolutionLimits::default(),
     };
     debug_assert!(pipeline.review_first());
-    Ok(Built { runtime: EvolutionRuntime { settings, consent, synthesis_authorization, verification_authorization, secrets, llm }, pipeline })
+    Ok(Built {
+        runtime: EvolutionRuntime {
+            settings,
+            consent,
+            synthesis_authorization,
+            verification_authorization,
+            secrets,
+            llm,
+        },
+        pipeline,
+    })
 }
 
 impl EvolutionRuntime {
@@ -182,7 +247,10 @@ impl EvolutionRuntime {
                 consented: self.consent.granted(),
                 has_credential: self.secrets.has(ProviderId::TypeSafe),
                 disclosure_version: jev::DISCLOSURE_VERSION.into(),
-                disclosure: jev::DISCLOSURE_POINTS.iter().map(|s| s.to_string()).collect(),
+                disclosure: jev::DISCLOSURE_POINTS
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect(),
             },
             synthesis: ProviderStatus {
                 provider: "OpenAI",
@@ -196,7 +264,10 @@ impl EvolutionRuntime {
                 consented: self.verification_authorization.granted(),
                 has_credential: openai,
                 disclosure_version: VERIFICATION_DISCLOSURE_VERSION.into(),
-                disclosure: VERIFICATION_DISCLOSURE.iter().map(|s| s.to_string()).collect(),
+                disclosure: VERIFICATION_DISCLOSURE
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect(),
             },
             same_family_verification: true,
         }
@@ -207,22 +278,38 @@ impl EvolutionRuntime {
         if enabled {
             let blockers = self.blockers();
             if !blockers.is_empty() {
-                return Err(RuntimeError::new("not_ready", format!("Automatic Thought Evolution needs: {}.", blockers.join(", "))));
+                return Err(RuntimeError::new(
+                    "not_ready",
+                    format!(
+                        "Automatic Thought Evolution needs: {}.",
+                        blockers.join(", ")
+                    ),
+                ));
             }
         }
-        self.settings.set(enabled).map_err(|_| RuntimeError::new("settings_not_saved", "The setting could not be saved."))?;
+        self.settings.set(enabled).map_err(|_| {
+            RuntimeError::new("settings_not_saved", "The setting could not be saved.")
+        })?;
         Ok(self.status())
     }
 
     /// Records one explicit decision. Granting must name the disclosure version the person was shown; revoking needs no version.
-    pub fn set_consent(&self, kind: ConsentKind, granted: bool, disclosure_version: Option<&str>) -> Result<EvolutionStatus, RuntimeError> {
+    pub fn set_consent(
+        &self,
+        kind: ConsentKind,
+        granted: bool,
+        disclosure_version: Option<&str>,
+    ) -> Result<EvolutionStatus, RuntimeError> {
         let current = match kind {
             ConsentKind::Typesafe => jev::DISCLOSURE_VERSION,
             ConsentKind::Synthesis => SYNTHESIS_DISCLOSURE_VERSION,
             ConsentKind::Verification => VERIFICATION_DISCLOSURE_VERSION,
         };
         if granted && disclosure_version != Some(current) {
-            return Err(RuntimeError::new("disclosure_outdated", "The explanation you saw has changed. Read it again before agreeing."));
+            return Err(RuntimeError::new(
+                "disclosure_outdated",
+                "The explanation you saw has changed. Read it again before agreeing.",
+            ));
         }
         let saved = match (kind, granted) {
             (ConsentKind::Typesafe, true) => self.consent.grant(),
@@ -232,19 +319,33 @@ impl EvolutionRuntime {
             (ConsentKind::Verification, true) => self.verification_authorization.grant(),
             (ConsentKind::Verification, false) => self.verification_authorization.revoke(),
         };
-        saved.map_err(|_| RuntimeError::new("consent_not_saved", "Your choice could not be saved, so nothing changed."))?;
+        saved.map_err(|_| {
+            RuntimeError::new(
+                "consent_not_saved",
+                "Your choice could not be saved, so nothing changed.",
+            )
+        })?;
         Ok(self.status())
     }
 
     /// Write-only. The key goes straight into the native credential store under the dedicated TypeSafe slot and is never returned.
     pub fn set_typesafe_credential(&self, secret: &str) -> Result<EvolutionStatus, RuntimeError> {
-        let key = ApiKey::parse(secret).ok_or_else(|| RuntimeError::new("invalid_credential", "That does not look like an API key."))?;
-        self.secrets.set(ProviderId::TypeSafe, &key).map_err(|_| RuntimeError::new("credential_not_saved", "The key could not be saved securely on this device."))?;
+        let key = ApiKey::parse(secret).ok_or_else(|| {
+            RuntimeError::new("invalid_credential", "That does not look like an API key.")
+        })?;
+        self.secrets.set(ProviderId::TypeSafe, &key).map_err(|_| {
+            RuntimeError::new(
+                "credential_not_saved",
+                "The key could not be saved securely on this device.",
+            )
+        })?;
         Ok(self.status())
     }
 
     pub fn delete_typesafe_credential(&self) -> Result<EvolutionStatus, RuntimeError> {
-        self.secrets.delete(ProviderId::TypeSafe).map_err(|_| RuntimeError::new("credential_not_removed", "The key could not be removed."))?;
+        self.secrets.delete(ProviderId::TypeSafe).map_err(|_| {
+            RuntimeError::new("credential_not_removed", "The key could not be removed.")
+        })?;
         Ok(self.status())
     }
 }
@@ -262,7 +363,10 @@ mod tests {
 
     impl SecretStore for Memory {
         fn set(&self, provider: ProviderId, key: &ApiKey) -> Result<(), SecretError> {
-            self.0.lock().unwrap().insert(provider.as_str(), key.expose().to_string());
+            self.0
+                .lock()
+                .unwrap()
+                .insert(provider.as_str(), key.expose().to_string());
             Ok(())
         }
         fn has(&self, provider: ProviderId) -> bool {
@@ -273,7 +377,11 @@ mod tests {
             Ok(())
         }
         fn get(&self, provider: ProviderId) -> Option<ApiKey> {
-            self.0.lock().unwrap().get(provider.as_str()).and_then(|raw| ApiKey::parse(raw))
+            self.0
+                .lock()
+                .unwrap()
+                .get(provider.as_str())
+                .and_then(|raw| ApiKey::parse(raw))
         }
     }
 
@@ -295,11 +403,27 @@ mod tests {
     }
 
     fn grant_everything(runtime: &EvolutionRuntime, secrets: &Memory) {
-        secrets.set(ProviderId::OpenAi, &ApiKey::parse(OPENAI_SECRET).unwrap()).unwrap();
+        secrets
+            .set(ProviderId::OpenAi, &ApiKey::parse(OPENAI_SECRET).unwrap())
+            .unwrap();
         runtime.set_typesafe_credential(TYPESAFE_SECRET).unwrap();
-        runtime.set_consent(ConsentKind::Typesafe, true, Some(jev::DISCLOSURE_VERSION)).unwrap();
-        runtime.set_consent(ConsentKind::Synthesis, true, Some(SYNTHESIS_DISCLOSURE_VERSION)).unwrap();
-        runtime.set_consent(ConsentKind::Verification, true, Some(VERIFICATION_DISCLOSURE_VERSION)).unwrap();
+        runtime
+            .set_consent(ConsentKind::Typesafe, true, Some(jev::DISCLOSURE_VERSION))
+            .unwrap();
+        runtime
+            .set_consent(
+                ConsentKind::Synthesis,
+                true,
+                Some(SYNTHESIS_DISCLOSURE_VERSION),
+            )
+            .unwrap();
+        runtime
+            .set_consent(
+                ConsentKind::Verification,
+                true,
+                Some(VERIFICATION_DISCLOSURE_VERSION),
+            )
+            .unwrap();
     }
 
     #[test]
@@ -309,9 +433,21 @@ mod tests {
         let status = built.runtime.status();
         assert!(!status.enabled && !status.ready && !status.active);
         assert_eq!(status.mode, "review_first");
-        assert_eq!(status.blockers, vec!["typesafe_consent", "typesafe_credential", "llm_credential", "synthesis_authorization", "verification_authorization"]);
+        assert_eq!(
+            status.blockers,
+            vec![
+                "typesafe_consent",
+                "typesafe_credential",
+                "llm_credential",
+                "synthesis_authorization",
+                "verification_authorization"
+            ]
+        );
         assert!(status.same_family_verification);
-        assert!(built.pipeline.review_first() && !built.pipeline.enabled(), "installed, review-first, and OFF");
+        assert!(
+            built.pipeline.review_first() && !built.pipeline.enabled(),
+            "installed, review-first, and OFF"
+        );
     }
 
     #[test]
@@ -320,16 +456,26 @@ mod tests {
         let (built, secrets) = rig(dir.path());
         let runtime = &built.runtime;
         assert_eq!(runtime.set_enabled(true).unwrap_err().code, "not_ready");
-        assert!(!runtime.status().enabled, "a refused switch changes nothing");
+        assert!(
+            !runtime.status().enabled,
+            "a refused switch changes nothing"
+        );
         grant_everything(runtime, &secrets);
         let on = runtime.set_enabled(true).unwrap();
         assert!(on.enabled && on.ready && on.active && on.blockers.is_empty());
         assert!(built.pipeline.enabled());
         // revoking any single permission stops new provider work AT ONCE, without the switch being touched
-        for (kind, version) in [(ConsentKind::Typesafe, jev::DISCLOSURE_VERSION), (ConsentKind::Synthesis, SYNTHESIS_DISCLOSURE_VERSION), (ConsentKind::Verification, VERIFICATION_DISCLOSURE_VERSION)] {
+        for (kind, version) in [
+            (ConsentKind::Typesafe, jev::DISCLOSURE_VERSION),
+            (ConsentKind::Synthesis, SYNTHESIS_DISCLOSURE_VERSION),
+            (ConsentKind::Verification, VERIFICATION_DISCLOSURE_VERSION),
+        ] {
             let off = runtime.set_consent(kind, false, None).unwrap();
             assert!(off.enabled && !off.active && !off.ready, "{kind:?}");
-            assert!(!built.pipeline.allowed(), "{kind:?}: the pipeline's own check (read inside the commit) is false");
+            assert!(
+                !built.pipeline.allowed(),
+                "{kind:?}: the pipeline's own check (read inside the commit) is false"
+            );
             runtime.set_consent(kind, true, Some(version)).unwrap();
             assert!(built.pipeline.allowed());
         }
@@ -337,7 +483,11 @@ mod tests {
         assert!(!off.enabled && !built.pipeline.allowed());
         // removing a credential makes it not ready again
         runtime.set_enabled(true).unwrap();
-        assert!(runtime.delete_typesafe_credential().unwrap().blockers.contains(&"typesafe_credential"));
+        assert!(runtime
+            .delete_typesafe_credential()
+            .unwrap()
+            .blockers
+            .contains(&"typesafe_credential"));
         assert_eq!(runtime.set_enabled(true).unwrap_err().code, "not_ready");
     }
 
@@ -345,12 +495,28 @@ mod tests {
     fn a_consent_needs_the_disclosure_version_the_person_was_shown() {
         let dir = tempfile::tempdir().unwrap();
         let (built, _) = rig(dir.path());
-        for (kind, current) in [(ConsentKind::Typesafe, jev::DISCLOSURE_VERSION), (ConsentKind::Synthesis, SYNTHESIS_DISCLOSURE_VERSION), (ConsentKind::Verification, VERIFICATION_DISCLOSURE_VERSION)] {
+        for (kind, current) in [
+            (ConsentKind::Typesafe, jev::DISCLOSURE_VERSION),
+            (ConsentKind::Synthesis, SYNTHESIS_DISCLOSURE_VERSION),
+            (ConsentKind::Verification, VERIFICATION_DISCLOSURE_VERSION),
+        ] {
             let before = built.runtime.status().blockers.len();
             for wrong in [None, Some("an-older-version"), Some("")] {
-                assert_eq!(built.runtime.set_consent(kind, true, wrong).unwrap_err().code, "disclosure_outdated", "{kind:?} {wrong:?}");
+                assert_eq!(
+                    built
+                        .runtime
+                        .set_consent(kind, true, wrong)
+                        .unwrap_err()
+                        .code,
+                    "disclosure_outdated",
+                    "{kind:?} {wrong:?}"
+                );
             }
-            assert_eq!(built.runtime.status().blockers.len(), before, "a refused grant changes nothing");
+            assert_eq!(
+                built.runtime.status().blockers.len(),
+                before,
+                "a refused grant changes nothing"
+            );
             assert!(built.runtime.set_consent(kind, true, Some(current)).is_ok());
         }
     }
@@ -359,35 +525,82 @@ mod tests {
     fn the_three_permissions_are_independent_and_the_openai_key_alone_grants_nothing() {
         let dir = tempfile::tempdir().unwrap();
         let (built, secrets) = rig(dir.path());
-        secrets.set(ProviderId::OpenAi, &ApiKey::parse(OPENAI_SECRET).unwrap()).unwrap();
-        assert!(!built.runtime.status().synthesis.consented && !built.runtime.status().verification.consented, "a key is never permission");
-        built.runtime.set_consent(ConsentKind::Synthesis, true, Some(SYNTHESIS_DISCLOSURE_VERSION)).unwrap();
+        secrets
+            .set(ProviderId::OpenAi, &ApiKey::parse(OPENAI_SECRET).unwrap())
+            .unwrap();
+        assert!(
+            !built.runtime.status().synthesis.consented
+                && !built.runtime.status().verification.consented,
+            "a key is never permission"
+        );
+        built
+            .runtime
+            .set_consent(
+                ConsentKind::Synthesis,
+                true,
+                Some(SYNTHESIS_DISCLOSURE_VERSION),
+            )
+            .unwrap();
         let status = built.runtime.status();
-        assert!(status.synthesis.consented && !status.verification.consented && !status.typesafe.consented, "synthesis consent does not authorize verification or TypeSafe");
+        assert!(
+            status.synthesis.consented
+                && !status.verification.consented
+                && !status.typesafe.consented,
+            "synthesis consent does not authorize verification or TypeSafe"
+        );
         assert!(status.synthesis.disclosure_version != status.verification.disclosure_version);
-        assert!(status.verification.disclosure.join(" ").contains("not an independent review"));
+        assert!(status
+            .verification
+            .disclosure
+            .join(" ")
+            .contains("not an independent review"));
     }
 
     #[test]
     fn credentials_are_write_only_and_never_appear_in_any_status() {
         let dir = tempfile::tempdir().unwrap();
         let (built, secrets) = rig(dir.path());
-        assert_eq!(built.runtime.set_typesafe_credential("two words").unwrap_err().code, "invalid_credential");
-        assert_eq!(built.runtime.set_typesafe_credential("").unwrap_err().code, "invalid_credential");
+        assert_eq!(
+            built
+                .runtime
+                .set_typesafe_credential("two words")
+                .unwrap_err()
+                .code,
+            "invalid_credential"
+        );
+        assert_eq!(
+            built.runtime.set_typesafe_credential("").unwrap_err().code,
+            "invalid_credential"
+        );
         grant_everything(&built.runtime, &secrets);
         let status = built.runtime.status();
         let rendered = format!("{}{:?}", serde_json::to_string(&status).unwrap(), status);
-        assert!(!rendered.contains(TYPESAFE_SECRET) && !rendered.contains(OPENAI_SECRET), "no key is ever rendered");
+        assert!(
+            !rendered.contains(TYPESAFE_SECRET) && !rendered.contains(OPENAI_SECRET),
+            "no key is ever rendered"
+        );
         assert!(status.typesafe.has_credential && status.synthesis.has_credential);
         // the TypeSafe key sits in its own slot: the OpenAI slot is untouched by it, and neither is copied to the other
-        assert_eq!(secrets.get(ProviderId::TypeSafe).unwrap().expose(), TYPESAFE_SECRET);
-        assert_eq!(secrets.get(ProviderId::OpenAi).unwrap().expose(), OPENAI_SECRET);
+        assert_eq!(
+            secrets.get(ProviderId::TypeSafe).unwrap().expose(),
+            TYPESAFE_SECRET
+        );
+        assert_eq!(
+            secrets.get(ProviderId::OpenAi).unwrap().expose(),
+            OPENAI_SECRET
+        );
         // nothing is written to disk by the runtime except the three small permission/setting files
-        let mut files: Vec<String> = std::fs::read_dir(dir.path()).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().to_string()).collect();
+        let mut files: Vec<String> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().to_string())
+            .collect();
         files.sort();
         for name in &files {
             let text = std::fs::read_to_string(dir.path().join(name)).unwrap();
-            assert!(!text.contains(TYPESAFE_SECRET) && !text.contains(OPENAI_SECRET), "{name}");
+            assert!(
+                !text.contains(TYPESAFE_SECRET) && !text.contains(OPENAI_SECRET),
+                "{name}"
+            );
         }
         built.runtime.delete_typesafe_credential().unwrap();
         assert!(!built.runtime.status().typesafe.has_credential);
@@ -400,19 +613,35 @@ mod tests {
             let (built, secrets) = rig(dir.path());
             grant_everything(&built.runtime, &secrets);
             built.runtime.set_enabled(true).unwrap();
-            built.runtime.set_consent(ConsentKind::Verification, false, None).unwrap();
+            built
+                .runtime
+                .set_consent(ConsentKind::Verification, false, None)
+                .unwrap();
         }
         let (again, secrets) = rig(dir.path());
         let status = again.runtime.status();
-        assert!(status.enabled && status.typesafe.consented && status.synthesis.consented, "saved choices are back");
-        assert!(!status.verification.consented, "a revocation is durable too");
-        assert!(secrets.get(ProviderId::TypeSafe).is_none(), "credentials live in the secret store, not in these files");
+        assert!(
+            status.enabled && status.typesafe.consented && status.synthesis.consented,
+            "saved choices are back"
+        );
+        assert!(
+            !status.verification.consented,
+            "a revocation is durable too"
+        );
+        assert!(
+            secrets.get(ProviderId::TypeSafe).is_none(),
+            "credentials live in the secret store, not in these files"
+        );
         // a record written for an OLDER disclosure is not consent
         std::fs::write(dir.path().join("openai-synthesis.json"), r#"{"version":1,"provider":"openai","purpose":"synthesis","granted":true,"disclosureVersion":"openai-synthesis-2020-01-v0"}"#).unwrap();
         let (stale, _) = rig(dir.path());
         assert!(!stale.runtime.status().synthesis.consented);
         // damaged files mean OFF, never ON
-        for file in ["settings.json", "typesafe-consent.json", "openai-verification.json"] {
+        for file in [
+            "settings.json",
+            "typesafe-consent.json",
+            "openai-verification.json",
+        ] {
             std::fs::write(dir.path().join(file), "{ not json").unwrap();
         }
         let (damaged, _) = rig(dir.path());
@@ -426,19 +655,53 @@ mod tests {
         use crate::storage::capture_store::{CaptureStore, CreateCaptureInput};
         struct One;
         impl Distiller for One {
-            fn distill<'a>(&'a self, _: &'a str) -> crate::async_util::BoxFuture<'a, Result<Vec<Candidate>, DistillError>> {
-                Box::pin(async { Ok(vec![Candidate { kind: "idea".into(), title: "T".into(), body: "B".into(), evidence: "hello world".into(), source_start: None, source_end: None }]) })
+            fn distill<'a>(
+                &'a self,
+                _: &'a str,
+            ) -> crate::async_util::BoxFuture<'a, Result<Vec<Candidate>, DistillError>>
+            {
+                Box::pin(async {
+                    Ok(vec![Candidate {
+                        kind: "idea".into(),
+                        title: "T".into(),
+                        body: "B".into(),
+                        evidence: "hello world".into(),
+                        source_start: None,
+                        source_end: None,
+                    }])
+                })
             }
         }
         let dir = tempfile::tempdir().unwrap();
         let (built, _) = rig(dir.path());
         let service = DistillationService::new(Arc::new(One)).with_evolution(built.pipeline);
         let store = CaptureStore::open_in_memory().unwrap();
-        let capture = store.create(CreateCaptureInput { source: "text".into(), content: "hello world".into(), project_id: None }).unwrap();
-        let outcome = tauri::async_runtime::block_on(service.distill_detailed(&store, &capture.id)).unwrap();
-        assert_eq!((outcome.objects.len(), outcome.revised.len(), outcome.pending.len(), outcome.proposals.len()), (1, 0, 0, 0));
+        let capture = store
+            .create(CreateCaptureInput {
+                source: "text".into(),
+                content: "hello world".into(),
+                project_id: None,
+            })
+            .unwrap();
+        let outcome =
+            tauri::async_runtime::block_on(service.distill_detailed(&store, &capture.id)).unwrap();
+        assert_eq!(
+            (
+                outcome.objects.len(),
+                outcome.revised.len(),
+                outcome.pending.len(),
+                outcome.proposals.len()
+            ),
+            (1, 0, 0, 0)
+        );
         assert_eq!(store.list_revision_proposals(None, &[]).unwrap().len(), 0);
-        assert!(store.identity_decisions_for(&capture.id).unwrap().is_empty(), "OFF: not even a decision is recorded, exactly as before");
+        assert!(
+            store
+                .identity_decisions_for(&capture.id)
+                .unwrap()
+                .is_empty(),
+            "OFF: not even a decision is recorded, exactly as before"
+        );
     }
 
     /// Every shipped (non-test) source file, as `(path relative to src, text)`.
@@ -449,9 +712,20 @@ mod tests {
                 if path.is_dir() {
                     walk(&path, root, out);
                 } else if path.extension().is_some_and(|e| e == "rs") {
-                    let rel = path.strip_prefix(root).unwrap().to_string_lossy().replace('\\', "/");
+                    let rel = path
+                        .strip_prefix(root)
+                        .unwrap()
+                        .to_string_lossy()
+                        .replace('\\', "/");
                     let name = path.file_name().unwrap().to_string_lossy().to_string();
-                    let is_test = name.ends_with("_tests.rs") || name.starts_with("tests") || name == "fake.rs" || name == "test_support.rs" || rel.contains("/eval/") || rel.starts_with("live_") || rel.ends_with("/live.rs") || rel.contains("bench");
+                    let is_test = name.ends_with("_tests.rs")
+                        || name.starts_with("tests")
+                        || name == "fake.rs"
+                        || name == "test_support.rs"
+                        || rel.contains("/eval/")
+                        || rel.starts_with("live_")
+                        || rel.ends_with("/live.rs")
+                        || rel.contains("bench");
                     if !is_test {
                         let text = std::fs::read_to_string(&path).unwrap();
                         // production code only: everything before the first `#[cfg(test)]`
@@ -470,37 +744,96 @@ mod tests {
     #[test]
     fn no_shipped_path_can_turn_a_suggestion_into_a_revision_except_a_deliberate_review() {
         let sources = shipped_sources();
-        let files_with = |needle: &str| -> Vec<String> { sources.iter().filter(|(_, text)| text.contains(needle)).map(|(rel, _)| rel.clone()).collect() };
+        let files_with = |needle: &str| -> Vec<String> {
+            sources
+                .iter()
+                .filter(|(_, text)| text.contains(needle))
+                .map(|(rel, _)| rel.clone())
+                .collect()
+        };
         // the one command that reviews: nothing else calls the review operation
         for file in files_with("review_revision_proposal(") {
-            assert!(["commands/evolution.rs", "storage/proposal_store.rs"].contains(&file.as_str()), "{file} must not review a proposal");
+            assert!(
+                ["commands/evolution.rs", "storage/proposal_store.rs"].contains(&file.as_str()),
+                "{file} must not review a proposal"
+            );
         }
         for file in files_with("review_in(") {
-            assert_eq!(file, "storage/proposal_store.rs", "{file} must not run the review step");
+            assert_eq!(
+                file, "storage/proposal_store.rs",
+                "{file} must not run the review step"
+            );
         }
         // writing a revision as an automatic one: only the pending-claim acceptance (called by the review) and the pipeline's own guarded path
         for file in files_with("CasOrigin::System") {
-            assert!(["storage/identity_store.rs", "distillation/evolution.rs", "storage/lineage_store.rs"].contains(&file.as_str()), "{file} writes automatic revisions");
+            assert!(
+                [
+                    "storage/identity_store.rs",
+                    "distillation/evolution.rs",
+                    "storage/lineage_store.rs"
+                ]
+                .contains(&file.as_str()),
+                "{file} writes automatic revisions"
+            );
         }
         for file in files_with("accept_pending_claim") {
-            assert!(["storage/identity_store.rs", "storage/proposal_store.rs"].contains(&file.as_str()), "{file} accepts a pending claim");
+            assert!(
+                ["storage/identity_store.rs", "storage/proposal_store.rs"].contains(&file.as_str()),
+                "{file} accepts a pending claim"
+            );
         }
         // the pipeline's only revising branch is switched off for review-first, and production is always review-first
-        let evolution = sources.iter().find(|(rel, _)| rel == "distillation/evolution.rs").unwrap();
-        assert!(evolution.1.contains("Plan::Revise { target, .. } if review_first"));
-        assert!(evolution.1.contains("let review_first = pipeline.review_first();"));
-        let runtime = sources.iter().find(|(rel, _)| rel == "evolution_runtime.rs").unwrap();
-        assert!(runtime.1.contains("new_same_family_review(") && !runtime.1.contains(&["SynthesisStage::", "new("].concat()));
+        let evolution = sources
+            .iter()
+            .find(|(rel, _)| rel == "distillation/evolution.rs")
+            .unwrap();
+        assert!(evolution
+            .1
+            .contains("Plan::Revise { target, .. } if review_first"));
+        assert!(evolution
+            .1
+            .contains("let review_first = pipeline.review_first();"));
+        let runtime = sources
+            .iter()
+            .find(|(rel, _)| rel == "evolution_runtime.rs")
+            .unwrap();
+        assert!(
+            runtime.1.contains("new_same_family_review(")
+                && !runtime.1.contains(&["SynthesisStage::", "new("].concat())
+        );
         // no command can change the mode, switch review off, or apply text a model wrote
-        let commands = sources.iter().find(|(rel, _)| rel == "commands/evolution.rs").unwrap();
+        let commands = sources
+            .iter()
+            .find(|(rel, _)| rel == "commands/evolution.rs")
+            .unwrap();
         let lower = commands.1.to_lowercase();
-        for forbidden in ["auto_apply", "autoapply", "apply_proposal", "set_mode", "approval_mode"] {
-            assert!(!lower.contains(forbidden), "no command may mention {forbidden}");
+        for forbidden in [
+            "auto_apply",
+            "autoapply",
+            "apply_proposal",
+            "set_mode",
+            "approval_mode",
+        ] {
+            assert!(
+                !lower.contains(forbidden),
+                "no command may mention {forbidden}"
+            );
         }
         // reading, listing and reviewing a suggestion never needs a provider: the review path does not consult any authorization or credential
-        let store = sources.iter().find(|(rel, _)| rel == "storage/proposal_store.rs").unwrap();
-        for provider_word in ["ProviderAuthorization".to_string(), "SecretStore".to_string(), ["req", "west"].concat(), ["api", "_key"].concat()] {
-            assert!(!store.1.contains(&provider_word), "the review store must not touch {provider_word}");
+        let store = sources
+            .iter()
+            .find(|(rel, _)| rel == "storage/proposal_store.rs")
+            .unwrap();
+        for provider_word in [
+            "ProviderAuthorization".to_string(),
+            "SecretStore".to_string(),
+            ["req", "west"].concat(),
+            ["api", "_key"].concat(),
+        ] {
+            assert!(
+                !store.1.contains(&provider_word),
+                "the review store must not touch {provider_word}"
+            );
         }
     }
 }

@@ -830,7 +830,14 @@ pub(crate) fn install(store: &super::super::capture_store::CaptureStore) -> Resu
     tx.commit().map_err(|_| Error::Storage)
 }
 
-#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests", debug_assertions)))]
+#[cfg(any(
+    test,
+    all(
+        target_os = "android",
+        feature = "android-identity-tests",
+        debug_assertions
+    )
+))]
 pub(crate) fn install_history(store: &super::super::capture_store::CaptureStore) -> Result<()> {
     let mut c = store.connection.lock().map_err(|_| Error::Storage)?;
     let tx = c.transaction().map_err(|_| Error::Storage)?;
@@ -839,7 +846,14 @@ pub(crate) fn install_history(store: &super::super::capture_store::CaptureStore)
     tx.commit().map_err(|_| Error::Storage)
 }
 
-#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests", debug_assertions)))]
+#[cfg(any(
+    test,
+    all(
+        target_os = "android",
+        feature = "android-identity-tests",
+        debug_assertions
+    )
+))]
 pub(crate) fn install_d4(store: &super::super::capture_store::CaptureStore) -> Result<()> {
     let mut c = store.connection.lock().map_err(|_| Error::Storage)?;
     let tx = c.transaction().map_err(|_| Error::Storage)?;

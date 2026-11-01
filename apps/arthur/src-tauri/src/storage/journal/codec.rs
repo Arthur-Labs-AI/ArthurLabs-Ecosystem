@@ -761,13 +761,11 @@ fn validate_field_value(
                 return Err(CodecError::UnexpectedImageField(field.to_string()));
             }
             validate_decimal(text)?;
-            if field == "reframing" || field == "user_edited" {
-                if text != "0" && text != "1" {
-                    return Err(CodecError::InvalidEnumValue {
-                        field: field_to_static(field),
-                        value: text.clone(),
-                    });
-                }
+            if (field == "reframing" || field == "user_edited") && text != "0" && text != "1" {
+                return Err(CodecError::InvalidEnumValue {
+                    field: field_to_static(field),
+                    value: text.clone(),
+                });
             }
             Ok(())
         }

@@ -46,19 +46,45 @@ pub struct ProviderAuthorization {
 }
 
 impl ProviderAuthorization {
-    pub fn new(path: PathBuf, provider: &'static str, purpose: Purpose, disclosure_version: &'static str) -> Self {
+    pub fn new(
+        path: PathBuf,
+        provider: &'static str,
+        purpose: Purpose,
+        disclosure_version: &'static str,
+    ) -> Self {
         let granted = Self::read(&path, provider, purpose, disclosure_version);
-        Self { path: Some(path), provider, purpose, disclosure_version, granted: AtomicBool::new(granted) }
+        Self {
+            path: Some(path),
+            provider,
+            purpose,
+            disclosure_version,
+            granted: AtomicBool::new(granted),
+        }
     }
 
     #[cfg(test)]
     pub fn in_memory(provider: &'static str, purpose: Purpose, granted: bool) -> Self {
-        Self { path: None, provider, purpose, disclosure_version: "test", granted: AtomicBool::new(granted) }
+        Self {
+            path: None,
+            provider,
+            purpose,
+            disclosure_version: "test",
+            granted: AtomicBool::new(granted),
+        }
     }
 
     fn read(path: &PathBuf, provider: &str, purpose: Purpose, disclosure_version: &str) -> bool {
-        let Some(record) = std::fs::read(path).ok().and_then(|bytes| serde_json::from_slice::<Record>(&bytes).ok()) else { return false };
-        record.version == FILE_VERSION && record.provider == provider && record.purpose == purpose.as_str() && record.disclosure_version == disclosure_version && record.granted
+        let Some(record) = std::fs::read(path)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<Record>(&bytes).ok())
+        else {
+            return false;
+        };
+        record.version == FILE_VERSION
+            && record.provider == provider
+            && record.purpose == purpose.as_str()
+            && record.disclosure_version == disclosure_version
+            && record.granted
     }
 
     pub fn granted(&self) -> bool {
@@ -79,9 +105,18 @@ impl ProviderAuthorization {
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
-            let record = Record { version: FILE_VERSION, provider: self.provider.into(), purpose: self.purpose.as_str().into(), granted, disclosure_version: self.disclosure_version.into() };
+            let record = Record {
+                version: FILE_VERSION,
+                provider: self.provider.into(),
+                purpose: self.purpose.as_str().into(),
+                granted,
+                disclosure_version: self.disclosure_version.into(),
+            };
             let temporary = path.with_extension("tmp");
-            std::fs::write(&temporary, serde_json::to_vec(&record).map_err(std::io::Error::other)?)?;
+            std::fs::write(
+                &temporary,
+                serde_json::to_vec(&record).map_err(std::io::Error::other)?,
+            )?;
             std::fs::rename(&temporary, path)?;
         }
         self.granted.store(granted, Ordering::SeqCst);

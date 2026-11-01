@@ -46,7 +46,9 @@ pub fn discard_voice_recording(voice: State<'_, VoiceCaptureService>) -> Result<
 
 /// The microphone permission, read without asking.
 #[tauri::command]
-pub async fn get_microphone_permission(voice: State<'_, VoiceCaptureService>) -> Result<MicrophonePermission, VoiceError> {
+pub async fn get_microphone_permission(
+    voice: State<'_, VoiceCaptureService>,
+) -> Result<MicrophonePermission, VoiceError> {
     voice.microphone_permission().await
 }
 

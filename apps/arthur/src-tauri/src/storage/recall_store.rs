@@ -78,7 +78,10 @@ impl Eq for VectorHit {}
 impl Ord for VectorHit {
     fn cmp(&self, other: &Self) -> Ordering {
         // Reverse on cosine so the heap's top is the lowest cosine; ties: the lexicographically greater id is "worse".
-        other.cosine.total_cmp(&self.cosine).then_with(|| self.object_id.cmp(&other.object_id))
+        other
+            .cosine
+            .total_cmp(&self.cosine)
+            .then_with(|| self.object_id.cmp(&other.object_id))
     }
 }
 
@@ -101,9 +104,13 @@ pub struct VectorScan {
 const EFFECTIVE_CURRENT_ORIGIN: &str = "COALESCE((SELECT CASE WHEN rp.user_edited = 1 THEN 'approved_edited' ELSE 'approved_suggestion' END FROM revision_proposals rp WHERE rp.result_revision_id = cr.id AND rp.state = 'approved'), cr.origin)";
 const EFFECTIVE_ORIGIN: &str = "COALESCE((SELECT CASE WHEN rp.user_edited = 1 THEN 'approved_edited' ELSE 'approved_suggestion' END FROM revision_proposals rp WHERE rp.result_revision_id = thought_revisions.id AND rp.state = 'approved'), origin)";
 
-const CURRENT_COLUMNS: &str = "o.id, o.project_id, o.kind, o.title, o.body, o.current_revision_id, cr.created_at, o.seq";
+const CURRENT_COLUMNS: &str =
+    "o.id, o.project_id, o.kind, o.title, o.body, o.current_revision_id, cr.created_at, o.seq";
 
-fn current_object_from_row(row: &rusqlite::Row<'_>, offset: usize) -> rusqlite::Result<CurrentObject> {
+fn current_object_from_row(
+    row: &rusqlite::Row<'_>,
+    offset: usize,
+) -> rusqlite::Result<CurrentObject> {
     Ok(CurrentObject {
         object_id: row.get(offset)?,
         project_id: row.get(offset + 1)?,
@@ -118,7 +125,10 @@ fn current_object_from_row(row: &rusqlite::Row<'_>, offset: usize) -> rusqlite::
 
 /// Little-endian f32 bytes of a vector (the stored format).
 pub fn encode_vector(vector: &[f32]) -> Vec<u8> {
-    vector.iter().flat_map(|value| value.to_le_bytes()).collect()
+    vector
+        .iter()
+        .flat_map(|value| value.to_le_bytes())
+        .collect()
 }
 
 fn lexical_current_sql() -> String {
@@ -156,8 +166,21 @@ const SEMANTIC_SCAN_SQL: &str = "SELECT e.object_id, e.vector FROM knowledge_obj
 #[cfg(test)]
 pub fn database_facts_for_test(path: &std::path::Path) -> (i64, i64, i64, i64) {
     let connection = Connection::open(path).unwrap();
-    let count = |table: &str| connection.query_row(&format!("SELECT count(*) FROM {table}"), [], |row| row.get::<_, i64>(0)).unwrap();
-    (connection.query_row("PRAGMA user_version", [], |row| row.get(0)).unwrap(), count("knowledge_objects"), count("thought_revisions"), count("captures"))
+    let count = |table: &str| {
+        connection
+            .query_row(&format!("SELECT count(*) FROM {table}"), [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .unwrap()
+    };
+    (
+        connection
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap(),
+        count("knowledge_objects"),
+        count("thought_revisions"),
+        count("captures"),
+    )
 }
 
 /// The semantic scan as it was BEFORE the join order was pinned (tests only, to prove the regression test can tell the difference).
@@ -176,7 +199,6 @@ pub struct ScanCost {
     pub rows: usize,
     pub micros: u128,
 }
-
 
 /// A knowledge object with what enrichment needs beyond retrieval: its project (name, archived), how its current revision came to be,
 /// where the object originally came from, and how many revisions it has. Not scoped by project (a graph neighbour may be elsewhere).
@@ -228,7 +250,10 @@ fn marks(n: usize) -> String {
 
 impl CaptureStore {
     /// Details of these objects (any project), in one statement. Ids that do not exist are absent.
-    pub fn recall_object_details(&self, object_ids: &[String]) -> Result<Vec<ObjectDetail>, StoreError> {
+    pub fn recall_object_details(
+        &self,
+        object_ids: &[String],
+    ) -> Result<Vec<ObjectDetail>, StoreError> {
         if object_ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -266,7 +291,10 @@ impl CaptureStore {
     }
 
     /// Every relation that has one of these objects as an end, from one statement (the by-source and by-target indexes), oldest first.
-    pub fn recall_relations_touching(&self, object_ids: &[String]) -> Result<Vec<RelationRow>, StoreError> {
+    pub fn recall_relations_touching(
+        &self,
+        object_ids: &[String],
+    ) -> Result<Vec<RelationRow>, StoreError> {
         if object_ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -286,7 +314,10 @@ impl CaptureStore {
     }
 
     /// Every revision of these objects with its parents, in two statements (revisions, then parent links), oldest first.
-    pub fn recall_revisions_of(&self, object_ids: &[String]) -> Result<Vec<RevisionRow>, StoreError> {
+    pub fn recall_revisions_of(
+        &self,
+        object_ids: &[String],
+    ) -> Result<Vec<RevisionRow>, StoreError> {
         if object_ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -334,7 +365,11 @@ impl CaptureStore {
 impl CaptureStore {
     /// Times the pieces of the lexical query (tests only): where does the time go, and would a single pass help?
     #[cfg(test)]
-    pub fn recall_lexical_probe_for_test(&self, expression: &str, project_id: &str) -> Vec<(&'static str, f64, usize)> {
+    pub fn recall_lexical_probe_for_test(
+        &self,
+        expression: &str,
+        project_id: &str,
+    ) -> Vec<(&'static str, f64, usize)> {
         let connection = self.connection.lock().unwrap();
         let mut out = Vec::new();
         let mut time = |name: &'static str, sql: String| {
@@ -350,7 +385,10 @@ impl CaptureStore {
         };
         time("fts only: matches (count rows, no join)", "SELECT rowid FROM recall_revision_fts WHERE recall_revision_fts MATCH ?1 AND ?2 IS NOT NULL".into());
         time("fts only: top 30 by bm25, no join", "SELECT rowid, bm25(recall_revision_fts, 8.0, 1.0) AS s FROM recall_revision_fts WHERE recall_revision_fts MATCH ?1 AND ?2 IS NOT NULL ORDER BY s LIMIT 30".into());
-        time("current query as shipped (joins + project + top 30)", lexical_current_sql().replace("LIMIT ?3", "LIMIT 30"));
+        time(
+            "current query as shipped (joins + project + top 30)",
+            lexical_current_sql().replace("LIMIT ?3", "LIMIT 30"),
+        );
         time(
             "historical query as shipped (top 50 rows)",
             format!(
@@ -359,24 +397,45 @@ impl CaptureStore {
                  JOIN thought_revisions cr ON cr.id = o.current_revision_id WHERE recall_revision_fts MATCH ?1 AND o.project_id = ?2 ORDER BY score ASC, r.seq DESC LIMIT 50"
             ),
         );
-        time("SINGLE PASS: current + historical rows together (top 200)", single_pass_sql(200));
+        time(
+            "SINGLE PASS: current + historical rows together (top 200)",
+            single_pass_sql(200),
+        );
         out
     }
 
     /// Runs the semantic-scan statement (pinned, or the old unpinned form) and reports its plan and SQLite's own work counters.
     #[cfg(test)]
-    pub fn recall_semantic_scan_cost_for_test(&self, unpinned: bool, project_id: &str, model_key: &str, dims: usize) -> ScanCost {
+    pub fn recall_semantic_scan_cost_for_test(
+        &self,
+        unpinned: bool,
+        project_id: &str,
+        model_key: &str,
+        dims: usize,
+    ) -> ScanCost {
         use rusqlite::StatementStatus;
-        let sql = if unpinned { SEMANTIC_SCAN_SQL_UNPINNED } else { SEMANTIC_SCAN_SQL };
+        let sql = if unpinned {
+            SEMANTIC_SCAN_SQL_UNPINNED
+        } else {
+            SEMANTIC_SCAN_SQL
+        };
         let connection = self.connection.lock().unwrap();
         let plan: Vec<String> = {
-            let mut statement = connection.prepare(&format!("EXPLAIN QUERY PLAN {sql}")).unwrap();
-            let rows = statement.query_map(params![model_key, project_id, dims as i64], |row| row.get::<_, String>(3)).unwrap();
+            let mut statement = connection
+                .prepare(&format!("EXPLAIN QUERY PLAN {sql}"))
+                .unwrap();
+            let rows = statement
+                .query_map(params![model_key, project_id, dims as i64], |row| {
+                    row.get::<_, String>(3)
+                })
+                .unwrap();
             rows.map(|r| r.unwrap()).collect()
         };
         let mut statement = connection.prepare(sql).unwrap();
         let started = std::time::Instant::now();
-        let mut rows = statement.query(params![model_key, project_id, dims as i64]).unwrap();
+        let mut rows = statement
+            .query(params![model_key, project_id, dims as i64])
+            .unwrap();
         let mut count = 0;
         while let Some(row) = rows.next().unwrap() {
             assert_eq!(row.get_ref(1).unwrap().as_blob().unwrap().len(), dims * 4);
@@ -384,7 +443,12 @@ impl CaptureStore {
         }
         let micros = started.elapsed().as_micros();
         drop(rows);
-        ScanCost { plan, vm_steps: statement.get_status(StatementStatus::VmStep), rows: count, micros }
+        ScanCost {
+            plan,
+            vm_steps: statement.get_status(StatementStatus::VmStep),
+            rows: count,
+            micros,
+        }
     }
 
     /// Fault injection for tests (storage owns every schema statement): damages the lexical index or the store in a named way.
@@ -407,16 +471,37 @@ impl CaptureStore {
     pub fn recall_explain_for_test(&self, which: &str, project_id: &str) -> Vec<String> {
         let connection = self.connection.lock().unwrap();
         let (sql, params): (String, Vec<rusqlite::types::Value>) = match which {
-            "lexical" => (lexical_current_sql(), vec!["{title body}: (\"x\")".to_string().into(), project_id.to_string().into(), 30i64.into()]),
-            "semantic" => (SEMANTIC_SCAN_SQL.to_string(), vec!["k".to_string().into(), project_id.to_string().into(), 4i64.into()]),
+            "lexical" => (
+                lexical_current_sql(),
+                vec![
+                    "{title body}: (\"x\")".to_string().into(),
+                    project_id.to_string().into(),
+                    30i64.into(),
+                ],
+            ),
+            "semantic" => (
+                SEMANTIC_SCAN_SQL.to_string(),
+                vec![
+                    "k".to_string().into(),
+                    project_id.to_string().into(),
+                    4i64.into(),
+                ],
+            ),
             other => panic!("unknown statement {other}"),
         };
-        let mut statement = connection.prepare(&format!("EXPLAIN QUERY PLAN {sql}")).unwrap();
-        let rows = statement.query_map(params_from_iter(params), |row| row.get::<_, String>(3)).unwrap();
+        let mut statement = connection
+            .prepare(&format!("EXPLAIN QUERY PLAN {sql}"))
+            .unwrap();
+        let rows = statement
+            .query_map(params_from_iter(params), |row| row.get::<_, String>(3))
+            .unwrap();
         rows.map(|r| r.unwrap()).collect()
     }
 
-    fn with_connection<T>(&self, work: impl FnOnce(&Connection) -> Result<T, StoreError>) -> Result<T, StoreError> {
+    fn with_connection<T>(
+        &self,
+        work: impl FnOnce(&Connection) -> Result<T, StoreError>,
+    ) -> Result<T, StoreError> {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         work(&connection)
     }
@@ -425,19 +510,35 @@ impl CaptureStore {
     ///
     /// `match_expression` must already be a safe FTS5 expression (see `recall::query`). The join goes
     /// revision -> object by primary key and then checks `current_revision_id`, so no table is scanned per hit.
-    pub fn recall_lexical_current(&self, match_expression: &str, project_id: &str, limit: usize) -> Result<Vec<CurrentLexicalHit>, StoreError> {
+    pub fn recall_lexical_current(
+        &self,
+        match_expression: &str,
+        project_id: &str,
+        limit: usize,
+    ) -> Result<Vec<CurrentLexicalHit>, StoreError> {
         self.with_connection(|connection| {
             let mut statement = connection.prepare(&lexical_current_sql())?;
-            let rows = statement.query_map(params![match_expression, project_id, limit as i64], |row| {
-                Ok(CurrentLexicalHit { object: current_object_from_row(row, 0)?, bm25: row.get(8)? })
-            })?;
+            let rows = statement.query_map(
+                params![match_expression, project_id, limit as i64],
+                |row| {
+                    Ok(CurrentLexicalHit {
+                        object: current_object_from_row(row, 0)?,
+                        bm25: row.get(8)?,
+                    })
+                },
+            )?;
             Ok(rows.collect::<Result<Vec<_>, _>>()?)
         })
     }
 
     /// Lexical hits on revisions that are NOT current, one (the best) per object, best first. This is a discovery path only: the
     /// returned object is the CURRENT one and the matched revision is reported separately.
-    pub fn recall_lexical_historical(&self, match_expression: &str, project_id: &str, limit: usize) -> Result<Vec<HistoricalLexicalHit>, StoreError> {
+    pub fn recall_lexical_historical(
+        &self,
+        match_expression: &str,
+        project_id: &str,
+        limit: usize,
+    ) -> Result<Vec<HistoricalLexicalHit>, StoreError> {
         self.with_connection(|connection| {
             // Over-fetch so that several old revisions of one object cannot crowd out other objects before they are collapsed.
             let mut statement = connection.prepare(&format!(
@@ -486,7 +587,11 @@ impl CaptureStore {
     }
 
     /// The current objects with these ids that belong to `project_id`, in one statement. Ids outside the project are simply absent.
-    pub fn recall_current_objects(&self, object_ids: &[String], project_id: &str) -> Result<Vec<CurrentObject>, StoreError> {
+    pub fn recall_current_objects(
+        &self,
+        object_ids: &[String],
+        project_id: &str,
+    ) -> Result<Vec<CurrentObject>, StoreError> {
         if object_ids.is_empty() {
             return Ok(Vec::new());
         }
@@ -507,27 +612,44 @@ impl CaptureStore {
     /// CURRENT revision) and keeps the `limit` best by dot product with `query` (vectors are stored L2-normalised, so this is
     /// the cosine). Only rows at or above `min_cosine` are kept. Memory is O(limit), never O(objects). A stale vector is excluded
     /// by the join itself, without any provider call.
-    pub fn recall_semantic_scan(&self, project_id: &str, model_key: &str, dims: usize, query: &[f32], limit: usize, min_cosine: f32) -> Result<(Vec<VectorHit>, VectorScan), StoreError> {
+    pub fn recall_semantic_scan(
+        &self,
+        project_id: &str,
+        model_key: &str,
+        dims: usize,
+        query: &[f32],
+        limit: usize,
+        min_cosine: f32,
+    ) -> Result<(Vec<VectorHit>, VectorScan), StoreError> {
         self.with_connection(|connection| {
             let mut statement = connection.prepare(SEMANTIC_SCAN_SQL)?;
             let mut rows = statement.query(params![model_key, project_id, dims as i64])?;
             let mut heap: BinaryHeap<VectorHit> = BinaryHeap::with_capacity(limit + 1);
             let mut scan = VectorScan::default();
             while let Some(row) = rows.next()? {
-                let blob = row.get_ref(1)?.as_blob().map_err(|e| rusqlite::Error::FromSqlConversionFailure(1, rusqlite::types::Type::Blob, Box::new(e)))?;
+                let blob = row.get_ref(1)?.as_blob().map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        1,
+                        rusqlite::types::Type::Blob,
+                        Box::new(e),
+                    )
+                })?;
                 if blob.len() != dims * 4 {
                     scan.skipped_malformed += 1;
                     continue;
                 }
                 scan.scanned += 1;
                 let mut dot = 0.0f32;
-                for (chunk, q) in blob.chunks_exact(4).zip(query) {
+                for (chunk, q) in blob.as_chunks::<4>().0.iter().zip(query) {
                     dot += f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]) * q;
                 }
                 if !dot.is_finite() || dot < min_cosine {
                     continue;
                 }
-                let hit = VectorHit { object_id: row.get(0)?, cosine: dot };
+                let hit = VectorHit {
+                    object_id: row.get(0)?,
+                    cosine: dot,
+                };
                 if heap.len() < limit {
                     heap.push(hit);
                 } else if heap.peek().is_some_and(|worst| hit < *worst) {
@@ -537,13 +659,21 @@ impl CaptureStore {
             }
             let mut hits = heap.into_vec();
             // Best first: highest cosine, ties by id for determinism.
-            hits.sort_by(|a, b| b.cosine.total_cmp(&a.cosine).then_with(|| a.object_id.cmp(&b.object_id)));
+            hits.sort_by(|a, b| {
+                b.cosine
+                    .total_cmp(&a.cosine)
+                    .then_with(|| a.object_id.cmp(&b.object_id))
+            });
             Ok((hits, scan))
         })
     }
 
     /// Objects (any project) whose current revision has no vector for `model_key`, oldest first. The work set of the lazy indexer.
-    pub fn recall_pending_embeddings(&self, model_key: &str, limit: usize) -> Result<Vec<PendingEmbedding>, StoreError> {
+    pub fn recall_pending_embeddings(
+        &self,
+        model_key: &str,
+        limit: usize,
+    ) -> Result<Vec<PendingEmbedding>, StoreError> {
         self.with_connection(|connection| {
             let filter=import_embedding_filter(connection)?;
             let mut statement = connection.prepare(&format!(
@@ -573,7 +703,11 @@ impl CaptureStore {
     }
 
     /// Hash of the embedded text of the vector currently stored for this object and key (if any).
-    pub fn recall_stored_text_hash(&self, object_id: &str, model_key: &str) -> Result<Option<String>, StoreError> {
+    pub fn recall_stored_text_hash(
+        &self,
+        object_id: &str,
+        model_key: &str,
+    ) -> Result<Option<String>, StoreError> {
         self.with_connection(|connection| {
             Ok(connection.query_row("SELECT text_hash FROM recall_embeddings WHERE object_id = ?1 AND model_key = ?2", params![object_id, model_key], |row| row.get(0)).optional()?)
         })
@@ -581,7 +715,15 @@ impl CaptureStore {
 
     /// Stores a vector, but ONLY if `revision_id` is still the object's current revision (compare-and-set), so a vector computed
     /// for text that changed meanwhile is never recorded as valid. Returns whether it was stored.
-    pub fn recall_put_embedding(&self, object_id: &str, model_key: &str, revision_id: &str, dims: usize, vector: &[f32], text_hash: &str) -> Result<bool, StoreError> {
+    pub fn recall_put_embedding(
+        &self,
+        object_id: &str,
+        model_key: &str,
+        revision_id: &str,
+        dims: usize,
+        vector: &[f32],
+        text_hash: &str,
+    ) -> Result<bool, StoreError> {
         let created_at = now_rfc3339()?;
         self.with_connection(|connection| {
             let changed = connection.execute(
@@ -594,7 +736,12 @@ impl CaptureStore {
     }
 
     /// Re-points an existing vector at a new current revision whose embedded text is byte-identical (no provider call needed).
-    pub fn recall_adopt_revision(&self, object_id: &str, model_key: &str, revision_id: &str) -> Result<bool, StoreError> {
+    pub fn recall_adopt_revision(
+        &self,
+        object_id: &str,
+        model_key: &str,
+        revision_id: &str,
+    ) -> Result<bool, StoreError> {
         self.with_connection(|connection| {
             let changed = connection.execute(
                 "UPDATE recall_embeddings SET revision_id = ?3 WHERE object_id = ?1 AND model_key = ?2 \
@@ -607,11 +754,17 @@ impl CaptureStore {
 
     /// Deletes every stored vector (all model keys). Returns how many rows were removed. Authoritative data is untouched.
     pub fn recall_purge_embeddings(&self) -> Result<usize, StoreError> {
-        self.with_connection(|connection| Ok(connection.execute("DELETE FROM recall_embeddings", [])?))
+        self.with_connection(|connection| {
+            Ok(connection.execute("DELETE FROM recall_embeddings", [])?)
+        })
     }
 
     /// In-scope objects and how many of them have a VALID vector for `model_key`.
-    pub fn recall_semantic_coverage(&self, project_id: &str, model_key: &str) -> Result<SemanticCoverage, StoreError> {
+    pub fn recall_semantic_coverage(
+        &self,
+        project_id: &str,
+        model_key: &str,
+    ) -> Result<SemanticCoverage, StoreError> {
         self.with_connection(|connection| {
             let (in_scope, embedded): (i64, i64) = connection.query_row(
                 "SELECT count(*), count(e.object_id) FROM knowledge_objects o \
@@ -628,8 +781,16 @@ impl CaptureStore {
     pub fn recall_stored_vector_count(&self, model_key: Option<&str>) -> Result<i64, StoreError> {
         self.with_connection(|connection| {
             Ok(match model_key {
-                Some(key) => connection.query_row("SELECT count(*) FROM recall_embeddings WHERE model_key = ?1", [key], |row| row.get(0))?,
-                None => connection.query_row("SELECT count(*) FROM recall_embeddings", [], |row| row.get(0))?,
+                Some(key) => connection.query_row(
+                    "SELECT count(*) FROM recall_embeddings WHERE model_key = ?1",
+                    [key],
+                    |row| row.get(0),
+                )?,
+                None => {
+                    connection.query_row("SELECT count(*) FROM recall_embeddings", [], |row| {
+                        row.get(0)
+                    })?
+                }
             })
         })
     }
@@ -637,7 +798,10 @@ impl CaptureStore {
     /// Regenerates the lexical index from `thought_revisions`. Safe at any time; authoritative data is untouched.
     pub fn recall_rebuild_lexical_index(&self) -> Result<(), StoreError> {
         self.with_connection(|connection| {
-            connection.execute("INSERT INTO recall_revision_fts(recall_revision_fts) VALUES ('rebuild')", [])?;
+            connection.execute(
+                "INSERT INTO recall_revision_fts(recall_revision_fts) VALUES ('rebuild')",
+                [],
+            )?;
             Ok(())
         })
     }
@@ -667,13 +831,23 @@ impl CaptureStore {
     #[cfg(test)]
     /// Number of rows in the FTS index (equals the number of revisions when healthy).
     pub fn recall_indexed_revision_count(&self) -> Result<i64, StoreError> {
-        self.with_connection(|connection| Ok(connection.query_row("SELECT count(*) FROM recall_revision_fts_docsize", [], |row| row.get(0))?))
+        self.with_connection(|connection| {
+            Ok(connection.query_row(
+                "SELECT count(*) FROM recall_revision_fts_docsize",
+                [],
+                |row| row.get(0),
+            )?)
+        })
     }
 }
 
 // Imported objects are never eligible for paid background embedding. This
 // local suppression is installed only with the dormant history candidate.
-fn import_embedding_filter(connection:&rusqlite::Connection)->Result<&'static str,StoreError>{
+fn import_embedding_filter(connection: &rusqlite::Connection) -> Result<&'static str, StoreError> {
     let installed:bool=connection.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='import_recall_suppression')",[],|r|r.get(0))?;
-    Ok(if installed{"AND NOT EXISTS(SELECT 1 FROM import_recall_suppression s WHERE s.object_id=o.id)"}else{""})
+    Ok(if installed {
+        "AND NOT EXISTS(SELECT 1 FROM import_recall_suppression s WHERE s.object_id=o.id)"
+    } else {
+        ""
+    })
 }

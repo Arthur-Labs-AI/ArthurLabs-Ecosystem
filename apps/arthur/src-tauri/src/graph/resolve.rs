@@ -27,7 +27,9 @@ pub enum Compat {
 /// Symmetric in its arguments. Total over `KINDS`.
 pub fn compatibility(a: &str, b: &str) -> Compat {
     let pair = |x: &str, y: &str| (a == x && b == y) || (a == y && b == x);
-    let one_of = |x: &str, others: &[&str]| (a == x && others.contains(&b)) || (b == x && others.contains(&a));
+    let one_of = |x: &str, others: &[&str]| {
+        (a == x && others.contains(&b)) || (b == x && others.contains(&a))
+    };
     if a == b {
         // The same kind claimed in opposite directions (a symmetric kind has one canonical edge, so it never gets here).
         return Compat::Incompatible;
@@ -43,7 +45,9 @@ pub fn compatibility(a: &str, b: &str) -> Compat {
         return Compat::Overlapping;
     }
     // A replacement or a conflict is not compatible with "B is required / enriched / the source of A".
-    if one_of("supersedes", &["extends", "depends_on", "derived_from"]) || one_of("contradicts", &["extends", "depends_on", "derived_from"]) {
+    if one_of("supersedes", &["extends", "depends_on", "derived_from"])
+        || one_of("contradicts", &["extends", "depends_on", "derived_from"])
+    {
         return Compat::Incompatible;
     }
     Compat::Overlapping
@@ -58,7 +62,8 @@ pub enum Resolution {
 }
 
 fn identity(edge: &NewRelation) -> (String, String, String) {
-    let (source, target) = canonical_ends(&edge.kind, &edge.source_object_id, &edge.target_object_id);
+    let (source, target) =
+        canonical_ends(&edge.kind, &edge.source_object_id, &edge.target_object_id);
     (edge.kind.clone(), source, target)
 }
 
@@ -66,7 +71,10 @@ fn identity(edge: &NewRelation) -> (String, String, String) {
 pub fn resolve(survivors: Vec<NewRelation>) -> Resolution {
     let mut distinct: Vec<NewRelation> = Vec::new();
     for edge in survivors {
-        if !distinct.iter().any(|known| identity(known) == identity(&edge)) {
+        if !distinct
+            .iter()
+            .any(|known| identity(known) == identity(&edge))
+        {
             distinct.push(edge);
         }
     }
@@ -90,7 +98,11 @@ mod tests {
     const B: &str = "22222222-2222-4222-8222-222222222222";
 
     fn edge(kind: &str, source: &str, target: &str) -> NewRelation {
-        NewRelation { kind: kind.into(), source_object_id: source.into(), target_object_id: target.into() }
+        NewRelation {
+            kind: kind.into(),
+            source_object_id: source.into(),
+            target_object_id: target.into(),
+        }
     }
 
     #[test]
@@ -123,9 +135,15 @@ mod tests {
     #[test]
     fn nothing_one_and_many() {
         assert_eq!(resolve(vec![]), Resolution::None);
-        assert_eq!(resolve(vec![edge("depends_on", A, B)]), Resolution::Persist(edge("depends_on", A, B)));
+        assert_eq!(
+            resolve(vec![edge("depends_on", A, B)]),
+            Resolution::Persist(edge("depends_on", A, B))
+        );
         // duplicates in the input are one survivor
-        assert_eq!(resolve(vec![edge("depends_on", A, B), edge("depends_on", A, B)]), Resolution::Persist(edge("depends_on", A, B)));
+        assert_eq!(
+            resolve(vec![edge("depends_on", A, B), edge("depends_on", A, B)]),
+            Resolution::Persist(edge("depends_on", A, B))
+        );
         for combo in [
             vec![edge("extends", A, B), edge("depends_on", A, B)],
             vec![edge("supersedes", A, B), edge("contradicts", A, B)],
@@ -138,8 +156,21 @@ mod tests {
 
     #[test]
     fn a_stronger_kind_subsumes_related_to_but_two_stronger_kinds_still_conflict() {
-        assert_eq!(resolve(vec![edge("related_to", A, B), edge("extends", A, B)]), Resolution::Persist(edge("extends", A, B)));
-        assert!(matches!(resolve(vec![edge("related_to", A, B), edge("extends", A, B), edge("depends_on", A, B)]), Resolution::Ambiguous(_)));
-        assert_eq!(resolve(vec![edge("related_to", A, B)]), Resolution::Persist(edge("related_to", A, B)));
+        assert_eq!(
+            resolve(vec![edge("related_to", A, B), edge("extends", A, B)]),
+            Resolution::Persist(edge("extends", A, B))
+        );
+        assert!(matches!(
+            resolve(vec![
+                edge("related_to", A, B),
+                edge("extends", A, B),
+                edge("depends_on", A, B)
+            ]),
+            Resolution::Ambiguous(_)
+        ));
+        assert_eq!(
+            resolve(vec![edge("related_to", A, B)]),
+            Resolution::Persist(edge("related_to", A, B))
+        );
     }
 }

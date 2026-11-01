@@ -50,7 +50,9 @@ impl FileCredentialSource {
 #[cfg(test)]
 impl CredentialSource for FileCredentialSource {
     fn api_key(&self) -> Option<ApiKey> {
-        std::fs::read_to_string(&self.path).ok().and_then(|raw| ApiKey::parse(&raw))
+        std::fs::read_to_string(&self.path)
+            .ok()
+            .and_then(|raw| ApiKey::parse(&raw))
     }
 }
 
@@ -60,7 +62,10 @@ mod tests {
 
     #[test]
     fn parse_accepts_a_single_printable_token_and_trims_the_file_newline() {
-        assert_eq!(ApiKey::parse("sk-test_123\n").unwrap().expose(), "sk-test_123");
+        assert_eq!(
+            ApiKey::parse("sk-test_123\n").unwrap().expose(),
+            "sk-test_123"
+        );
     }
 
     #[test]

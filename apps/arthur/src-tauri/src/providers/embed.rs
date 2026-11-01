@@ -69,9 +69,16 @@ impl fmt::Display for EmbedFailure {
         match self {
             EmbedFailure::NotConfigured => f.write_str("the embedding provider is not configured"),
             EmbedFailure::Network => f.write_str("could not reach the embedding provider"),
-            EmbedFailure::Auth(status) => write!(f, "the embedding provider rejected the credentials (HTTP {status})"),
-            EmbedFailure::Provider(status) => write!(f, "the embedding provider failed (HTTP {status})"),
-            EmbedFailure::Unreadable(reason) => write!(f, "the embedding response was unusable ({reason})"),
+            EmbedFailure::Auth(status) => write!(
+                f,
+                "the embedding provider rejected the credentials (HTTP {status})"
+            ),
+            EmbedFailure::Provider(status) => {
+                write!(f, "the embedding provider failed (HTTP {status})")
+            }
+            EmbedFailure::Unreadable(reason) => {
+                write!(f, "the embedding response was unusable ({reason})")
+            }
         }
     }
 }
@@ -83,7 +90,11 @@ pub trait EmbeddingProvider: Send + Sync {
         MAX_BATCH
     }
     /// One vector per input text, in order, each of `dims()` finite values, L2-normalised.
-    fn embed<'a>(&'a self, texts: &'a [String], purpose: EmbedPurpose) -> BoxFuture<'a, Result<Vec<Vec<f32>>, EmbedFailure>>;
+    fn embed<'a>(
+        &'a self,
+        texts: &'a [String],
+        purpose: EmbedPurpose,
+    ) -> BoxFuture<'a, Result<Vec<Vec<f32>>, EmbedFailure>>;
 }
 
 /// The text that represents one object. It deliberately contains no project, relation or provenance, so moving an object
@@ -104,7 +115,11 @@ pub fn text_hash(text: &str) -> String {
 
 /// L2-normalises in place. Returns false for a zero or non-finite vector.
 pub fn normalize(vector: &mut [f32]) -> bool {
-    let norm = vector.iter().map(|v| f64::from(*v) * f64::from(*v)).sum::<f64>().sqrt();
+    let norm = vector
+        .iter()
+        .map(|v| f64::from(*v) * f64::from(*v))
+        .sum::<f64>()
+        .sqrt();
     if !norm.is_finite() || norm == 0.0 {
         return false;
     }
@@ -125,7 +140,11 @@ pub struct OpenAiEmbedder {
 
 impl fmt::Debug for OpenAiEmbedder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OpenAiEmbedder").field("endpoint", &self.endpoint).field("model", &self.model).field("dims", &self.dims).finish_non_exhaustive()
+        f.debug_struct("OpenAiEmbedder")
+            .field("endpoint", &self.endpoint)
+            .field("model", &self.model)
+            .field("dims", &self.dims)
+            .finish_non_exhaustive()
     }
 }
 
@@ -134,7 +153,12 @@ impl OpenAiEmbedder {
         Self::with_endpoint(credentials, DEFAULT_ENDPOINT, OPENAI_MODEL, OPENAI_DIMS)
     }
 
-    pub fn with_endpoint(credentials: Arc<dyn CredentialSource>, endpoint: &str, model: &str, dims: usize) -> Result<Self, reqwest::Error> {
+    pub fn with_endpoint(
+        credentials: Arc<dyn CredentialSource>,
+        endpoint: &str,
+        model: &str,
+        dims: usize,
+    ) -> Result<Self, reqwest::Error> {
         Ok(Self {
             client: http::client(REQUEST_TIMEOUT)?,
             endpoint: endpoint.to_string(),
@@ -149,9 +173,19 @@ impl OpenAiEmbedder {
         if texts.is_empty() {
             return Ok(Vec::new());
         }
-        let key = self.credentials.api_key().ok_or(EmbedFailure::NotConfigured)?;
+        let key = self
+            .credentials
+            .api_key()
+            .ok_or(EmbedFailure::NotConfigured)?;
         let body = json!({ "model": self.model, "input": texts, "dimensions": self.dims, "encoding_format": "float" });
-        let response = self.client.post(&self.endpoint).bearer_auth(key.expose()).json(&body).send().await.map_err(|_| EmbedFailure::Network)?;
+        let response = self
+            .client
+            .post(&self.endpoint)
+            .bearer_auth(key.expose())
+            .json(&body)
+            .send()
+            .await
+            .map_err(|_| EmbedFailure::Network)?;
         let status = response.status().as_u16();
         if status == 401 || status == 403 {
             return Err(EmbedFailure::Auth(status));
@@ -159,28 +193,49 @@ impl OpenAiEmbedder {
         if !(200..300).contains(&status) {
             return Err(EmbedFailure::Provider(status));
         }
-        let envelope: Value = response.json().await.map_err(|error| if error.is_decode() { EmbedFailure::Unreadable("not JSON".into()) } else { EmbedFailure::Network })?;
+        let envelope: Value = response.json().await.map_err(|error| {
+            if error.is_decode() {
+                EmbedFailure::Unreadable("not JSON".into())
+            } else {
+                EmbedFailure::Network
+            }
+        })?;
         parse_embeddings(&envelope, texts.len(), self.dims)
     }
 }
 
 /// Reads the `data` array, orders it by `index`, and insists on exactly `count` vectors of `dims` finite, normalisable values.
-pub fn parse_embeddings(envelope: &Value, count: usize, dims: usize) -> Result<Vec<Vec<f32>>, EmbedFailure> {
+pub fn parse_embeddings(
+    envelope: &Value,
+    count: usize,
+    dims: usize,
+) -> Result<Vec<Vec<f32>>, EmbedFailure> {
     let unreadable = |reason: &str| EmbedFailure::Unreadable(reason.into());
-    let data = envelope.get("data").and_then(Value::as_array).ok_or_else(|| unreadable("no data"))?;
+    let data = envelope
+        .get("data")
+        .and_then(Value::as_array)
+        .ok_or_else(|| unreadable("no data"))?;
     if data.len() != count {
         return Err(unreadable("wrong number of vectors"));
     }
     let mut slots: Vec<Option<Vec<f32>>> = vec![None; count];
     for item in data {
-        let index = item.get("index").and_then(Value::as_u64).ok_or_else(|| unreadable("no index"))? as usize;
-        let values = item.get("embedding").and_then(Value::as_array).ok_or_else(|| unreadable("no embedding"))?;
+        let index = item
+            .get("index")
+            .and_then(Value::as_u64)
+            .ok_or_else(|| unreadable("no index"))? as usize;
+        let values = item
+            .get("embedding")
+            .and_then(Value::as_array)
+            .ok_or_else(|| unreadable("no embedding"))?;
         if index >= count || slots[index].is_some() || values.len() != dims {
             return Err(unreadable("unexpected vector"));
         }
         let mut vector = Vec::with_capacity(dims);
         for value in values {
-            let number = value.as_f64().ok_or_else(|| unreadable("non-numeric value"))?;
+            let number = value
+                .as_f64()
+                .ok_or_else(|| unreadable("non-numeric value"))?;
             vector.push(number as f32);
         }
         if !normalize(&mut vector) {
@@ -188,7 +243,10 @@ pub fn parse_embeddings(envelope: &Value, count: usize, dims: usize) -> Result<V
         }
         slots[index] = Some(vector);
     }
-    slots.into_iter().map(|slot| slot.ok_or_else(|| unreadable("missing vector"))).collect()
+    slots
+        .into_iter()
+        .map(|slot| slot.ok_or_else(|| unreadable("missing vector")))
+        .collect()
 }
 
 impl EmbeddingProvider for OpenAiEmbedder {
@@ -200,7 +258,11 @@ impl EmbeddingProvider for OpenAiEmbedder {
         self.dims
     }
 
-    fn embed<'a>(&'a self, texts: &'a [String], _purpose: EmbedPurpose) -> BoxFuture<'a, Result<Vec<Vec<f32>>, EmbedFailure>> {
+    fn embed<'a>(
+        &'a self,
+        texts: &'a [String],
+        _purpose: EmbedPurpose,
+    ) -> BoxFuture<'a, Result<Vec<Vec<f32>>, EmbedFailure>> {
         Box::pin(self.request(texts))
     }
 }
@@ -225,7 +287,11 @@ mod tests {
     }
 
     fn response(vectors: &[Vec<f64>]) -> String {
-        let data: Vec<Value> = vectors.iter().enumerate().map(|(index, v)| json!({ "object": "embedding", "index": index, "embedding": v })).collect();
+        let data: Vec<Value> = vectors
+            .iter()
+            .enumerate()
+            .map(|(index, v)| json!({ "object": "embedding", "index": index, "embedding": v }))
+            .collect();
         json!({ "object": "list", "data": data }).to_string()
     }
 
@@ -237,8 +303,14 @@ mod tests {
     #[test]
     fn model_keys_name_provider_model_dimensions_and_template_version() {
         let provider = embedder("http://x", Some("k"), 512);
-        assert_eq!(provider.model_key().as_str(), "openai:text-embedding-3-small:512:v1");
-        assert_ne!(ModelKey::new("openai", OPENAI_MODEL, 1536, "v1"), *provider.model_key());
+        assert_eq!(
+            provider.model_key().as_str(),
+            "openai:text-embedding-3-small:512:v1"
+        );
+        assert_ne!(
+            ModelKey::new("openai", OPENAI_MODEL, 1536, "v1"),
+            *provider.model_key()
+        );
         assert_eq!(provider.dims(), 512);
     }
 
@@ -247,15 +319,22 @@ mod tests {
         // The provider answers out of order; the result must follow the request order.
         let body = json!({ "data": [ { "index": 1, "embedding": [0.0, 2.0] }, { "index": 0, "embedding": [3.0, 4.0] } ] }).to_string();
         let (url, request) = serve_once(PATH, "200 OK", body);
-        let vectors = run(&embedder(&url, Some("sk-test-key"), 2), &["first", "second"]).unwrap();
+        let vectors = run(
+            &embedder(&url, Some("sk-test-key"), 2),
+            &["first", "second"],
+        )
+        .unwrap();
         assert!((vectors[0][0] - 0.6).abs() < 1e-6 && (vectors[0][1] - 0.8).abs() < 1e-6);
         assert!((vectors[1][0]).abs() < 1e-6 && (vectors[1][1] - 1.0).abs() < 1e-6);
 
         let raw = request.recv().unwrap();
         let wire = String::from_utf8_lossy(&raw).to_string();
         assert!(wire.starts_with(&format!("POST {PATH} ")));
-        assert!(wire.to_lowercase().contains("authorization: bearer sk-test-key"));
-        let sent: Value = serde_json::from_str(&wire[find(&raw, b"\r\n\r\n").unwrap() + 4..]).unwrap();
+        assert!(wire
+            .to_lowercase()
+            .contains("authorization: bearer sk-test-key"));
+        let sent: Value =
+            serde_json::from_str(&wire[find(&raw, b"\r\n\r\n").unwrap() + 4..]).unwrap();
         assert_eq!(sent["model"], OPENAI_MODEL);
         assert_eq!(sent["dimensions"], 2);
         assert_eq!(sent["input"], json!(["first", "second"]));
@@ -265,17 +344,33 @@ mod tests {
     #[test]
     fn without_a_credential_it_fails_before_touching_the_network() {
         let url = dead_endpoint(PATH);
-        assert_eq!(run(&embedder(&url, None, 2), &["x"]), Err(EmbedFailure::NotConfigured));
+        assert_eq!(
+            run(&embedder(&url, None, 2), &["x"]),
+            Err(EmbedFailure::NotConfigured)
+        );
     }
 
     #[test]
     fn classifies_provider_failures_without_leaking_bodies() {
-        let (url, _r) = serve_once(PATH, "401 Unauthorized", "{\"error\":\"secret-detail\"}".into());
-        assert_eq!(run(&embedder(&url, Some("k"), 2), &["x"]), Err(EmbedFailure::Auth(401)));
+        let (url, _r) = serve_once(
+            PATH,
+            "401 Unauthorized",
+            "{\"error\":\"secret-detail\"}".into(),
+        );
+        assert_eq!(
+            run(&embedder(&url, Some("k"), 2), &["x"]),
+            Err(EmbedFailure::Auth(401))
+        );
         let (url, _r) = serve_once(PATH, "500 Internal Server Error", "boom".into());
-        assert_eq!(run(&embedder(&url, Some("k"), 2), &["x"]), Err(EmbedFailure::Provider(500)));
+        assert_eq!(
+            run(&embedder(&url, Some("k"), 2), &["x"]),
+            Err(EmbedFailure::Provider(500))
+        );
         let url = dead_endpoint(PATH);
-        assert_eq!(run(&embedder(&url, Some("k"), 2), &["x"]), Err(EmbedFailure::Network));
+        assert_eq!(
+            run(&embedder(&url, Some("k"), 2), &["x"]),
+            Err(EmbedFailure::Network)
+        );
         assert!(!EmbedFailure::Provider(500).to_string().contains("boom"));
     }
 
@@ -283,17 +378,32 @@ mod tests {
     fn rejects_untrustworthy_responses() {
         for bad in [
             json!({ "data": [] }),
-            json!({ "data": [ { "index": 0, "embedding": [1.0] } ] }),                                     // wrong dims
-            json!({ "data": [ { "index": 0, "embedding": [0.0, 0.0] } ] }),                                // zero vector
-            json!({ "data": [ { "index": 0, "embedding": ["a", 1.0] } ] }),                                // non-numeric
-            json!({ "data": [ { "index": 3, "embedding": [1.0, 1.0] } ] }),                                // index out of range
+            json!({ "data": [ { "index": 0, "embedding": [1.0] } ] }), // wrong dims
+            json!({ "data": [ { "index": 0, "embedding": [0.0, 0.0] } ] }), // zero vector
+            json!({ "data": [ { "index": 0, "embedding": ["a", 1.0] } ] }), // non-numeric
+            json!({ "data": [ { "index": 3, "embedding": [1.0, 1.0] } ] }), // index out of range
             json!({ "data": [ { "index": 0, "embedding": [1.0, 1.0] }, { "index": 0, "embedding": [1.0, 1.0] } ] }),
             json!({}),
         ] {
-            let count = if bad["data"].as_array().is_some_and(|a| a.len() == 2) { 2 } else { 1 };
-            assert!(matches!(parse_embeddings(&bad, count, 2), Err(EmbedFailure::Unreadable(_))), "{bad}");
+            let count = if bad["data"].as_array().is_some_and(|a| a.len() == 2) {
+                2
+            } else {
+                1
+            };
+            assert!(
+                matches!(
+                    parse_embeddings(&bad, count, 2),
+                    Err(EmbedFailure::Unreadable(_))
+                ),
+                "{bad}"
+            );
         }
-        assert!(parse_embeddings(&json!({ "data": [ { "index": 0, "embedding": [1.0, 0.0] } ] }), 1, 2).is_ok());
+        assert!(parse_embeddings(
+            &json!({ "data": [ { "index": 0, "embedding": [1.0, 0.0] } ] }),
+            1,
+            2
+        )
+        .is_ok());
     }
 
     #[test]

@@ -98,7 +98,10 @@ mod tests {
 
     #[test]
     fn every_kind_is_defined_exactly_once_in_order() {
-        assert_eq!(RULES.iter().map(|rule| rule.kind).collect::<Vec<_>>(), KINDS);
+        assert_eq!(
+            RULES.iter().map(|rule| rule.kind).collect::<Vec<_>>(),
+            KINDS
+        );
     }
 
     #[test]
@@ -106,7 +109,11 @@ mod tests {
         let text = rubric();
         for rule in &RULES {
             assert!(text.contains(&format!("- {} = ", rule.kind)));
-            assert!(rule.accept_when.len() > 20 && rule.reject_when.len() > 20, "{} needs real criteria", rule.kind);
+            assert!(
+                rule.accept_when.len() > 20 && rule.reject_when.len() > 20,
+                "{} needs real criteria",
+                rule.kind
+            );
         }
         assert_eq!(text.matches("Do NOT use it when").count(), 7);
         assert_eq!(text.matches("TEST: ").count(), 7);

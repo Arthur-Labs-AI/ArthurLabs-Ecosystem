@@ -50,10 +50,18 @@ fn split_long(sentence: &str, max: usize) -> Vec<String> {
     let mut rest: Vec<char> = sentence.chars().collect();
     while rest.len() > max {
         let window = &rest[..max];
-        let cut = window.iter().rposition(|c| c.is_whitespace()).filter(|&at| at > 0).unwrap_or(max);
+        let cut = window
+            .iter()
+            .rposition(|c| c.is_whitespace())
+            .filter(|&at| at > 0)
+            .unwrap_or(max);
         let head: String = rest[..cut].iter().collect();
         out.push(head.trim().to_string());
-        rest = rest[cut..].iter().copied().skip_while(|c| c.is_whitespace()).collect();
+        rest = rest[cut..]
+            .iter()
+            .copied()
+            .skip_while(|c| c.is_whitespace())
+            .collect();
     }
     let tail: String = rest.iter().collect();
     if !tail.trim().is_empty() {
@@ -69,7 +77,12 @@ pub fn plan(text: &str, max_chunk: usize, max_total: usize) -> Plan {
 /// Like `plan`, with a smaller limit for the first chunk only.
 pub fn plan_with_first(text: &str, first_chunk: usize, max_chunk: usize, max_total: usize) -> Plan {
     let mut pieces: Vec<String> = Vec::new();
-    for paragraph in text.split("\n\n").flat_map(|block| block.split('\n')).map(str::trim).filter(|p| !p.is_empty()) {
+    for paragraph in text
+        .split("\n\n")
+        .flat_map(|block| block.split('\n'))
+        .map(str::trim)
+        .filter(|p| !p.is_empty())
+    {
         for sentence in sentences(paragraph) {
             if sentence.chars().count() > first_chunk.min(max_chunk) {
                 pieces.extend(split_long(&sentence, first_chunk.min(max_chunk)));
@@ -91,7 +104,14 @@ pub fn plan_with_first(text: &str, first_chunk: usize, max_chunk: usize, max_tot
         }
         total += len + 1;
         match chunks.last_mut() {
-            Some(last) if last.chars().count() + 1 + len <= if chunks_len == 1 { first_chunk } else { max_chunk } => {
+            Some(last)
+                if last.chars().count() + 1 + len
+                    <= if chunks_len == 1 {
+                        first_chunk
+                    } else {
+                        max_chunk
+                    } =>
+            {
                 last.push(' ');
                 last.push_str(&piece);
             }
@@ -118,14 +138,24 @@ mod tests {
     fn bulgarian_and_mixed_scripts_are_split_at_sentence_boundaries_untouched() {
         let plan = plan(BG, 60, 6000);
         assert_eq!(plan.chunks.len(), 3);
-        assert_eq!(plan.chunks.join(" "), BG, "nothing is transliterated, dropped or reordered");
+        assert_eq!(
+            plan.chunks.join(" "),
+            BG,
+            "nothing is transliterated, dropped or reordered"
+        );
         let mixed = super::plan("Купих EMG wristband. Battery life е важен.", 25, 6000);
-        assert_eq!(mixed.chunks.join(" "), "Купих EMG wristband. Battery life е важен.");
+        assert_eq!(
+            mixed.chunks.join(" "),
+            "Купих EMG wristband. Battery life е важен."
+        );
     }
 
     #[test]
     fn decimals_and_abbreviations_without_a_following_space_are_not_sentence_ends() {
-        assert_eq!(sentences("It costs 3.5 euros. Fine."), vec!["It costs 3.5 euros.", "Fine."]);
+        assert_eq!(
+            sentences("It costs 3.5 euros. Fine."),
+            vec!["It costs 3.5 euros.", "Fine."]
+        );
     }
 
     #[test]
@@ -133,10 +163,20 @@ mod tests {
         let long = "word ".repeat(500);
         let plan = plan(long.trim(), 100, 6000);
         assert!(plan.chunks.len() > 20);
-        assert!(plan.chunks.iter().all(|c| c.chars().count() <= 100 && !c.starts_with(' ')));
+        assert!(plan
+            .chunks
+            .iter()
+            .all(|c| c.chars().count() <= 100 && !c.starts_with(' ')));
         assert_eq!(plan.chunks.join(" "), long.trim());
         let unbroken = super::plan(&"я".repeat(250), 100, 6000);
-        assert_eq!(unbroken.chunks.iter().map(|c| c.chars().count()).collect::<Vec<_>>(), vec![100, 100, 50]);
+        assert_eq!(
+            unbroken
+                .chunks
+                .iter()
+                .map(|c| c.chars().count())
+                .collect::<Vec<_>>(),
+            vec![100, 100, 50]
+        );
     }
 
     #[test]
@@ -145,15 +185,25 @@ mod tests {
         let plan = plan(&text, 200, 500);
         assert!(plan.truncated);
         assert!(plan.chunks.iter().map(|c| c.chars().count()).sum::<usize>() <= 500);
-        assert!(plan.chunks.last().unwrap().ends_with('.'), "cut at a sentence boundary, never mid-sentence");
+        assert!(
+            plan.chunks.last().unwrap().ends_with('.'),
+            "cut at a sentence boundary, never mid-sentence"
+        );
     }
 
     #[test]
     fn the_first_chunk_is_small_so_speech_starts_quickly_and_order_is_kept() {
         let text = "This is an ordinary sentence for the first chunk test. ".repeat(40);
         let plan = plan_with_first(text.trim(), 120, 600, 6000);
-        assert!(plan.chunks[0].chars().count() <= 120, "{}", plan.chunks[0].chars().count());
-        assert!(plan.chunks[1].chars().count() > 120 && plan.chunks.iter().all(|c| c.chars().count() <= 600));
+        assert!(
+            plan.chunks[0].chars().count() <= 120,
+            "{}",
+            plan.chunks[0].chars().count()
+        );
+        assert!(
+            plan.chunks[1].chars().count() > 120
+                && plan.chunks.iter().all(|c| c.chars().count() <= 600)
+        );
         assert_eq!(plan.chunks.join(" "), text.trim());
         let single = plan_with_first(&"я".repeat(500), 100, 400, 6000);
         assert_eq!(single.chunks[0].chars().count(), 100);
@@ -161,7 +211,10 @@ mod tests {
 
     #[test]
     fn paragraphs_and_empty_input() {
-        assert_eq!(plan("One.\n\nTwo.\nThree.", 900, 6000).chunks, vec!["One. Two. Three."]);
+        assert_eq!(
+            plan("One.\n\nTwo.\nThree.", 900, 6000).chunks,
+            vec!["One. Two. Three."]
+        );
         assert!(plan("  \n\n ", 900, 6000).chunks.is_empty());
     }
 }

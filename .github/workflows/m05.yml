@@ -28,6 +28,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.99.1
+          components: rustfmt, clippy
       - name: Install locked JavaScript dependencies
         run: |
           npm ci
@@ -37,6 +38,11 @@ jobs:
         run: cargo fetch --locked --manifest-path apps/arthur/src-tauri/Cargo.toml
       - name: Default Windows build check
         run: cargo check --locked --offline --manifest-path apps/arthur/src-tauri/Cargo.toml --lib
+      - name: Rust formatting
+        run: cargo fmt --manifest-path apps/arthur/src-tauri/Cargo.toml -- --check
+      - name: Clippy (default Windows library)
+        # Keep dormant-code rustc warnings visible; deny all Clippy warning groups.
+        run: cargo clippy --locked --offline --manifest-path apps/arthur/src-tauri/Cargo.toml --lib -- -D clippy::all
       - name: Native regressions including real Windows CNG and TLS
         run: cargo test --locked --offline --manifest-path apps/arthur/src-tauri/Cargo.toml --lib -- --test-threads=1
       - name: Production dependency feature isolation

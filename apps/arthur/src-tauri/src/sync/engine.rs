@@ -11,107 +11,117 @@ use uuid::Uuid;
 pub(crate) trait SyncStore {
     fn settle(
         &self,
-        s: &VerifiedSession,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        session: &VerifiedSession,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<(usize, bool)>;
     fn retained_receipt(
         &self,
-        s: &VerifiedSession,
+        session: &VerifiedSession,
         id: Uuid,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<Receipt>;
     fn snapshot_capture(
         &self,
-        s: &VerifiedSession,
+        session: &VerifiedSession,
         id: Uuid,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<SnapshotExport>;
     fn snapshot_offer(
         &self,
-        s: &VerifiedSession,
-        o: &SnapshotOffer,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        session: &VerifiedSession,
+        offer: &SnapshotOffer,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<()>;
     fn snapshot_chunk(
         &self,
-        s: &VerifiedSession,
-        ch: &SnapshotChunk,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        session: &VerifiedSession,
+        chunk: &SnapshotChunk,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<()>;
     fn snapshot_publish(
         &self,
-        s: &VerifiedSession,
-        o: &SnapshotOffer,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        session: &VerifiedSession,
+        offer: &SnapshotOffer,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<SnapshotReceipt>;
     fn snapshot_receipt(
         &self,
-        s: &VerifiedSession,
-        r: &SnapshotReceipt,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        session: &VerifiedSession,
+        receipt: &SnapshotReceipt,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<()>;
-    fn authorize(&self, s: &VerifiedSession, c: &dyn SyncClock, x: &Cancellation) -> Result<()>;
-    fn summary(&self, s: &VerifiedSession, c: &dyn SyncClock, x: &Cancellation) -> Result<Summary>;
+    fn authorize(
+        &self,
+        session: &VerifiedSession,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
+    ) -> Result<()>;
+    fn summary(
+        &self,
+        session: &VerifiedSession,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
+    ) -> Result<Summary>;
     fn page(
         &self,
-        s: &VerifiedSession,
+        session: &VerifiedSession,
         after: Option<PageKey>,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<Summary>;
     fn lookup(
         &self,
-        s: &VerifiedSession,
+        session: &VerifiedSession,
         id: Uuid,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<Option<Identity>>;
     fn export(
         &self,
-        s: &VerifiedSession,
+        session: &VerifiedSession,
         id: &Identity,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<Envelope>;
     fn retain(
         &self,
-        s: &VerifiedSession,
-        e: ValidatedEvent,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        session: &VerifiedSession,
+        event: ValidatedEvent,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<Receipt>;
     fn offered(
         &self,
-        s: &VerifiedSession,
+        session: &VerifiedSession,
         id: &Identity,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<()>;
     fn receipt(
         &self,
-        s: &VerifiedSession,
-        r: &Receipt,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        session: &VerifiedSession,
+        receipt: &Receipt,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<()>;
     fn outstanding(
         &self,
-        s: &VerifiedSession,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        session: &VerifiedSession,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<Vec<Uuid>>;
     fn missing(
         &self,
-        s: &VerifiedSession,
-        c: &dyn SyncClock,
-        x: &Cancellation,
+        session: &VerifiedSession,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
     ) -> Result<Vec<Uuid>>;
 }
 struct Assembly {

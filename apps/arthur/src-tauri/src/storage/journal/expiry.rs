@@ -92,7 +92,7 @@ pub(super) fn recheck(
         let row = sql::reread(
             c,
             codec::EntityKind::RevisionProposals,
-            &[proposal.id.clone()],
+            std::slice::from_ref(&proposal.id),
         )
         .map_err(|_| invalid())?
         .ok_or_else(invalid)?;

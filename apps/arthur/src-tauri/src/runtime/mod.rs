@@ -96,7 +96,10 @@ impl NativeRuntime {
     pub(crate) fn reopen_candidate_lab(data_root: &Path) -> Result<RuntimeHandle, RuntimeError> {
         Self::acquire_with(data_root, CaptureStore::reopen_candidate_owned_for_test)
     }
-    fn acquire_with(data_root: &Path, open: fn(DataRootOwnership) -> Result<CaptureStore, StoreError>) -> Result<RuntimeHandle, RuntimeError> {
+    fn acquire_with(
+        data_root: &Path,
+        open: fn(DataRootOwnership) -> Result<CaptureStore, StoreError>,
+    ) -> Result<RuntimeHandle, RuntimeError> {
         if !data_root.is_absolute() {
             return Err(RuntimeError::RelativeDataRoot);
         }
@@ -134,7 +137,10 @@ impl NativeRuntime {
             store,
             transport: lan_candidate::Coordinator::new(&TransportOwner(())),
         });
-        runtime.transport.bind_store(&runtime.store).map_err(RuntimeError::Storage)?;
+        runtime
+            .transport
+            .bind_store(&runtime.store)
+            .map_err(RuntimeError::Storage)?;
         {
             let mut registry = owners()
                 .lock()

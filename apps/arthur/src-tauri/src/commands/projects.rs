@@ -10,7 +10,10 @@ use crate::storage::project_store::{Project, ProjectError, ProjectGraph};
 type Result<T> = std::result::Result<T, ProjectError>;
 
 #[tauri::command]
-pub fn list_projects(store: State<'_, RuntimeHandle>, include_archived: Option<bool>) -> Result<Vec<Project>> {
+pub fn list_projects(
+    store: State<'_, RuntimeHandle>,
+    include_archived: Option<bool>,
+) -> Result<Vec<Project>> {
     store.list_projects(include_archived.unwrap_or(false))
 }
 
@@ -25,7 +28,11 @@ pub fn create_project(store: State<'_, RuntimeHandle>, name: String) -> Result<P
 }
 
 #[tauri::command]
-pub fn rename_project(store: State<'_, RuntimeHandle>, project_id: String, name: String) -> Result<Project> {
+pub fn rename_project(
+    store: State<'_, RuntimeHandle>,
+    project_id: String,
+    name: String,
+) -> Result<Project> {
     store.rename_project(&project_id, &name)
 }
 
@@ -41,13 +48,22 @@ pub fn restore_project(store: State<'_, RuntimeHandle>, project_id: String) -> R
 
 /// Moves a capture only. Objects already distilled from it stay where they are.
 #[tauri::command]
-pub fn move_capture(store: State<'_, RuntimeHandle>, capture_id: String, project_id: String) -> Result<Capture> {
+pub fn move_capture(
+    store: State<'_, RuntimeHandle>,
+    capture_id: String,
+    project_id: String,
+) -> Result<Capture> {
     store.move_capture(&capture_id, &project_id)
 }
 
 /// Moves one object. No revision, provenance or lineage change.
 #[tauri::command]
-pub fn move_knowledge_object(app: AppHandle, store: State<'_, RuntimeHandle>, object_id: String, project_id: String) -> Result<KnowledgeObject> {
+pub fn move_knowledge_object(
+    app: AppHandle,
+    store: State<'_, RuntimeHandle>,
+    object_id: String,
+    project_id: String,
+) -> Result<KnowledgeObject> {
     let object = store.move_knowledge_object(&object_id, &project_id)?;
     // The object may now be integrated with its new project. Relations it already has (cross-project ones included) are not touched.
     if let Ok(Some(revision_id)) = store.current_revision_id_of(&object.id) {
@@ -70,6 +86,9 @@ pub fn set_active_project(store: State<'_, RuntimeHandle>, project_id: String) -
 }
 
 #[tauri::command]
-pub fn get_project_graph(store: State<'_, RuntimeHandle>, project_id: String) -> Result<ProjectGraph> {
+pub fn get_project_graph(
+    store: State<'_, RuntimeHandle>,
+    project_id: String,
+) -> Result<ProjectGraph> {
     store.project_graph(&project_id)
 }

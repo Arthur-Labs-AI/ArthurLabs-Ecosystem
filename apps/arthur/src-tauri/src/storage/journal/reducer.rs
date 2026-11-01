@@ -504,7 +504,7 @@ pub fn reduce_effects(
         baselines,
     };
     for op in &operations {
-        validate_closure(op, &mut ctx)?;
+        validate_closure(op, &ctx)?;
     }
 
     // Dependencies: same-event creations need no dep; known refs contribute
@@ -850,18 +850,67 @@ fn validate_terminal_closure(
     if from != state {
         let agrees = matches!(
             (entity, from, state, context.action),
-            (EntityKind::PendingClaims, "open", "deferred", ReviewAction::Defer)
-                | (EntityKind::PendingClaims, "deferred", "open", ReviewAction::Reopen)
-                | (EntityKind::PendingClaims, _, "accepted", ReviewAction::Approve)
-                | (EntityKind::PendingClaims, _, "accepted", ReviewAction::EditAndApprove)
-                | (EntityKind::PendingClaims, _, "separated", ReviewAction::KeepSeparate)
-                | (EntityKind::RevisionProposals, _, "approved", ReviewAction::Approve)
-                | (EntityKind::RevisionProposals, _, "approved", ReviewAction::EditAndApprove)
-                | (EntityKind::RevisionProposals, _, "rejected", ReviewAction::Reject)
-                | (EntityKind::RevisionProposals, _, "separated", ReviewAction::KeepSeparate)
-                | (EntityKind::RevisionProposals, _, "superseded", ReviewAction::Supersede)
-                | (EntityKind::RevisionProposals, "open", "deferred", ReviewAction::Defer)
-                | (EntityKind::RevisionProposals, "deferred", "open", ReviewAction::Reopen)
+            (
+                EntityKind::PendingClaims,
+                "open",
+                "deferred",
+                ReviewAction::Defer
+            ) | (
+                EntityKind::PendingClaims,
+                "deferred",
+                "open",
+                ReviewAction::Reopen
+            ) | (
+                EntityKind::PendingClaims,
+                _,
+                "accepted",
+                ReviewAction::Approve
+            ) | (
+                EntityKind::PendingClaims,
+                _,
+                "accepted",
+                ReviewAction::EditAndApprove
+            ) | (
+                EntityKind::PendingClaims,
+                _,
+                "separated",
+                ReviewAction::KeepSeparate
+            ) | (
+                EntityKind::RevisionProposals,
+                _,
+                "approved",
+                ReviewAction::Approve
+            ) | (
+                EntityKind::RevisionProposals,
+                _,
+                "approved",
+                ReviewAction::EditAndApprove
+            ) | (
+                EntityKind::RevisionProposals,
+                _,
+                "rejected",
+                ReviewAction::Reject
+            ) | (
+                EntityKind::RevisionProposals,
+                _,
+                "separated",
+                ReviewAction::KeepSeparate
+            ) | (
+                EntityKind::RevisionProposals,
+                _,
+                "superseded",
+                ReviewAction::Supersede
+            ) | (
+                EntityKind::RevisionProposals,
+                "open",
+                "deferred",
+                ReviewAction::Defer
+            ) | (
+                EntityKind::RevisionProposals,
+                "deferred",
+                "open",
+                ReviewAction::Reopen
+            )
         );
         if !agrees {
             return Err(ReducerError::InvalidReviewContext(
@@ -1133,7 +1182,7 @@ fn validate_closure(op: &Operation, ctx: &ClosureCtx<'_>) -> Result<(), ReducerE
     if let Operation::RecordCreate(c) = op {
         if c.entity == EntityKind::KnowledgeObjects {
             if let Some(FieldValue::Text(rev)) = c.after.get("current_revision_id") {
-                ctx.resolve(&EntityKind::ThoughtRevisions, &[rev.clone()])?;
+                ctx.resolve(&EntityKind::ThoughtRevisions, std::slice::from_ref(rev))?;
             }
         }
     }

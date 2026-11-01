@@ -578,7 +578,10 @@ fn k10_failed_deferred_commit_without_bundle_is_explicitly_rolled_back() {
     let before = state(&s);
     assert_eq!(
         k.run_fault(Fault::DeferredCommit, |t| insert(t, 10)),
-        Err(E::CommitFailure(super::storage::SqliteCode { primary: 19, extended: rusqlite::ffi::SQLITE_CONSTRAINT_FOREIGNKEY }))
+        Err(E::CommitFailure(super::storage::SqliteCode {
+            primary: 19,
+            extended: rusqlite::ffi::SQLITE_CONSTRAINT_FOREIGNKEY
+        }))
     );
     assert_eq!(state(&s), before);
     clean(&s);
@@ -664,14 +667,14 @@ fn k12_review_proved_transitions_commit_while_deletions_fail_closed() {
         Err(E::ReviewContext)
     );
     k.run(|t| {
-            t.register_review(
-                K::PendingClaims,
-                vec![fixture_id(20)],
-                review(fixture_id(20)),
-            )?;
-            change(t)
-        })
-        .unwrap();
+        t.register_review(
+            K::PendingClaims,
+            vec![fixture_id(20)],
+            review(fixture_id(20)),
+        )?;
+        change(t)
+    })
+    .unwrap();
     let core = cores(&s).pop().expect("proved defer emits one bundle");
     assert_eq!(core.operations.len(), 1);
     let Operation::FacetUpdate(update) = &core.operations[0] else {

@@ -9,6 +9,10 @@ pub(crate) enum Unavailable {
     Changed,
     Incomplete,
     Unsupported,
+    #[expect(
+        clippy::enum_variant_names,
+        reason = "Preserve the existing closed refusal vocabulary across platform adapters"
+    )]
     Unavailable,
     Os(u32),
 }

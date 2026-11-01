@@ -159,12 +159,16 @@ impl History {
 pub(super) fn stored_head(c: &Connection, key: &HeadKey) -> Result<Option<(String, Vec<u8>)>> {
     let local=c.query_row("SELECT event_id,state_hash FROM sync_entity_heads WHERE entity_kind=?1 AND entity_key=?2 AND facet=?3",
         params![key.0.as_str(),sql::key_json(&key.1)?,key.2],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(|_|E::Sql)?;
-    if local.is_some(){Ok(local)}else{super::g3::head(c,key)}
+    if local.is_some() {
+        Ok(local)
+    } else {
+        super::g3::head(c, key)
+    }
 }
 
 fn recover_history(c: &Connection, budget: u64) -> Result<History> {
     let mut result = super::g3::replay(c)?;
-    check_cache_bound(&result,0,budget)?;
+    check_cache_bound(&result, 0, budget)?;
     let mut tips: BTreeMap<(String, String), (i64, [u8; 32])> = BTreeMap::new();
     let mut q=c.prepare("SELECT event_id,bundle_id,origin_id,incarnation,origin_seq,canonical_bytes,canonical_hash,previous_hash,raw_effect_count,committed_at FROM sync_bundles ORDER BY rowid").map_err(|_|E::Sql)?;
     let mut rows = q.query([]).map_err(|_| E::Sql)?;
@@ -240,11 +244,17 @@ fn recover_history(c: &Connection, budget: u64) -> Result<History> {
     if !tips.is_empty() {
         return Err(E::CorruptCapability);
     }
-    let foreign=super::g3::installed(c).map_err(|_|E::Sql)?;
-    let query=if super::g3::d4_installed(c).map_err(|_|E::Sql)? {"SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads UNION ALL SELECT entity,key_json,facet,event,hash FROM import_d4_heads g WHERE NOT EXISTS(SELECT 1 FROM sync_entity_heads h WHERE h.entity_kind=g.entity AND h.entity_key=g.key_json AND h.facet=g.facet)"} else if super::g3::history_installed(c).map_err(|_|E::Sql)? {"SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads UNION ALL SELECT entity,key_json,facet,event,hash FROM (SELECT * FROM import_g3_heads UNION ALL SELECT * FROM import_history_heads) g WHERE NOT EXISTS(SELECT 1 FROM sync_entity_heads h WHERE h.entity_kind=g.entity AND h.entity_key=g.key_json AND h.facet=g.facet)"}else if foreign {"SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads UNION ALL SELECT entity,key_json,facet,event,hash FROM import_g3_heads g WHERE NOT EXISTS(SELECT 1 FROM sync_entity_heads h WHERE h.entity_kind=g.entity AND h.entity_key=g.key_json AND h.facet=g.facet)"}else{"SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads"};
-    let mut heads = c
-        .prepare(query)
-        .map_err(|_| E::Sql)?;
+    let foreign = super::g3::installed(c).map_err(|_| E::Sql)?;
+    let query = if super::g3::d4_installed(c).map_err(|_| E::Sql)? {
+        "SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads UNION ALL SELECT entity,key_json,facet,event,hash FROM import_d4_heads g WHERE NOT EXISTS(SELECT 1 FROM sync_entity_heads h WHERE h.entity_kind=g.entity AND h.entity_key=g.key_json AND h.facet=g.facet)"
+    } else if super::g3::history_installed(c).map_err(|_| E::Sql)? {
+        "SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads UNION ALL SELECT entity,key_json,facet,event,hash FROM (SELECT * FROM import_g3_heads UNION ALL SELECT * FROM import_history_heads) g WHERE NOT EXISTS(SELECT 1 FROM sync_entity_heads h WHERE h.entity_kind=g.entity AND h.entity_key=g.key_json AND h.facet=g.facet)"
+    } else if foreign {
+        "SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads UNION ALL SELECT entity,key_json,facet,event,hash FROM import_g3_heads g WHERE NOT EXISTS(SELECT 1 FROM sync_entity_heads h WHERE h.entity_kind=g.entity AND h.entity_key=g.key_json AND h.facet=g.facet)"
+    } else {
+        "SELECT entity_kind,entity_key,facet,event_id,state_hash FROM sync_entity_heads"
+    };
+    let mut heads = c.prepare(query).map_err(|_| E::Sql)?;
     let mut rows = heads.query([]).map_err(|_| E::Sql)?;
     let mut count = 0;
     while let Some(r) = rows.next().map_err(|_| E::Sql)? {
@@ -386,16 +396,15 @@ pub(super) fn initialize(c: &Connection, now: &str, budget: u64) -> Result<Strea
                     .ok_or(E::MetadataQuota)?;
                 check_cache_bound(&history, legacy_bytes, budget)?;
                 legacy.insert(identity, hashes);
-            } else if !entity.is_facet_mutable() {
-                if history
+            } else if !entity.is_facet_mutable()
+                && history
                     .heads
                     .get(&(entity, key.clone(), "record".into()))
                     .ok_or(E::MissingPrior)?
                     .hash
                     != facet_hash(entity, &key, "record", &row)?
-                {
-                    return Err(E::CorruptCapability);
-                }
+            {
+                return Err(E::CorruptCapability);
             }
         }
     }
@@ -428,23 +437,35 @@ impl Stream {
     /// heads only where no durable local head exists; local selections win.
     /// Rebuild from retained originals under the same owner lock, without
     /// rotating the local origin/incarnation or manufacturing a local event.
-    pub fn refresh_imports(&mut self,c:&Connection,budget:u64)->Result<()> {
-        let foreign=super::g3::replay(c)?;
-        for (key,reference) in foreign.records {
-            if let Some(prior)=self.history.records.get(&key){
-                if prior!=&reference{return Err(E::CorruptCapability)}
-            }else{
-                if self.history.removed.contains(&key)||self.legacy.contains_key(&key){return Err(E::CorruptCapability)}
-                self.history.records.insert(key,reference);
+    pub fn refresh_imports(&mut self, c: &Connection, budget: u64) -> Result<()> {
+        let foreign = super::g3::replay(c)?;
+        for (key, reference) in foreign.records {
+            if let Some(prior) = self.history.records.get(&key) {
+                if prior != &reference {
+                    return Err(E::CorruptCapability);
+                }
+            } else {
+                if self.history.removed.contains(&key) || self.legacy.contains_key(&key) {
+                    return Err(E::CorruptCapability);
+                }
+                self.history.records.insert(key, reference);
             }
         }
-        let d4=super::g3::d4_installed(c).map_err(|_|E::Sql)?;
+        let d4 = super::g3::d4_installed(c).map_err(|_| E::Sql)?;
         self.history.removed.extend(foreign.removed);
-        for (key,head) in foreign.heads {
-            let local=if d4 {c.query_row("SELECT EXISTS(SELECT 1 FROM sync_entity_heads WHERE entity_kind=?1 AND entity_key=?2 AND facet=?3)",params![key.0.as_str(),sql::key_json(&key.1)?,key.2],|r|r.get::<_,bool>(0)).map_err(|_|E::Sql)?}else{true};
-            if d4 && !local {self.history.heads.insert(key,head);}else{self.history.heads.entry(key).or_insert(head);}
+        for (key, head) in foreign.heads {
+            let local = if d4 {
+                c.query_row("SELECT EXISTS(SELECT 1 FROM sync_entity_heads WHERE entity_kind=?1 AND entity_key=?2 AND facet=?3)",params![key.0.as_str(),sql::key_json(&key.1)?,key.2],|r|r.get::<_,bool>(0)).map_err(|_|E::Sql)?
+            } else {
+                true
+            };
+            if d4 && !local {
+                self.history.heads.insert(key, head);
+            } else {
+                self.history.heads.entry(key).or_insert(head);
+            }
         }
-        check_cache_bound(&self.history,0,budget)
+        check_cache_bound(&self.history, 0, budget)
     }
     pub fn admit_cache(
         &self,

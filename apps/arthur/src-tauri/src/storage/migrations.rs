@@ -316,7 +316,6 @@ CREATE TABLE active_project (
 );
 ";
 
-
 /// v7 (M04B): Cognitive Recall retrieval indexes. ADDITIVE: no v1-v6 table, trigger or row is touched, and every object created
 /// here is a REBUILDABLE PROJECTION of authoritative data (see docs/architecture/cognitive-recall/storage-plan.md).
 ///
@@ -772,7 +771,17 @@ END;
 pub type Step = (i64, &'static str);
 
 /// Ordered migration steps: `(version after the step, SQL)`.
-pub const STEPS: [Step; 9] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, SCHEMA_V3), (4, SCHEMA_V4), (5, SCHEMA_V5), (6, SCHEMA_V6), (7, SCHEMA_V7), (8, SCHEMA_V8), (9, SCHEMA_V9)];
+pub const STEPS: [Step; 9] = [
+    (1, SCHEMA_V1),
+    (2, SCHEMA_V2),
+    (3, SCHEMA_V3),
+    (4, SCHEMA_V4),
+    (5, SCHEMA_V5),
+    (6, SCHEMA_V6),
+    (7, SCHEMA_V7),
+    (8, SCHEMA_V8),
+    (9, SCHEMA_V9),
+];
 
 /// The version `STEPS` ends at; asserted against `STEPS` by a test.
 #[cfg(test)]
@@ -797,7 +806,11 @@ pub fn migrate_with(connection: &mut Connection, steps: &[Step]) -> Result<(), S
         migration_fault_for_test(&transaction, *version, MigrationFaultPoint::AfterDdl)?;
         transaction.pragma_update(None, "user_version", version)?;
         #[cfg(test)]
-        migration_fault_for_test(&transaction, *version, MigrationFaultPoint::AfterVersionBump)?;
+        migration_fault_for_test(
+            &transaction,
+            *version,
+            MigrationFaultPoint::AfterVersionBump,
+        )?;
         transaction.commit()?;
     }
     Ok(())
@@ -863,11 +876,20 @@ mod tests {
     use crate::storage::capture_store::{CaptureStore, CreateCaptureInput};
 
     fn user_version(connection: &Connection) -> i64 {
-        connection.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap()
+        connection
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap()
     }
 
     fn has_object(connection: &Connection, kind: &str, name: &str) -> bool {
-        connection.query_row("SELECT count(*) FROM sqlite_master WHERE type = ?1 AND name = ?2", [kind, name], |r| r.get::<_, i64>(0)).unwrap() > 0
+        connection
+            .query_row(
+                "SELECT count(*) FROM sqlite_master WHERE type = ?1 AND name = ?2",
+                [kind, name],
+                |r| r.get::<_, i64>(0),
+            )
+            .unwrap()
+            > 0
     }
 
     /// A database exactly as M01B/M01C left it: schema v1 with captures in it.
@@ -892,15 +914,38 @@ mod tests {
         let store = CaptureStore::open(&path).unwrap();
 
         let captures = store.list().unwrap();
-        assert_eq!(captures.iter().map(|c| (c.id.as_str(), c.source.as_str(), c.content.as_str())).collect::<Vec<_>>(), [("c2", "voice", "второ нещо 😀"), ("c1", "text", "first thought")]);
+        assert_eq!(
+            captures
+                .iter()
+                .map(|c| (c.id.as_str(), c.source.as_str(), c.content.as_str()))
+                .collect::<Vec<_>>(),
+            [
+                ("c2", "voice", "второ нещо 😀"),
+                ("c1", "text", "first thought")
+            ]
+        );
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), SCHEMA_VERSION);
-        for table in ["distillation_runs", "knowledge_objects", "object_sources", "relations"] {
+        for table in [
+            "distillation_runs",
+            "knowledge_objects",
+            "object_sources",
+            "relations",
+        ] {
             assert!(has_object(&connection, "table", table), "{table}");
         }
         // And the upgraded database is fully usable for the new feature.
         let stored = store
-            .record_distillation("c2", vec![crate::storage::knowledge_store::NewKnowledgeObject { kind: "note".into(), title: "t".into(), body: "b".into(), source_start: 0, source_end: 5 }])
+            .record_distillation(
+                "c2",
+                vec![crate::storage::knowledge_store::NewKnowledgeObject {
+                    kind: "note".into(),
+                    title: "t".into(),
+                    body: "b".into(),
+                    source_start: 0,
+                    source_end: 5,
+                }],
+            )
             .unwrap();
         assert_eq!(stored.len(), 1);
     }
@@ -946,14 +991,24 @@ mod tests {
 
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), SCHEMA_VERSION);
-        assert_eq!(dump(&connection), before, "captures, objects and provenance are byte-for-byte unchanged");
+        assert_eq!(
+            dump(&connection),
+            before,
+            "captures, objects and provenance are byte-for-byte unchanged"
+        );
         assert!(has_object(&connection, "table", "relations"));
         for index in ["relations_by_source", "relations_by_target"] {
             assert!(has_object(&connection, "index", index), "{index}");
         }
-        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        let integrity: String = connection
+            .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(integrity, "ok");
-        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        let violations: i64 = connection
+            .query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         assert_eq!(violations, 0);
         // The existing M01 reads still work, and the new graph is empty but usable on the migrated data.
         assert_eq!(store.list().unwrap().len(), 2);
@@ -962,7 +1017,11 @@ mod tests {
         assert!(store.list_relations().unwrap().is_empty());
         let relation = store
             .create_relation(
-                crate::storage::relation_store::NewRelation { kind: "extends".into(), source_object_id: objects[0].id.clone(), target_object_id: objects[1].id.clone() },
+                crate::storage::relation_store::NewRelation {
+                    kind: "extends".into(),
+                    source_object_id: objects[0].id.clone(),
+                    target_object_id: objects[1].id.clone(),
+                },
                 "user",
             )
             .unwrap();
@@ -972,13 +1031,29 @@ mod tests {
     fn dump(connection: &Connection) -> Vec<String> {
         let mut rows = Vec::new();
         for (table, columns) in [
-            ("captures", "id || '|' || source || '|' || content || '|' || created_at"),
+            (
+                "captures",
+                "id || '|' || source || '|' || content || '|' || created_at",
+            ),
             ("distillation_runs", "capture_id || '|' || created_at"),
-            ("knowledge_objects", "id || '|' || kind || '|' || title || '|' || body || '|' || created_at"),
-            ("object_sources", "object_id || '|' || capture_id || '|' || source_start || '|' || source_end"),
+            (
+                "knowledge_objects",
+                "id || '|' || kind || '|' || title || '|' || body || '|' || created_at",
+            ),
+            (
+                "object_sources",
+                "object_id || '|' || capture_id || '|' || source_start || '|' || source_end",
+            ),
         ] {
-            let mut statement = connection.prepare(&format!("SELECT {columns} FROM {table} ORDER BY 1")).unwrap();
-            rows.extend(statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|row| format!("{table}:{}", row.unwrap())));
+            let mut statement = connection
+                .prepare(&format!("SELECT {columns} FROM {table} ORDER BY 1"))
+                .unwrap();
+            rows.extend(
+                statement
+                    .query_map([], |r| r.get::<_, String>(0))
+                    .unwrap()
+                    .map(|row| format!("{table}:{}", row.unwrap())),
+            );
         }
         rows
     }
@@ -993,14 +1068,19 @@ mod tests {
             // A foreign table named like the one v3 creates, with an index name v3 also needs,
             // so the step fails after its first statement has already run.
             let connection = Connection::open(&path).unwrap();
-            connection.execute_batch("CREATE TABLE zzz (x); CREATE INDEX relations_by_target ON zzz(x);").unwrap();
+            connection
+                .execute_batch("CREATE TABLE zzz (x); CREATE INDEX relations_by_target ON zzz(x);")
+                .unwrap();
         }
 
         assert!(CaptureStore::open(&path).is_err());
 
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), 2, "still v2");
-        assert!(!has_object(&connection, "table", "relations"), "the step's earlier statements were rolled back");
+        assert!(
+            !has_object(&connection, "table", "relations"),
+            "the step's earlier statements were rolled back"
+        );
         assert!(!has_object(&connection, "index", "relations_by_source"));
         assert_eq!(dump(&connection), before);
         // v2 is still fully writable.
@@ -1012,10 +1092,16 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
         v2_database(&path);
-        Connection::open(&path).unwrap().pragma_update(None, "user_version", SCHEMA_VERSION + 1).unwrap();
+        Connection::open(&path)
+            .unwrap()
+            .pragma_update(None, "user_version", SCHEMA_VERSION + 1)
+            .unwrap();
         let before = dump(&Connection::open(&path).unwrap());
 
-        assert!(matches!(CaptureStore::open(&path), Err(StoreError::Corrupt(_))));
+        assert!(matches!(
+            CaptureStore::open(&path),
+            Err(StoreError::Corrupt(_))
+        ));
 
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), SCHEMA_VERSION + 1);
@@ -1044,7 +1130,11 @@ mod tests {
 
     fn relations_dump(connection: &Connection) -> Vec<String> {
         let mut statement = connection.prepare("SELECT id || '|' || kind || '|' || source_object_id || '|' || target_object_id || '|' || origin || '|' || created_at FROM relations ORDER BY seq").unwrap();
-        statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|r| r.unwrap()).collect()
+        statement
+            .query_map([], |r| r.get::<_, String>(0))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect()
     }
 
     #[test]
@@ -1062,22 +1152,44 @@ mod tests {
 
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), SCHEMA_VERSION);
-        assert_eq!(strip_project(dump(&connection)), before, "captures, runs, objects and provenance are unchanged");
-        assert_eq!(relations_dump(&connection), before_relations, "graph relations are unchanged");
-        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(
+            strip_project(dump(&connection)),
+            before,
+            "captures, runs, objects and provenance are unchanged"
+        );
+        assert_eq!(
+            relations_dump(&connection),
+            before_relations,
+            "graph relations are unchanged"
+        );
+        let integrity: String = connection
+            .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(integrity, "ok");
-        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        let violations: i64 = connection
+            .query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         assert_eq!(violations, 0);
         for table in ["thought_revisions", "revision_parents"] {
             assert!(has_object(&connection, "table", table), "{table}");
         }
-        for index in ["thought_revisions_by_object", "revision_parents_by_parent", "one_initial_revision_per_object"] {
+        for index in [
+            "thought_revisions_by_object",
+            "revision_parents_by_parent",
+            "one_initial_revision_per_object",
+        ] {
             assert!(has_object(&connection, "index", index), "{index}");
         }
 
         // Exactly one initial revision per object, deterministic id, copied content, time and source span.
-        let objects: i64 = connection.query_row("SELECT count(*) FROM knowledge_objects", [], |r| r.get(0)).unwrap();
-        let revisions: i64 = connection.query_row("SELECT count(*) FROM thought_revisions", [], |r| r.get(0)).unwrap();
+        let objects: i64 = connection
+            .query_row("SELECT count(*) FROM knowledge_objects", [], |r| r.get(0))
+            .unwrap();
+        let revisions: i64 = connection
+            .query_row("SELECT count(*) FROM thought_revisions", [], |r| r.get(0))
+            .unwrap();
         assert_eq!((objects, revisions), (3, 3));
         let mismatched: i64 = connection
             .query_row(
@@ -1093,7 +1205,9 @@ mod tests {
             )
             .unwrap();
         assert_eq!(mismatched, 0);
-        let parents: i64 = connection.query_row("SELECT count(*) FROM revision_parents", [], |r| r.get(0)).unwrap();
+        let parents: i64 = connection
+            .query_row("SELECT count(*) FROM revision_parents", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(parents, 0, "initial revisions have no parents");
         // The existing reads still work on the upgraded data.
         assert_eq!(store.list_knowledge_objects().unwrap().len(), 3);
@@ -1105,7 +1219,11 @@ mod tests {
         let revision_rows = |path: &std::path::Path| -> Vec<String> {
             let connection = Connection::open(path).unwrap();
             let mut statement = connection.prepare("SELECT id || '|' || object_id || '|' || origin || '|' || created_at || '|' || ifnull(capture_id, '-') FROM thought_revisions ORDER BY seq").unwrap();
-            statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|r| r.unwrap()).collect()
+            statement
+                .query_map([], |r| r.get::<_, String>(0))
+                .unwrap()
+                .map(|r| r.unwrap())
+                .collect()
         };
         let dir = tempfile::tempdir().unwrap();
         let (first, second) = (dir.path().join("a.db"), dir.path().join("b.db"));
@@ -1113,14 +1231,25 @@ mod tests {
         v3_database(&second);
         CaptureStore::open(&first).unwrap();
         CaptureStore::open(&second).unwrap();
-        assert_eq!(revision_rows(&first), revision_rows(&second), "two independent migrations derive identical revisions");
+        assert_eq!(
+            revision_rows(&first),
+            revision_rows(&second),
+            "two independent migrations derive identical revisions"
+        );
 
         let once = revision_rows(&first);
         for _ in 0..4 {
             CaptureStore::open(&first).unwrap();
         }
-        assert_eq!(revision_rows(&first), once, "re-opening never adds or changes a revision");
-        assert_eq!(user_version(&Connection::open(&first).unwrap()), SCHEMA_VERSION);
+        assert_eq!(
+            revision_rows(&first),
+            once,
+            "re-opening never adds or changes a revision"
+        );
+        assert_eq!(
+            user_version(&Connection::open(&first).unwrap()),
+            SCHEMA_VERSION
+        );
     }
 
     #[test]
@@ -1165,7 +1294,9 @@ mod tests {
         v4_database(&path);
         let (before, before_relations, revisions) = {
             let connection = Connection::open(&path).unwrap();
-            let revisions: i64 = connection.query_row("SELECT count(*) FROM thought_revisions", [], |r| r.get(0)).unwrap();
+            let revisions: i64 = connection
+                .query_row("SELECT count(*) FROM thought_revisions", [], |r| r.get(0))
+                .unwrap();
             (dump(&connection), relations_dump(&connection), revisions)
         };
 
@@ -1178,17 +1309,35 @@ mod tests {
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), SCHEMA_VERSION);
         assert!(has_object(&connection, "table", "organization_failures"));
-        assert_eq!(strip_project(dump(&connection)), before, "captures, runs, objects and provenance are unchanged");
-        assert_eq!(relations_dump(&connection), before_relations, "graph relations are unchanged");
-        let after: i64 = connection.query_row("SELECT count(*) FROM thought_revisions", [], |r| r.get(0)).unwrap();
+        assert_eq!(
+            strip_project(dump(&connection)),
+            before,
+            "captures, runs, objects and provenance are unchanged"
+        );
+        assert_eq!(
+            relations_dump(&connection),
+            before_relations,
+            "graph relations are unchanged"
+        );
+        let after: i64 = connection
+            .query_row("SELECT count(*) FROM thought_revisions", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(after, revisions, "lineage is unchanged");
-        let failures: i64 = connection.query_row("SELECT count(*) FROM organization_failures", [], |r| r.get(0)).unwrap();
+        let failures: i64 = connection
+            .query_row("SELECT count(*) FROM organization_failures", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         assert_eq!(failures, 0, "the upgrade invents no failure");
-        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        let integrity: String = connection
+            .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(integrity, "ok");
         // Existing runs read as succeeded, and a capture without one as pending: nothing was lost or invented.
         let states = store.list_organization_states().unwrap();
-        assert!(states.iter().all(|s| s.status == "succeeded" || s.status == "pending"));
+        assert!(states
+            .iter()
+            .all(|s| s.status == "succeeded" || s.status == "pending"));
     }
 
     #[test]
@@ -1209,7 +1358,11 @@ mod tests {
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), 4, "still v4");
         assert_eq!((dump(&connection), relations_dump(&connection)), before);
-        let kept: String = connection.query_row("SELECT precious FROM organization_failures", [], |r| r.get(0)).unwrap();
+        let kept: String = connection
+            .query_row("SELECT precious FROM organization_failures", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         assert_eq!(kept, "keep me");
         connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES ('c9', 'text', 'still works', '2026-10-04T12:00:00Z')", []).unwrap();
     }
@@ -1219,9 +1372,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
         v4_database(&path);
-        Connection::open(&path).unwrap().pragma_update(None, "user_version", SCHEMA_VERSION + 1).unwrap();
+        Connection::open(&path)
+            .unwrap()
+            .pragma_update(None, "user_version", SCHEMA_VERSION + 1)
+            .unwrap();
         let before = dump(&Connection::open(&path).unwrap());
-        assert!(matches!(CaptureStore::open(&path), Err(StoreError::Corrupt(_))));
+        assert!(matches!(
+            CaptureStore::open(&path),
+            Err(StoreError::Corrupt(_))
+        ));
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), SCHEMA_VERSION + 1);
         assert!(!has_object(&connection, "table", "organization_failures"));
@@ -1231,7 +1390,10 @@ mod tests {
     #[test]
     fn a_fresh_database_goes_straight_to_the_latest_version() {
         let store = CaptureStore::open_in_memory().unwrap();
-        assert_eq!(user_version(&store.connection.lock().unwrap()), SCHEMA_VERSION);
+        assert_eq!(
+            user_version(&store.connection.lock().unwrap()),
+            SCHEMA_VERSION
+        );
     }
 
     #[test]
@@ -1244,7 +1406,10 @@ mod tests {
         }
         let store = CaptureStore::open(&path).unwrap();
         assert_eq!(store.list().unwrap().len(), 2);
-        assert_eq!(user_version(&Connection::open(&path).unwrap()), SCHEMA_VERSION);
+        assert_eq!(
+            user_version(&Connection::open(&path).unwrap()),
+            SCHEMA_VERSION
+        );
     }
 
     #[test]
@@ -1262,11 +1427,22 @@ mod tests {
 
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), 1, "still v1");
-        assert!(!has_object(&connection, "table", "distillation_runs"), "the step's earlier statements were rolled back");
-        assert!(!has_object(&connection, "trigger", "captures_are_immutable"));
-        let kept: String = connection.query_row("SELECT precious FROM knowledge_objects", [], |r| r.get(0)).unwrap();
+        assert!(
+            !has_object(&connection, "table", "distillation_runs"),
+            "the step's earlier statements were rolled back"
+        );
+        assert!(!has_object(
+            &connection,
+            "trigger",
+            "captures_are_immutable"
+        ));
+        let kept: String = connection
+            .query_row("SELECT precious FROM knowledge_objects", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(kept, "keep me");
-        let captures: i64 = connection.query_row("SELECT count(*) FROM captures", [], |r| r.get(0)).unwrap();
+        let captures: i64 = connection
+            .query_row("SELECT count(*) FROM captures", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(captures, 2);
         // The previous schema is still writable.
         connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES ('c3', 'text', 'still works', '2026-10-04T11:00:00Z')", []).unwrap();
@@ -1275,7 +1451,11 @@ mod tests {
     #[test]
     fn steps_that_succeeded_before_a_failing_step_are_kept() {
         let mut connection = Connection::open_in_memory().unwrap();
-        let steps: [Step; 3] = [(1, SCHEMA_V1), (2, SCHEMA_V2), (3, "CREATE TABLE extra (x); CREATE TABLE extra (x);")];
+        let steps: [Step; 3] = [
+            (1, SCHEMA_V1),
+            (2, SCHEMA_V2),
+            (3, "CREATE TABLE extra (x); CREATE TABLE extra (x);"),
+        ];
 
         assert!(migrate_with(&mut connection, &steps).is_err());
 
@@ -1289,9 +1469,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
         v1_database(&path);
-        Connection::open(&path).unwrap().pragma_update(None, "user_version", SCHEMA_VERSION + 1).unwrap();
+        Connection::open(&path)
+            .unwrap()
+            .pragma_update(None, "user_version", SCHEMA_VERSION + 1)
+            .unwrap();
 
-        assert!(matches!(CaptureStore::open(&path), Err(StoreError::Corrupt(_))));
+        assert!(matches!(
+            CaptureStore::open(&path),
+            Err(StoreError::Corrupt(_))
+        ));
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), SCHEMA_VERSION + 1);
         assert!(!has_object(&connection, "table", "knowledge_objects"));
@@ -1328,13 +1514,21 @@ mod tests {
             let mut statement = connection.prepare(&format!("SELECT {columns} FROM {table} ORDER BY {order}")).unwrap();
             rows.extend(statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|row| format!("{table}:{}", row.unwrap())));
         }
-        let mut statement = connection.prepare("SELECT id || '|' || current_revision_id FROM knowledge_objects ORDER BY seq").unwrap();
-        rows.extend(statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|row| format!("current:{}", row.unwrap())));
+        let mut statement = connection
+            .prepare("SELECT id || '|' || current_revision_id FROM knowledge_objects ORDER BY seq")
+            .unwrap();
+        rows.extend(
+            statement
+                .query_map([], |r| r.get::<_, String>(0))
+                .unwrap()
+                .map(|row| format!("current:{}", row.unwrap())),
+        );
         rows
     }
 
     #[test]
-    fn a_populated_v5_database_upgrades_to_v6_with_everything_in_the_inbox_and_nothing_else_changed() {
+    fn a_populated_v5_database_upgrades_to_v6_with_everything_in_the_inbox_and_nothing_else_changed(
+    ) {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
         v5_database(&path);
@@ -1349,7 +1543,11 @@ mod tests {
 
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), SCHEMA_VERSION);
-        assert_eq!(fingerprint(&connection), before, "captures, objects, provenance, relations, revisions, runs and failures are unchanged");
+        assert_eq!(
+            fingerprint(&connection),
+            before,
+            "captures, objects, provenance, relations, revisions, runs and failures are unchanged"
+        );
         let (captures, objects, in_inbox): (i64, i64, i64) = connection
             .query_row(
                 "SELECT (SELECT count(*) FROM captures), (SELECT count(*) FROM knowledge_objects), \
@@ -1359,18 +1557,54 @@ mod tests {
             )
             .unwrap();
         assert_eq!((captures, objects), (5, 3));
-        assert_eq!(in_inbox, captures + objects, "every capture and object is in the Inbox");
-        let projects: Vec<(String, String)> = connection.prepare("SELECT id, name FROM projects").unwrap().query_map([], |r| Ok((r.get(0)?, r.get(1)?))).unwrap().map(|r| r.unwrap()).collect();
-        assert_eq!(projects, [(INBOX_PROJECT_ID.to_string(), "Inbox".to_string())], "the Inbox is the only project");
-        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(
+            in_inbox,
+            captures + objects,
+            "every capture and object is in the Inbox"
+        );
+        let projects: Vec<(String, String)> = connection
+            .prepare("SELECT id, name FROM projects")
+            .unwrap()
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+        assert_eq!(
+            projects,
+            [(INBOX_PROJECT_ID.to_string(), "Inbox".to_string())],
+            "the Inbox is the only project"
+        );
+        let integrity: String = connection
+            .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+            .unwrap();
         assert_eq!(integrity, "ok");
-        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        let violations: i64 = connection
+            .query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         assert_eq!(violations, 0);
         assert_eq!(store.active_project_id().unwrap(), INBOX_PROJECT_ID);
         // The upgraded data reads back through the normal paths, now with the project.
-        assert!(store.list().unwrap().iter().all(|c| c.project_id == INBOX_PROJECT_ID));
-        assert!(store.list_knowledge_objects().unwrap().iter().all(|o| o.project_id == INBOX_PROJECT_ID));
-        assert_eq!(store.list_organization_states().unwrap().iter().filter(|s| s.status == "failed").count(), 1);
+        assert!(store
+            .list()
+            .unwrap()
+            .iter()
+            .all(|c| c.project_id == INBOX_PROJECT_ID));
+        assert!(store
+            .list_knowledge_objects()
+            .unwrap()
+            .iter()
+            .all(|o| o.project_id == INBOX_PROJECT_ID));
+        assert_eq!(
+            store
+                .list_organization_states()
+                .unwrap()
+                .iter()
+                .filter(|s| s.status == "failed")
+                .count(),
+            1
+        );
     }
 
     #[test]
@@ -1378,7 +1612,11 @@ mod tests {
         let rows = |path: &std::path::Path| -> Vec<String> {
             let connection = Connection::open(path).unwrap();
             let mut statement = connection.prepare("SELECT id || '|' || name || '|' || created_at || '|' || updated_at || '|' || ifnull(archived_at, '-') FROM projects ORDER BY seq").unwrap();
-            let mut rows: Vec<String> = statement.query_map([], |r| r.get::<_, String>(0)).unwrap().map(|r| r.unwrap()).collect();
+            let mut rows: Vec<String> = statement
+                .query_map([], |r| r.get::<_, String>(0))
+                .unwrap()
+                .map(|r| r.unwrap())
+                .collect();
             rows.extend(fingerprint(&connection));
             rows
         };
@@ -1388,7 +1626,11 @@ mod tests {
         v5_database(&second);
         CaptureStore::open(&first).unwrap();
         CaptureStore::open(&second).unwrap();
-        assert_eq!(rows(&first), rows(&second), "two independent migrations agree, Inbox included");
+        assert_eq!(
+            rows(&first),
+            rows(&second),
+            "two independent migrations agree, Inbox included"
+        );
         let once = rows(&first);
         for _ in 0..3 {
             CaptureStore::open(&first).unwrap();
@@ -1396,7 +1638,15 @@ mod tests {
         assert_eq!(rows(&first), once);
         // And a database that never had data gets the same Inbox.
         let fresh = CaptureStore::open_in_memory().unwrap();
-        assert_eq!(fresh.list_projects(true).unwrap().iter().map(|p| (p.id.as_str(), p.name.as_str())).collect::<Vec<_>>(), [(INBOX_PROJECT_ID, "Inbox")]);
+        assert_eq!(
+            fresh
+                .list_projects(true)
+                .unwrap()
+                .iter()
+                .map(|p| (p.id.as_str(), p.name.as_str()))
+                .collect::<Vec<_>>(),
+            [(INBOX_PROJECT_ID, "Inbox")]
+        );
     }
 
     #[test]
@@ -1410,41 +1660,89 @@ mod tests {
             fingerprint(&connection)
         };
 
-        assert!(CaptureStore::open(&path).is_err(), "the last statement of the step fails");
+        assert!(
+            CaptureStore::open(&path).is_err(),
+            "the last statement of the step fails"
+        );
 
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), 5, "still v5");
         assert_eq!(fingerprint(&connection), before);
-        assert!(!has_object(&connection, "table", "projects"), "the earlier statements were rolled back");
+        assert!(
+            !has_object(&connection, "table", "projects"),
+            "the earlier statements were rolled back"
+        );
         for table in ["captures", "knowledge_objects"] {
             let has_column: i64 = connection.query_row(&format!("SELECT count(*) FROM pragma_table_info('{table}') WHERE name = 'project_id'"), [], |r| r.get(0)).unwrap();
             assert_eq!(has_column, 0, "{table} has no project column");
         }
         // The v2 immutability trigger is back as it was, and v5 still writes.
-        assert!(connection.execute("UPDATE captures SET content = 'x' WHERE id = 'c1'", []).is_err());
+        assert!(connection
+            .execute("UPDATE captures SET content = 'x' WHERE id = 'c1'", [])
+            .is_err());
         connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES ('c9', 'text', 'still works', '2026-10-04T12:00:00Z')", []).unwrap();
     }
 
     #[test]
-    fn the_inbox_cannot_be_deleted_archived_or_renamed_and_a_project_that_owns_rows_cannot_be_deleted() {
+    fn the_inbox_cannot_be_deleted_archived_or_renamed_and_a_project_that_owns_rows_cannot_be_deleted(
+    ) {
         let store = CaptureStore::open_in_memory().unwrap();
         let connection = store.connection.lock().unwrap();
-        assert!(connection.execute("DELETE FROM projects WHERE id = ?1", [INBOX_PROJECT_ID]).is_err());
-        assert!(connection.execute("UPDATE projects SET archived_at = '2026-10-05T00:00:00Z' WHERE id = ?1", [INBOX_PROJECT_ID]).is_err());
-        assert!(connection.execute("UPDATE projects SET name = 'Elsewhere' WHERE id = ?1", [INBOX_PROJECT_ID]).is_err());
-        assert!(connection.execute("UPDATE projects SET id = 'other' WHERE id = ?1", [INBOX_PROJECT_ID]).is_err());
+        assert!(connection
+            .execute("DELETE FROM projects WHERE id = ?1", [INBOX_PROJECT_ID])
+            .is_err());
+        assert!(connection
+            .execute(
+                "UPDATE projects SET archived_at = '2026-10-05T00:00:00Z' WHERE id = ?1",
+                [INBOX_PROJECT_ID]
+            )
+            .is_err());
+        assert!(connection
+            .execute(
+                "UPDATE projects SET name = 'Elsewhere' WHERE id = ?1",
+                [INBOX_PROJECT_ID]
+            )
+            .is_err());
+        assert!(connection
+            .execute(
+                "UPDATE projects SET id = 'other' WHERE id = ?1",
+                [INBOX_PROJECT_ID]
+            )
+            .is_err());
         connection.execute("INSERT INTO projects (id, name, created_at, updated_at) VALUES ('p1', 'Nexus', '2026-10-05T00:00:00Z', '2026-10-05T00:00:00Z')", []).unwrap();
         connection.execute("INSERT INTO captures (id, source, content, created_at, project_id) VALUES ('c1', 'text', 'hi', '2026-10-05T00:00:00Z', 'p1')", []).unwrap();
-        assert!(connection.execute("DELETE FROM projects WHERE id = 'p1'", []).is_err(), "deleting would orphan a capture");
+        assert!(
+            connection
+                .execute("DELETE FROM projects WHERE id = 'p1'", [])
+                .is_err(),
+            "deleting would orphan a capture"
+        );
         // A capture or an object must have an existing, unarchived project.
         assert!(connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES ('c2', 'text', 'hi', '2026-10-05T00:00:00Z')", []).is_err());
         assert!(connection.execute("INSERT INTO captures (id, source, content, created_at, project_id) VALUES ('c2', 'text', 'hi', '2026-10-05T00:00:00Z', 'missing')", []).is_err());
-        assert!(connection.execute("UPDATE captures SET project_id = NULL WHERE id = 'c1'", []).is_err());
-        connection.execute("UPDATE projects SET archived_at = '2026-10-05T00:00:00Z' WHERE id = 'p1'", []).unwrap();
+        assert!(connection
+            .execute("UPDATE captures SET project_id = NULL WHERE id = 'c1'", [])
+            .is_err());
+        connection
+            .execute(
+                "UPDATE projects SET archived_at = '2026-10-05T00:00:00Z' WHERE id = 'p1'",
+                [],
+            )
+            .unwrap();
         assert!(connection.execute("INSERT INTO captures (id, source, content, created_at, project_id) VALUES ('c2', 'text', 'hi', '2026-10-05T00:00:00Z', 'p1')", []).is_err());
         // Content stays immutable; only membership may change.
-        assert!(connection.execute("UPDATE captures SET content = 'changed' WHERE id = 'c1'", []).is_err());
-        connection.execute("UPDATE captures SET project_id = ?1 WHERE id = 'c1'", [INBOX_PROJECT_ID]).unwrap();
+        assert!(connection
+            .execute(
+                "UPDATE captures SET content = 'changed' WHERE id = 'c1'",
+                []
+            )
+            .is_err());
+        connection
+            .execute(
+                "UPDATE captures SET project_id = ?1 WHERE id = 'c1'",
+                [INBOX_PROJECT_ID],
+            )
+            .unwrap();
     }
 
     /// Migration proof on a REAL populated v5 database: `ARTHUR_V5_PROOF_DB=<path> cargo test migration_proof -- --ignored --nocapture`.
@@ -1459,15 +1757,35 @@ mod tests {
             std::fs::copy(&source, &path).unwrap();
             path
         };
-        let tables = ["captures", "knowledge_objects", "object_sources", "relations", "thought_revisions", "revision_parents", "distillation_runs", "organization_failures"];
-        let count = |connection: &Connection, table: &str| -> i64 { connection.query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0)).unwrap() };
+        let tables = [
+            "captures",
+            "knowledge_objects",
+            "object_sources",
+            "relations",
+            "thought_revisions",
+            "revision_parents",
+            "distillation_runs",
+            "organization_failures",
+        ];
+        let count = |connection: &Connection, table: &str| -> i64 {
+            connection
+                .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
+                .unwrap()
+        };
 
         // 1. The upgrade itself.
         let path = copy("upgraded.db");
         let (before, counts_before) = {
             let connection = Connection::open(&path).unwrap();
-            assert_eq!(user_version(&connection), 5, "the proof needs a v5 database");
-            (fingerprint(&connection), tables.map(|t| count(&connection, t)))
+            assert_eq!(
+                user_version(&connection),
+                5,
+                "the proof needs a v5 database"
+            );
+            (
+                fingerprint(&connection),
+                tables.map(|t| count(&connection, t)),
+            )
         };
         let started = std::time::Instant::now();
         let store = CaptureStore::open(&path).unwrap();
@@ -1478,16 +1796,32 @@ mod tests {
         assert_eq!(user_version(&connection), SCHEMA_VERSION);
         assert_eq!(after, before, "captures, objects, provenance, relations, revisions, parents, runs and failures: byte-for-byte identical");
         assert_eq!(counts_after, counts_before);
-        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
-        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        let integrity: String = connection
+            .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+            .unwrap();
+        let violations: i64 = connection
+            .query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         let (captures, objects): (i64, i64) = connection.query_row("SELECT (SELECT count(*) FROM captures WHERE project_id = ?1), (SELECT count(*) FROM knowledge_objects WHERE project_id = ?1)", [INBOX_PROJECT_ID], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
         assert_eq!((integrity.as_str(), violations), ("ok", 0));
-        assert_eq!((captures, objects), (counts_after[0], counts_after[1]), "every capture and every object is in the Inbox");
+        assert_eq!(
+            (captures, objects),
+            (counts_after[0], counts_after[1]),
+            "every capture and every object is in the Inbox"
+        );
         let projects: Vec<String> = connection.prepare("SELECT id || '|' || name || '|' || created_at || '|' || ifnull(archived_at, '-') FROM projects").unwrap().query_map([], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect();
-        assert_eq!(projects, [format!("{INBOX_PROJECT_ID}|Inbox|1970-01-01T00:00:00Z|-")]);
+        assert_eq!(
+            projects,
+            [format!("{INBOX_PROJECT_ID}|Inbox|1970-01-01T00:00:00Z|-")]
+        );
         assert_eq!(store.active_project_id().unwrap(), INBOX_PROJECT_ID);
         assert_eq!(store.list().unwrap().len() as i64, counts_after[0]);
-        assert_eq!(store.list_knowledge_objects().unwrap().len() as i64, counts_after[1]);
+        assert_eq!(
+            store.list_knowledge_objects().unwrap().len() as i64,
+            counts_after[1]
+        );
         println!("PROOF upgraded: v5 -> v6 in {elapsed:?}; rows {tables:?} = {counts_after:?}; fingerprint rows {}; integrity {integrity}; fk violations {violations}; inbox {captures} captures + {objects} objects", before.len());
 
         // 2. The same upgrade done twice is the same Inbox (deterministic) and re-opening changes nothing.
@@ -1510,16 +1844,31 @@ mod tests {
         assert!(CaptureStore::open(&broken).is_err());
         let connection = Connection::open(&broken).unwrap();
         assert_eq!(user_version(&connection), 5);
-        assert_eq!(fingerprint(&connection), before, "nothing of the failed step survived");
+        assert_eq!(
+            fingerprint(&connection),
+            before,
+            "nothing of the failed step survived"
+        );
         assert!(!has_object(&connection, "table", "projects"));
-        assert!(connection.execute("UPDATE captures SET content = 'x' WHERE 1", []).is_err(), "the v2 immutability trigger is back");
+        assert!(
+            connection
+                .execute("UPDATE captures SET content = 'x' WHERE 1", [])
+                .is_err(),
+            "the v2 immutability trigger is back"
+        );
         println!("PROOF rollback: failing v6 step left v5 intact (user_version 5, fingerprint identical, no projects table)");
 
         // 4. A newer schema is refused without a single byte changing.
         let newer = copy("newer.db");
-        Connection::open(&newer).unwrap().pragma_update(None, "user_version", 7).unwrap();
+        Connection::open(&newer)
+            .unwrap()
+            .pragma_update(None, "user_version", 7)
+            .unwrap();
         let bytes = std::fs::read(&newer).unwrap();
-        assert!(matches!(CaptureStore::open(&newer), Err(StoreError::Corrupt(_))));
+        assert!(matches!(
+            CaptureStore::open(&newer),
+            Err(StoreError::Corrupt(_))
+        ));
         assert_eq!(std::fs::read(&newer).unwrap(), bytes, "refused untouched");
         println!("PROOF newer-schema: v7 database refused, file bytes unchanged");
     }
@@ -1527,25 +1876,71 @@ mod tests {
     #[test]
     fn project_ownership_is_never_null_and_a_capture_changes_only_its_project() {
         let store = CaptureStore::open_in_memory().unwrap();
-        let capture = store.create(CreateCaptureInput { source: "text".into(), content: "hello world".into(), project_id: None }).unwrap();
-        store.record_distillation(&capture.id, vec![crate::storage::knowledge_store::NewKnowledgeObject { kind: "note".into(), title: "t".into(), body: "b".into(), source_start: 0, source_end: 5 }]).unwrap();
+        let capture = store
+            .create(CreateCaptureInput {
+                source: "text".into(),
+                content: "hello world".into(),
+                project_id: None,
+            })
+            .unwrap();
+        store
+            .record_distillation(
+                &capture.id,
+                vec![crate::storage::knowledge_store::NewKnowledgeObject {
+                    kind: "note".into(),
+                    title: "t".into(),
+                    body: "b".into(),
+                    source_start: 0,
+                    source_end: 5,
+                }],
+            )
+            .unwrap();
         let connection = store.connection.lock().unwrap();
-        let snapshot = |c: &Connection| -> String { c.query_row("SELECT seq || '|' || id || '|' || source || '|' || content || '|' || created_at FROM captures", [], |r| r.get(0)).unwrap() };
+        let snapshot = |c: &Connection| -> String {
+            c.query_row("SELECT seq || '|' || id || '|' || source || '|' || content || '|' || created_at FROM captures", [], |r| r.get(0)).unwrap()
+        };
         let before = snapshot(&connection);
 
         // NULL project: refused on INSERT and on UPDATE, for both tables.
         assert!(connection.execute("INSERT INTO captures (id, source, content, created_at) VALUES ('n', 'text', 'x', '2026-10-05T00:00:00Z')", []).is_err());
         assert!(connection.execute("INSERT INTO knowledge_objects (id, kind, title, body, created_at) VALUES ('n', 'note', 't', 'b', '2026-10-05T00:00:00Z')", []).is_err());
-        assert!(connection.execute("UPDATE captures SET project_id = NULL", []).is_err());
-        assert!(connection.execute("UPDATE knowledge_objects SET project_id = NULL", []).is_err());
-        assert!(connection.execute("UPDATE captures SET project_id = 'missing'", []).is_err(), "foreign key");
+        assert!(connection
+            .execute("UPDATE captures SET project_id = NULL", [])
+            .is_err());
+        assert!(connection
+            .execute("UPDATE knowledge_objects SET project_id = NULL", [])
+            .is_err());
+        assert!(
+            connection
+                .execute("UPDATE captures SET project_id = 'missing'", [])
+                .is_err(),
+            "foreign key"
+        );
 
         // Every previously immutable capture column is still immutable, one by one.
-        for assignment in ["id = 'other'", "seq = 99", "source = 'voice'", "content = 'changed'", "created_at = '2030-01-01T00:00:00Z'"] {
-            assert!(connection.execute(&format!("UPDATE captures SET {assignment}"), []).is_err(), "{assignment}");
+        for assignment in [
+            "id = 'other'",
+            "seq = 99",
+            "source = 'voice'",
+            "content = 'changed'",
+            "created_at = '2030-01-01T00:00:00Z'",
+        ] {
+            assert!(
+                connection
+                    .execute(&format!("UPDATE captures SET {assignment}"), [])
+                    .is_err(),
+                "{assignment}"
+            );
         }
         // A combined update that also touches project membership is refused too.
-        assert!(connection.execute(&format!("UPDATE captures SET project_id = '{INBOX_PROJECT_ID}', content = 'changed'"), []).is_err());
+        assert!(connection
+            .execute(
+                &format!(
+                    "UPDATE captures SET project_id = '{INBOX_PROJECT_ID}', content = 'changed'"
+                ),
+                []
+            )
+            .is_err());
         assert_eq!(snapshot(&connection), before);
         drop(connection);
 
@@ -1554,21 +1949,44 @@ mod tests {
         let object_before = store.list_knowledge_objects().unwrap().remove(0);
         let revisions_before = store.list_revisions(&object_before.id).unwrap();
         store.move_capture(&capture.id, &nexus.id).unwrap();
-        store.move_knowledge_object(&object_before.id, &nexus.id).unwrap();
+        store
+            .move_knowledge_object(&object_before.id, &nexus.id)
+            .unwrap();
         let connection = store.connection.lock().unwrap();
         assert_eq!(snapshot(&connection), before);
         drop(connection);
         let object_after = store.list_knowledge_objects().unwrap().remove(0);
-        assert_eq!(KnowledgeObjectView::of(&object_after), KnowledgeObjectView::of(&object_before));
+        assert_eq!(
+            KnowledgeObjectView::of(&object_after),
+            KnowledgeObjectView::of(&object_before)
+        );
         assert_eq!(object_after.project_id, nexus.id);
-        assert_eq!(store.list_revisions(&object_before.id).unwrap(), revisions_before, "no revision was created");
+        assert_eq!(
+            store.list_revisions(&object_before.id).unwrap(),
+            revisions_before,
+            "no revision was created"
+        );
     }
 
     #[derive(Debug, PartialEq)]
-    struct KnowledgeObjectView(String, String, String, String, String, crate::storage::knowledge_store::Provenance);
+    struct KnowledgeObjectView(
+        String,
+        String,
+        String,
+        String,
+        String,
+        crate::storage::knowledge_store::Provenance,
+    );
     impl KnowledgeObjectView {
         fn of(o: &crate::storage::knowledge_store::KnowledgeObject) -> Self {
-            Self(o.id.clone(), o.kind.clone(), o.title.clone(), o.body.clone(), o.created_at.clone(), o.provenance.clone())
+            Self(
+                o.id.clone(),
+                o.kind.clone(),
+                o.title.clone(),
+                o.body.clone(),
+                o.created_at.clone(),
+                o.provenance.clone(),
+            )
         }
     }
 
@@ -1607,41 +2025,90 @@ mod tests {
     }
 
     fn count(connection: &Connection, table: &str) -> i64 {
-        connection.query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0)).unwrap()
+        connection
+            .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
+            .unwrap()
     }
 
     #[test]
-    fn a_populated_v6_database_upgrades_to_v7_with_every_authoritative_row_unchanged_and_a_complete_lexical_index() {
+    fn a_populated_v6_database_upgrades_to_v7_with_every_authoritative_row_unchanged_and_a_complete_lexical_index(
+    ) {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
         v6_database(&path);
         let (before, revisions) = {
             let connection = Connection::open(&path).unwrap();
-            (v6_fingerprint(&connection), count(&connection, "thought_revisions"))
+            (
+                v6_fingerprint(&connection),
+                count(&connection, "thought_revisions"),
+            )
         };
-        assert!(before.len() > 15 && revisions >= 3, "the fixture is populated ({} rows, {revisions} revisions)", before.len());
+        assert!(
+            before.len() > 15 && revisions >= 3,
+            "the fixture is populated ({} rows, {revisions} revisions)",
+            before.len()
+        );
 
         let store = CaptureStore::open(&path).unwrap();
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), SCHEMA_VERSION, "opening migrates on to the latest version (v7 added the retrieval tables, v8 adds more; both leave authoritative rows alone)");
-        assert_eq!(v6_fingerprint(&connection), before, "every authoritative row is byte-identical");
-        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
-        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(
+            v6_fingerprint(&connection),
+            before,
+            "every authoritative row is byte-identical"
+        );
+        let integrity: String = connection
+            .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+            .unwrap();
+        let violations: i64 = connection
+            .query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         assert_eq!((integrity.as_str(), violations), ("ok", 0));
         // The v7 objects exist, are populated exactly where they should be, and nothing semantic was invented.
-        for (kind, name) in [("table", "recall_revision_fts"), ("table", "recall_embeddings"), ("table", "recall_meta"), ("trigger", "recall_fts_after_revision_insert"), ("trigger", "recall_fts_after_revision_delete"), ("index", "recall_embeddings_by_model_revision")] {
+        for (kind, name) in [
+            ("table", "recall_revision_fts"),
+            ("table", "recall_embeddings"),
+            ("table", "recall_meta"),
+            ("trigger", "recall_fts_after_revision_insert"),
+            ("trigger", "recall_fts_after_revision_delete"),
+            ("index", "recall_embeddings_by_model_revision"),
+        ] {
             assert!(has_object(&connection, kind, name), "{name}");
         }
         assert_eq!(count(&connection, "recall_embeddings"), 0);
-        assert_eq!(store.recall_indexed_revision_count().unwrap(), revisions, "one index row per revision, backfilled by the migration");
+        assert_eq!(
+            store.recall_indexed_revision_count().unwrap(),
+            revisions,
+            "one index row per revision, backfilled by the migration"
+        );
         store.recall_check_lexical_index().unwrap();
         // The index is usable at once: the Bulgarian object from the fixture is found in its own (Inbox) project.
-        let hits = store.recall_lexical_current("{title body}: (\"нещо\")", INBOX_PROJECT_ID, 10).unwrap();
+        let hits = store
+            .recall_lexical_current("{title body}: (\"нещо\")", INBOX_PROJECT_ID, 10)
+            .unwrap();
         assert_eq!(hits.len(), 1);
-        assert_eq!(hits[0].object.object_id, "33333333-3333-4333-8333-333333333333");
+        assert_eq!(
+            hits[0].object.object_id,
+            "33333333-3333-4333-8333-333333333333"
+        );
         // ...and the object that was moved to another project is not found through the Inbox.
-        assert!(store.recall_lexical_current("{title body}: (\"thought\")", INBOX_PROJECT_ID, 10).unwrap().is_empty());
-        assert_eq!(store.recall_lexical_current("{title body}: (\"thought\")", "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", 10).unwrap().len(), 1);
+        assert!(store
+            .recall_lexical_current("{title body}: (\"thought\")", INBOX_PROJECT_ID, 10)
+            .unwrap()
+            .is_empty());
+        assert_eq!(
+            store
+                .recall_lexical_current(
+                    "{title body}: (\"thought\")",
+                    "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+                    10
+                )
+                .unwrap()
+                .len(),
+            1
+        );
         // Repeating changes nothing.
         drop(store);
         for _ in 0..3 {
@@ -1672,7 +2139,11 @@ mod tests {
                      PRAGMA user_version = 6;",
                 )
                 .unwrap();
-            assert_eq!(v6_fingerprint(&connection), before, "dropping the projections removed no knowledge");
+            assert_eq!(
+                v6_fingerprint(&connection),
+                before,
+                "dropping the projections removed no knowledge"
+            );
         }
         let store = CaptureStore::open(&path).unwrap();
         assert_eq!(v6_fingerprint(&Connection::open(&path).unwrap()), before);
@@ -1680,7 +2151,9 @@ mod tests {
         assert_eq!(store.recall_indexed_revision_count().unwrap(), revisions);
 
         // And the index alone can be emptied and regenerated in place.
-        store.execute_sql_for_test("INSERT INTO recall_revision_fts(recall_revision_fts) VALUES ('delete-all')");
+        store.execute_sql_for_test(
+            "INSERT INTO recall_revision_fts(recall_revision_fts) VALUES ('delete-all')",
+        );
         assert_eq!(store.recall_indexed_revision_count().unwrap(), 0);
         store.recall_rebuild_lexical_index().unwrap();
         assert_eq!(store.recall_indexed_revision_count().unwrap(), revisions);
@@ -1718,11 +2191,24 @@ mod tests {
         let path = dir.path().join("arthur.db");
         v6_database(&path);
         CaptureStore::open(&path).unwrap();
-        Connection::open(&path).unwrap().pragma_update(None, "user_version", SCHEMA_VERSION + 1).unwrap();
+        Connection::open(&path)
+            .unwrap()
+            .pragma_update(None, "user_version", SCHEMA_VERSION + 1)
+            .unwrap();
         let bytes_before = std::fs::read(&path).unwrap();
-        assert!(matches!(CaptureStore::open(&path), Err(StoreError::Corrupt(_))));
-        assert_eq!(user_version(&Connection::open(&path).unwrap()), SCHEMA_VERSION + 1);
-        assert_eq!(std::fs::read(&path).unwrap(), bytes_before, "refused untouched");
+        assert!(matches!(
+            CaptureStore::open(&path),
+            Err(StoreError::Corrupt(_))
+        ));
+        assert_eq!(
+            user_version(&Connection::open(&path).unwrap()),
+            SCHEMA_VERSION + 1
+        );
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            bytes_before,
+            "refused untouched"
+        );
     }
 
     // ---- v8: identity decisions, revision evidence, pending claims ------------------------------------------------------------
@@ -1738,18 +2224,52 @@ mod tests {
     /// Everything v8 must leave alone: the v6 fingerprint plus the revision count and the lexical index row count.
     fn v7_fingerprint(connection: &Connection) -> Vec<String> {
         let mut rows = v6_fingerprint(connection);
-        rows.push(format!("fts:{}", connection.query_row("SELECT count(*) FROM recall_revision_fts_docsize", [], |r| r.get::<_, i64>(0)).unwrap()));
-        rows.push(format!("meta:{}", connection.query_row("SELECT group_concat(key || '=' || value) FROM recall_meta", [], |r| r.get::<_, String>(0)).unwrap()));
+        rows.push(format!(
+            "fts:{}",
+            connection
+                .query_row(
+                    "SELECT count(*) FROM recall_revision_fts_docsize",
+                    [],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap()
+        ));
+        rows.push(format!(
+            "meta:{}",
+            connection
+                .query_row(
+                    "SELECT group_concat(key || '=' || value) FROM recall_meta",
+                    [],
+                    |r| r.get::<_, String>(0)
+                )
+                .unwrap()
+        ));
         rows
     }
 
     const V8_OBJECTS: [(&str, &str); 22] = [
-        ("table", "identity_decisions"), ("table", "revision_evidence"), ("table", "pending_claims"),
-        ("index", "identity_decisions_by_target"), ("index", "identity_decisions_by_created_object"), ("index", "revision_evidence_by_object"), ("index", "revision_evidence_by_capture"), ("index", "pending_claims_by_state"),
-        ("trigger", "identity_decisions_are_immutable"), ("trigger", "identity_decisions_are_never_deleted"), ("trigger", "identity_decisions_revise_needs_its_revision"), ("trigger", "identity_decisions_new_needs_its_object"),
-        ("trigger", "revision_evidence_is_immutable"), ("trigger", "revision_evidence_is_never_deleted"), ("trigger", "revision_evidence_needs_an_automatic_revision"), ("trigger", "revision_evidence_retracts_only_its_ancestors"),
-        ("trigger", "pending_claims_are_never_deleted"), ("trigger", "pending_claims_need_an_uncertain_decision"), ("trigger", "pending_claims_valid_transitions"), ("trigger", "pending_claims_terminal_states_are_final"),
-        ("trigger", "pending_claims_accepted_needs_its_revision"), ("trigger", "pending_claims_separated_needs_its_object"),
+        ("table", "identity_decisions"),
+        ("table", "revision_evidence"),
+        ("table", "pending_claims"),
+        ("index", "identity_decisions_by_target"),
+        ("index", "identity_decisions_by_created_object"),
+        ("index", "revision_evidence_by_object"),
+        ("index", "revision_evidence_by_capture"),
+        ("index", "pending_claims_by_state"),
+        ("trigger", "identity_decisions_are_immutable"),
+        ("trigger", "identity_decisions_are_never_deleted"),
+        ("trigger", "identity_decisions_revise_needs_its_revision"),
+        ("trigger", "identity_decisions_new_needs_its_object"),
+        ("trigger", "revision_evidence_is_immutable"),
+        ("trigger", "revision_evidence_is_never_deleted"),
+        ("trigger", "revision_evidence_needs_an_automatic_revision"),
+        ("trigger", "revision_evidence_retracts_only_its_ancestors"),
+        ("trigger", "pending_claims_are_never_deleted"),
+        ("trigger", "pending_claims_need_an_uncertain_decision"),
+        ("trigger", "pending_claims_valid_transitions"),
+        ("trigger", "pending_claims_terminal_states_are_final"),
+        ("trigger", "pending_claims_accepted_needs_its_revision"),
+        ("trigger", "pending_claims_separated_needs_its_object"),
     ];
 
     #[test]
@@ -1763,20 +2283,33 @@ mod tests {
         for table in ["identity_decisions", "revision_evidence", "pending_claims"] {
             assert_eq!(count(&connection, table), 0);
         }
-        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        let violations: i64 = connection
+            .query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         assert_eq!(violations, 0);
     }
 
     #[test]
-    fn a_populated_v7_database_upgrades_to_v8_with_every_authoritative_row_and_the_search_index_unchanged() {
+    fn a_populated_v7_database_upgrades_to_v8_with_every_authoritative_row_and_the_search_index_unchanged(
+    ) {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
         v7_database(&path);
         let (before, revisions, relations) = {
             let connection = Connection::open(&path).unwrap();
-            (v7_fingerprint(&connection), count(&connection, "thought_revisions"), count(&connection, "relations"))
+            (
+                v7_fingerprint(&connection),
+                count(&connection, "thought_revisions"),
+                count(&connection, "relations"),
+            )
         };
-        assert!(before.len() > 15 && revisions >= 3 && relations >= 1, "the fixture is populated ({} rows)", before.len());
+        assert!(
+            before.len() > 15 && revisions >= 3 && relations >= 1,
+            "the fixture is populated ({} rows)",
+            before.len()
+        );
 
         let store = CaptureStore::open(&path).unwrap();
         let connection = Connection::open(&path).unwrap();
@@ -1786,14 +2319,28 @@ mod tests {
             assert!(has_object(&connection, kind, name), "{kind} {name}");
         }
         for table in ["identity_decisions", "revision_evidence", "pending_claims"] {
-            assert_eq!(count(&connection, table), 0, "nothing was backfilled or invented in {table}");
+            assert_eq!(
+                count(&connection, table),
+                0,
+                "nothing was backfilled or invented in {table}"
+            );
         }
-        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
-        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        let integrity: String = connection
+            .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+            .unwrap();
+        let violations: i64 = connection
+            .query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         assert_eq!((integrity.as_str(), violations), ("ok", 0));
         // existing behaviour: revisions still immutable, the projection guard and project triggers still fire, FTS still consistent
-        assert!(connection.execute("UPDATE thought_revisions SET title = 'x'", []).is_err());
-        assert!(connection.execute("UPDATE knowledge_objects SET title = 'x'", []).is_err());
+        assert!(connection
+            .execute("UPDATE thought_revisions SET title = 'x'", [])
+            .is_err());
+        assert!(connection
+            .execute("UPDATE knowledge_objects SET title = 'x'", [])
+            .is_err());
         assert_eq!(store.recall_indexed_revision_count().unwrap(), revisions);
         store.recall_check_lexical_index().unwrap();
         for object in store.list_knowledge_objects().unwrap() {
@@ -1801,7 +2348,15 @@ mod tests {
         }
         // the new revision of an old object is searchable and the old behaviour (user edit) still works on the migrated file
         let object = store.list_knowledge_objects().unwrap().remove(0);
-        store.update_object(&object.id, crate::storage::lineage_store::Changes { body: Some("a brand new body about quokkas".into()), ..Default::default() }).unwrap();
+        store
+            .update_object(
+                &object.id,
+                crate::storage::lineage_store::Changes {
+                    body: Some("a brand new body about quokkas".into()),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
         store.recall_check_lexical_index().unwrap();
         // repeating changes nothing
         drop(store);
@@ -1809,7 +2364,10 @@ mod tests {
         for _ in 0..3 {
             CaptureStore::open(&path).unwrap();
         }
-        assert_eq!(user_version(&Connection::open(&path).unwrap()), SCHEMA_VERSION);
+        assert_eq!(
+            user_version(&Connection::open(&path).unwrap()),
+            SCHEMA_VERSION
+        );
     }
 
     #[test]
@@ -1848,20 +2406,34 @@ mod tests {
         {
             // A process that dies half way through the step: the transaction is never committed, the connection just goes away.
             let connection = Connection::open(&path).unwrap();
-            let half = SCHEMA_V8.split("CREATE TABLE pending_claims").next().unwrap();
-            connection.execute_batch(&format!("BEGIN IMMEDIATE; {half}")).unwrap();
-            assert!(has_object(&connection, "table", "revision_evidence"), "visible inside the open transaction");
+            let half = SCHEMA_V8
+                .split("CREATE TABLE pending_claims")
+                .next()
+                .unwrap();
+            connection
+                .execute_batch(&format!("BEGIN IMMEDIATE; {half}"))
+                .unwrap();
+            assert!(
+                has_object(&connection, "table", "revision_evidence"),
+                "visible inside the open transaction"
+            );
         }
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), 7);
-        assert!(!has_object(&connection, "table", "identity_decisions") && !has_object(&connection, "table", "revision_evidence"), "the half-built step vanished");
+        assert!(
+            !has_object(&connection, "table", "identity_decisions")
+                && !has_object(&connection, "table", "revision_evidence"),
+            "the half-built step vanished"
+        );
         assert_eq!(v7_fingerprint(&connection), before);
         drop(connection);
         CaptureStore::open(&path).unwrap();
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), SCHEMA_VERSION);
         assert_eq!(v7_fingerprint(&connection), before);
-        assert!(V8_OBJECTS.iter().all(|(kind, name)| has_object(&connection, kind, name)));
+        assert!(V8_OBJECTS
+            .iter()
+            .all(|(kind, name)| has_object(&connection, kind, name)));
     }
 
     #[test]
@@ -1874,9 +2446,16 @@ mod tests {
         let bytes_before = std::fs::read(&path).unwrap();
         let mut connection = Connection::open(&path).unwrap();
         let outcome = migrate_with(&mut connection, &STEPS[..7]);
-        assert!(matches!(outcome, Err(StoreError::Corrupt(_))), "{outcome:?}");
+        assert!(
+            matches!(outcome, Err(StoreError::Corrupt(_))),
+            "{outcome:?}"
+        );
         drop(connection);
-        assert_eq!(std::fs::read(&path).unwrap(), bytes_before, "refused without a single byte changing");
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            bytes_before,
+            "refused without a single byte changing"
+        );
     }
 
     // ---- v9: revision proposals -----------------------------------------------------------------------------------------------
@@ -1910,11 +2489,26 @@ mod tests {
     }
 
     const V9_OBJECTS: [(&str, &str); 14] = [
-        ("table", "revision_proposals"), ("index", "revision_proposals_by_state"), ("index", "revision_proposals_by_object"),
-        ("trigger", "revision_proposals_are_never_deleted"), ("trigger", "revision_proposals_start_open"), ("trigger", "revision_proposals_need_an_open_claim_and_a_current_base"),
-        ("trigger", "revision_proposals_content_is_immutable"), ("trigger", "revision_proposals_terminal_states_are_final"), ("trigger", "revision_proposals_valid_transitions"),
-        ("trigger", "revision_proposals_approved_needs_its_revision"), ("trigger", "revision_proposals_separated_needs_its_object"), ("trigger", "pending_claims_resolution_supersedes_open_proposals"),
-        ("trigger", "pending_claims_are_never_deleted"), ("trigger", "pending_claims_accepted_needs_its_revision"),
+        ("table", "revision_proposals"),
+        ("index", "revision_proposals_by_state"),
+        ("index", "revision_proposals_by_object"),
+        ("trigger", "revision_proposals_are_never_deleted"),
+        ("trigger", "revision_proposals_start_open"),
+        (
+            "trigger",
+            "revision_proposals_need_an_open_claim_and_a_current_base",
+        ),
+        ("trigger", "revision_proposals_content_is_immutable"),
+        ("trigger", "revision_proposals_terminal_states_are_final"),
+        ("trigger", "revision_proposals_valid_transitions"),
+        ("trigger", "revision_proposals_approved_needs_its_revision"),
+        ("trigger", "revision_proposals_separated_needs_its_object"),
+        (
+            "trigger",
+            "pending_claims_resolution_supersedes_open_proposals",
+        ),
+        ("trigger", "pending_claims_are_never_deleted"),
+        ("trigger", "pending_claims_accepted_needs_its_revision"),
     ];
 
     #[test]
@@ -1926,17 +2520,26 @@ mod tests {
             assert!(has_object(&connection, kind, name), "{kind} {name}");
         }
         assert_eq!(count(&connection, "revision_proposals"), 0);
-        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        let violations: i64 = connection
+            .query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         assert_eq!(violations, 0);
     }
 
     #[test]
-    fn a_populated_v8_database_upgrades_to_v9_with_every_existing_row_unchanged_and_no_proposal_invented() {
+    fn a_populated_v8_database_upgrades_to_v9_with_every_existing_row_unchanged_and_no_proposal_invented(
+    ) {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("arthur.db");
         v8_database(&path);
         let before = v8_fingerprint(&Connection::open(&path).unwrap());
-        assert!(before.len() > 18, "the fixture is populated ({} rows)", before.len());
+        assert!(
+            before.len() > 18,
+            "the fixture is populated ({} rows)",
+            before.len()
+        );
 
         let store = CaptureStore::open(&path).unwrap();
         let connection = Connection::open(&path).unwrap();
@@ -1945,13 +2548,27 @@ mod tests {
         for (kind, name) in V9_OBJECTS {
             assert!(has_object(&connection, kind, name), "{kind} {name}");
         }
-        assert_eq!(count(&connection, "revision_proposals"), 0, "nothing was backfilled: a v8 pending claim has no draft to recover");
-        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
-        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        assert_eq!(
+            count(&connection, "revision_proposals"),
+            0,
+            "nothing was backfilled: a v8 pending claim has no draft to recover"
+        );
+        let integrity: String = connection
+            .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+            .unwrap();
+        let violations: i64 = connection
+            .query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         assert_eq!((integrity.as_str(), violations), ("ok", 0));
         // v8 behaviour is intact on the migrated file: the pending claim still resolves, history is still immutable
-        assert!(connection.execute("UPDATE thought_revisions SET title = 'x'", []).is_err());
-        assert!(connection.execute("DELETE FROM pending_claims", []).is_err());
+        assert!(connection
+            .execute("UPDATE thought_revisions SET title = 'x'", [])
+            .is_err());
+        assert!(connection
+            .execute("DELETE FROM pending_claims", [])
+            .is_err());
         let claim = store.get_pending_claim("pc-1").unwrap().unwrap();
         assert_eq!(claim.state, "open");
         store.defer_pending_claim("pc-1", None).unwrap();
@@ -1998,20 +2615,33 @@ mod tests {
         let before = v8_fingerprint(&Connection::open(&path).unwrap());
         {
             let connection = Connection::open(&path).unwrap();
-            let half = SCHEMA_V9.split("CREATE TRIGGER revision_proposals_content_is_immutable").next().unwrap();
-            connection.execute_batch(&format!("BEGIN IMMEDIATE; {half}")).unwrap();
-            assert!(has_object(&connection, "table", "revision_proposals"), "visible inside the open transaction");
+            let half = SCHEMA_V9
+                .split("CREATE TRIGGER revision_proposals_content_is_immutable")
+                .next()
+                .unwrap();
+            connection
+                .execute_batch(&format!("BEGIN IMMEDIATE; {half}"))
+                .unwrap();
+            assert!(
+                has_object(&connection, "table", "revision_proposals"),
+                "visible inside the open transaction"
+            );
         }
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), 8);
-        assert!(!has_object(&connection, "table", "revision_proposals"), "the half-built step vanished");
+        assert!(
+            !has_object(&connection, "table", "revision_proposals"),
+            "the half-built step vanished"
+        );
         assert_eq!(v8_fingerprint(&connection), before);
         drop(connection);
         CaptureStore::open(&path).unwrap();
         let connection = Connection::open(&path).unwrap();
         assert_eq!(user_version(&connection), 9);
         assert_eq!(v8_fingerprint(&connection), before);
-        assert!(V9_OBJECTS.iter().all(|(kind, name)| has_object(&connection, kind, name)));
+        assert!(V9_OBJECTS
+            .iter()
+            .all(|(kind, name)| has_object(&connection, kind, name)));
     }
 
     #[test]
@@ -2024,9 +2654,16 @@ mod tests {
         let bytes_before = std::fs::read(&path).unwrap();
         let mut connection = Connection::open(&path).unwrap();
         let outcome = migrate_with(&mut connection, &STEPS[..8]);
-        assert!(matches!(outcome, Err(StoreError::Corrupt(_))), "{outcome:?}");
+        assert!(
+            matches!(outcome, Err(StoreError::Corrupt(_))),
+            "{outcome:?}"
+        );
         drop(connection);
-        assert_eq!(std::fs::read(&path).unwrap(), bytes_before, "refused without a single byte changing");
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            bytes_before,
+            "refused without a single byte changing"
+        );
     }
 
     /// Works on copies; the original is never opened for writing.
@@ -2040,13 +2677,31 @@ mod tests {
             std::fs::copy(&source, &path).unwrap();
             path
         };
-        let tables = ["projects", "active_project", "captures", "knowledge_objects", "object_sources", "relations", "thought_revisions", "revision_parents", "distillation_runs", "organization_failures"];
+        let tables = [
+            "projects",
+            "active_project",
+            "captures",
+            "knowledge_objects",
+            "object_sources",
+            "relations",
+            "thought_revisions",
+            "revision_parents",
+            "distillation_runs",
+            "organization_failures",
+        ];
 
         let path = copy("upgraded.db");
         let (before, counts_before) = {
             let connection = Connection::open(&path).unwrap();
-            assert_eq!(user_version(&connection), 6, "the proof needs a v6 database");
-            (v6_fingerprint(&connection), tables.map(|t| count(&connection, t)))
+            assert_eq!(
+                user_version(&connection),
+                6,
+                "the proof needs a v6 database"
+            );
+            (
+                v6_fingerprint(&connection),
+                tables.map(|t| count(&connection, t)),
+            )
         };
         let started = std::time::Instant::now();
         let store = CaptureStore::open(&path).unwrap();
@@ -2054,10 +2709,20 @@ mod tests {
         let connection = Connection::open(&path).unwrap();
         let counts_after = tables.map(|t| count(&connection, t));
         assert_eq!(user_version(&connection), SCHEMA_VERSION);
-        assert_eq!(v6_fingerprint(&connection), before, "authoritative data: byte-for-byte identical");
+        assert_eq!(
+            v6_fingerprint(&connection),
+            before,
+            "authoritative data: byte-for-byte identical"
+        );
         assert_eq!(counts_after, counts_before);
-        let integrity: String = connection.query_row("PRAGMA integrity_check", [], |r| r.get(0)).unwrap();
-        let violations: i64 = connection.query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| r.get(0)).unwrap();
+        let integrity: String = connection
+            .query_row("PRAGMA integrity_check", [], |r| r.get(0))
+            .unwrap();
+        let violations: i64 = connection
+            .query_row("SELECT count(*) FROM pragma_foreign_key_check", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
         assert_eq!((integrity.as_str(), violations), ("ok", 0));
         let revisions = count(&connection, "thought_revisions");
         assert_eq!(store.recall_indexed_revision_count().unwrap(), revisions);
@@ -2066,7 +2731,9 @@ mod tests {
         println!("PROOF upgraded: v6 -> v7 in {elapsed:?}; rows {tables:?} = {counts_after:?}; fingerprint rows {}; integrity {integrity}; fk violations {violations}; fts rows {revisions} = revisions", before.len());
 
         // Retrieval tables are rebuildable: empty and regenerate, authoritative data identical throughout.
-        store.execute_sql_for_test("INSERT INTO recall_revision_fts(recall_revision_fts) VALUES ('delete-all')");
+        store.execute_sql_for_test(
+            "INSERT INTO recall_revision_fts(recall_revision_fts) VALUES ('delete-all')",
+        );
         store.recall_rebuild_lexical_index().unwrap();
         assert_eq!(store.recall_indexed_revision_count().unwrap(), revisions);
         assert_eq!(v6_fingerprint(&Connection::open(&path).unwrap()), before);
@@ -2088,9 +2755,15 @@ mod tests {
 
         // A newer schema is refused untouched.
         let newer = copy("newer.db");
-        Connection::open(&newer).unwrap().pragma_update(None, "user_version", SCHEMA_VERSION + 1).unwrap();
+        Connection::open(&newer)
+            .unwrap()
+            .pragma_update(None, "user_version", SCHEMA_VERSION + 1)
+            .unwrap();
         let bytes = std::fs::read(&newer).unwrap();
-        assert!(matches!(CaptureStore::open(&newer), Err(StoreError::Corrupt(_))));
+        assert!(matches!(
+            CaptureStore::open(&newer),
+            Err(StoreError::Corrupt(_))
+        ));
         assert_eq!(std::fs::read(&newer).unwrap(), bytes);
         println!("PROOF newer: a newer database was refused without modification");
     }
@@ -2099,6 +2772,10 @@ mod tests {
     fn migration_steps_are_ordered_and_end_at_the_declared_version() {
         let versions: Vec<i64> = STEPS.iter().map(|(v, _)| *v).collect();
         assert_eq!(versions, (1..=SCHEMA_VERSION).collect::<Vec<_>>());
-        let _ = CreateCaptureInput { source: "text".into(), content: "x".into(), project_id: None };
+        let _ = CreateCaptureInput {
+            source: "text".into(),
+            content: "x".into(),
+            project_id: None,
+        };
     }
 }

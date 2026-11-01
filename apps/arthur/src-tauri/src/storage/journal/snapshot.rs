@@ -204,7 +204,6 @@ pub(super) struct Staged {
     pub row_hash: [u8; 32],
 }
 
-
 fn push_row(
     staged: &mut Vec<Staged>,
     policy: SnapshotPolicy,
@@ -231,8 +230,6 @@ fn key_json(key: &[String]) -> Result<String> {
         .map_err(|_| SnapshotError::Corrupt)
 }
 
-/// Read one replicated projection in deterministic key order.
-
 /// Domain separation for the staged-row envelope hash.
 ///
 /// v1 bound only the content bytes. v2 (this implementation) binds the
@@ -243,7 +240,12 @@ const ROW_DOMAIN: &[u8] = b"M05-SNAP-ROW-v1";
 
 /// Deterministic envelope hash binding (ordinal, entity_kind, entity_key,
 /// content_hash). The JCS array encoding is unambiguous and canonical.
-fn envelope_hash(ordinal: i64, entity_kind: &str, entity_key: &str, content_hash: &[u8; 32]) -> [u8; 32] {
+fn envelope_hash(
+    ordinal: i64,
+    entity_kind: &str,
+    entity_key: &str,
+    content_hash: &[u8; 32],
+) -> [u8; 32] {
     let fields = vec![
         serde_json::Value::from(ordinal),
         serde_json::Value::String(entity_kind.into()),
@@ -274,13 +276,18 @@ fn check_key(entity_kind: &str, entity_key: &str) -> Result<Vec<String>> {
     let arity_ok = match entity_kind {
         "@origin" => {
             key.len() == 2
-                && key.iter().all(|k| codec::validate_canonical_uuid(k).is_ok())
+                && key
+                    .iter()
+                    .all(|k| codec::validate_canonical_uuid(k).is_ok())
         }
         "@facet" => {
             key.len() == 3
                 && !key[0].is_empty()
                 && serde_json::from_slice::<Vec<String>>(key[1].as_bytes()).is_ok()
-                && matches!(key[2].as_str(), "record" | "membership" | "head" | "lifecycle")
+                && matches!(
+                    key[2].as_str(),
+                    "record" | "membership" | "head" | "lifecycle"
+                )
         }
         "@bundle" => {
             (key.len() == 1 || (key.len() == 2 && key[1].parse::<i64>().is_ok()))
@@ -386,7 +393,7 @@ fn projection_rows(
         }
         let row_bytes = canonical_json(&fields)?;
         push_row(staged, policy, entity.as_str(), &key_json(&key)?, row_bytes)?;
-        if staged.len() % 64 == 0 {
+        if staged.len().is_multiple_of(64) {
             check_timeout(start, policy.capture_timeout)?;
         }
     }
@@ -479,7 +486,7 @@ fn facet_rows(
             &key_json(&[entity, key, facet])?,
             canonical_json(&fields)?,
         )?;
-        if staged.len() % 64 == 0 {
+        if staged.len().is_multiple_of(64) {
             check_timeout(start, policy.capture_timeout)?;
         }
     }
@@ -548,7 +555,7 @@ fn bundle_rows(
             staged,
             policy,
             "@bundle",
-            &key_json(&[event.clone()])?,
+            &key_json(std::slice::from_ref(&event))?,
             canonical_json(&header)?,
         )?;
         for (index, fragment) in fragments.iter().enumerate() {
@@ -747,7 +754,13 @@ pub(super) fn read_staged_rows(c: &Connection, snapshot_id: &str) -> Result<Vec<
         }
         let mut hash = [0u8; 32];
         hash.copy_from_slice(&row_hash);
-        staged.push(Staged { ordinal, entity_kind, entity_key, row_bytes, row_hash: hash });
+        staged.push(Staged {
+            ordinal,
+            entity_kind,
+            entity_key,
+            row_bytes,
+            row_hash: hash,
+        });
     }
     Ok(staged)
 }
@@ -806,8 +819,8 @@ fn build_manifest(snapshot_id: &str, loaded: &LoadedSnapshot) -> Result<(Vec<u8>
         if row.entity_kind != "@bundle" {
             continue;
         }
-        let key: Vec<String> =
-            serde_json::from_slice(row.entity_key.as_bytes()).map_err(|_| SnapshotError::Corrupt)?;
+        let key: Vec<String> = serde_json::from_slice(row.entity_key.as_bytes())
+            .map_err(|_| SnapshotError::Corrupt)?;
         if key.len() != 1 {
             continue;
         }
@@ -834,7 +847,10 @@ fn build_manifest(snapshot_id: &str, loaded: &LoadedSnapshot) -> Result<(Vec<u8>
             entry.insert(field.into(), value);
         }
         entry.insert("bytes".into(), serde_json::Value::from(bytes as u64));
-        entry.insert("hash".into(), serde_json::Value::String(codec::hash_hex(&whole)));
+        entry.insert(
+            "hash".into(),
+            serde_json::Value::String(codec::hash_hex(&whole)),
+        );
         covers.push(serde_json::Value::Object(entry.into_iter().collect()));
     }
     let mut manifest: BTreeMap<String, serde_json::Value> = BTreeMap::new();
@@ -850,7 +866,10 @@ fn build_manifest(snapshot_id: &str, loaded: &LoadedSnapshot) -> Result<(Vec<u8>
         "codecVersion".into(),
         serde_json::Value::from(CODEC_VERSION),
     );
-    manifest.insert("snapshotVersion".into(), serde_json::Value::from(SNAPSHOT_VERSION));
+    manifest.insert(
+        "snapshotVersion".into(),
+        serde_json::Value::from(SNAPSHOT_VERSION),
+    );
     manifest.insert(
         "boundaryHash".into(),
         serde_json::Value::String(codec::hash_hex(&sha256(&loaded.boundary_bytes))),
@@ -941,15 +960,19 @@ pub(super) fn verify_loaded_manifest(
 }
 
 fn hex_decode_strict(hex: &str) -> Result<Vec<u8>> {
-    if hex.len() % 2 != 0 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+    if !hex.len().is_multiple_of(2) || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
         return Err(SnapshotError::Corrupt);
     }
     let mut out = Vec::with_capacity(hex.len() / 2);
     let bytes = hex.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
-        let hi = (bytes[i] as char).to_digit(16).ok_or(SnapshotError::Corrupt)?;
-        let lo = (bytes[i + 1] as char).to_digit(16).ok_or(SnapshotError::Corrupt)?;
+        let hi = (bytes[i] as char)
+            .to_digit(16)
+            .ok_or(SnapshotError::Corrupt)?;
+        let lo = (bytes[i + 1] as char)
+            .to_digit(16)
+            .ok_or(SnapshotError::Corrupt)?;
         out.push((hi * 16 + lo) as u8);
         i += 2;
     }

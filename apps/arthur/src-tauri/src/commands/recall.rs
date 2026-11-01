@@ -17,10 +17,20 @@ use crate::runtime::RuntimeHandle;
 
 /// Ranked, scored evidence for one question inside ONE explicit project. Never widens the scope.
 #[tauri::command]
-pub async fn recall_retrieve(app: AppHandle, service: State<'_, RecallService>, store: State<'_, RuntimeHandle>, query: String, project_id: String) -> Result<RetrievalResult, RecallError> {
+pub async fn recall_retrieve(
+    app: AppHandle,
+    service: State<'_, RecallService>,
+    store: State<'_, RuntimeHandle>,
+    query: String,
+    project_id: String,
+) -> Result<RetrievalResult, RecallError> {
     let result = service.retrieve(&store, &query, &project_id).await?;
     // Lazy indexing: if semantic Recall is on and some objects still lack a vector, make progress in the background.
-    if result.diagnostics.semantic_coverage.is_some_and(|c| c < 1.0) {
+    if result
+        .diagnostics
+        .semantic_coverage
+        .is_some_and(|c| c < 1.0)
+    {
         kick_indexer(&app);
     }
     Ok(result)
@@ -44,24 +54,49 @@ pub struct ScopeInput {
 /// deterministic and happen BEFORE the answer model is called; the model sees only the resulting evidence package, with no tools.
 /// Nothing is persisted: no query, answer or conversation.
 #[tauri::command]
-pub async fn ask(app: AppHandle, service: State<'_, RecallService>, store: State<'_, RuntimeHandle>, query: CognitiveQueryInput) -> Result<CognitiveAnswer, RecallError> {
-    let answer = service.ask(&store, &query.query, &query.scope.project_id).await?;
-    if answer.diagnostics.retrieval.semantic_coverage.is_some_and(|c| c < 1.0) {
+pub async fn ask(
+    app: AppHandle,
+    service: State<'_, RecallService>,
+    store: State<'_, RuntimeHandle>,
+    query: CognitiveQueryInput,
+) -> Result<CognitiveAnswer, RecallError> {
+    let answer = service
+        .ask(&store, &query.query, &query.scope.project_id)
+        .await?;
+    if answer
+        .diagnostics
+        .retrieval
+        .semantic_coverage
+        .is_some_and(|c| c < 1.0)
+    {
         kick_indexer(&app);
     }
     Ok(answer)
 }
 
 #[tauri::command]
-pub fn get_semantic_recall_status(service: State<'_, RecallService>, store: State<'_, RuntimeHandle>) -> Result<SemanticRecallStatus, RecallError> {
+pub fn get_semantic_recall_status(
+    service: State<'_, RecallService>,
+    store: State<'_, RuntimeHandle>,
+) -> Result<SemanticRecallStatus, RecallError> {
     service.semantic_status(&store)
 }
 
 /// The user's explicit choice. ON starts bounded background indexing; OFF takes effect for the very next request and keeps (but
 /// ignores) the stored vectors. Never inferred from the presence of an API key.
 #[tauri::command]
-pub fn set_semantic_recall_enabled(app: AppHandle, service: State<'_, RecallService>, store: State<'_, RuntimeHandle>, enabled: bool) -> Result<SemanticRecallStatus, RecallError> {
-    service.settings().set(service.model_key(), enabled).map_err(|error| RecallError::Storage(format!("the preference could not be saved: {error}")))?;
+pub fn set_semantic_recall_enabled(
+    app: AppHandle,
+    service: State<'_, RecallService>,
+    store: State<'_, RuntimeHandle>,
+    enabled: bool,
+) -> Result<SemanticRecallStatus, RecallError> {
+    service
+        .settings()
+        .set(service.model_key(), enabled)
+        .map_err(|error| {
+            RecallError::Storage(format!("the preference could not be saved: {error}"))
+        })?;
     if enabled {
         kick_indexer(&app);
     }
@@ -70,7 +105,10 @@ pub fn set_semantic_recall_enabled(app: AppHandle, service: State<'_, RecallServ
 
 /// Deletes every locally stored vector. Knowledge itself is untouched.
 #[tauri::command]
-pub fn purge_semantic_index(service: State<'_, RecallService>, store: State<'_, RuntimeHandle>) -> Result<SemanticRecallStatus, RecallError> {
+pub fn purge_semantic_index(
+    service: State<'_, RecallService>,
+    store: State<'_, RuntimeHandle>,
+) -> Result<SemanticRecallStatus, RecallError> {
     service.purge_semantic_index(&store)?;
     service.semantic_status(&store)
 }
@@ -95,7 +133,9 @@ pub fn kick_indexer(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let service = app.state::<RecallService>();
-        let Some(_guard) = service.begin_indexing() else { return };
+        let Some(_guard) = service.begin_indexing() else {
+            return;
+        };
         let store = app.state::<RuntimeHandle>();
         let mut delay = FIRST_BACKOFF;
         let mut failures = 0;

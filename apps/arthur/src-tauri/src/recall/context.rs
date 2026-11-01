@@ -153,8 +153,22 @@ fn phrase(direction: &str, kind: &str, related: &str) -> String {
 }
 
 fn history_priority(entry: &HistoryEntry) -> u8 {
-    const ORDER: [(&str, u8); 8] = [("matched_query", 0), ("parent", 1), ("root", 2), ("merge", 3), ("new_capture", 4), ("branch_point", 5), ("non_current_head", 6), ("path", 7)];
-    entry.marks.iter().filter_map(|m| ORDER.iter().find(|(name, _)| name == m).map(|(_, p)| *p)).min().unwrap_or(7)
+    const ORDER: [(&str, u8); 8] = [
+        ("matched_query", 0),
+        ("parent", 1),
+        ("root", 2),
+        ("merge", 3),
+        ("new_capture", 4),
+        ("branch_point", 5),
+        ("non_current_head", 6),
+        ("path", 7),
+    ];
+    entry
+        .marks
+        .iter()
+        .filter_map(|m| ORDER.iter().find(|(name, _)| name == m).map(|(_, p)| *p))
+        .min()
+        .unwrap_or(7)
 }
 
 struct Work {
@@ -183,13 +197,32 @@ fn views(package: &EvidencePackage) -> Work {
             .iter()
             .flat_map(|g| g.paths.iter())
             .filter(|p| handle_ok.contains(p.from_handle.as_str()))
-            .map(|p| ViaView { related_entry: p.from_handle.clone(), relation: p.relation_kind.clone(), phrase: phrase(p.direction, &p.relation_kind, &p.from_handle), distance: p.distance })
+            .map(|p| ViaView {
+                related_entry: p.from_handle.clone(),
+                relation: p.relation_kind.clone(),
+                phrase: phrase(p.direction, &p.relation_kind, &p.from_handle),
+                distance: p.distance,
+            })
             .collect();
         let provenance = e.provenance.as_ref();
-        let source = provenance.and_then(|p| p.origin.as_ref()).map(|o| SourceView { captured_as: match o.capture_source.as_str() { "voice" => "spoken", "emg" => "gesture", _ => "typed" }, original_words: o.excerpt.clone(), original_words_truncated: o.excerpt_truncated });
+        let source = provenance
+            .and_then(|p| p.origin.as_ref())
+            .map(|o| SourceView {
+                captured_as: match o.capture_source.as_str() {
+                    "voice" => "spoken",
+                    "emg" => "gesture",
+                    _ => "typed",
+                },
+                original_words: o.excerpt.clone(),
+                original_words_truncated: o.excerpt_truncated,
+            });
         entries.push(EntryView {
             handle: e.handle.clone(),
-            found_by: if e.role == "graph" { "graph" } else { "retrieved" },
+            found_by: if e.role == "graph" {
+                "graph"
+            } else {
+                "retrieved"
+            },
             project: e.project_name.clone(),
             external_project: e.external_project,
             kind: e.kind.clone(),
@@ -199,11 +232,27 @@ fn views(package: &EvidencePackage) -> Work {
             body_truncated: truncated,
             support: e.strength.level,
             via,
-            superseded_by: e.graph.as_ref().map(|g| g.superseded_by.clone()).unwrap_or_default(),
-            supersedes: e.graph.as_ref().map(|g| g.supersedes.clone()).unwrap_or_default(),
-            conflicts_with: e.graph.as_ref().map(|g| g.conflicts_with.clone()).unwrap_or_default(),
+            superseded_by: e
+                .graph
+                .as_ref()
+                .map(|g| g.superseded_by.clone())
+                .unwrap_or_default(),
+            supersedes: e
+                .graph
+                .as_ref()
+                .map(|g| g.supersedes.clone())
+                .unwrap_or_default(),
+            conflicts_with: e
+                .graph
+                .as_ref()
+                .map(|g| g.conflicts_with.clone())
+                .unwrap_or_default(),
             contradictory: e.graph.as_ref().is_some_and(|g| g.contradictory),
-            duplicate_titles: e.graph.as_ref().map(|g| g.aliases.iter().map(|a| a.title.clone()).collect()).unwrap_or_default(),
+            duplicate_titles: e
+                .graph
+                .as_ref()
+                .map(|g| g.aliases.iter().map(|a| a.title.clone()).collect())
+                .unwrap_or_default(),
             revision_count: e.lineage.as_ref().map_or(1, |l| l.revision_count),
             edited_since_capture: provenance.is_some_and(|p| p.edited_since_capture),
             original_capture: source,
@@ -211,12 +260,27 @@ fn views(package: &EvidencePackage) -> Work {
                 .lineage
                 .iter()
                 .flat_map(|l| l.entries.iter())
-                .map(|h| HistoryView { handle: h.handle.clone(), status: h.status, origin: h.origin.clone(), created_at: h.created_at.clone(), title: h.title.clone(), body: h.body.clone(), truncated: h.truncated, marks: h.marks.clone(), leads_to_current: h.leads_to_current })
+                .map(|h| HistoryView {
+                    handle: h.handle.clone(),
+                    status: h.status,
+                    origin: h.origin.clone(),
+                    created_at: h.created_at.clone(),
+                    title: h.title.clone(),
+                    body: h.body.clone(),
+                    truncated: h.truncated,
+                    marks: h.marks.clone(),
+                    leads_to_current: h.leads_to_current,
+                })
                 .collect(),
         });
         sources.push(index);
     }
-    Work { entries, sources, dropped: Vec::new(), truncation: Vec::new() }
+    Work {
+        entries,
+        sources,
+        dropped: Vec::new(),
+        truncation: Vec::new(),
+    }
 }
 
 fn tokens(entries: &[EntryView]) -> usize {
@@ -240,7 +304,12 @@ fn scrub(entries: &mut [EntryView], gone: &str) {
 pub fn build_context(package: &EvidencePackage, budget: usize) -> Context {
     let mut work = views(package);
     let over = |w: &Work| tokens(&w.entries) > budget;
-    let rank_of = |package_index: usize| package.entries[package_index].retrieval.as_ref().map_or(usize::MAX, |r| r.rank);
+    let rank_of = |package_index: usize| {
+        package.entries[package_index]
+            .retrieval
+            .as_ref()
+            .map_or(usize::MAX, |r| r.rank)
+    };
 
     // 1. historical bodies shrink to a short form (they stay `historical`, flagged truncated)
     if over(&work) {
@@ -255,7 +324,10 @@ pub fn build_context(package: &EvidencePackage, budget: usize) -> Context {
             }
         }
         if n > 0 {
-            work.truncation.push(Truncation { step: "historyShortened", items: n });
+            work.truncation.push(Truncation {
+                step: "historyShortened",
+                items: n,
+            });
         }
     }
     // 2. drop history entries, lowest priority first (path, heads, branch points, ...), never the matched revision or the parent last
@@ -264,7 +336,10 @@ pub fn build_context(package: &EvidencePackage, budget: usize) -> Context {
         for (ei, e) in work.entries.iter().enumerate() {
             let package_entry = &package.entries[work.sources[ei]];
             for (hi, h) in e.history.iter().enumerate() {
-                let source = package_entry.lineage.as_ref().and_then(|l| l.entries.iter().find(|x| x.handle == h.handle));
+                let source = package_entry
+                    .lineage
+                    .as_ref()
+                    .and_then(|l| l.entries.iter().find(|x| x.handle == h.handle));
                 let priority = source.map_or(7, history_priority);
                 if candidate.is_none_or(|(p, _, _)| priority > p) {
                     candidate = Some((priority, ei, hi));
@@ -273,7 +348,10 @@ pub fn build_context(package: &EvidencePackage, budget: usize) -> Context {
         }
         let Some((_, ei, hi)) = candidate else { break };
         let removed = work.entries[ei].history.remove(hi);
-        work.dropped.push(Dropped { handle: removed.handle, reason: "overBudget:history" });
+        work.dropped.push(Dropped {
+            handle: removed.handle,
+            reason: "overBudget:history",
+        });
     }
     // 3. provenance excerpts of everything beyond the top primary entries
     if over(&work) {
@@ -288,7 +366,10 @@ pub fn build_context(package: &EvidencePackage, budget: usize) -> Context {
             }
         }
         if n > 0 {
-            work.truncation.push(Truncation { step: "excerptsDropped", items: n });
+            work.truncation.push(Truncation {
+                step: "excerptsDropped",
+                items: n,
+            });
         }
     }
     // 4. graph and external entries keep their title only
@@ -301,11 +382,17 @@ pub fn build_context(package: &EvidencePackage, budget: usize) -> Context {
             }
         }
         if n > 0 {
-            work.truncation.push(Truncation { step: "graphBodiesToTitles", items: n });
+            work.truncation.push(Truncation {
+                step: "graphBodiesToTitles",
+                items: n,
+            });
         }
     }
     // 5. drop graph entries: second hop first, then the lowest expansion score, then external ones
-    let drop_one = |work: &mut Work, reason: &'static str, pick: &dyn Fn(&CognitiveEvidence) -> Option<(u8, f64)>| -> bool {
+    let drop_one = |work: &mut Work,
+                    reason: &'static str,
+                    pick: &dyn Fn(&CognitiveEvidence) -> Option<(u8, f64)>|
+     -> bool {
         let mut best: Option<(u8, f64, usize)> = None;
         for (ei, _) in work.entries.iter().enumerate() {
             let p = &package.entries[work.sources[ei]];
@@ -319,7 +406,10 @@ pub fn build_context(package: &EvidencePackage, budget: usize) -> Context {
         let gone = work.entries.remove(ei);
         work.sources.remove(ei);
         scrub(&mut work.entries, &gone.handle);
-        work.dropped.push(Dropped { handle: gone.handle, reason });
+        work.dropped.push(Dropped {
+            handle: gone.handle,
+            reason,
+        });
         true
     };
     while over(&work) {
@@ -328,8 +418,15 @@ pub fn build_context(package: &EvidencePackage, budget: usize) -> Context {
                 return None;
             }
             let g = p.graph.as_ref()?;
-            let second = g.paths.first().is_some_and(|x| x.distance == 2) || g.paths.len() >= 2 && g.paths[1].distance == 2;
-            let t = if second { 3 } else if p.external_project { 1 } else { 2 };
+            let second = g.paths.first().is_some_and(|x| x.distance == 2)
+                || g.paths.len() >= 2 && g.paths[1].distance == 2;
+            let t = if second {
+                3
+            } else if p.external_project {
+                1
+            } else {
+                2
+            };
             Some((t, g.score.unwrap_or(0.0)))
         };
         if !drop_one(&mut work, "overBudget:graph", &tier) {
@@ -351,16 +448,29 @@ pub fn build_context(package: &EvidencePackage, budget: usize) -> Context {
             }
         }
         if n > 0 {
-            work.truncation.push(Truncation { step: "lowerBodiesShortened", items: n });
+            work.truncation.push(Truncation {
+                step: "lowerBodiesShortened",
+                items: n,
+            });
         }
     }
-    while over(&work) && work.entries.iter().filter(|e| e.found_by == "retrieved").count() > 1 {
+    while over(&work)
+        && work
+            .entries
+            .iter()
+            .filter(|e| e.found_by == "retrieved")
+            .count()
+            > 1
+    {
         let weakest = |p: &CognitiveEvidence| -> Option<(u8, f64)> {
             if p.role != "primary" || p.retrieval.as_ref().is_some_and(|r| r.rank == 1) {
                 return None;
             }
             // weaker support first, then lower rank (higher rank number)
-            Some((u8::MAX - p.strength.points.min(200) as u8, -(p.retrieval.as_ref().map_or(0, |r| r.rank) as f64)))
+            Some((
+                u8::MAX - p.strength.points.min(200) as u8,
+                -(p.retrieval.as_ref().map_or(0, |r| r.rank) as f64),
+            ))
         };
         if !drop_one(&mut work, "overBudget:weakest", &weakest) {
             break;
@@ -370,7 +480,11 @@ pub fn build_context(package: &EvidencePackage, budget: usize) -> Context {
     for limit in [600usize, 300usize] {
         if over(&work) {
             let mut n = 0;
-            for e in work.entries.iter_mut().filter(|e| e.found_by == "retrieved") {
+            for e in work
+                .entries
+                .iter_mut()
+                .filter(|e| e.found_by == "retrieved")
+            {
                 if let Some(b) = e.body.as_mut() {
                     if b.chars().count() > limit {
                         *b = b.chars().take(limit).collect();
@@ -380,7 +494,14 @@ pub fn build_context(package: &EvidencePackage, budget: usize) -> Context {
                 }
             }
             if n > 0 {
-                work.truncation.push(Truncation { step: if limit == 600 { "topBodiesTo600" } else { "topBodiesTo300" }, items: n });
+                work.truncation.push(Truncation {
+                    step: if limit == 600 {
+                        "topBodiesTo600"
+                    } else {
+                        "topBodiesTo300"
+                    },
+                    items: n,
+                });
             }
         }
     }
@@ -401,5 +522,9 @@ pub fn build_context(package: &EvidencePackage, budget: usize) -> Context {
         dropped: work.dropped,
         truncation: work.truncation,
     };
-    Context { evidence_json, allowed_handles: allowed, report }
+    Context {
+        evidence_json,
+        allowed_handles: allowed,
+        report,
+    }
 }

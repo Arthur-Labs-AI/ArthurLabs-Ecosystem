@@ -84,7 +84,16 @@ pub struct SpeechStatus {
 
 impl SpeechStatus {
     fn idle() -> Self {
-        Self { state: SpeechState::Idle, session_id: 0, chunk_index: 0, chunk_count: 0, truncated: false, outcome: None, failure: None, timings: SpeechTimings::default() }
+        Self {
+            state: SpeechState::Idle,
+            session_id: 0,
+            chunk_index: 0,
+            chunk_count: 0,
+            truncated: false,
+            outcome: None,
+            failure: None,
+            timings: SpeechTimings::default(),
+        }
     }
 }
 
@@ -135,7 +144,10 @@ impl TempAudio {
         fs::create_dir_all(dir)?;
         let path = dir.join(format!("{}.mp3", uuid::Uuid::new_v4()));
         fs::write(&path, &speech.bytes)?;
-        Ok(Self { path, removed: false })
+        Ok(Self {
+            path,
+            removed: false,
+        })
     }
 
     fn remove(&mut self) {
@@ -157,7 +169,12 @@ struct PlayerHold(SpeechService);
 
 impl Drop for PlayerHold {
     fn drop(&mut self) {
-        self.0 .0.state.lock().unwrap_or_else(|p| p.into_inner()).player_held = false;
+        self.0
+             .0
+            .state
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .player_held = false;
     }
 }
 
@@ -179,15 +196,36 @@ impl SpeechService {
     /// Removes any audio a previous run left behind (a crash mid-playback), then starts empty.
     pub fn new(synth: Arc<dyn Synthesizer>, player: Arc<dyn AudioPlayer>, dir: PathBuf) -> Self {
         let _ = fs::remove_dir_all(&dir);
-        Self(Arc::new(Shared { synth, player, dir, state: Mutex::new(State { generation: 0, player_held: false, status: SpeechStatus::idle() }), #[cfg(test)] finish_probe: Mutex::new(None) }))
+        Self(Arc::new(Shared {
+            synth,
+            player,
+            dir,
+            state: Mutex::new(State {
+                generation: 0,
+                player_held: false,
+                status: SpeechStatus::idle(),
+            }),
+            #[cfg(test)]
+            finish_probe: Mutex::new(None),
+        }))
     }
 
     pub fn status(&self) -> SpeechStatus {
-        self.0.state.lock().unwrap_or_else(|p| p.into_inner()).status.clone()
+        self.0
+            .state
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .status
+            .clone()
     }
 
     fn is_current(&self, generation: u64) -> bool {
-        self.0.state.lock().unwrap_or_else(|p| p.into_inner()).generation == generation
+        self.0
+            .state
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .generation
+            == generation
     }
 
     /// Applies `change` only while `generation` is still the current session.
@@ -207,13 +245,21 @@ impl SpeechService {
         #[cfg(test)]
         {
             let probe = self.0.finish_probe.lock().unwrap().take();
-            if let Some(probe) = probe { probe(); }
+            if let Some(probe) = probe {
+                probe();
+            }
         }
     }
 
     /// Starts speaking `text`. Returns as soon as the session is set up; progress and failures are read from `status`.
-    pub async fn speak(&self, text: &str, model: String, voice: String) -> Result<SpeechStart, SpeechError> {
-        let plan = chunk::plan_with_first(text, FIRST_CHUNK_CHARS, MAX_CHUNK_CHARS, MAX_TOTAL_CHARS);
+    pub async fn speak(
+        &self,
+        text: &str,
+        model: String,
+        voice: String,
+    ) -> Result<SpeechStart, SpeechError> {
+        let plan =
+            chunk::plan_with_first(text, FIRST_CHUNK_CHARS, MAX_CHUNK_CHARS, MAX_TOTAL_CHARS);
         if plan.chunks.is_empty() {
             return Err(SpeechError::EmptyText);
         }
@@ -222,15 +268,32 @@ impl SpeechService {
             let mut state = self.0.state.lock().unwrap_or_else(|p| p.into_inner());
             state.generation += 1;
             let generation = state.generation;
-            state.status = SpeechStatus { state: SpeechState::Preparing, session_id: generation, chunk_index: 0, chunk_count: plan.chunks.len(), truncated: plan.truncated, outcome: None, failure: None, timings: SpeechTimings::default() };
+            state.status = SpeechStatus {
+                state: SpeechState::Preparing,
+                session_id: generation,
+                chunk_index: 0,
+                chunk_count: plan.chunks.len(),
+                truncated: plan.truncated,
+                outcome: None,
+                failure: None,
+                timings: SpeechTimings::default(),
+            };
             generation
         };
         // Whatever was playing is silenced before anything new can start.
         self.0.player.stop().await;
 
-        let start = SpeechStart { session_id: generation, chunk_count: plan.chunks.len(), truncated: plan.truncated };
+        let start = SpeechStart {
+            session_id: generation,
+            chunk_count: plan.chunks.len(),
+            truncated: plan.truncated,
+        };
         let service = self.clone();
-        tauri::async_runtime::spawn(async move { service.run(generation, plan.chunks, model, voice, requested).await });
+        tauri::async_runtime::spawn(async move {
+            service
+                .run(generation, plan.chunks, model, voice, requested)
+                .await
+        });
         Ok(start)
     }
 
@@ -264,12 +327,24 @@ impl SpeechService {
         }
     }
 
-    fn fetch(&self, text: String, model: String, voice: String) -> tauri::async_runtime::JoinHandle<Result<Speech, TtsError>> {
+    fn fetch(
+        &self,
+        text: String,
+        model: String,
+        voice: String,
+    ) -> tauri::async_runtime::JoinHandle<Result<Speech, TtsError>> {
         let synth = self.0.synth.clone();
         tauri::async_runtime::spawn(async move { synth.synthesize(&text, &voice, &model).await })
     }
 
-    async fn run(&self, generation: u64, chunks: Vec<String>, model: String, voice: String, requested: Instant) {
+    async fn run(
+        &self,
+        generation: u64,
+        chunks: Vec<String>,
+        model: String,
+        voice: String,
+        requested: Instant,
+    ) {
         let count = chunks.len();
         let fetch_began = Instant::now();
         let startup_ms = elapsed_ms(requested);
@@ -286,7 +361,9 @@ impl SpeechService {
             }
             let speech = match fetched {
                 Ok(speech) => speech,
-                Err(error) => return self.finish(generation, SpeechOutcome::Failed, Some(failure_of(&error))),
+                Err(error) => {
+                    return self.finish(generation, SpeechOutcome::Failed, Some(failure_of(&error)))
+                }
             };
             if index == 0 {
                 let synthesis_ms = elapsed_ms(fetch_began);
@@ -307,7 +384,9 @@ impl SpeechService {
             drop(speech);
             self.update(generation, |s| s.chunk_index = index);
 
-            let Some(_hold) = self.take_player(generation).await else { return abort(pending) };
+            let Some(_hold) = self.take_player(generation).await else {
+                return abort(pending);
+            };
             match self.0.player.start(&file.path).await {
                 Ok(started) => {
                     if !self.is_current(generation) {
@@ -324,8 +403,16 @@ impl SpeechService {
                     });
                 }
                 Err(PlaybackError::Cancelled) => return abort(pending),
-                Err(PlaybackError::Unavailable) => { drop(file); drop(_hold); return self.abandon(generation, pending, SpeechFailure::Unavailable); }
-                Err(PlaybackError::Failed) => { drop(file); drop(_hold); return self.abandon(generation, pending, SpeechFailure::PlaybackFailed); }
+                Err(PlaybackError::Unavailable) => {
+                    drop(file);
+                    drop(_hold);
+                    return self.abandon(generation, pending, SpeechFailure::Unavailable);
+                }
+                Err(PlaybackError::Failed) => {
+                    drop(file);
+                    drop(_hold);
+                    return self.abandon(generation, pending, SpeechFailure::PlaybackFailed);
+                }
             }
 
             match self.0.player.wait().await {
@@ -337,7 +424,11 @@ impl SpeechService {
                     // A stop from the user already recorded itself; the system taking audio focus did not.
                     return self.finish(generation, SpeechOutcome::Stopped, None);
                 }
-                Err(_) => { drop(file); drop(_hold); return self.abandon(generation, pending, SpeechFailure::PlaybackFailed); }
+                Err(_) => {
+                    drop(file);
+                    drop(_hold);
+                    return self.abandon(generation, pending, SpeechFailure::PlaybackFailed);
+                }
             }
             let removing = Instant::now();
             file.remove();
@@ -350,7 +441,12 @@ impl SpeechService {
     }
 
     /// A failure after audio work began: stop the prefetch, silence the player, record why.
-    fn abandon(&self, generation: u64, pending: Option<tauri::async_runtime::JoinHandle<Result<Speech, TtsError>>>, failure: SpeechFailure) {
+    fn abandon(
+        &self,
+        generation: u64,
+        pending: Option<tauri::async_runtime::JoinHandle<Result<Speech, TtsError>>>,
+        failure: SpeechFailure,
+    ) {
         abort(pending);
         self.finish(generation, SpeechOutcome::Failed, Some(failure));
     }
@@ -380,19 +476,41 @@ mod tests {
 
     impl FakeSynth {
         fn new(script: Vec<Result<Vec<u8>, TtsError>>) -> Arc<Self> {
-            Arc::new(Self { script: Mutex::new(script.into()), calls: Mutex::new(Vec::new()), delay: Duration::ZERO })
+            Arc::new(Self {
+                script: Mutex::new(script.into()),
+                calls: Mutex::new(Vec::new()),
+                delay: Duration::ZERO,
+            })
         }
         fn slow(delay: Duration) -> Arc<Self> {
-            Arc::new(Self { script: Mutex::new(VecDeque::new()), calls: Mutex::new(Vec::new()), delay })
+            Arc::new(Self {
+                script: Mutex::new(VecDeque::new()),
+                calls: Mutex::new(Vec::new()),
+                delay,
+            })
         }
         fn texts(&self) -> Vec<String> {
-            self.calls.lock().unwrap().iter().map(|c| c.0.clone()).collect()
+            self.calls
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|c| c.0.clone())
+                .collect()
         }
     }
 
     impl Synthesizer for FakeSynth {
-        fn synthesize<'a>(&'a self, text: &'a str, voice: &'a str, model: &'a str) -> BoxFuture<'a, Result<Speech, TtsError>> {
-            self.calls.lock().unwrap().push((text.to_string(), voice.to_string(), model.to_string()));
+        fn synthesize<'a>(
+            &'a self,
+            text: &'a str,
+            voice: &'a str,
+            model: &'a str,
+        ) -> BoxFuture<'a, Result<Speech, TtsError>> {
+            self.calls.lock().unwrap().push((
+                text.to_string(),
+                voice.to_string(),
+                model.to_string(),
+            ));
             let next = self.script.lock().unwrap().pop_front();
             let delay = self.delay;
             Box::pin(async move {
@@ -402,7 +520,9 @@ mod tests {
                 match next {
                     Some(Err(error)) => Err(error),
                     Some(Ok(bytes)) => Ok(Speech { bytes }),
-                    None => Ok(Speech { bytes: b"MP3".to_vec() }),
+                    None => Ok(Speech {
+                        bytes: b"MP3".to_vec(),
+                    }),
                 }
             })
         }
@@ -421,7 +541,15 @@ mod tests {
 
     impl FakePlayer {
         fn new(hold: bool, fail_start: Option<PlaybackError>) -> Arc<Self> {
-            Arc::new(Self { started: Mutex::new(vec![]), existed: Mutex::new(vec![]), playing: AtomicBool::new(false), stopped: AtomicBool::new(false), stops: AtomicUsize::new(0), fail_start, hold })
+            Arc::new(Self {
+                started: Mutex::new(vec![]),
+                existed: Mutex::new(vec![]),
+                playing: AtomicBool::new(false),
+                stopped: AtomicBool::new(false),
+                stops: AtomicUsize::new(0),
+                fail_start,
+                hold,
+            })
         }
     }
 
@@ -500,9 +628,15 @@ mod tests {
         run(service.speak(text, "gpt-4o-mini-tts".into(), "alloy".into())).unwrap()
     }
 
-    fn fixture(synth: Arc<FakeSynth>, player: Arc<FakePlayer>) -> (SpeechService, tempfile::TempDir) {
+    fn fixture(
+        synth: Arc<FakeSynth>,
+        player: Arc<FakePlayer>,
+    ) -> (SpeechService, tempfile::TempDir) {
         let dir = tempfile::tempdir().unwrap();
-        (SpeechService::new(synth, player, dir.path().join("tts")), dir)
+        (
+            SpeechService::new(synth, player, dir.path().join("tts")),
+            dir,
+        )
     }
 
     #[test]
@@ -513,16 +647,31 @@ mod tests {
         let start = speak(&service, "Hello, I'm Arthur.");
         assert_eq!((start.chunk_count, start.truncated), (1, false));
         let status = until_idle(&service);
-        assert_eq!((status.outcome, status.failure), (Some(SpeechOutcome::Finished), None));
-        assert_eq!(*player.existed.lock().unwrap(), vec![true], "the audio file existed while it played");
-        assert_eq!(files(&dir.path().join("tts")), 0, "and was deleted right after");
+        assert_eq!(
+            (status.outcome, status.failure),
+            (Some(SpeechOutcome::Finished), None)
+        );
+        assert_eq!(
+            *player.existed.lock().unwrap(),
+            vec![true],
+            "the audio file existed while it played"
+        );
+        assert_eq!(
+            files(&dir.path().join("tts")),
+            0,
+            "and was deleted right after"
+        );
         assert!(status.timings.time_to_audible_ms >= status.timings.synthesis_ms);
         assert_eq!(synth.calls.lock().unwrap()[0].1, "alloy");
     }
 
     #[test]
     fn english_and_bulgarian_text_reach_the_provider_exactly_as_written() {
-        for text in ["Short English.", "Здравей, това е Arthur. Как си днес?", "Punctuation: «кавички», (скоби), 3.5 — тире…"] {
+        for text in [
+            "Short English.",
+            "Здравей, това е Arthur. Как си днес?",
+            "Punctuation: «кавички», (скоби), 3.5 — тире…",
+        ] {
             let synth = FakeSynth::new(vec![]);
             let (service, _dir) = fixture(synth.clone(), FakePlayer::new(false, None));
             speak(&service, text);
@@ -541,7 +690,11 @@ mod tests {
         assert!(start.chunk_count >= 4, "{}", start.chunk_count);
         let status = until_idle(&service);
         assert_eq!(status.outcome, Some(SpeechOutcome::Finished));
-        assert_eq!(synth.texts().join(" "), text.trim(), "order preserved, nothing lost");
+        assert_eq!(
+            synth.texts().join(" "),
+            text.trim(),
+            "order preserved, nothing lost"
+        );
         assert_eq!(player.started.lock().unwrap().len(), start.chunk_count);
         assert_eq!(files(&dir.path().join("tts")), 0);
     }
@@ -560,7 +713,10 @@ mod tests {
     fn empty_text_is_refused_without_a_request() {
         let synth = FakeSynth::new(vec![]);
         let (service, _dir) = fixture(synth.clone(), FakePlayer::new(false, None));
-        assert_eq!(run(service.speak("  \n ", "m".into(), "v".into())), Err(SpeechError::EmptyText));
+        assert_eq!(
+            run(service.speak("  \n ", "m".into(), "v".into())),
+            Err(SpeechError::EmptyText)
+        );
         assert!(synth.calls.lock().unwrap().is_empty());
     }
 
@@ -578,53 +734,99 @@ mod tests {
             let (service, dir) = fixture(FakeSynth::new(vec![Err(error)]), player.clone());
             speak(&service, "Hello.");
             let status = until_idle(&service);
-            assert_eq!((status.outcome, status.failure), (Some(SpeechOutcome::Failed), Some(expected)));
-            assert!(player.started.lock().unwrap().is_empty(), "nothing was played");
+            assert_eq!(
+                (status.outcome, status.failure),
+                (Some(SpeechOutcome::Failed), Some(expected))
+            );
+            assert!(
+                player.started.lock().unwrap().is_empty(),
+                "nothing was played"
+            );
             assert_eq!(files(&dir.path().join("tts")), 0);
         }
     }
 
     #[test]
     fn a_playback_failure_and_an_unavailable_player_are_reported_and_clean_up() {
-        for (error, expected) in [(PlaybackError::Failed, SpeechFailure::PlaybackFailed), (PlaybackError::Unavailable, SpeechFailure::Unavailable)] {
-            let (service, dir) = fixture(FakeSynth::new(vec![]), FakePlayer::new(false, Some(error)));
+        for (error, expected) in [
+            (PlaybackError::Failed, SpeechFailure::PlaybackFailed),
+            (PlaybackError::Unavailable, SpeechFailure::Unavailable),
+        ] {
+            let (service, dir) =
+                fixture(FakeSynth::new(vec![]), FakePlayer::new(false, Some(error)));
             speak(&service, "Hello.");
             let status = until_idle(&service);
-            assert_eq!((status.outcome, status.failure), (Some(SpeechOutcome::Failed), Some(expected)));
-            assert_eq!(files(&dir.path().join("tts")), 0, "the file written for playback was deleted");
+            assert_eq!(
+                (status.outcome, status.failure),
+                (Some(SpeechOutcome::Failed), Some(expected))
+            );
+            assert_eq!(
+                files(&dir.path().join("tts")),
+                0,
+                "the file written for playback was deleted"
+            );
         }
     }
 
     #[test]
     fn a_failure_in_a_later_chunk_stops_the_session_cleanly() {
-        let text = "A sentence that is long enough to be its own chunk in this test, repeated. ".repeat(30);
+        let text = "A sentence that is long enough to be its own chunk in this test, repeated. "
+            .repeat(30);
         let player = FakePlayer::new(false, None);
-        let (service, dir) = fixture(FakeSynth::new(vec![Ok(b"a".to_vec()), Err(TtsError::Network)]), player.clone());
+        let (service, dir) = fixture(
+            FakeSynth::new(vec![Ok(b"a".to_vec()), Err(TtsError::Network)]),
+            player.clone(),
+        );
         speak(&service, text.trim());
         let status = until_idle(&service);
-        assert_eq!((status.outcome, status.failure), (Some(SpeechOutcome::Failed), Some(SpeechFailure::Unreachable)));
+        assert_eq!(
+            (status.outcome, status.failure),
+            (
+                Some(SpeechOutcome::Failed),
+                Some(SpeechFailure::Unreachable)
+            )
+        );
         assert_eq!(player.started.lock().unwrap().len(), 1);
         assert_eq!(files(&dir.path().join("tts")), 0);
     }
 
     #[test]
     fn stop_cancels_playback_fetches_no_further_chunk_and_deletes_the_audio() {
-        let text = "A sentence that is long enough to be its own chunk in this test, repeated. ".repeat(60);
+        let text = "A sentence that is long enough to be its own chunk in this test, repeated. "
+            .repeat(60);
         let synth = FakeSynth::new(vec![]);
         let player = FakePlayer::new(true, None);
         let (service, dir) = fixture(synth.clone(), player.clone());
         let start = speak(&service, text.trim());
         until_playing(&service);
-        assert_eq!(files(&dir.path().join("tts")), 1, "exactly the chunk being played exists");
+        assert_eq!(
+            files(&dir.path().join("tts")),
+            1,
+            "exactly the chunk being played exists"
+        );
         let before = synth.calls.lock().unwrap().len();
-        assert!(before <= 2, "at most the playing chunk and one prefetched: {before}");
+        assert!(
+            before <= 2,
+            "at most the playing chunk and one prefetched: {before}"
+        );
 
         run(service.stop());
         let status = service.status();
-        assert_eq!((status.state, status.outcome), (SpeechState::Idle, Some(SpeechOutcome::Stopped)));
+        assert_eq!(
+            (status.state, status.outcome),
+            (SpeechState::Idle, Some(SpeechOutcome::Stopped))
+        );
         pause(80);
-        assert_eq!(synth.calls.lock().unwrap().len(), before, "no new chunk was requested after stop");
-        assert_eq!(player.started.lock().unwrap().len(), 1, "and no further chunk was played");
+        assert_eq!(
+            synth.calls.lock().unwrap().len(),
+            before,
+            "no new chunk was requested after stop"
+        );
+        assert_eq!(
+            player.started.lock().unwrap().len(),
+            1,
+            "and no further chunk was played"
+        );
         assert_eq!(files(&dir.path().join("tts")), 0);
         assert!(start.chunk_count > 2);
     }
@@ -649,15 +851,24 @@ mod tests {
         until_playing(&service);
         let second = speak(&service, "Second answer.");
         assert!(second.session_id > first.session_id);
-        assert!(player.stops.load(Ordering::SeqCst) >= 1, "the old audio was silenced before the new one");
+        assert!(
+            player.stops.load(Ordering::SeqCst) >= 1,
+            "the old audio was silenced before the new one"
+        );
         for _ in 0..400 {
-            if player.started.lock().unwrap().len() == 2 && service.status().state == SpeechState::Playing {
+            if player.started.lock().unwrap().len() == 2
+                && service.status().state == SpeechState::Playing
+            {
                 break;
             }
             pause(5);
         }
         assert_eq!(service.status().session_id, second.session_id);
-        assert_eq!(files(&dir.path().join("tts")), 1, "only the current session's audio exists");
+        assert_eq!(
+            files(&dir.path().join("tts")),
+            1,
+            "only the current session's audio exists"
+        );
         run(service.stop());
         pause(40);
         assert_eq!(files(&dir.path().join("tts")), 0);
@@ -672,25 +883,37 @@ mod tests {
         // The player reports cancellation on its own (focus lost), without the user pressing stop.
         player.stopped.store(true, Ordering::SeqCst);
         let status = until_idle(&service);
-        assert_eq!((status.outcome, status.failure), (Some(SpeechOutcome::Stopped), None));
+        assert_eq!(
+            (status.outcome, status.failure),
+            (Some(SpeechOutcome::Stopped), None)
+        );
         assert_eq!(files(&dir.path().join("tts")), 0);
     }
 
     #[test]
     fn n7d_terminal_status_is_published_after_audio_cleanup() {
-        for failure in [None, Some(PlaybackError::Unavailable), Some(PlaybackError::Failed)] {
+        for failure in [
+            None,
+            Some(PlaybackError::Unavailable),
+            Some(PlaybackError::Failed),
+        ] {
             let player = FakePlayer::new(true, failure);
             let (service, dir) = fixture(FakeSynth::new(vec![]), player.clone());
             let path = dir.path().join("tts");
             let (tx, rx) = std::sync::mpsc::sync_channel(1);
-            *service.0.finish_probe.lock().unwrap() = Some(Box::new(move || { let _ = tx.send(files(&path)); }));
+            *service.0.finish_probe.lock().unwrap() = Some(Box::new(move || {
+                let _ = tx.send(files(&path));
+            }));
             speak(&service, "Synthetic ordering regression.");
             if failure.is_none() {
                 until_playing(&service);
                 player.stopped.store(true, Ordering::SeqCst);
             }
-            assert_eq!(rx.recv_timeout(Duration::from_secs(5)).unwrap(), 0,
-                "terminal status was visible before the current audio file was removed");
+            assert_eq!(
+                rx.recv_timeout(Duration::from_secs(5)).unwrap(),
+                0,
+                "terminal status was visible before the current audio file was removed"
+            );
         }
     }
 
@@ -700,7 +923,11 @@ mod tests {
         let tts = dir.path().join("tts");
         fs::create_dir_all(&tts).unwrap();
         fs::write(tts.join("left-behind.mp3"), b"old").unwrap();
-        let _service = SpeechService::new(FakeSynth::new(vec![]), FakePlayer::new(false, None), tts.clone());
+        let _service = SpeechService::new(
+            FakeSynth::new(vec![]),
+            FakePlayer::new(false, None),
+            tts.clone(),
+        );
         assert_eq!(files(&tts), 0);
     }
 
@@ -710,6 +937,9 @@ mod tests {
         speak(&service, "Top secret sentence about Ignatov.");
         until_idle(&service);
         let json = serde_json::to_string(&service.status()).unwrap();
-        assert!(!json.contains("Ignatov") && !json.contains("secret") && !json.contains("mp3"), "{json}");
+        assert!(
+            !json.contains("Ignatov") && !json.contains("secret") && !json.contains("mp3"),
+            "{json}"
+        );
     }
 }

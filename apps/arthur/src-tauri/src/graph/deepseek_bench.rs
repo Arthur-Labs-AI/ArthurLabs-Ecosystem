@@ -13,7 +13,9 @@ use std::time::{Duration, Instant};
 use serde_json::{json, Value};
 
 use super::openai::{parse_candidates, parse_verdicts};
-use super::prompt::{focus_system_prompt, focused_user_message, response_schema, system_prompt, user_message};
+use super::prompt::{
+    focus_system_prompt, focused_user_message, response_schema, system_prompt, user_message,
+};
 use super::verify::{Presentation, RelationVerifier, Verdict, VerifyCandidate};
 use super::verify_prompt;
 use super::{RelationCandidate, RelationError, RelationProposer};
@@ -44,10 +46,18 @@ pub struct DeepSeek {
 
 impl DeepSeek {
     pub fn new() -> Arc<Self> {
-        Arc::new(Self { client: crate::providers::http::client(Duration::from_secs(300)).unwrap(), meter: Meter::default() })
+        Arc::new(Self {
+            client: crate::providers::http::client(Duration::from_secs(300)).unwrap(),
+            meter: Meter::default(),
+        })
     }
 
-    async fn complete(&self, system: &str, user: &str, schema: Value) -> Result<String, RelationError> {
+    async fn complete(
+        &self,
+        system: &str,
+        user: &str,
+        schema: Value,
+    ) -> Result<String, RelationError> {
         let key = std::env::var("DEEPSEEK_API_KEY").map_err(|_| RelationError::NotConfigured)?;
         let system = format!("{system}\n\nOUTPUT FORMAT: reply with ONE JSON object and nothing else (no markdown, no prose). It must validate against this JSON Schema:\n{schema}");
         let body = json!({
@@ -62,8 +72,17 @@ impl DeepSeek {
         let mut attempt = 0;
         let response = loop {
             attempt += 1;
-            match self.client.post(ENDPOINT).bearer_auth(&key).json(&body).send().await {
-                Ok(response) if response.status().as_u16() == 429 || response.status().is_server_error() => {
+            match self
+                .client
+                .post(ENDPOINT)
+                .bearer_auth(&key)
+                .json(&body)
+                .send()
+                .await
+            {
+                Ok(response)
+                    if response.status().as_u16() == 429 || response.status().is_server_error() =>
+                {
                     if attempt >= 3 {
                         break Ok(response);
                     }
@@ -83,20 +102,43 @@ impl DeepSeek {
         if !(200..300).contains(&status) {
             return Err(RelationError::Provider(status));
         }
-        let envelope: Value = response.json().await.map_err(|_| RelationError::InvalidOutput("unreadable response".into()))?;
+        let envelope: Value = response
+            .json()
+            .await
+            .map_err(|_| RelationError::InvalidOutput("unreadable response".into()))?;
         let m = &self.meter;
         m.requests.fetch_add(1, Ordering::SeqCst);
-        m.millis.fetch_add(started.elapsed().as_millis() as u64, Ordering::SeqCst);
+        m.millis
+            .fetch_add(started.elapsed().as_millis() as u64, Ordering::SeqCst);
         let usage = &envelope["usage"];
-        m.prompt_tokens.fetch_add(usage["prompt_tokens"].as_u64().unwrap_or(0), Ordering::SeqCst);
-        m.completion_tokens.fetch_add(usage["completion_tokens"].as_u64().unwrap_or(0), Ordering::SeqCst);
-        m.reasoning_tokens.fetch_add(usage["completion_tokens_details"]["reasoning_tokens"].as_u64().unwrap_or(0), Ordering::SeqCst);
-        m.cache_hit_tokens.fetch_add(usage["prompt_cache_hit_tokens"].as_u64().unwrap_or(0), Ordering::SeqCst);
+        m.prompt_tokens.fetch_add(
+            usage["prompt_tokens"].as_u64().unwrap_or(0),
+            Ordering::SeqCst,
+        );
+        m.completion_tokens.fetch_add(
+            usage["completion_tokens"].as_u64().unwrap_or(0),
+            Ordering::SeqCst,
+        );
+        m.reasoning_tokens.fetch_add(
+            usage["completion_tokens_details"]["reasoning_tokens"]
+                .as_u64()
+                .unwrap_or(0),
+            Ordering::SeqCst,
+        );
+        m.cache_hit_tokens.fetch_add(
+            usage["prompt_cache_hit_tokens"].as_u64().unwrap_or(0),
+            Ordering::SeqCst,
+        );
         let choice = &envelope["choices"][0];
         if choice["finish_reason"] == "length" {
-            return Err(RelationError::InvalidOutput("the answer was cut off".into()));
+            return Err(RelationError::InvalidOutput(
+                "the answer was cut off".into(),
+            ));
         }
-        choice["message"]["content"].as_str().map(str::to_string).ok_or_else(|| RelationError::InvalidOutput("no content".into()))
+        choice["message"]["content"]
+            .as_str()
+            .map(str::to_string)
+            .ok_or_else(|| RelationError::InvalidOutput("no content".into()))
     }
 }
 
@@ -104,19 +146,61 @@ pub struct DeepSeekProposer(pub Arc<DeepSeek>);
 pub struct DeepSeekVerifier(pub Arc<DeepSeek>);
 
 impl RelationProposer for DeepSeekProposer {
-    fn propose<'a>(&'a self, objects: &'a [KnowledgeObject], existing: &'a [Relation]) -> BoxFuture<'a, Result<Vec<RelationCandidate>, RelationError>> {
-        Box::pin(async move { parse_candidates(&self.0.complete(&system_prompt(), &user_message(objects, existing), response_schema()).await?) })
+    fn propose<'a>(
+        &'a self,
+        objects: &'a [KnowledgeObject],
+        existing: &'a [Relation],
+    ) -> BoxFuture<'a, Result<Vec<RelationCandidate>, RelationError>> {
+        Box::pin(async move {
+            parse_candidates(
+                &self
+                    .0
+                    .complete(
+                        &system_prompt(),
+                        &user_message(objects, existing),
+                        response_schema(),
+                    )
+                    .await?,
+            )
+        })
     }
 
-    fn propose_for<'a>(&'a self, focus_id: &'a str, objects: &'a [KnowledgeObject], existing: &'a [Relation]) -> BoxFuture<'a, Result<Vec<RelationCandidate>, RelationError>> {
-        Box::pin(async move { parse_candidates(&self.0.complete(&focus_system_prompt(), &focused_user_message(objects, existing, focus_id), response_schema()).await?) })
+    fn propose_for<'a>(
+        &'a self,
+        focus_id: &'a str,
+        objects: &'a [KnowledgeObject],
+        existing: &'a [Relation],
+    ) -> BoxFuture<'a, Result<Vec<RelationCandidate>, RelationError>> {
+        Box::pin(async move {
+            parse_candidates(
+                &self
+                    .0
+                    .complete(
+                        &focus_system_prompt(),
+                        &focused_user_message(objects, existing, focus_id),
+                        response_schema(),
+                    )
+                    .await?,
+            )
+        })
     }
 }
 
 impl RelationVerifier for DeepSeekVerifier {
-    fn verify<'a>(&'a self, candidates: &'a [VerifyCandidate], presentation: Presentation) -> BoxFuture<'a, Result<Vec<Verdict>, RelationError>> {
+    fn verify<'a>(
+        &'a self,
+        candidates: &'a [VerifyCandidate],
+        presentation: Presentation,
+    ) -> BoxFuture<'a, Result<Vec<Verdict>, RelationError>> {
         Box::pin(async move {
-            let content = self.0.complete(&verify_prompt::system_prompt(), &verify_prompt::user_message(candidates, presentation), verify_prompt::response_schema()).await?;
+            let content = self
+                .0
+                .complete(
+                    &verify_prompt::system_prompt(),
+                    &verify_prompt::user_message(candidates, presentation),
+                    verify_prompt::response_schema(),
+                )
+                .await?;
             parse_verdicts(&content, candidates, presentation)
         })
     }

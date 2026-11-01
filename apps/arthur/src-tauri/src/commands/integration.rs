@@ -38,7 +38,12 @@ pub fn admit(service: &IntegrationService) -> bool {
 }
 
 /// The work an admitted event does: exactly what the background task runs, without the window notification.
-pub async fn process(service: &IntegrationService, store: &CaptureStore, recall: &RecallService, change: ChangedKnowledge) -> crate::graph::integration::IntegrationReport {
+pub async fn process(
+    service: &IntegrationService,
+    store: &CaptureStore,
+    recall: &RecallService,
+    change: ChangedKnowledge,
+) -> crate::graph::integration::IntegrationReport {
     service.integrate(store, recall, change).await
 }
 
@@ -53,10 +58,23 @@ pub fn notify(app: &AppHandle, change: ChangedKnowledge) {
 
 /// A new current revision of `object_id`, replacing `previous_revision_id`. Looks the new current revision up, so it is always the
 /// authoritative one.
-pub fn notify_revised(app: &AppHandle, store: &CaptureStore, object_id: &str, previous_revision_id: Option<String>) {
-    let (Some(previous), Ok(Some(current))) = (previous_revision_id, store.current_revision_id_of(object_id)) else { return };
+pub fn notify_revised(
+    app: &AppHandle,
+    store: &CaptureStore,
+    object_id: &str,
+    previous_revision_id: Option<String>,
+) {
+    let (Some(previous), Ok(Some(current))) = (
+        previous_revision_id,
+        store.current_revision_id_of(object_id),
+    ) else {
+        return;
+    };
     if previous != current {
-        notify(app, ChangedKnowledge::revised(object_id, &previous, &current));
+        notify(
+            app,
+            ChangedKnowledge::revised(object_id, &previous, &current),
+        );
     }
 }
 
@@ -66,7 +84,16 @@ async fn run(app: &AppHandle, change: ChangedKnowledge) {
     let recall = app.state::<RecallService>();
     let report = process(&service, &store, &recall, change).await;
     if report.added > 0 || report.removed > 0 {
-        let delivered = app.emit(GRAPH_CHANGED_EVENT, GraphChanged { object_id: report.object_id, added: report.added, removed: report.removed }).is_ok();
+        let delivered = app
+            .emit(
+                GRAPH_CHANGED_EVENT,
+                GraphChanged {
+                    object_id: report.object_id,
+                    added: report.added,
+                    removed: report.removed,
+                },
+            )
+            .is_ok();
         service.diagnostics.ui_update(delivered);
     }
 }
@@ -89,7 +116,10 @@ pub struct GraphIntegrationStatus {
 }
 
 fn status(service: &IntegrationService) -> GraphIntegrationStatus {
-    GraphIntegrationStatus { enabled: service.enabled(), pending: service.ledger.pending() }
+    GraphIntegrationStatus {
+        enabled: service.enabled(),
+        pending: service.ledger.pending(),
+    }
 }
 
 #[tauri::command]
@@ -99,13 +129,20 @@ pub fn get_graph_integration(service: State<'_, IntegrationService>) -> GraphInt
 
 /// The user's explicit choice. OFF stops new automatic inference at once and deletes nothing.
 #[tauri::command]
-pub fn set_graph_integration_enabled(service: State<'_, IntegrationService>, enabled: bool) -> Result<GraphIntegrationStatus, RecallError> {
-    service.set_enabled(enabled).map_err(|error| RecallError::Storage(format!("the preference could not be saved: {error}")))?;
+pub fn set_graph_integration_enabled(
+    service: State<'_, IntegrationService>,
+    enabled: bool,
+) -> Result<GraphIntegrationStatus, RecallError> {
+    service.set_enabled(enabled).map_err(|error| {
+        RecallError::Storage(format!("the preference could not be saved: {error}"))
+    })?;
     Ok(status(&service))
 }
 
 /// What Automatic Connections has done since Arthur started, as counts, stage names and error codes. Never any text, key or answer.
 #[tauri::command]
-pub fn get_graph_integration_diagnostics(service: State<'_, IntegrationService>) -> crate::graph::diagnostics::Snapshot {
+pub fn get_graph_integration_diagnostics(
+    service: State<'_, IntegrationService>,
+) -> crate::graph::diagnostics::Snapshot {
     service.diagnostics.snapshot(service.enabled())
 }

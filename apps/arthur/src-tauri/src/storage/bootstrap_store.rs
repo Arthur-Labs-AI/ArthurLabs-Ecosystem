@@ -13,6 +13,8 @@ use std::{
     time::{Duration, Instant},
 };
 use uuid::Uuid;
+
+type StoredUnit = (String, String, i64, Vec<u8>, i64, i64, String, String);
 fn sql(_: rusqlite::Error) -> Error {
     Error::Storage
 }
@@ -26,7 +28,7 @@ pub(super) fn installed(c: &Connection) -> Result<bool> {
 }
 fn unit(c: &Connection, s: &VerifiedSession, o: &SnapshotOffer, direction: &str) -> Result<String> {
     o.validate()?;
-    let row:Option<(String,String,i64,Vec<u8>,i64,i64,String,String)>=c.query_row("SELECT peer,network,epoch,hash,bytes,chunks,direction,outcome FROM bootstrap_units WHERE id=?1",[o.id.to_string()],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?,r.get(7)?))).optional().map_err(sql)?;
+    let row:Option<StoredUnit>=c.query_row("SELECT peer,network,epoch,hash,bytes,chunks,direction,outcome FROM bootstrap_units WHERE id=?1",[o.id.to_string()],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?,r.get(7)?))).optional().map_err(sql)?;
     let Some((peer, network, epoch, hash, bytes, chunks, dir, outcome)) = row else {
         return Err(Error::Protocol);
     };
@@ -638,10 +640,19 @@ fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
     // Bounded borrowed indexes, not another history/projection. Avoid repeated
     // full-image scans and UUID formatting for every facet of 2,048 rows.
     // All original field/hash/provenance checks below remain in force.
-    let event_indices: BTreeMap<&str,usize> = validated.iter().enumerate().map(|(i,v)|(v.core().event_id.as_str(),i)).collect();
+    let event_indices: BTreeMap<&str, usize> = validated
+        .iter()
+        .enumerate()
+        .map(|(i, v)| (v.core().event_id.as_str(), i))
+        .collect();
     let mut row_index = BTreeMap::new();
     for r in &image.rows {
-        if row_index.insert((r.entity.as_str(),r.key.clone()),r).is_some() { return Err(Error::Integrity); }
+        if row_index
+            .insert((r.entity.as_str(), r.key.clone()), r)
+            .is_some()
+        {
+            return Err(Error::Integrity);
+        }
     }
     let mut seen = BTreeSet::new();
     let mut local = BTreeSet::new();
@@ -753,7 +764,9 @@ fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
                 {
                     return Err(Error::Integrity);
                 }
-                let current = row_index.get(&(entity.as_str(),key.clone())).ok_or(Error::Integrity)?;
+                let current = row_index
+                    .get(&(entity.as_str(), key.clone()))
+                    .ok_or(Error::Integrity)?;
                 let (_, record) = row(current)?;
                 if def.fields.iter().any(|f| record.get(*f) != after.get(*f)) {
                     return Err(Error::Integrity);
@@ -1104,7 +1117,14 @@ pub(super) fn receipt(
         Ok(())
     })
 }
-#[cfg(any(test, all(target_os = "android", feature = "android-identity-tests", debug_assertions)))]
+#[cfg(any(
+    test,
+    all(
+        target_os = "android",
+        feature = "android-identity-tests",
+        debug_assertions
+    )
+))]
 pub(crate) fn install(store: &super::capture_store::CaptureStore) -> Result<()> {
     let mut c = store.connection.lock().map_err(|_| Error::Storage)?;
     let tx = c.transaction().map_err(sql)?;

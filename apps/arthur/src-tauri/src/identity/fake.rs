@@ -14,7 +14,11 @@ pub struct FakeClassifier {
 
 impl FakeClassifier {
     pub fn replying(reply: Result<ClassifierOutput, ClassifierFailure>) -> Self {
-        Self { reply: Mutex::new(reply), calls: AtomicUsize::new(0), shown: Mutex::new(Vec::new()) }
+        Self {
+            reply: Mutex::new(reply),
+            calls: AtomicUsize::new(0),
+            shown: Mutex::new(Vec::new()),
+        }
     }
 
     pub fn calls(&self) -> usize {
@@ -28,9 +32,18 @@ impl FakeClassifier {
 }
 
 impl IdentityClassifier for FakeClassifier {
-    fn classify(&self, request: &ClassifyRequest<'_>) -> Result<ClassifierOutput, ClassifierFailure> {
+    fn classify(
+        &self,
+        request: &ClassifyRequest<'_>,
+    ) -> Result<ClassifierOutput, ClassifierFailure> {
         self.calls.fetch_add(1, Ordering::SeqCst);
-        self.shown.lock().unwrap().push(request.candidates.iter().map(|c| c.object_id.clone()).collect());
+        self.shown.lock().unwrap().push(
+            request
+                .candidates
+                .iter()
+                .map(|c| c.object_id.clone())
+                .collect(),
+        );
         self.reply.lock().unwrap().clone()
     }
 }
@@ -38,10 +51,20 @@ impl IdentityClassifier for FakeClassifier {
 pub const MODEL: &str = "fake-1";
 
 pub fn signal(id: &str, same: f64, relation: Relation) -> CandidateSignal {
-    CandidateSignal { candidate_id: id.into(), same_proposition: same, reframing: 0.0, relation: Some(relation), referent_resolved: Some(true), explicit_supersession: Some(false) }
+    CandidateSignal {
+        candidate_id: id.into(),
+        same_proposition: same,
+        reframing: 0.0,
+        relation: Some(relation),
+        referent_resolved: Some(true),
+        explicit_supersession: Some(false),
+    }
 }
 
 /// Three identical runs, as unanimity requires.
 pub fn unanimous(signals: Vec<CandidateSignal>) -> ClassifierOutput {
-    ClassifierOutput { model_id: MODEL.into(), runs: vec![signals.clone(), signals.clone(), signals] }
+    ClassifierOutput {
+        model_id: MODEL.into(),
+        runs: vec![signals.clone(), signals.clone(), signals],
+    }
 }

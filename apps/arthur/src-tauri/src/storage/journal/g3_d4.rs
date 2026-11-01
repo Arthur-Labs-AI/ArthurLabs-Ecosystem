@@ -196,7 +196,7 @@ pub(super) fn admitted(c: &Connection, v: &ValidatedEvent) -> Result<bool> {
                             c,
                             v,
                             EntityKind::Captures,
-                            &[e.capture_id.clone()],
+                            std::slice::from_ref(&e.capture_id),
                         )?
                         else {
                             return Ok(false);

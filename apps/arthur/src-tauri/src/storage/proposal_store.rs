@@ -22,14 +22,24 @@ use uuid::Uuid;
 
 use super::capture_store::{now_rfc3339, CaptureStore, StoreError};
 use super::evidence_store::{evidence_support_in, EvidenceRole};
-use super::identity_store::{accept_pending_claim_hooked_in, defer_pending_claim_in, pending_in, reopen_pending_claim_in, separate_pending_claim_hooked_in, AcceptPendingInput, IdentityStoreError, PendingClaim};
+use super::identity_store::{
+    accept_pending_claim_hooked_in, defer_pending_claim_in, pending_in, reopen_pending_claim_in,
+    separate_pending_claim_hooked_in, AcceptPendingInput, IdentityStoreError, PendingClaim,
+};
 use super::knowledge_store::{KINDS, MAX_BODY_CHARS, MAX_TITLE_CHARS};
 use super::lineage_store::{ReviseConflict, RevisionContent};
 use crate::lineage::diff::{diff_revisions, Content, RevisionDiff};
 
 type Res<T> = Result<T, IdentityStoreError>;
 
-pub const PROPOSAL_STATES: [&str; 6] = ["open", "deferred", "approved", "rejected", "separated", "superseded"];
+pub const PROPOSAL_STATES: [&str; 6] = [
+    "open",
+    "deferred",
+    "approved",
+    "rejected",
+    "separated",
+    "superseded",
+];
 
 fn invalid<T>(reason: impl Into<String>) -> Res<T> {
     Err(IdentityStoreError::Invalid(reason.into()))
@@ -100,15 +110,26 @@ const PROPOSAL_SELECT: &str = "SELECT id, pending_claim_id, object_id, base_revi
     FROM revision_proposals";
 
 fn proposal_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RevisionProposal> {
-    let retracts = match (row.get::<_, Option<String>>(8)?, row.get::<_, Option<i64>>(9)?) {
+    let retracts = match (
+        row.get::<_, Option<String>>(8)?,
+        row.get::<_, Option<i64>>(9)?,
+    ) {
         (Some(revision), Some(ordinal)) => Some((revision, ordinal)),
         _ => None,
     };
-    let evidence: Vec<(String, String, i64, i64)> = serde_json::from_str::<Vec<serde_json::Value>>(&row.get::<_, String>(10)?)
-        .unwrap_or_default()
-        .into_iter()
-        .filter_map(|item| Some((item.get("role")?.as_str()?.to_string(), item.get("captureId")?.as_str()?.to_string(), item.get("start")?.as_i64()?, item.get("end")?.as_i64()?)))
-        .collect();
+    let evidence: Vec<(String, String, i64, i64)> =
+        serde_json::from_str::<Vec<serde_json::Value>>(&row.get::<_, String>(10)?)
+            .unwrap_or_default()
+            .into_iter()
+            .filter_map(|item| {
+                Some((
+                    item.get("role")?.as_str()?.to_string(),
+                    item.get("captureId")?.as_str()?.to_string(),
+                    item.get("start")?.as_i64()?,
+                    item.get("end")?.as_i64()?,
+                ))
+            })
+            .collect();
     Ok(RevisionProposal {
         id: row.get(0)?,
         pending_claim_id: row.get(1)?,
@@ -119,7 +140,15 @@ fn proposal_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RevisionPropos
         title: row.get(6)?,
         proposed_body: row.get(7)?,
         retracts,
-        evidence: evidence.into_iter().map(|(role, capture_id, start, end)| EvidenceRef { role, capture_id, start, end }).collect(),
+        evidence: evidence
+            .into_iter()
+            .map(|(role, capture_id, start, end)| EvidenceRef {
+                role,
+                capture_id,
+                start,
+                end,
+            })
+            .collect(),
         synthesis_model: row.get(11)?,
         verifier_model: row.get(12)?,
         verification_mode: row.get(13)?,
@@ -136,30 +165,60 @@ fn proposal_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RevisionPropos
 }
 
 pub fn proposal_in(connection: &Connection, id: &str) -> Res<Option<RevisionProposal>> {
-    Ok(connection.query_row(&format!("{PROPOSAL_SELECT} WHERE id = ?1"), [id], proposal_from_row).optional()?)
+    Ok(connection
+        .query_row(
+            &format!("{PROPOSAL_SELECT} WHERE id = ?1"),
+            [id],
+            proposal_from_row,
+        )
+        .optional()?)
 }
 
-pub fn proposal_for_claim_in(connection: &Connection, pending_claim_id: &str) -> Res<Option<RevisionProposal>> {
-    Ok(connection.query_row(&format!("{PROPOSAL_SELECT} WHERE pending_claim_id = ?1"), [pending_claim_id], proposal_from_row).optional()?)
+pub fn proposal_for_claim_in(
+    connection: &Connection,
+    pending_claim_id: &str,
+) -> Res<Option<RevisionProposal>> {
+    Ok(connection
+        .query_row(
+            &format!("{PROPOSAL_SELECT} WHERE pending_claim_id = ?1"),
+            [pending_claim_id],
+            proposal_from_row,
+        )
+        .optional()?)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
 // Creating a proposal.
 
 fn validate_new(input: &NewProposal) -> Res<()> {
-    if !matches!(input.change.as_str(), "additive" | "correction" | "replacement") {
+    if !matches!(
+        input.change.as_str(),
+        "additive" | "correction" | "replacement"
+    ) {
         return invalid("unknown change");
     }
-    if !matches!(input.verification_mode.as_str(), "independent" | "same_family_review") {
+    if !matches!(
+        input.verification_mode.as_str(),
+        "independent" | "same_family_review"
+    ) {
         return invalid("unknown verification mode");
     }
     if !KINDS.contains(&input.kind.as_str()) {
         return invalid("unknown kind");
     }
-    if input.title.trim().is_empty() || input.title.chars().count() > MAX_TITLE_CHARS || input.proposed_body.trim().is_empty() || input.proposed_body.chars().count() > MAX_BODY_CHARS {
+    if input.title.trim().is_empty()
+        || input.title.chars().count() > MAX_TITLE_CHARS
+        || input.proposed_body.trim().is_empty()
+        || input.proposed_body.chars().count() > MAX_BODY_CHARS
+    {
         return invalid("title or body is empty or too long");
     }
-    if input.evidence.is_empty() || input.evidence.len() > 13 || input.evidence.iter().any(|e| !matches!(e.role.as_str(), "existing" | "claim") || e.start < 0 || e.end <= e.start) {
+    if input.evidence.is_empty()
+        || input.evidence.len() > 13
+        || input.evidence.iter().any(|e| {
+            !matches!(e.role.as_str(), "existing" | "claim") || e.start < 0 || e.end <= e.start
+        })
+    {
         return invalid("a proposal names 1 to 13 valid evidence references");
     }
     for model in [&input.synthesis_model, &input.verifier_model] {
@@ -172,7 +231,10 @@ fn validate_new(input: &NewProposal) -> Res<()> {
 
 /// Stores a proposal for an OPEN pending claim, in the caller's transaction. Idempotent: the claim already has its proposal -> that one
 /// (`created == false`). The schema refuses a proposal whose base revision is not the object's current one.
-pub fn insert_proposal_in(connection: &Connection, input: &NewProposal) -> Res<(RevisionProposal, bool)> {
+pub fn insert_proposal_in(
+    connection: &Connection,
+    input: &NewProposal,
+) -> Res<(RevisionProposal, bool)> {
     validate_new(input)?;
     if let Some(existing) = proposal_for_claim_in(connection, &input.pending_claim_id)? {
         return Ok((existing, false));
@@ -190,7 +252,12 @@ pub fn insert_proposal_in(connection: &Connection, input: &NewProposal) -> Res<(
             input.synthesis_model, input.verifier_model, input.verification_mode, input.policy_version, now
         ],
     )?;
-    Ok((proposal_in(connection, &id)?.ok_or_else(|| IdentityStoreError::Store(StoreError::Corrupt("a proposal vanished".into())))?, true))
+    Ok((
+        proposal_in(connection, &id)?.ok_or_else(|| {
+            IdentityStoreError::Store(StoreError::Corrupt("a proposal vanished".into()))
+        })?,
+        true,
+    ))
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -287,9 +354,13 @@ fn object_now_in(connection: &Connection, object_id: &str) -> Res<Option<ObjectN
 }
 
 pub fn view_in(connection: &Connection, proposal: &RevisionProposal) -> Res<ProposalView> {
-    let claim = pending_in(connection, &proposal.pending_claim_id)?.ok_or_else(|| IdentityStoreError::Store(StoreError::Corrupt("a proposal lost its claim".into())))?;
+    let claim = pending_in(connection, &proposal.pending_claim_id)?.ok_or_else(|| {
+        IdentityStoreError::Store(StoreError::Corrupt("a proposal lost its claim".into()))
+    })?;
     let now = object_now_in(connection, &proposal.object_id)?;
-    let stale = now.as_ref().is_none_or(|n| n.revision.revision_id != proposal.base_revision_id);
+    let stale = now
+        .as_ref()
+        .is_none_or(|n| n.revision.revision_id != proposal.base_revision_id);
     let blocked = match &now {
         None => Some("object_missing"),
         Some(n) if n.project_id != claim.project_id => Some("claim_moved"),
@@ -298,8 +369,18 @@ pub fn view_in(connection: &Connection, proposal: &RevisionProposal) -> Res<Prop
     };
     let diff = now.as_ref().map(|n| {
         diff_revisions(
-            &Content { id: &n.revision.revision_id, kind: &n.revision.kind, title: &n.revision.title, body: &n.revision.body },
-            &Content { id: "proposed", kind: &proposal.kind, title: &proposal.title, body: &proposal.proposed_body },
+            &Content {
+                id: &n.revision.revision_id,
+                kind: &n.revision.kind,
+                title: &n.revision.title,
+                body: &n.revision.body,
+            },
+            &Content {
+                id: "proposed",
+                kind: &proposal.kind,
+                title: &proposal.title,
+                body: &proposal.proposed_body,
+            },
         )
     });
     Ok(ProposalView {
@@ -311,9 +392,18 @@ pub fn view_in(connection: &Connection, proposal: &RevisionProposal) -> Res<Prop
         project_archived: claim.project_archived,
         base_revision_id: proposal.base_revision_id.clone(),
         current: now.map(|n| n.revision),
-        proposed: ProposedText { kind: proposal.kind.clone(), title: proposal.title.clone(), body: proposal.proposed_body.clone() },
+        proposed: ProposedText {
+            kind: proposal.kind.clone(),
+            title: proposal.title.clone(),
+            body: proposal.proposed_body.clone(),
+        },
         diff,
-        verification: VerificationInfo { mode: proposal.verification_mode.clone(), status: proposal.verification_status.clone(), synthesis_model: proposal.synthesis_model.clone(), verifier_model: proposal.verifier_model.clone() },
+        verification: VerificationInfo {
+            mode: proposal.verification_mode.clone(),
+            status: proposal.verification_status.clone(),
+            synthesis_model: proposal.synthesis_model.clone(),
+            verifier_model: proposal.verifier_model.clone(),
+        },
         claim: claim_info(&claim),
         evidence: proposal.evidence.clone(),
         stale,
@@ -382,7 +472,11 @@ fn unresolved_view_in(connection: &Connection, claim: &PendingClaim) -> Res<Unre
     let mut candidates = Vec::new();
     for id in &claim.candidate_ids {
         if let Some(now) = object_now_in(connection, id)? {
-            candidates.push(CandidateInfo { object_id: id.clone(), title: now.revision.title, current_revision_id: now.revision.revision_id });
+            candidates.push(CandidateInfo {
+                object_id: id.clone(),
+                title: now.revision.title,
+                current_revision_id: now.revision.revision_id,
+            });
         }
     }
     let proposal = proposal_for_claim_in(connection, &claim.id)?;
@@ -410,15 +504,24 @@ impl CaptureStore {
     }
 
     /// Proposals in the given states (empty = all), optionally of one project (the claim's CURRENT project), oldest first.
-    pub fn list_revision_proposals(&self, project_id: Option<&str>, states: &[&str]) -> Res<Vec<ProposalView>> {
+    pub fn list_revision_proposals(
+        &self,
+        project_id: Option<&str>,
+        states: &[&str],
+    ) -> Res<Vec<ProposalView>> {
         if states.iter().any(|s| !PROPOSAL_STATES.contains(s)) {
             return invalid("unknown proposal state");
         }
         self.in_identity_read(|c| {
             let mut statement = c.prepare(&format!("{PROPOSAL_SELECT} ORDER BY seq"))?;
-            let all = statement.query_map([], proposal_from_row)?.collect::<Result<Vec<_>, _>>()?;
+            let all = statement
+                .query_map([], proposal_from_row)?
+                .collect::<Result<Vec<_>, _>>()?;
             let mut out = Vec::new();
-            for proposal in all.into_iter().filter(|p| states.is_empty() || states.contains(&p.state.as_str())) {
+            for proposal in all
+                .into_iter()
+                .filter(|p| states.is_empty() || states.contains(&p.state.as_str()))
+            {
                 let view = view_in(c, &proposal)?;
                 if project_id.is_none_or(|id| view.project_id == id) {
                     out.push(view);
@@ -443,14 +546,25 @@ impl CaptureStore {
     }
 
     /// Open and deferred claims (archived projects included, nothing filtered by age or quota), oldest first.
-    pub fn list_unresolved_claims(&self, project_id: Option<&str>) -> Res<Vec<UnresolvedClaimView>> {
+    pub fn list_unresolved_claims(
+        &self,
+        project_id: Option<&str>,
+    ) -> Res<Vec<UnresolvedClaimView>> {
         let claims = self.list_pending_claims(project_id, &["open", "deferred"])?;
-        self.in_identity_read(|c| claims.iter().map(|claim| unresolved_view_in(c, claim)).collect())
+        self.in_identity_read(|c| {
+            claims
+                .iter()
+                .map(|claim| unresolved_view_in(c, claim))
+                .collect()
+        })
     }
 
     /// Runs `work` against a consistent read of the database.
     fn in_identity_read<T>(&self, work: impl FnOnce(&Connection) -> Res<T>) -> Res<T> {
-        let connection = self.connection.lock().map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
         work(&connection)
     }
 }
@@ -463,12 +577,16 @@ pub enum ReviewAction {
     /// Apply the draft exactly as written, to the exact revision it was written for.
     Approve,
     /// Apply the person's own text. They must have seen the object's current text (`reviewed_revision_id`).
-    EditAndApprove { body: String },
+    EditAndApprove {
+        body: String,
+    },
     /// Dismiss the DRAFT. The captured claim stays open and visible.
     Reject,
     /// Keep the claim as its own new idea.
     KeepSeparate,
-    Defer { due_at: Option<String> },
+    Defer {
+        due_at: Option<String>,
+    },
     Reopen,
 }
 
@@ -502,7 +620,9 @@ pub struct AppliedRevision {
 pub enum ReviewError {
     NotFound,
     /// The object's current revision is not the one the draft (or the person's review) was based on. Nothing was written.
-    Stale { current_revision_id: String },
+    Stale {
+        current_revision_id: String,
+    },
     /// The proposal was already resolved in a different way (state named).
     AlreadyResolved(String),
     /// Cannot be applied now: `project_archived`, `claim_moved` or `object_missing`.
@@ -546,12 +666,25 @@ impl From<IdentityStoreError> for ReviewError {
             IdentityStoreError::NotFound(_) => ReviewError::NotFound,
             IdentityStoreError::Invalid(reason) => ReviewError::Invalid(reason),
             IdentityStoreError::Conflict(reason) => ReviewError::Conflict(reason),
-            IdentityStoreError::Revise(ReviseConflict::Stale { actual, .. }) => ReviewError::Stale { current_revision_id: actual },
-            IdentityStoreError::Revise(ReviseConflict::ProjectArchived) => ReviewError::Blocked("project_archived"),
-            IdentityStoreError::Revise(ReviseConflict::ProjectMismatch { .. }) => ReviewError::Blocked("claim_moved"),
-            IdentityStoreError::Revise(ReviseConflict::ObjectNotFound) => ReviewError::Blocked("object_missing"),
-            IdentityStoreError::Revise(ReviseConflict::Rejected(reason)) => ReviewError::Invalid(reason),
-            IdentityStoreError::Revise(ReviseConflict::Store(error)) | IdentityStoreError::Store(error) => ReviewError::Store(error.to_string()),
+            IdentityStoreError::Revise(ReviseConflict::Stale { actual, .. }) => {
+                ReviewError::Stale {
+                    current_revision_id: actual,
+                }
+            }
+            IdentityStoreError::Revise(ReviseConflict::ProjectArchived) => {
+                ReviewError::Blocked("project_archived")
+            }
+            IdentityStoreError::Revise(ReviseConflict::ProjectMismatch { .. }) => {
+                ReviewError::Blocked("claim_moved")
+            }
+            IdentityStoreError::Revise(ReviseConflict::ObjectNotFound) => {
+                ReviewError::Blocked("object_missing")
+            }
+            IdentityStoreError::Revise(ReviseConflict::Rejected(reason)) => {
+                ReviewError::Invalid(reason)
+            }
+            IdentityStoreError::Revise(ReviseConflict::Store(error))
+            | IdentityStoreError::Store(error) => ReviewError::Store(error.to_string()),
         }
     }
 }
@@ -570,7 +703,12 @@ fn role_of(change: &str) -> EvidenceRole {
     }
 }
 
-fn close_proposal(connection: &Connection, id: &str, to: &str, result: Option<(&str, &str, bool)>) -> Res<()> {
+fn close_proposal(
+    connection: &Connection,
+    id: &str,
+    to: &str,
+    result: Option<(&str, &str, bool)>,
+) -> Res<()> {
     let now = now_rfc3339()?;
     let changed = match result {
         Some((revision_id, body, edited)) => connection.execute(
@@ -580,7 +718,9 @@ fn close_proposal(connection: &Connection, id: &str, to: &str, result: Option<(&
         None => connection.execute("UPDATE revision_proposals SET state = ?2, reviewed_at = ?3, updated_at = ?3 WHERE id = ?1 AND state IN ('open', 'deferred')", params![id, to, now])?,
     };
     if changed != 1 {
-        return Err(IdentityStoreError::Conflict("the proposal changed while it was being resolved".into()));
+        return Err(IdentityStoreError::Conflict(
+            "the proposal changed while it was being resolved".into(),
+        ));
     }
     Ok(())
 }
@@ -591,23 +731,47 @@ fn set_proposal_open_or_deferred(connection: &Connection, id: &str, to: &str) ->
 }
 
 /// Applies one review decision inside the caller's immediate transaction. See the module docs for each action's effect.
-pub fn review_in(connection: &Connection, request: &ReviewRequest) -> Result<ReviewResult, ReviewError> {
+pub fn review_in(
+    connection: &Connection,
+    request: &ReviewRequest,
+) -> Result<ReviewResult, ReviewError> {
     let proposal = proposal_in(connection, &request.proposal_id)?.ok_or(ReviewError::NotFound)?;
-    let done = |connection: &Connection, id: &str, applied: bool, revision: Option<AppliedRevision>, created: Option<String>| -> Result<ReviewResult, ReviewError> {
+    let done = |connection: &Connection,
+                id: &str,
+                applied: bool,
+                revision: Option<AppliedRevision>,
+                created: Option<String>|
+     -> Result<ReviewResult, ReviewError> {
         let fresh = proposal_in(connection, id)?.ok_or(ReviewError::NotFound)?;
-        Ok(ReviewResult { proposal: view_in(connection, &fresh)?, applied, revision, created_object_id: created })
+        Ok(ReviewResult {
+            proposal: view_in(connection, &fresh)?,
+            applied,
+            revision,
+            created_object_id: created,
+        })
     };
 
     // Repeating a decision that was already made returns it without writing; a different one is refused.
     match (proposal.state.as_str(), &request.action) {
-        ("approved", ReviewAction::Approve) if !proposal.user_edited => return done(connection, &proposal.id, false, None, None),
-        ("approved", ReviewAction::EditAndApprove { body }) if proposal.final_body.as_deref() == Some(body.trim()) => return done(connection, &proposal.id, false, None, None),
-        ("rejected", ReviewAction::Reject) => return done(connection, &proposal.id, false, None, None),
+        ("approved", ReviewAction::Approve) if !proposal.user_edited => {
+            return done(connection, &proposal.id, false, None, None)
+        }
+        ("approved", ReviewAction::EditAndApprove { body })
+            if proposal.final_body.as_deref() == Some(body.trim()) =>
+        {
+            return done(connection, &proposal.id, false, None, None)
+        }
+        ("rejected", ReviewAction::Reject) => {
+            return done(connection, &proposal.id, false, None, None)
+        }
         ("separated", ReviewAction::KeepSeparate) => {
-            let created = pending_in(connection, &proposal.pending_claim_id)?.and_then(|claim| claim.resolved_object_id);
+            let created = pending_in(connection, &proposal.pending_claim_id)?
+                .and_then(|claim| claim.resolved_object_id);
             return done(connection, &proposal.id, false, None, created);
         }
-        ("approved" | "rejected" | "separated" | "superseded", _) => return Err(ReviewError::AlreadyResolved(proposal.state.clone())),
+        ("approved" | "rejected" | "separated" | "superseded", _) => {
+            return Err(ReviewError::AlreadyResolved(proposal.state.clone()))
+        }
         _ => {}
     }
     let claim = pending_in(connection, &proposal.pending_claim_id)?.ok_or(ReviewError::NotFound)?;
@@ -632,11 +796,21 @@ pub fn review_in(connection: &Connection, request: &ReviewRequest) -> Result<Rev
         }
         ReviewAction::KeepSeparate => {
             let proposal_id = proposal.id.clone();
-            let resolution = separate_pending_claim_hooked_in(connection, &claim.id, "user", &mut |_| close_proposal(connection, &proposal_id, "separated", None))?;
-            done(connection, &proposal.id, resolution.applied, None, Some(resolution.object_id))
+            let resolution =
+                separate_pending_claim_hooked_in(connection, &claim.id, "user", &mut |_| {
+                    close_proposal(connection, &proposal_id, "separated", None)
+                })?;
+            done(
+                connection,
+                &proposal.id,
+                resolution.applied,
+                None,
+                Some(resolution.object_id),
+            )
         }
         ReviewAction::Approve | ReviewAction::EditAndApprove { .. } => {
-            let now = object_now_in(connection, &proposal.object_id)?.ok_or(ReviewError::Blocked("object_missing"))?;
+            let now = object_now_in(connection, &proposal.object_id)?
+                .ok_or(ReviewError::Blocked("object_missing"))?;
             if claim.project_archived {
                 return Err(ReviewError::Blocked("project_archived"));
             }
@@ -645,15 +819,27 @@ pub fn review_in(connection: &Connection, request: &ReviewRequest) -> Result<Rev
             }
             let current = now.revision.revision_id.clone();
             // What the person looked at must still be what is there: never apply over text they did not see.
-            if request.reviewed_revision_id.as_deref().is_some_and(|reviewed| reviewed != current) {
-                return Err(ReviewError::Stale { current_revision_id: current });
+            if request
+                .reviewed_revision_id
+                .as_deref()
+                .is_some_and(|reviewed| reviewed != current)
+            {
+                return Err(ReviewError::Stale {
+                    current_revision_id: current,
+                });
             }
             let (body, edited, retracts) = match &request.action {
                 ReviewAction::Approve => {
                     if current != proposal.base_revision_id {
-                        return Err(ReviewError::Stale { current_revision_id: current });
+                        return Err(ReviewError::Stale {
+                            current_revision_id: current,
+                        });
                     }
-                    (proposal.proposed_body.clone(), false, proposal.retracts.clone())
+                    (
+                        proposal.proposed_body.clone(),
+                        false,
+                        proposal.retracts.clone(),
+                    )
                 }
                 ReviewAction::EditAndApprove { body } => {
                     let body = body.trim().to_string();
@@ -662,12 +848,22 @@ pub fn review_in(connection: &Connection, request: &ReviewRequest) -> Result<Rev
                     }
                     // an edit must be made against the text it will replace: the person has to state which revision they read
                     if request.reviewed_revision_id.is_none() {
-                        return Err(ReviewError::Stale { current_revision_id: current });
+                        return Err(ReviewError::Stale {
+                            current_revision_id: current,
+                        });
                     }
                     let edited = body != proposal.proposed_body;
                     let retracts = match &proposal.retracts {
                         // withdrawing earlier evidence is only kept when that evidence is still active on the text being replaced
-                        Some(r) if current == proposal.base_revision_id || evidence_support_in(connection, &current)?.active.iter().any(|a| a.revision_id == r.0 && a.ordinal == Some(r.1)) => Some(r.clone()),
+                        Some(r)
+                            if current == proposal.base_revision_id
+                                || evidence_support_in(connection, &current)?
+                                    .active
+                                    .iter()
+                                    .any(|a| a.revision_id == r.0 && a.ordinal == Some(r.1)) =>
+                        {
+                            Some(r.clone())
+                        }
                         _ => None,
                     };
                     (body, edited, retracts)
@@ -675,7 +871,9 @@ pub fn review_in(connection: &Connection, request: &ReviewRequest) -> Result<Rev
                 _ => unreachable!(),
             };
             if body == now.revision.body {
-                return Err(ReviewError::Invalid("the text is the same as the current text".into()));
+                return Err(ReviewError::Invalid(
+                    "the text is the same as the current text".into(),
+                ));
             }
             let proposal_id = proposal.id.clone();
             let kept_body = body.clone();
@@ -685,14 +883,29 @@ pub fn review_in(connection: &Connection, request: &ReviewRequest) -> Result<Rev
                     pending_id: claim.id.clone(),
                     target_object_id: proposal.object_id.clone(),
                     expected_base_revision_id: current.clone(),
-                    content: RevisionContent { kind: now.revision.kind.clone(), title: now.revision.title.clone(), body },
+                    content: RevisionContent {
+                        kind: now.revision.kind.clone(),
+                        title: now.revision.title.clone(),
+                        body,
+                    },
                     role: role_of(&proposal.change),
                     retracts,
                     interpretation_label: None,
                 },
-                &mut |revision| close_proposal(connection, &proposal_id, "approved", Some((&revision.id, &kept_body, edited))),
+                &mut |revision| {
+                    close_proposal(
+                        connection,
+                        &proposal_id,
+                        "approved",
+                        Some((&revision.id, &kept_body, edited)),
+                    )
+                },
             )?;
-            let revision = resolution.revision.map(|r| AppliedRevision { object_id: proposal.object_id.clone(), revision_id: r.id, previous_revision_id: current });
+            let revision = resolution.revision.map(|r| AppliedRevision {
+                object_id: proposal.object_id.clone(),
+                revision_id: r.id,
+                previous_revision_id: current,
+            });
             done(connection, &proposal.id, resolution.applied, revision, None)
         }
     }
@@ -701,8 +914,14 @@ pub fn review_in(connection: &Connection, request: &ReviewRequest) -> Result<Rev
 impl CaptureStore {
     /// One review decision, atomically. SQLite serializes concurrent callers; the loser sees the winner's decision (an idempotent repeat,
     /// or `AlreadyResolved` / `Stale`) and nothing of its own is written.
-    pub fn review_revision_proposal(&self, request: &ReviewRequest) -> Result<ReviewResult, ReviewError> {
-        let mut connection = self.connection.lock().map_err(|_| ReviewError::Store("the store is unavailable".into()))?;
+    pub fn review_revision_proposal(
+        &self,
+        request: &ReviewRequest,
+    ) -> Result<ReviewResult, ReviewError> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| ReviewError::Store("the store is unavailable".into()))?;
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let result = review_in(&transaction, request)?;
         transaction.commit()?;
@@ -712,28 +931,52 @@ impl CaptureStore {
     /// Resolves a claim that has NO usable draft (or whose draft was dismissed): keep it as its own idea, defer it, or reopen it.
     /// `merge into an existing idea` is deliberately absent: without a draft there is no reviewed text to apply, so the person edits the
     /// idea themselves and keeps the claim separate or leaves it open.
-    pub fn resolve_unresolved_claim(&self, pending_id: &str, action: ClaimAction) -> Result<ClaimResolution, ReviewError> {
-        let mut connection = self.connection.lock().map_err(|_| ReviewError::Store("the store is unavailable".into()))?;
+    pub fn resolve_unresolved_claim(
+        &self,
+        pending_id: &str,
+        action: ClaimAction,
+    ) -> Result<ClaimResolution, ReviewError> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| ReviewError::Store("the store is unavailable".into()))?;
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let claim = pending_in(&transaction, pending_id)?.ok_or(ReviewError::NotFound)?;
         let outcome = match action {
             ClaimAction::KeepSeparate => {
-                let resolution = separate_pending_claim_hooked_in(&transaction, pending_id, "user", &mut |_| Ok(()))?;
-                ClaimResolution { claim_state: resolution.claim.state, created_object_id: Some(resolution.object_id), applied: resolution.applied }
+                let resolution = separate_pending_claim_hooked_in(
+                    &transaction,
+                    pending_id,
+                    "user",
+                    &mut |_| Ok(()),
+                )?;
+                ClaimResolution {
+                    claim_state: resolution.claim.state,
+                    created_object_id: Some(resolution.object_id),
+                    applied: resolution.applied,
+                }
             }
             ClaimAction::Defer { due_at } => {
                 let updated = defer_pending_claim_in(&transaction, pending_id, due_at.as_deref())?;
                 if let Some(p) = proposal_for_claim_in(&transaction, pending_id)? {
                     set_proposal_open_or_deferred(&transaction, &p.id, "deferred")?;
                 }
-                ClaimResolution { claim_state: updated.state, created_object_id: None, applied: claim.state != "deferred" }
+                ClaimResolution {
+                    claim_state: updated.state,
+                    created_object_id: None,
+                    applied: claim.state != "deferred",
+                }
             }
             ClaimAction::Reopen => {
                 let updated = reopen_pending_claim_in(&transaction, pending_id)?;
                 if let Some(p) = proposal_for_claim_in(&transaction, pending_id)? {
                     set_proposal_open_or_deferred(&transaction, &p.id, "open")?;
                 }
-                ClaimResolution { claim_state: updated.state, created_object_id: None, applied: claim.state != "open" }
+                ClaimResolution {
+                    claim_state: updated.state,
+                    created_object_id: None,
+                    applied: claim.state != "open",
+                }
             }
         };
         transaction.commit()?;

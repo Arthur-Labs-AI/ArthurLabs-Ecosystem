@@ -11,7 +11,11 @@ pub fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 
 /// Serves exactly one HTTP request on localhost, replying with `status` and `body`.
 /// Returns the endpoint URL (ending in `path`) and a channel yielding the raw request bytes.
-pub fn serve_once(path: &str, status: &'static str, body: String) -> (String, mpsc::Receiver<Vec<u8>>) {
+pub fn serve_once(
+    path: &str,
+    status: &'static str,
+    body: String,
+) -> (String, mpsc::Receiver<Vec<u8>>) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("http://{}{path}", listener.local_addr().unwrap());
     let (tx, rx) = mpsc::channel();
@@ -32,7 +36,9 @@ pub fn serve_once(path: &str, status: &'static str, body: String) -> (String, mp
                     if have >= len.trim().parse::<usize>().unwrap() {
                         break;
                     }
-                } else if head.contains("transfer-encoding: chunked") && request.ends_with(b"0\r\n\r\n") {
+                } else if head.contains("transfer-encoding: chunked")
+                    && request.ends_with(b"0\r\n\r\n")
+                {
                     break;
                 }
             }
@@ -54,13 +60,18 @@ pub fn dead_endpoint(path: &str) -> String {
 
 /// Serves one reply per entry, in order, each to its own connection, on localhost. Returns the endpoint URL and a channel yielding each
 /// raw request. After the last reply the listener closes.
-pub fn serve_sequence(path: &str, replies: Vec<(&'static str, String)>) -> (String, mpsc::Receiver<Vec<u8>>) {
+pub fn serve_sequence(
+    path: &str,
+    replies: Vec<(&'static str, String)>,
+) -> (String, mpsc::Receiver<Vec<u8>>) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("http://{}{path}", listener.local_addr().unwrap());
     let (tx, rx) = mpsc::channel();
     thread::spawn(move || {
         for (status, body) in replies {
-            let Ok((mut stream, _)) = listener.accept() else { return };
+            let Ok((mut stream, _)) = listener.accept() else {
+                return;
+            };
             let mut request = Vec::new();
             let mut chunk = [0u8; 4096];
             loop {
@@ -72,7 +83,8 @@ pub fn serve_sequence(path: &str, replies: Vec<(&'static str, String)>) -> (Stri
                 if let Some(end) = find(&request, b"\r\n\r\n") {
                     let head = String::from_utf8_lossy(&request[..end]).to_lowercase();
                     let have = request.len() - (end + 4);
-                    if let Some(len) = head.lines().find_map(|l| l.strip_prefix("content-length:")) {
+                    if let Some(len) = head.lines().find_map(|l| l.strip_prefix("content-length:"))
+                    {
                         if have >= len.trim().parse::<usize>().unwrap() {
                             break;
                         }

@@ -4,27 +4,30 @@ mod commands;
 mod distillation;
 mod evolution_runtime;
 mod graph;
-#[allow(dead_code)] // M04.7B: only `evolution_runtime` builds the TypeSafe JEV adapter; parts of it are exercised by tests alone
-mod jev;
-#[allow(dead_code)] // M04.7B: only `evolution_runtime` builds synthesis and verification (review-first); parts are exercised by tests alone
-mod synthesis;
-#[allow(dead_code)] // M04.7B: the pure identity core is used through the evolution pipeline; parts are exercised by tests alone
+#[allow(dead_code)]
+// M04.7B: the pure identity core is used through the evolution pipeline; parts are exercised by tests alone
 mod identity;
+#[allow(dead_code)]
+// M04.7B: only `evolution_runtime` builds the TypeSafe JEV adapter; parts of it are exercised by tests alone
+mod jev;
 mod lifecycle;
 mod lineage;
+#[cfg(test)]
+mod live_luna_smoke;
 mod platform;
 mod providers;
 mod recall;
 mod runtime;
 mod storage;
+mod stt;
 #[allow(dead_code)] // M05 dormant sync candidate; no production composition/ingress.
 mod sync;
-mod stt;
-mod tts;
+#[allow(dead_code)]
+// M04.7B: only `evolution_runtime` builds synthesis and verification (review-first); parts are exercised by tests alone
+mod synthesis;
 #[cfg(test)]
 mod test_support;
-#[cfg(test)]
-mod live_luna_smoke;
+mod tts;
 
 use std::sync::Arc;
 
@@ -34,25 +37,27 @@ use audio::recorder::Recorder;
 use audio::voice_capture::VoiceCaptureService;
 use distillation::openai::OpenAiDistiller;
 use distillation::DistillationService;
-use graph::openai::{OpenAiRelationProposer, OpenAiRelationVerifier};
 use graph::integration::{IntegrationService, IntegrationSettings, Ledger};
+use graph::openai::{OpenAiRelationProposer, OpenAiRelationVerifier};
 use graph::GraphService;
-use runtime::NativeRuntime;
 use providers::ai::AiService;
 use providers::ai_config::AiConfigStore;
+use providers::embed::OpenAiEmbedder;
 use providers::registry::Capability;
 use providers::secrets::{select_store, SecretStore, StoragePlatform};
+use recall::settings::SemanticSettings;
+use recall::RecallService;
+use runtime::NativeRuntime;
 use stt::openai::OpenAiTranscriber;
 use tts::openai::OpenAiSynthesizer;
 use tts::player::AudioPlayer;
 use tts::service::SpeechService;
-use providers::embed::OpenAiEmbedder;
-use recall::settings::SemanticSettings;
-use recall::RecallService;
 
 #[cfg(target_os = "android")]
 fn platform_recorder(app: &AppHandle) -> Arc<dyn Recorder> {
-    app.state::<Arc<audio::android::AndroidRecorder>>().inner().clone()
+    app.state::<Arc<audio::android::AndroidRecorder>>()
+        .inner()
+        .clone()
 }
 
 #[cfg(not(target_os = "android"))]
@@ -63,7 +68,8 @@ fn platform_recorder(_app: &AppHandle) -> Arc<dyn Recorder> {
 /// The Android Keystore bridge, when this build has one and it registered.
 #[cfg(target_os = "android")]
 fn keystore(app: &AppHandle) -> Option<Arc<dyn SecretStore>> {
-    app.try_state::<Arc<providers::android_keystore::AndroidKeystoreStore>>().map(|state| state.inner().clone() as Arc<dyn SecretStore>)
+    app.try_state::<Arc<providers::android_keystore::AndroidKeystoreStore>>()
+        .map(|state| state.inner().clone() as Arc<dyn SecretStore>)
 }
 
 #[cfg(not(target_os = "android"))]
@@ -74,7 +80,9 @@ fn keystore(_app: &AppHandle) -> Option<Arc<dyn SecretStore>> {
 /// The platform's audio output. Desktop development builds have none, so voice output reports itself unavailable there.
 #[cfg(target_os = "android")]
 fn audio_player(app: &AppHandle) -> Arc<dyn AudioPlayer> {
-    app.state::<Arc<tts::android::AndroidPlayer>>().inner().clone()
+    app.state::<Arc<tts::android::AndroidPlayer>>()
+        .inner()
+        .clone()
 }
 
 #[cfg(not(target_os = "android"))]
@@ -86,7 +94,10 @@ fn audio_player(_app: &AppHandle) -> Arc<dyn AudioPlayer> {
 pub fn run() {
     let builder = tauri::Builder::default();
     #[cfg(target_os = "android")]
-    let builder = builder.plugin(audio::android::init()).plugin(providers::android_keystore::init()).plugin(tts::android::init());
+    let builder = builder
+        .plugin(audio::android::init())
+        .plugin(providers::android_keystore::init())
+        .plugin(tts::android::init());
 
     builder
         .setup(|app| {
@@ -104,8 +115,13 @@ pub fn run() {
             let secrets = select_store(platform, keystore(app.handle()), credentials_dir.clone());
             let evolution_secrets = secrets.clone();
             // Only Android has a legacy plaintext file to move into the Keystore; on desktop the store reads that same file.
-            let legacy_file = (platform == StoragePlatform::Android).then(|| credentials_dir.join("openai_api_key"));
-            let ai = Arc::new(AiService::new(AiConfigStore::new(data_dir.join("ai").join("config.json")), secrets, legacy_file.as_deref()));
+            let legacy_file = (platform == StoragePlatform::Android)
+                .then(|| credentials_dir.join("openai_api_key"));
+            let ai = Arc::new(AiService::new(
+                AiConfigStore::new(data_dir.join("ai").join("config.json")),
+                secrets,
+                legacy_file.as_deref(),
+            ));
             app.manage(ai.clone());
             let llm = ai.credential_for(Capability::Llm);
             let stt = ai.credential_for(Capability::Stt);
@@ -114,9 +130,16 @@ pub fn run() {
             let transcriber = Arc::new(OpenAiTranscriber::new(stt)?);
             // Automatic Thought Evolution (M04.7B Phase 5): REVIEW-FIRST. The pipeline is installed but stays OFF until a person turns it on,
             // and even then it only stores suggestions; applying one takes their explicit approval. With it OFF, distillation is unchanged.
-            let evolution = evolution_runtime::build(&data_dir.join("evolution"), evolution_secrets, llm.clone())?;
+            let evolution = evolution_runtime::build(
+                &data_dir.join("evolution"),
+                evolution_secrets,
+                llm.clone(),
+            )?;
             app.manage(evolution.runtime);
-            app.manage(DistillationService::new(Arc::new(OpenAiDistiller::new(llm.clone())?)).with_evolution(evolution.pipeline));
+            app.manage(
+                DistillationService::new(Arc::new(OpenAiDistiller::new(llm.clone())?))
+                    .with_evolution(evolution.pipeline),
+            );
             let proposer = Arc::new(OpenAiRelationProposer::new(llm.clone())?);
             let verifier = Arc::new(OpenAiRelationVerifier::new(llm.clone())?);
             app.manage(GraphService::new(proposer.clone(), verifier.clone()));
@@ -137,12 +160,19 @@ pub fn run() {
                 }
             });
             // Diagnostics only: the retry poll is the one long-lived task of Graph Integration (each event spawns its own short task).
-            app.state::<IntegrationService>().diagnostics.mark_worker_started();
+            app.state::<IntegrationService>()
+                .diagnostics
+                .mark_worker_started();
 
             // Semantic Recall is OPT-IN. The consent lives in app-private settings, outside the database, and a missing or damaged
             // file means OFF. Having an API key never enables it.
-            let settings = Arc::new(SemanticSettings::new(data_dir.join("recall").join("semantic.json")));
-            app.manage(RecallService::new(Arc::new(OpenAiEmbedder::new(embeddings)?), settings).with_answer_model(Arc::new(providers::answer::OpenAiAnswerModel::new(llm)?)));
+            let settings = Arc::new(SemanticSettings::new(
+                data_dir.join("recall").join("semantic.json"),
+            ));
+            app.manage(
+                RecallService::new(Arc::new(OpenAiEmbedder::new(embeddings)?), settings)
+                    .with_answer_model(Arc::new(providers::answer::OpenAiAnswerModel::new(llm)?)),
+            );
             commands::recall::kick_indexer(app.handle());
             // The indexer finds its own work (new objects, edits, merges that became current) on a slow poll; it is a no-op while
             // semantic Recall is off. Distillation and Lineage are not touched by Recall.
@@ -157,11 +187,19 @@ pub fn run() {
             // Spoken audio is transient too: written to the cache only while it plays and deleted straight after. Whatever a crashed run
             // left there is removed now. Nothing about what was spoken is stored.
             let speech_dir = app.path().app_cache_dir()?.join("tts");
-            app.manage(SpeechService::new(Arc::new(OpenAiSynthesizer::new(tts_credential)?), audio_player(app.handle()), speech_dir));
+            app.manage(SpeechService::new(
+                Arc::new(OpenAiSynthesizer::new(tts_credential)?),
+                audio_player(app.handle()),
+                speech_dir,
+            ));
 
             // Recordings are transient, so they go in the cache directory.
             let recordings_dir = app.path().app_cache_dir()?.join("recordings");
-            app.manage(VoiceCaptureService::new(platform_recorder(app.handle()), transcriber, recordings_dir)?);
+            app.manage(VoiceCaptureService::new(
+                platform_recorder(app.handle()),
+                transcriber,
+                recordings_dir,
+            )?);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -244,4 +282,3 @@ pub fn run() {
             }
         });
 }
-

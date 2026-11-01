@@ -21,15 +21,20 @@ pub(crate) fn captures(s: &CaptureStore, texts: &[&str]) {
         .unwrap();
     }
 }
-pub(crate) fn capture_batches(s:&CaptureStore,total:usize,per_batch:usize) {
-    let k=JournalKernel::activate(s).unwrap();
+pub(crate) fn capture_batches(s: &CaptureStore, total: usize, per_batch: usize) {
+    let k = JournalKernel::activate(s).unwrap();
     for offset in (0..total).step_by(per_batch) {
         k.write(|w| {
-            for _ in offset..(offset+per_batch).min(total) {
-                w.create_capture(CreateCaptureInput {source:"text".into(),content:"bounded row".into(),project_id:None})?;
+            for _ in offset..(offset + per_batch).min(total) {
+                w.create_capture(CreateCaptureInput {
+                    source: "text".into(),
+                    content: "bounded row".into(),
+                    project_id: None,
+                })?;
             }
             Ok(())
-        }).unwrap();
+        })
+        .unwrap();
     }
 }
 pub(crate) fn rename(s: &CaptureStore, name: &str) {
@@ -311,26 +316,48 @@ pub(crate) async fn with_import_fault(
     sync_io: bool,
     work: impl std::future::Future<Output = ()>,
 ) {
-    let fault = if sync_io { super::fault_io::Fault::SyncIo } else { super::fault_io::Fault::WriteFull };
+    let fault = if sync_io {
+        super::fault_io::Fault::SyncIo
+    } else {
+        super::fault_io::Fault::WriteFull
+    };
     // Store remains borrowed until the future and callback guard are dropped.
     let guard = unsafe { super::fault_io::FileFault::install(s, fault) };
     work.await;
     assert_eq!(guard.hits(), 1);
 }
-pub(crate) fn install_d4(s:&CaptureStore) { super::g3::install_d4(s).unwrap(); }
-pub(crate) fn assert_same_row(a:&CaptureStore,b:&CaptureStore,e:super::codec::EntityKind,key:&[String]) {
-    let source=a.connection.lock().unwrap(); let target=b.connection.lock().unwrap();
-    assert_eq!(super::sql_effects::reread(&source,e,key).unwrap(),super::sql_effects::reread(&target,e,key).unwrap());
+pub(crate) fn install_d4(s: &CaptureStore) {
+    super::g3::install_d4(s).unwrap();
 }
-pub(crate) fn last_original(s:&CaptureStore)->crate::sync::Envelope {
-    let c=s.connection.lock().unwrap();
-    let bytes=c.query_row("SELECT canonical_bytes FROM sync_bundles ORDER BY rowid DESC LIMIT 1",[],|r|r.get::<_,Vec<u8>>(0)).unwrap();
+pub(crate) fn assert_same_row(
+    a: &CaptureStore,
+    b: &CaptureStore,
+    e: super::codec::EntityKind,
+    key: &[String],
+) {
+    let source = a.connection.lock().unwrap();
+    let target = b.connection.lock().unwrap();
+    assert_eq!(
+        super::sql_effects::reread(&source, e, key).unwrap(),
+        super::sql_effects::reread(&target, e, key).unwrap()
+    );
+}
+pub(crate) fn last_original(s: &CaptureStore) -> crate::sync::Envelope {
+    let c = s.connection.lock().unwrap();
+    let bytes = c
+        .query_row(
+            "SELECT canonical_bytes FROM sync_bundles ORDER BY rowid DESC LIMIT 1",
+            [],
+            |r| r.get::<_, Vec<u8>>(0),
+        )
+        .unwrap();
     crate::sync::bootstrap::envelope(bytes).unwrap()
 }
-pub(crate) fn held_project_kernel_continues(s:&CaptureStore,id:&str,import:impl FnOnce()) {
-    let k=JournalKernel::activate(s).unwrap();
+pub(crate) fn held_project_kernel_continues(s: &CaptureStore, id: &str, import: impl FnOnce()) {
+    let k = JournalKernel::activate(s).unwrap();
     import();
-    k.write(|w|w.rename_project(id,"Local after foreign transition")).unwrap();
+    k.write(|w| w.rename_project(id, "Local after foreign transition"))
+        .unwrap();
 }
 pub(crate) fn history(s: &CaptureStore) -> (String, String, String) {
     history_inner(s, false)
@@ -391,7 +418,13 @@ fn history_inner(s: &CaptureStore, select_edit: bool) -> (String, String, String
     k.write(|w| w.record_distillation(&empty.id, vec![]))
         .unwrap();
     if select_edit {
-        k.write(|w| w.update_object(&object.id, super::writer_tests::change("Selected native history"))).unwrap();
+        k.write(|w| {
+            w.update_object(
+                &object.id,
+                super::writer_tests::change("Selected native history"),
+            )
+        })
+        .unwrap();
     }
     (c.id, object.id, root)
 }
@@ -442,45 +475,119 @@ pub(crate) fn relation_owned(s: &CaptureStore, source: &str, target: &str, origi
     .unwrap()
     .id
 }
-pub(crate) fn remove_model(s:&CaptureStore,id:&str) {
-    use crate::storage::integration_store::{ObjectSnapshot,IntegrationWrite};
-    let edge=s.list_relations().unwrap().into_iter().find(|r|r.id==id).unwrap();
-    let snapshot=|id:&str|{
-        let object=s.get_knowledge_object(id).unwrap().unwrap();
-        ObjectSnapshot{object_id:id.into(),revision_id:s.current_revision_id_of(id).unwrap().unwrap(),project_id:object.project_id}
+pub(crate) fn remove_model(s: &CaptureStore, id: &str) {
+    use crate::storage::integration_store::{IntegrationWrite, ObjectSnapshot};
+    let edge = s
+        .list_relations()
+        .unwrap()
+        .into_iter()
+        .find(|r| r.id == id)
+        .unwrap();
+    let snapshot = |id: &str| {
+        let object = s.get_knowledge_object(id).unwrap().unwrap();
+        ObjectSnapshot {
+            object_id: id.into(),
+            revision_id: s.current_revision_id_of(id).unwrap().unwrap(),
+            project_id: object.project_id,
+        }
     };
-    let write=IntegrationWrite{focus:snapshot(&edge.source_object_id),context:vec![snapshot(&edge.target_object_id)],remove:vec![id.into()],add:vec![]};
-    assert_eq!(JournalKernel::activate(s).unwrap().write(|w|w.apply_integration(write)).unwrap().removed,1);
+    let write = IntegrationWrite {
+        focus: snapshot(&edge.source_object_id),
+        context: vec![snapshot(&edge.target_object_id)],
+        remove: vec![id.into()],
+        add: vec![],
+    };
+    assert_eq!(
+        JournalKernel::activate(s)
+            .unwrap()
+            .write(|w| w.apply_integration(write))
+            .unwrap()
+            .removed,
+        1
+    );
 }
-pub(crate) fn rename_id(s:&CaptureStore,id:&str,name:&str) {
-    JournalKernel::activate(s).unwrap().write(|w|w.rename_project(id,name)).unwrap();
+pub(crate) fn rename_id(s: &CaptureStore, id: &str, name: &str) {
+    JournalKernel::activate(s)
+        .unwrap()
+        .write(|w| w.rename_project(id, name))
+        .unwrap();
 }
-pub(crate) fn project_only(s:&CaptureStore,name:&str)->String {
-    JournalKernel::activate(s).unwrap().write(|w|w.create_project(name)).unwrap().id
+pub(crate) fn project_only(s: &CaptureStore, name: &str) -> String {
+    JournalKernel::activate(s)
+        .unwrap()
+        .write(|w| w.create_project(name))
+        .unwrap()
+        .id
 }
-pub(crate) fn archive_id(s:&CaptureStore,id:&str,restore:bool) {
-    JournalKernel::activate(s).unwrap().write(|w|if restore {w.restore_project(id)} else {w.archive_project(id)}).unwrap();
+pub(crate) fn archive_id(s: &CaptureStore, id: &str, restore: bool) {
+    JournalKernel::activate(s)
+        .unwrap()
+        .write(|w| {
+            if restore {
+                w.restore_project(id)
+            } else {
+                w.archive_project(id)
+            }
+        })
+        .unwrap();
 }
-pub(crate) fn move_capture_id(s:&CaptureStore,id:&str,project:&str) {
-    JournalKernel::activate(s).unwrap().write(|w|w.move_capture(id,project)).unwrap();
+pub(crate) fn move_capture_id(s: &CaptureStore, id: &str, project: &str) {
+    JournalKernel::activate(s)
+        .unwrap()
+        .write(|w| w.move_capture(id, project))
+        .unwrap();
 }
-pub(crate) fn edit_id(s:&CaptureStore,id:&str,title:&str) {
-    JournalKernel::activate(s).unwrap().write(|w|w.update_object(id,super::writer_tests::change(title))).unwrap();
+pub(crate) fn edit_id(s: &CaptureStore, id: &str, title: &str) {
+    JournalKernel::activate(s)
+        .unwrap()
+        .write(|w| w.update_object(id, super::writer_tests::change(title)))
+        .unwrap();
 }
-pub(crate) fn open_proposal(s:&CaptureStore)->(String,String,String,String) {
-    open_proposal_with_evidence(s,None)
+pub(crate) fn open_proposal(s: &CaptureStore) -> (String, String, String, String) {
+    open_proposal_with_evidence(s, None)
 }
-pub(crate) fn open_proposal_with_evidence(s:&CaptureStore,existing:Option<(i64,i64)>)->(String,String,String,String) {
-    use super::writer_tests::{candidate,decision_for,pending_for,proposal_for};
-    let k=JournalKernel::activate(s).unwrap();
-    let cap=k.write(|w|w.create_capture(CreateCaptureInput{source:"text".into(),content:"Alpha Beta Gamma".into(),project_id:None})).unwrap();
-    let object=k.write(|w|w.record_distillation(&cap.id,vec![candidate("Target",0,4)])).unwrap().remove(0);
-    let base=s.current_revision_id_of(&object.id).unwrap().unwrap();
-    let claim=k.write(|w|w.stage_uncertain_claim(pending_for(decision_for(&cap.id,0,vec![object.id.clone()]),vec![object.id.clone()]))).unwrap().0;
-    let mut input=proposal_for(&claim.id,&object.id,&base,"Original draft",&cap.id);
-    if let Some((start,end))=existing {input.evidence.push(crate::storage::proposal_store::EvidenceRef{role:"existing".into(),capture_id:cap.id.clone(),start,end});}
-    let proposal=k.write(|w|w.insert_proposal(input)).unwrap().0;
-    (object.id,base,claim.id,proposal.id)
+pub(crate) fn open_proposal_with_evidence(
+    s: &CaptureStore,
+    existing: Option<(i64, i64)>,
+) -> (String, String, String, String) {
+    use super::writer_tests::{candidate, decision_for, pending_for, proposal_for};
+    let k = JournalKernel::activate(s).unwrap();
+    let cap = k
+        .write(|w| {
+            w.create_capture(CreateCaptureInput {
+                source: "text".into(),
+                content: "Alpha Beta Gamma".into(),
+                project_id: None,
+            })
+        })
+        .unwrap();
+    let object = k
+        .write(|w| w.record_distillation(&cap.id, vec![candidate("Target", 0, 4)]))
+        .unwrap()
+        .remove(0);
+    let base = s.current_revision_id_of(&object.id).unwrap().unwrap();
+    let claim = k
+        .write(|w| {
+            w.stage_uncertain_claim(pending_for(
+                decision_for(&cap.id, 0, vec![object.id.clone()]),
+                vec![object.id.clone()],
+            ))
+        })
+        .unwrap()
+        .0;
+    let mut input = proposal_for(&claim.id, &object.id, &base, "Original draft", &cap.id);
+    if let Some((start, end)) = existing {
+        input
+            .evidence
+            .push(crate::storage::proposal_store::EvidenceRef {
+                role: "existing".into(),
+                capture_id: cap.id.clone(),
+                start,
+                end,
+            });
+    }
+    let proposal = k.write(|w| w.insert_proposal(input)).unwrap().0;
+    (object.id, base, claim.id, proposal.id)
 }
 
 // Actual SQLite authorization failure while restoring the frozen revision
@@ -545,21 +652,40 @@ pub(crate) struct BudgetRestoreFault<'a> {
     store: &'a CaptureStore,
     state: Box<(usize, *mut rusqlite::ffi::sqlite3)>,
 }
-impl BudgetRestoreFault<'_> { pub fn hits(&self) -> usize { self.state.0 } }
+impl BudgetRestoreFault<'_> {
+    pub fn hits(&self) -> usize {
+        self.state.0
+    }
+}
 impl Drop for BudgetRestoreFault<'_> {
     fn drop(&mut self) {
         let c = self.store.connection.lock().unwrap();
-        assert_eq!(unsafe { rusqlite::ffi::sqlite3_set_authorizer(c.handle(), None, std::ptr::null_mut()) }, rusqlite::ffi::SQLITE_OK);
+        assert_eq!(
+            unsafe {
+                rusqlite::ffi::sqlite3_set_authorizer(c.handle(), None, std::ptr::null_mut())
+            },
+            rusqlite::ffi::SQLITE_OK
+        );
     }
 }
 pub(crate) fn deny_post_commit_budget_restore(s: &CaptureStore) -> BudgetRestoreFault<'_> {
     use rusqlite::ffi;
     use std::ffi::{c_char, c_int, c_void, CStr};
-    unsafe extern "C" fn deny(p: *mut c_void, action: c_int, name: *const c_char, value: *const c_char, _: *const c_char, _: *const c_char) -> c_int {
+    unsafe extern "C" fn deny(
+        p: *mut c_void,
+        action: c_int,
+        name: *const c_char,
+        value: *const c_char,
+        _: *const c_char,
+        _: *const c_char,
+    ) -> c_int {
         let state = &mut *p.cast::<(usize, *mut ffi::sqlite3)>();
-        if action == ffi::SQLITE_PRAGMA && !name.is_null() && !value.is_null()
+        if action == ffi::SQLITE_PRAGMA
+            && !name.is_null()
+            && !value.is_null()
             && CStr::from_ptr(name).to_bytes() == b"max_page_count"
-            && ffi::sqlite3_get_autocommit(state.1) != 0 {
+            && ffi::sqlite3_get_autocommit(state.1) != 0
+        {
             state.0 += 1;
             return ffi::SQLITE_DENY;
         }
@@ -567,11 +693,29 @@ pub(crate) fn deny_post_commit_budget_restore(s: &CaptureStore) -> BudgetRestore
     }
     let c = s.connection.lock().unwrap();
     let mut state = Box::new((0, unsafe { c.handle() }));
-    assert_eq!(unsafe { ffi::sqlite3_set_authorizer(c.handle(), Some(deny), (&mut *state as *mut (usize, *mut ffi::sqlite3)).cast()) }, ffi::SQLITE_OK);
+    assert_eq!(
+        unsafe {
+            ffi::sqlite3_set_authorizer(
+                c.handle(),
+                Some(deny),
+                (&mut *state as *mut (usize, *mut ffi::sqlite3)).cast(),
+            )
+        },
+        ffi::SQLITE_OK
+    );
     BudgetRestoreFault { store: s, state }
 }
-pub(crate) fn physically_admitted(s: &CaptureStore) -> crate::storage::sync_store::CandidateSyncStore<'_> {
-    let p=super::admission::PhysicalAdmissionPolicy::synthetic_profile_a();
-    let physical=super::admission_session::PhysicalAdmission::bind(s,&s.connection.lock().unwrap(),p,std::sync::Arc::new(super::capacity::NativeCapacity),super::admission::ClaimPool::new(p.recovery)).unwrap();
-    crate::storage::sync_store::CandidateSyncStore::admitted_for_test(s,physical)
+pub(crate) fn physically_admitted(
+    s: &CaptureStore,
+) -> crate::storage::sync_store::CandidateSyncStore<'_> {
+    let p = super::admission::PhysicalAdmissionPolicy::synthetic_profile_a();
+    let physical = super::admission_session::PhysicalAdmission::bind(
+        s,
+        &s.connection.lock().unwrap(),
+        p,
+        std::sync::Arc::new(super::capacity::NativeCapacity),
+        super::admission::ClaimPool::new(p.recovery),
+    )
+    .unwrap();
+    crate::storage::sync_store::CandidateSyncStore::admitted_for_test(s, physical)
 }

@@ -78,8 +78,8 @@ pub(crate) fn p1363_to_der(signature: &[u8]) -> Result<Vec<u8>> {
         return Err(E::Signature);
     }
     let mut body = Vec::with_capacity(70);
-    for scalar in signature.chunks_exact(32) {
-        if scalar.iter().all(|b| *b == 0) || scalar >= ORDER.as_slice() {
+    for scalar in signature.as_chunks::<32>().0 {
+        if scalar.iter().all(|b| *b == 0) || scalar.as_slice() >= ORDER.as_slice() {
             return Err(E::Signature);
         }
         let start = scalar.iter().position(|b| *b != 0).ok_or(E::Signature)?;

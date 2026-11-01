@@ -34,7 +34,11 @@ impl<'a> CandidateSyncStore<'a> {
         store: &'a CaptureStore,
         physical: super::journal::PhysicalAdmission,
     ) -> Self {
-        Self { store, usable: AtomicBool::new(true), physical: Some(physical) }
+        Self {
+            store,
+            usable: AtomicBool::new(true),
+            physical: Some(physical),
+        }
     }
     /// Bounded resumable policy work, on the same owner/transaction as receive.
     pub fn reprocess(
@@ -83,13 +87,17 @@ impl<'a> CandidateSyncStore<'a> {
             .map_err(sql)?;
         // Reuse the journal's volume-bound claim and VFS/pager budget. Retain
         // it through COMMIT/rollback and restore configuration before a receipt.
-        let mut budget = match self.physical.as_ref()
+        let mut budget = match self
+            .physical
+            .as_ref()
             .map(|p| p.prepare(&tx, super::journal::StorageOperation::ImportTransaction))
             .transpose()
         {
             Ok(b) => b,
             Err(e) => {
-                if tx.rollback().is_err() || e == super::journal::PhysicalAdmissionError::RecoveryRequired {
+                if tx.rollback().is_err()
+                    || e == super::journal::PhysicalAdmissionError::RecoveryRequired
+                {
                     self.usable.store(false, Ordering::SeqCst);
                     let _ = c.pragma_update(None, "query_only", true);
                     return Err(Error::Storage);
@@ -101,7 +109,9 @@ impl<'a> CandidateSyncStore<'a> {
             .and_then(|_| work(&tx))
             .and_then(|v| {
                 quota(&tx)?;
-                if g3::installed(&tx)? { g3::observers_restored(&tx)?; }
+                if g3::installed(&tx)? {
+                    g3::observers_restored(&tx)?;
+                }
                 authorize(&tx, s, clock, x)?;
                 if let Some(b) = &mut budget {
                     b.check(&tx).map_err(|_| Error::StorageLimited)?;
@@ -136,7 +146,11 @@ impl<'a> CandidateSyncStore<'a> {
         if cleanup_failed {
             self.usable.store(false, Ordering::SeqCst);
             let _ = c.pragma_update(None, "query_only", true);
-            return Err(if committed { Error::CommittedCleanupFailed } else { result.err().unwrap_or(Error::Storage) });
+            return Err(if committed {
+                Error::CommittedCleanupFailed
+            } else {
+                result.err().unwrap_or(Error::Storage)
+            });
         }
         result
     }
@@ -215,8 +229,10 @@ pub(super) fn quota(c: &Connection) -> Result<()> {
     }
     if g3::d4_installed(c)? {
         let (heads,extra):(i64,i64)=c.query_row("SELECT count(*),coalesce(sum(length(entity)+length(CAST(key_json AS BLOB))+length(facet)+length(event)+length(hash)+32),0)+(SELECT count(*)*64 FROM import_d4_commits)+(SELECT count(*)*128 FROM bootstrap_lifecycle) FROM import_d4_heads",[],|r|Ok((r.get(0)?,r.get(1)?))).map_err(sql)?;
-        if heads>65536 {return Err(Error::StorageLimited);}
-        bytes=bytes.checked_add(extra).ok_or(Error::StorageLimited)?;
+        if heads > 65536 {
+            return Err(Error::StorageLimited);
+        }
+        bytes = bytes.checked_add(extra).ok_or(Error::StorageLimited)?;
     }
     let creates: i64 = c
         .query_row("SELECT count(*) FROM import_creates", [], |r| r.get(0))
@@ -344,18 +360,34 @@ pub(super) fn reference(c: &Connection, r: &EventRef) -> Result<Option<codec::Jo
     }
     Ok(Some(ValidatedEvent::parse(e)?.core().clone()))
 }
-pub(super) fn authorize_event_scope(s:&VerifiedSession,e:&ValidatedEvent)->Result<()> {
-    let check=|origin:&str|->Result<()> {
-        if !s.permits(Uuid::parse_str(origin).map_err(|_|Error::Integrity)?) {return Err(Error::Trust);}
+pub(super) fn authorize_event_scope(s: &VerifiedSession, e: &ValidatedEvent) -> Result<()> {
+    let check = |origin: &str| -> Result<()> {
+        if !s.permits(Uuid::parse_str(origin).map_err(|_| Error::Integrity)?) {
+            return Err(Error::Trust);
+        }
         Ok(())
     };
     check(&e.core().origin_id)?;
-    for d in &e.core().dependencies {if let Some(r)=&d.event_ref {check(&r.origin_id)?;}}
+    for d in &e.core().dependencies {
+        if let Some(r) = &d.event_ref {
+            check(&r.origin_id)?;
+        }
+    }
     for op in &e.core().operations {
         match op {
-            Operation::FacetUpdate(u)=>for p in u.expected.values() {if let Some(r)=&p.event_ref {check(&r.origin_id)?;}},
-            Operation::RelationRemove(r)=>if let codec::ObservedCreate::Event(r)=&r.observed_create {check(&r.origin_id)?;},
-            _=>{}
+            Operation::FacetUpdate(u) => {
+                for p in u.expected.values() {
+                    if let Some(r) = &p.event_ref {
+                        check(&r.origin_id)?;
+                    }
+                }
+            }
+            Operation::RelationRemove(r) => {
+                if let codec::ObservedCreate::Event(r) = &r.observed_create {
+                    check(&r.origin_id)?;
+                }
+            }
+            _ => {}
         }
     }
     Ok(())
@@ -398,7 +430,7 @@ fn validate_spans(c: &Connection, v: &ValidatedEvent) -> Result<()> {
             });
             let body = match body {
                 Some(b) => Some(b),
-                None => import_view::row(c, EntityKind::Captures, &[capture.clone()])?
+                None => import_view::row(c, EntityKind::Captures, std::slice::from_ref(capture))?
                     .and_then(|r| r.get("content").cloned()),
             };
             if let Some(FieldValue::Text(body)) = body {
@@ -482,11 +514,14 @@ fn classify(c: &Connection, v: &ValidatedEvent) -> Result<(Outcome, bool)> {
             Operation::RecordCreate(row) => {
                 if g3::d4_installed(c)? && row.entity == EntityKind::Relations {
                     conflict |= core.operations.iter().any(|op|matches!(op,Operation::RecordCreate(other) if other.entity==EntityKind::Relations&&other.key!=row.key&&["kind","source_object_id","target_object_id"].iter().all(|f|other.after.get(*f)==row.after.get(*f))));
-                    let value = |k: &str| match row.after.get(k) { Some(FieldValue::Text(s)) => Ok(s.as_str()), _=>Err(Error::Integrity) };
+                    let value = |k: &str| match row.after.get(k) {
+                        Some(FieldValue::Text(s)) => Ok(s.as_str()),
+                        _ => Err(Error::Integrity),
+                    };
                     let existing:Option<String>=c.query_row("SELECT id FROM relations WHERE kind=?1 AND source_object_id=?2 AND target_object_id=?3 AND id<>?4",params![value("kind")?,value("source_object_id")?,value("target_object_id")?,row.key[0]],|r|r.get(0)).optional().map_err(sql)?;
-                    if let Some(id)=existing {
-                        conflict=true;
-                        related=image_value(import_view::row(c,EntityKind::Relations,&[id])?);
+                    if let Some(id) = existing {
+                        conflict = true;
+                        related = image_value(import_view::row(c, EntityKind::Relations, &[id])?);
                     }
                 }
                 if let Some(actual) = &actual {
@@ -531,7 +566,7 @@ fn classify(c: &Connection, v: &ValidatedEvent) -> Result<(Outcome, bool)> {
                             related = image_value(import_view::row(
                                 c,
                                 EntityKind::Projects,
-                                &[project.clone()],
+                                std::slice::from_ref(project),
                             )?);
                         }
                     }
@@ -555,19 +590,33 @@ fn classify(c: &Connection, v: &ValidatedEvent) -> Result<(Outcome, bool)> {
                 if let Some(actual) = &actual {
                     if g3::d4_installed(c)? {
                         conflict |= actual != &update.before;
-                        if update.entity==EntityKind::Projects {
-                            if let Some(FieldValue::Text(name))=update.after.get("name") {
+                        if update.entity == EntityKind::Projects {
+                            if let Some(FieldValue::Text(name)) = update.after.get("name") {
                                 let duplicate:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM projects WHERE lower(name)=lower(?1) AND id<>?2)",params![name,update.key[0]],|r|r.get(0)).map_err(sql)?;
                                 conflict |= duplicate;
                             }
                         }
-                        if matches!(update.entity,EntityKind::Captures|EntityKind::KnowledgeObjects) {
-                            if let Some(FieldValue::Text(project))=update.after.get("project_id") {
+                        if matches!(
+                            update.entity,
+                            EntityKind::Captures | EntityKind::KnowledgeObjects
+                        ) {
+                            if let Some(FieldValue::Text(project)) = update.after.get("project_id")
+                            {
                                 let archived:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM projects WHERE id=?1 AND archived_at IS NOT NULL)",[project],|r|r.get(0)).map_err(sql)?;
-                                if archived {conflict=true;related=image_value(import_view::row(c,EntityKind::Projects,&[project.clone()])?);}
+                                if archived {
+                                    conflict = true;
+                                    related = image_value(import_view::row(
+                                        c,
+                                        EntityKind::Projects,
+                                        std::slice::from_ref(project),
+                                    )?);
+                                }
                             }
                         }
-                        if update.entity==EntityKind::Projects && update.after.get("archived_at")!=Some(&FieldValue::Null) && update.before.get("archived_at")==Some(&FieldValue::Null) {
+                        if update.entity == EntityKind::Projects
+                            && update.after.get("archived_at") != Some(&FieldValue::Null)
+                            && update.before.get("archived_at") == Some(&FieldValue::Null)
+                        {
                             // The codec has no archive child-set commitment. A
                             // concurrent Capture must remain a visible conflict.
                             let children:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM captures WHERE project_id=?1 UNION ALL SELECT 1 FROM knowledge_objects WHERE project_id=?1)",[&update.key[0]],|r|r.get(0)).map_err(sql)?;
@@ -662,7 +711,12 @@ pub(super) fn refresh(
 }
 // Preserve the existing 16-event cursor/transaction contract. The foreground
 // engine can distinguish a productive batch from a stable unresolved batch.
-fn refresh_batch(c: &Connection, s: &VerifiedSession, clock: &dyn SyncClock, x: &Cancellation) -> Result<(usize, bool)> {
+fn refresh_batch(
+    c: &Connection,
+    s: &VerifiedSession,
+    clock: &dyn SyncClock,
+    x: &Cancellation,
+) -> Result<(usize, bool)> {
     let g3 = g3::installed(c)?;
     let cursor: i64 = if g3 {
         c.query_row("SELECT cursor FROM import_g3_policy", [], |r| r.get(0))
@@ -708,8 +762,14 @@ fn refresh_batch(c: &Connection, s: &VerifiedSession, clock: &dyn SyncClock, x: 
             }
             continue;
         }
-        authorize_event_scope(s,&v)?;
-        let prior: (String, bool) = c.query_row("SELECT outcome,chain_ok FROM import_events WHERE event=?1", [&event], |r|Ok((r.get(0)?,r.get(1)?))).map_err(sql)?;
+        authorize_event_scope(s, &v)?;
+        let prior: (String, bool) = c
+            .query_row(
+                "SELECT outcome,chain_ok FROM import_events WHERE event=?1",
+                [&event],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .map_err(sql)?;
         let (outcome, chain) = match classify(c, &v) {
             Ok(result) => result,
             Err(Error::Integrity) => (Outcome::RejectedIntegrity, false),
@@ -780,14 +840,25 @@ pub(super) fn cursors(c: &Connection) -> Result<()> {
     Ok(())
 }
 impl SyncStore for CandidateSyncStore<'_> {
-    fn settle(&self, s: &VerifiedSession, clock: &dyn SyncClock, x: &Cancellation) -> Result<(usize, bool)> {
+    fn settle(
+        &self,
+        s: &VerifiedSession,
+        clock: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<(usize, bool)> {
         self.write(s, clock, x, |c| {
             let result = refresh_batch(c, s, clock, x)?;
             cursors(c)?;
             Ok(result)
         })
     }
-    fn retained_receipt(&self, s: &VerifiedSession, id: Uuid, clock: &dyn SyncClock, x: &Cancellation) -> Result<Receipt> {
+    fn retained_receipt(
+        &self,
+        s: &VerifiedSession,
+        id: Uuid,
+        clock: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<Receipt> {
         self.read(s, clock, x, |c| {
             let e = ValidatedEvent::parse(load(c, id)?.ok_or(Error::Integrity)?)?;
             authorize_event_scope(s, &e)?;
@@ -915,8 +986,8 @@ impl SyncStore for CandidateSyncStore<'_> {
             if &e.identity != id {
                 return Err(Error::Integrity);
             }
-            let validated=ValidatedEvent::parse(e.clone())?;
-            authorize_event_scope(s,&validated)?;
+            let validated = ValidatedEvent::parse(e.clone())?;
+            authorize_event_scope(s, &validated)?;
             g3::disclosure_event(&validated)?;
             Ok(e)
         })
@@ -1074,7 +1145,7 @@ pub(super) fn retain_in(
     if !s.permits(id.origin) {
         return Err(Error::Trust);
     }
-    authorize_event_scope(s,e)?;
+    authorize_event_scope(s, e)?;
     if let Some(prior) = load(c, id.event)? {
         if prior.identity != *id || prior.bytes != envelope.bytes {
             collision(c, s, envelope, "identity")?;

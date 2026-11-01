@@ -22,7 +22,10 @@ use rusqlite::{params, params_from_iter, OptionalExtension};
 
 use super::capture_store::{CaptureStore, StoreError};
 use super::knowledge_store::{get_object_in, KnowledgeObject};
-use super::relation_store::{canonical_ends, insert_all, read_relations, NewRelation, Relation, KINDS, RELATION_COLUMNS, RELATION_JOINS};
+use super::relation_store::{
+    canonical_ends, insert_all, read_relations, NewRelation, Relation, KINDS, RELATION_COLUMNS,
+    RELATION_JOINS,
+};
 
 /// What a decision was based on for one object. Compared with the authoritative state at write time.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,7 +61,10 @@ pub struct IntegrationWritten {
 
 impl CaptureStore {
     /// One object with its CURRENT text, or `None`.
-    pub fn get_knowledge_object(&self, object_id: &str) -> Result<Option<KnowledgeObject>, StoreError> {
+    pub fn get_knowledge_object(
+        &self,
+        object_id: &str,
+    ) -> Result<Option<KnowledgeObject>, StoreError> {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         get_object_in(&connection, object_id)
     }
@@ -66,25 +72,41 @@ impl CaptureStore {
     /// The id of the object's current revision, or `None` when the object does not exist.
     pub fn current_revision_id_of(&self, object_id: &str) -> Result<Option<String>, StoreError> {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
-        let found: Option<Option<String>> = connection.query_row("SELECT current_revision_id FROM knowledge_objects WHERE id = ?1", [object_id], |row| row.get(0)).optional()?;
+        let found: Option<Option<String>> = connection
+            .query_row(
+                "SELECT current_revision_id FROM knowledge_objects WHERE id = ?1",
+                [object_id],
+                |row| row.get(0),
+            )
+            .optional()?;
         Ok(found.flatten())
     }
 
     /// `object id -> current revision id` for every object of a project, in one statement. Read BEFORE the text it will be compared
     /// with, so an edit in between can only make the later guard stricter, never looser.
-    pub fn project_revisions(&self, project_id: &str) -> Result<HashMap<String, String>, StoreError> {
+    pub fn project_revisions(
+        &self,
+        project_id: &str,
+    ) -> Result<HashMap<String, String>, StoreError> {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let mut statement = connection.prepare("SELECT id, current_revision_id FROM knowledge_objects WHERE project_id = ?1 AND current_revision_id IS NOT NULL")?;
-        let rows = statement.query_map([project_id], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))?;
+        let rows = statement.query_map([project_id], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?;
         Ok(rows.collect::<Result<HashMap<_, _>, _>>()?)
     }
 
     /// `object id -> created_at of its CURRENT revision` (when the current text was last written), for every object of a project. This is the
     /// time of the latest revision, NOT the object's creation time; context for the verifier only.
-    pub fn project_current_revision_times(&self, project_id: &str) -> Result<HashMap<String, String>, StoreError> {
+    pub fn project_current_revision_times(
+        &self,
+        project_id: &str,
+    ) -> Result<HashMap<String, String>, StoreError> {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let mut statement = connection.prepare("SELECT o.id, r.created_at FROM knowledge_objects o JOIN thought_revisions r ON r.id = o.current_revision_id WHERE o.project_id = ?1")?;
-        let rows = statement.query_map([project_id], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))?;
+        let rows = statement.query_map([project_id], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?;
         Ok(rows.collect::<Result<HashMap<_, _>, _>>()?)
     }
 
@@ -96,7 +118,11 @@ impl CaptureStore {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let marks = vec!["?"; object_ids.len()].join(",");
         let sql = format!("SELECT {RELATION_COLUMNS} FROM {RELATION_JOINS} WHERE r.source_object_id IN ({marks}) AND r.target_object_id IN ({marks}) ORDER BY r.seq ASC");
-        let values: Vec<&str> = object_ids.iter().chain(object_ids.iter()).map(String::as_str).collect();
+        let values: Vec<&str> = object_ids
+            .iter()
+            .chain(object_ids.iter())
+            .map(String::as_str)
+            .collect();
         read_relations(&connection, &sql, params_from_iter(values))
     }
 
@@ -109,7 +135,10 @@ impl CaptureStore {
     }
 
     /// Applies one integration decision atomically. See the module documentation for the invariants.
-    pub fn apply_integration(&self, write: IntegrationWrite) -> Result<IntegrationWritten, StoreError> {
+    pub fn apply_integration(
+        &self,
+        write: IntegrationWrite,
+    ) -> Result<IntegrationWritten, StoreError> {
         validate_integration(&write)?;
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
@@ -214,7 +243,7 @@ pub(super) fn apply_integration_in(
         }
         edges.push(edge);
     }
-    for item in insert_all(&transaction, edges, "model")? {
+    for item in insert_all(transaction, edges, "model")? {
         if item.created {
             written.added.push(item.relation);
         } else {
@@ -236,69 +265,158 @@ mod tests {
         let mut made = Vec::new();
         for index in 0..count {
             let text = format!("thought number {index}");
-            let capture = store.create(CreateCaptureInput { source: "text".into(), content: text.clone(), project_id: None }).unwrap();
+            let capture = store
+                .create(CreateCaptureInput {
+                    source: "text".into(),
+                    content: text.clone(),
+                    project_id: None,
+                })
+                .unwrap();
             let length = text.chars().count() as i64;
-            made.extend(store.record_distillation(&capture.id, vec![NewKnowledgeObject { kind: "idea".into(), title: format!("t{index}"), body: text, source_start: 0, source_end: length }]).unwrap());
+            made.extend(
+                store
+                    .record_distillation(
+                        &capture.id,
+                        vec![NewKnowledgeObject {
+                            kind: "idea".into(),
+                            title: format!("t{index}"),
+                            body: text,
+                            source_start: 0,
+                            source_end: length,
+                        }],
+                    )
+                    .unwrap(),
+            );
         }
         (store, made)
     }
 
     fn snapshot(store: &CaptureStore, object: &KnowledgeObject) -> ObjectSnapshot {
-        ObjectSnapshot { object_id: object.id.clone(), revision_id: store.current_revision_id_of(&object.id).unwrap().unwrap(), project_id: object.project_id.clone() }
+        ObjectSnapshot {
+            object_id: object.id.clone(),
+            revision_id: store.current_revision_id_of(&object.id).unwrap().unwrap(),
+            project_id: object.project_id.clone(),
+        }
     }
 
     fn edge(kind: &str, source: &str, target: &str) -> NewRelation {
-        NewRelation { kind: kind.into(), source_object_id: source.into(), target_object_id: target.into() }
+        NewRelation {
+            kind: kind.into(),
+            source_object_id: source.into(),
+            target_object_id: target.into(),
+        }
     }
 
     #[test]
     fn a_user_relation_can_never_be_removed_through_an_integration() {
         let (store, o) = objects(2);
-        let user = store.create_relation(edge("depends_on", &o[0].id, &o[1].id), "user").unwrap();
+        let user = store
+            .create_relation(edge("depends_on", &o[0].id, &o[1].id), "user")
+            .unwrap();
         let written = store
-            .apply_integration(IntegrationWrite { focus: snapshot(&store, &o[0]), context: vec![snapshot(&store, &o[1])], remove: vec![user.id.clone()], add: vec![] })
+            .apply_integration(IntegrationWrite {
+                focus: snapshot(&store, &o[0]),
+                context: vec![snapshot(&store, &o[1])],
+                remove: vec![user.id.clone()],
+                add: vec![],
+            })
             .unwrap();
         assert_eq!(written.removed, 0);
-        assert_eq!(store.list_relations().unwrap(), vec![user], "the user relation is exactly as it was");
+        assert_eq!(
+            store.list_relations().unwrap(),
+            vec![user],
+            "the user relation is exactly as it was"
+        );
     }
 
     #[test]
     fn only_model_relations_that_touch_the_focus_are_removed() {
         let (store, o) = objects(4);
-        let mine = store.create_relation(edge("related_to", &o[0].id, &o[1].id), "model").unwrap();
-        let elsewhere = store.create_relation(edge("related_to", &o[2].id, &o[3].id), "model").unwrap();
+        let mine = store
+            .create_relation(edge("related_to", &o[0].id, &o[1].id), "model")
+            .unwrap();
+        let elsewhere = store
+            .create_relation(edge("related_to", &o[2].id, &o[3].id), "model")
+            .unwrap();
         let written = store
-            .apply_integration(IntegrationWrite { focus: snapshot(&store, &o[0]), context: vec![snapshot(&store, &o[1]), snapshot(&store, &o[2])], remove: vec![mine.id.clone(), elsewhere.id.clone()], add: vec![] })
+            .apply_integration(IntegrationWrite {
+                focus: snapshot(&store, &o[0]),
+                context: vec![snapshot(&store, &o[1]), snapshot(&store, &o[2])],
+                remove: vec![mine.id.clone(), elsewhere.id.clone()],
+                add: vec![],
+            })
             .unwrap();
         assert_eq!(written.removed, 1);
-        assert_eq!(store.list_relations().unwrap(), vec![elsewhere], "a relation that does not touch the focus is left alone");
+        assert_eq!(
+            store.list_relations().unwrap(),
+            vec![elsewhere],
+            "a relation that does not touch the focus is left alone"
+        );
     }
 
     #[test]
     fn a_replacement_is_one_transaction_and_a_stale_focus_writes_nothing() {
         let (store, o) = objects(2);
-        let old = store.create_relation(edge("related_to", &o[0].id, &o[1].id), "model").unwrap();
+        let old = store
+            .create_relation(edge("related_to", &o[0].id, &o[1].id), "model")
+            .unwrap();
         let before = snapshot(&store, &o[0]);
         let context = vec![snapshot(&store, &o[1])];
-        let write = IntegrationWrite { focus: before.clone(), context: context.clone(), remove: vec![old.id.clone()], add: vec![edge("depends_on", &o[0].id, &o[1].id)] };
+        let write = IntegrationWrite {
+            focus: before.clone(),
+            context: context.clone(),
+            remove: vec![old.id.clone()],
+            add: vec![edge("depends_on", &o[0].id, &o[1].id)],
+        };
 
         let written = store.apply_integration(write.clone()).unwrap();
         assert_eq!((written.removed, written.added.len()), (1, 1));
         let after = store.list_relations().unwrap();
         assert_eq!(after.len(), 1);
-        assert_eq!((after[0].kind.as_str(), after[0].origin.as_str(), after[0].source_object_id.as_str()), ("depends_on", "model", o[0].id.as_str()));
+        assert_eq!(
+            (
+                after[0].kind.as_str(),
+                after[0].origin.as_str(),
+                after[0].source_object_id.as_str()
+            ),
+            ("depends_on", "model", o[0].id.as_str())
+        );
 
         // The focus is edited after the decision was made: the same write is now stale.
-        store.update_object(&o[0].id, Changes { kind: None, title: Some("changed".into()), body: None }).unwrap();
-        let stale = store.apply_integration(IntegrationWrite { remove: vec![after[0].id.clone()], add: vec![edge("extends", &o[0].id, &o[1].id)], ..write }).unwrap();
+        store
+            .update_object(
+                &o[0].id,
+                Changes {
+                    kind: None,
+                    title: Some("changed".into()),
+                    body: None,
+                },
+            )
+            .unwrap();
+        let stale = store
+            .apply_integration(IntegrationWrite {
+                remove: vec![after[0].id.clone()],
+                add: vec![edge("extends", &o[0].id, &o[1].id)],
+                ..write
+            })
+            .unwrap();
         assert!(stale.stale);
-        assert_eq!(store.list_relations().unwrap(), after, "nothing was written");
+        assert_eq!(
+            store.list_relations().unwrap(),
+            after,
+            "nothing was written"
+        );
     }
 
     #[test]
     fn an_edge_that_does_not_touch_the_focus_is_refused() {
         let (store, o) = objects(3);
-        let result = store.apply_integration(IntegrationWrite { focus: snapshot(&store, &o[0]), context: vec![snapshot(&store, &o[1]), snapshot(&store, &o[2])], remove: vec![], add: vec![edge("related_to", &o[1].id, &o[2].id)] });
+        let result = store.apply_integration(IntegrationWrite {
+            focus: snapshot(&store, &o[0]),
+            context: vec![snapshot(&store, &o[1]), snapshot(&store, &o[2])],
+            remove: vec![],
+            add: vec![edge("related_to", &o[1].id, &o[2].id)],
+        });
         assert!(matches!(result, Err(StoreError::Invalid(_))));
         assert!(store.list_relations().unwrap().is_empty());
     }
@@ -306,8 +424,17 @@ mod tests {
     #[test]
     fn an_existing_edge_is_not_duplicated_and_keeps_its_origin() {
         let (store, o) = objects(2);
-        let user = store.create_relation(edge("related_to", &o[1].id, &o[0].id), "user").unwrap();
-        let written = store.apply_integration(IntegrationWrite { focus: snapshot(&store, &o[0]), context: vec![snapshot(&store, &o[1])], remove: vec![], add: vec![edge("related_to", &o[0].id, &o[1].id)] }).unwrap();
+        let user = store
+            .create_relation(edge("related_to", &o[1].id, &o[0].id), "user")
+            .unwrap();
+        let written = store
+            .apply_integration(IntegrationWrite {
+                focus: snapshot(&store, &o[0]),
+                context: vec![snapshot(&store, &o[1])],
+                remove: vec![],
+                add: vec![edge("related_to", &o[0].id, &o[1].id)],
+            })
+            .unwrap();
         assert_eq!((written.added.len(), written.already_present), (0, 1));
         assert_eq!(store.list_relations().unwrap(), vec![user]);
     }
@@ -318,18 +445,53 @@ mod tests {
         let focus = snapshot(&store, &o[0]);
         let a = snapshot(&store, &o[1]);
         let b = snapshot(&store, &o[2]);
-        store.update_object(&o[1].id, Changes { kind: None, title: Some("edited meanwhile".into()), body: None }).unwrap();
-        let written = store.apply_integration(IntegrationWrite { focus, context: vec![a, b], remove: vec![], add: vec![edge("related_to", &o[0].id, &o[1].id), edge("related_to", &o[0].id, &o[2].id)] }).unwrap();
+        store
+            .update_object(
+                &o[1].id,
+                Changes {
+                    kind: None,
+                    title: Some("edited meanwhile".into()),
+                    body: None,
+                },
+            )
+            .unwrap();
+        let written = store
+            .apply_integration(IntegrationWrite {
+                focus,
+                context: vec![a, b],
+                remove: vec![],
+                add: vec![
+                    edge("related_to", &o[0].id, &o[1].id),
+                    edge("related_to", &o[0].id, &o[2].id),
+                ],
+            })
+            .unwrap();
         assert_eq!((written.added.len(), written.skipped_stale), (1, 1));
     }
 
     #[test]
     fn relations_among_and_model_relations_touching_are_exact() {
         let (store, o) = objects(3);
-        store.create_relation(edge("related_to", &o[0].id, &o[1].id), "user").unwrap();
-        store.create_relation(edge("extends", &o[0].id, &o[2].id), "model").unwrap();
-        assert_eq!(store.relations_among(&[o[0].id.clone(), o[1].id.clone()]).unwrap().len(), 1);
-        assert_eq!(store.relations_among(&[o[0].id.clone(), o[1].id.clone(), o[2].id.clone()]).unwrap().len(), 2);
+        store
+            .create_relation(edge("related_to", &o[0].id, &o[1].id), "user")
+            .unwrap();
+        store
+            .create_relation(edge("extends", &o[0].id, &o[2].id), "model")
+            .unwrap();
+        assert_eq!(
+            store
+                .relations_among(&[o[0].id.clone(), o[1].id.clone()])
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            store
+                .relations_among(&[o[0].id.clone(), o[1].id.clone(), o[2].id.clone()])
+                .unwrap()
+                .len(),
+            2
+        );
         let model = store.model_relations_touching(&o[0].id).unwrap();
         assert_eq!(model.len(), 1);
         assert_eq!(model[0].origin, "model");

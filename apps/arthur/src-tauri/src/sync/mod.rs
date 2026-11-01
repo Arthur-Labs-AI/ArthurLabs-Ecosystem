@@ -7,17 +7,17 @@
 //! Candidate extension is test-installed, forward-only; v9 startup is unchanged.
 //! Outcomes expose needs-attention without logging rows, cores or SQL messages.
 //! Release trust/admission constructors fail closed pending signer, G3/G4 review.
-mod engine;
 pub(crate) mod bootstrap;
+mod engine;
 #[cfg(test)]
 mod fake;
 mod protocol;
+pub(crate) mod security;
 #[cfg(test)]
 #[path = "../storage/sync_tests.rs"]
 mod tests;
 pub(crate) mod trust;
 mod validation;
-pub(crate) mod security;
 
 pub(crate) use engine::{SyncEngine, SyncStore};
 pub(crate) use protocol::*;

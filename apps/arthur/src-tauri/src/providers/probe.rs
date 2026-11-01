@@ -28,7 +28,9 @@ pub enum ProbeOutcome {
 }
 
 pub async fn probe_models(api_base: &str, key: &ApiKey, models: &[&str]) -> ProbeOutcome {
-    let Ok(client) = http::client(TIMEOUT) else { return ProbeOutcome::Unreachable };
+    let Ok(client) = http::client(TIMEOUT) else {
+        return ProbeOutcome::Unreachable;
+    };
     for model in models {
         let url = format!("{}/models/{}", api_base.trim_end_matches('/'), model);
         let status = match client.get(url).bearer_auth(key.expose()).send().await {
@@ -65,11 +67,16 @@ mod tests {
         let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
             for status in statuses {
-                let Ok((mut stream, _)) = listener.accept() else { return };
+                let Ok((mut stream, _)) = listener.accept() else {
+                    return;
+                };
                 let mut buffer = [0u8; 4096];
                 let read = stream.read(&mut buffer).unwrap_or(0);
                 let _ = tx.send(String::from_utf8_lossy(&buffer[..read]).to_string());
-                let _ = write!(stream, "HTTP/1.1 {status} X\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{{}}");
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 {status} X\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{{}}"
+                );
             }
         });
         (base, rx)
@@ -86,16 +93,27 @@ mod tests {
     #[test]
     fn a_known_model_is_connected_and_the_request_is_a_free_metadata_get() {
         let (base, seen) = serve(vec![200]);
-        assert_eq!(run(probe_models(&base, &key(), &["gpt-4o-transcribe"])), ProbeOutcome::Connected);
+        assert_eq!(
+            run(probe_models(&base, &key(), &["gpt-4o-transcribe"])),
+            ProbeOutcome::Connected
+        );
         let request = seen.recv().unwrap();
-        assert!(request.starts_with("GET /models/gpt-4o-transcribe "), "{request}");
-        assert!(request.to_lowercase().contains("authorization: bearer sk-test-probe"));
+        assert!(
+            request.starts_with("GET /models/gpt-4o-transcribe "),
+            "{request}"
+        );
+        assert!(request
+            .to_lowercase()
+            .contains("authorization: bearer sk-test-probe"));
     }
 
     #[test]
     fn every_model_is_checked_and_the_first_problem_wins() {
         let (base, _) = serve(vec![200, 404]);
-        assert_eq!(run(probe_models(&base, &key(), &["a", "b"])), ProbeOutcome::Unavailable);
+        assert_eq!(
+            run(probe_models(&base, &key(), &["a", "b"])),
+            ProbeOutcome::Unavailable
+        );
     }
 
     #[test]
@@ -108,7 +126,18 @@ mod tests {
 
     #[test]
     fn a_closed_port_is_unreachable() {
-        let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
-        assert_eq!(run(probe_models(&format!("http://127.0.0.1:{port}"), &key(), &["m"])), ProbeOutcome::Unreachable);
+        let port = TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        assert_eq!(
+            run(probe_models(
+                &format!("http://127.0.0.1:{port}"),
+                &key(),
+                &["m"]
+            )),
+            ProbeOutcome::Unreachable
+        );
     }
 }
