@@ -185,6 +185,30 @@ describe('proof certification of output handling', () => {
     expect(isExecutableProofOperation(withFlag('node a.mjs | grep ok', true))).toBe(false);
     expect(isExecutableProofOperation(withFlag('node a.mjs > out.txt', true))).toBe(false);
   });
+
+  it('accepts an interpreter inline script whose quoted body has semicolons and newlines', () => {
+    const script =
+      'node --input-type=module -e "import { rm } from \'node:fs/promises\'; const r = await rm(\'x\');\nconsole.log(r);" 2>&1';
+    expect(isExecutableProofOperation(withFlag(script, false))).toBe(true);
+    expect(isExecutableProofOperation(withFlag("python3 -c 'import os; print(1)'", false))).toBe(true);
+    expect(isExecutableProofOperation(withFlag('node -e "a(); b()"', false))).toBe(true);
+  });
+
+  it('still rejects what follows or hides behind an inline script', () => {
+    const rejects = [
+      'node -e "a(); b()" && node other.mjs',
+      'node -e "a()"; rm -rf x',
+      'node -e "a()" | grep ok',
+      'node -e "a()" > out.txt',
+      'node -e "$(whoami)"',
+      'node -e "`id`"',
+      'node -e "unterminated; a()',
+      'bash -c "a; b"',
+      'sh -c "a && b"',
+      'node - <<EOF\na();\nEOF',
+    ];
+    for (const command of rejects) expect(isExecutableProofOperation(withFlag(command, true))).toBe(false);
+  });
 });
 
 describe('retry identity and executed reproductions', () => {

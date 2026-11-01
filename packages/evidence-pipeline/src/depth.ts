@@ -138,6 +138,29 @@ function withoutHarmlessOutputHandling(command: string, pipefail: boolean): stri
   return text.replace(/\s+2>\s*&1(?=\s|$)/g, '').replace(/\s+2>\s*\/dev\/null(?=\s|$)/g, '');
 }
 
+/** `node -e "…"`, `python -c '…'`: an interpreter, a code flag, then one quoted script. */
+const INLINE_SCRIPT_HEAD =
+  /^\s*(?:[^\s"';&|<>`$]*[\\/])?(?:node|nodejs|bun|deno|python3?|ruby|perl)(?:\.exe)?(?:\s+[^\s"';&|<>`$()]+)*?\s+(?:-e|-c|-p|--eval|--print|eval)\s+(?=["'])/i;
+
+/**
+ * An interpreter's inline script is one process whose exit status is the
+ * script's, so `;` and newlines inside the quoted script do not make the
+ * command compound. Everything outside the quotes is still checked, and a
+ * script that substitutes shell commands (`$(…)`, backticks) is left alone.
+ * Shells (`bash -c`) are not covered: they can mask a failing step.
+ */
+function withoutInlineScript(command: string): string {
+  const head = INLINE_SCRIPT_HEAD.exec(command);
+  if (head === null) return command;
+  const start = head[0].length;
+  const quote = command[start];
+  let end = start + 1;
+  while (end < command.length && command[end] !== quote) end += quote === '"' && command[end] === '\\' ? 2 : 1;
+  if (end >= command.length) return command;
+  if (quote === '"' && /`|\$\(/.test(command.slice(start + 1, end))) return command;
+  return head[0] + 'script' + command.slice(end + 1);
+}
+
 /** One operation certifies executable proof: ran, succeeded, unambiguous. */
 export function isExecutableProofOperation(op: ObservedOperation): boolean {
   return (
@@ -147,7 +170,7 @@ export function isExecutableProofOperation(op: ObservedOperation): boolean {
     // Without a shell AST/individual exit statuses, compound commands are
     // ambiguous even when the last process succeeds. Fail conservatively.
     !/[;&|\r\n`<>]|\$\(/.test(
-      withoutHarmlessOutputHandling(op.commandText, op.pipefail === true),
+      withoutInlineScript(withoutHarmlessOutputHandling(op.commandText, op.pipefail === true)),
     ) &&
     !READ_ONLY_TOOL.test(op.toolName) &&
     !DEPENDENCY_INSTALL_COMMAND.test(op.commandText) &&
