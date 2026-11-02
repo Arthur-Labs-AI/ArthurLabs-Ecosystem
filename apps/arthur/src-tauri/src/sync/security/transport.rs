@@ -2,7 +2,7 @@
 //! The bounded record parser is a future TLS-stream seam, NOT plaintext Sync.
 use super::{Result, SecurityError as E};
 #[cfg(test)]
-use crate::sync::Cancellation;
+use crate::sync_api::protocol::Cancellation;
 #[cfg(test)]
 use std::{
     io::Read,

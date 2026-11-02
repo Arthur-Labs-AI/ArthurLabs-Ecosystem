@@ -1,6 +1,6 @@
 //! Monotonic opaque tokens, never JNI raw pointers to a runtime or callback.
 use super::{Signal, AVAILABLE, CAPABILITIES, LINK_PROPERTIES, LOST};
-use crate::sync::security::{
+use crate::native_security::{
     android::{bridge, Bridge},
     route_observer::Unavailable as U,
 };
@@ -118,8 +118,8 @@ impl Drop for Watch {
     }
 }
 #[cfg(feature = "android-identity-tests")]
-pub(super) fn qualify_late_token() -> crate::sync::security::Result<()> {
-    use crate::sync::security::SecurityError as E;
+pub(super) fn qualify_late_token() -> crate::native_security::Result<()> {
+    use crate::native_security::SecurityError as E;
     let (signal, _) = Signal::channel();
     let mut w = Watch::new(&signal).map_err(|_| E::PlatformUnverified)?;
     let token = w.token;

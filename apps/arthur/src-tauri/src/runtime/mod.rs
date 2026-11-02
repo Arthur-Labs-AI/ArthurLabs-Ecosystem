@@ -199,3 +199,6 @@ impl Drop for NativeRuntime {
         let _ = self.transport.shutdown();
     }
 }
+
+#[path = "../sync/security/transport_candidate.rs"]
+pub(crate) mod transport_candidate;

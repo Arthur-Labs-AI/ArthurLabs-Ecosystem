@@ -1,7 +1,9 @@
 //! Durable nonsecret Android Keystore slot/public-key anchor, through the existing owner.
 //! Creating/invalidation states survive crashes; neither state regenerates a key.
 use super::capture_store::CaptureStore;
-use crate::sync::security::{android::AndroidIdentity, identity::*, Result, SecurityError as E};
+use crate::sync_api::security::{
+    android::AndroidIdentity, identity::*, Result, SecurityError as E,
+};
 use rusqlite::{params, TransactionBehavior};
 use uuid::Uuid;
 fn canonical_slot(value: &str) -> Result<Uuid> {
@@ -143,7 +145,7 @@ impl DeviceIdentityStore for OwnedDeviceIdentity<'_> {
         let c = self.owner.connection.lock().map_err(|_| E::Storage)?;
         self.check_locked(&c)?;
         let signature = self.key.sign_domain_separated(d, bytes)?;
-        crate::sync::security::identity::verify(&self.expected, d, bytes, &signature)?;
+        crate::sync_api::security::identity::verify(&self.expected, d, bytes, &signature)?;
         Ok(signature)
     }
     fn key_availability(&self) -> KeyAvailability {

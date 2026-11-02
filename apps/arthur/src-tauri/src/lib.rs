@@ -14,6 +14,7 @@ mod lifecycle;
 mod lineage;
 #[cfg(test)]
 mod live_luna_smoke;
+mod native_security;
 mod platform;
 mod providers;
 mod recall;

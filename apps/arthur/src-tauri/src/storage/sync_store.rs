@@ -7,7 +7,7 @@ use super::{
         g3, import_view,
     },
 };
-use crate::sync::*;
+use crate::sync_api::*;
 use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
 use std::sync::atomic::{AtomicBool, Ordering};
 use uuid::Uuid;

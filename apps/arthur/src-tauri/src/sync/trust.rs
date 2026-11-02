@@ -70,3 +70,12 @@ impl TrustVerifier for TestTrust {
         })
     }
 }
+
+impl crate::native_security::enrollment::MembershipBinding {
+    pub fn matches(&self, hello: &crate::sync_api::PeerHello) -> bool {
+        hello.network == self.root.network
+            && hello.epoch == self.root.epoch
+            && hello.local == self.local
+            && hello.peer == self.peer.peer_id()
+    }
+}

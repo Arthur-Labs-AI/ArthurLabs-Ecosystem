@@ -1,7 +1,7 @@
 //! Dormant rustls callback bound to ONE existing native owner. No TLS/socket factory.
 use crate::{
     runtime::NativeRuntime,
-    sync::security::{
+    sync_api::security::{
         identity::PublicIdentity,
         tls::{self, CertificateRole, NativeTls13},
         Result, SecurityError as E,

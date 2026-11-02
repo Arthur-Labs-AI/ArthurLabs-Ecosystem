@@ -1,6 +1,6 @@
 //! Owned only by the explicit monitor worker (MTA). Callbacks never access rows.
 use super::{Signal, ADDRESS, INTERFACE, PROFILE, ROUTE};
-use crate::sync::security::route_observer::Unavailable as U;
+use crate::native_security::route_observer::Unavailable as U;
 use std::{
     ffi::c_void,
     ptr,

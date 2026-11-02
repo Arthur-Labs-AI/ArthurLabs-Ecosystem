@@ -6,7 +6,7 @@ use super::{
     },
     sync_store::{self, CandidateSyncStore},
 };
-use crate::sync::{bootstrap::*, *};
+use crate::sync_api::{bootstrap::*, *};
 use rusqlite::{params, Connection, OptionalExtension};
 use std::{
     collections::{BTreeMap, BTreeSet},

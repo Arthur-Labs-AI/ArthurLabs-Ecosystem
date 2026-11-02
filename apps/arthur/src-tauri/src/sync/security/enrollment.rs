@@ -19,14 +19,6 @@ pub(crate) struct MembershipBinding {
     pub(crate) local: Uuid,
     pub(crate) peer: PublicIdentity,
 }
-impl MembershipBinding {
-    pub fn matches(&self, hello: &crate::sync::PeerHello) -> bool {
-        hello.network == self.root.network
-            && hello.epoch == self.root.epoch
-            && hello.local == self.local
-            && hello.peer == self.peer.peer_id()
-    }
-}
 #[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum Role {
     Admin,

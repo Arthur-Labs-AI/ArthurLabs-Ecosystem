@@ -1,43 +1,25 @@
-//! MEGA E, dormant native boundary. Architecture answers:
-//! 1. Truth: OS private key; existing owner's SQLite public registry/abuse ledger.
-//! 2. Ownership: DeviceIdentityStore signs; CaptureStore serializes all trust writes.
-//! 3. Direction: security -> typed owner adapters; pure engine semantics unchanged.
-//! 4. Boundary: public keys/signatures/opaque bindings, never private keys or SQL.
-//! 5. Failure: typed refusal; PAKE/TLS/routes have no release acceptance constructor.
-//! 6. Lifecycle: explicit key creation/deletion, immutable revocations, boot cancellation.
-//! 7. Seams: deterministic clock/RNG and explicitly test-only PAKE metadata proofs.
-//! 8. Compatibility: test-installed forward-only SQL, no production migration/routing.
-//! 9. Observation: categories only; secrets have neither Debug nor Serialize.
-//! 10. Security: pinned admin, shared durable attempt reservation, exact-key approval.
+//! Compatibility names for native primitives; the engine uses only contracts.
+pub(crate) use crate::runtime::transport_candidate;
 #[cfg(target_os = "android")]
-pub(crate) mod android;
-pub(crate) mod composition;
-pub(crate) mod connected_endpoint;
-#[cfg(test)]
-#[path = "../../storage/security_e2_tests.rs"]
-mod e2_tests;
-pub(crate) mod enrollment;
-pub(crate) mod identity;
+pub(crate) use crate::sync_api::security::android;
+#[cfg(windows)]
+pub(crate) use crate::sync_api::security::windows;
+pub(crate) use crate::sync_api::security::{
+    canonical, composition, connected_endpoint, enrollment, identity, network_watch,
+    route_candidate, route_observer, signed, tls, transport, Result, SecurityError,
+};
+#[path = "compat/n7a_tests.rs"]
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod n7a_tests;
+#[path = "compat/native_io_lab.rs"]
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod native_io_lab;
-pub(crate) mod network_watch;
+#[path = "compat/pake_qualification.rs"]
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod pake_qualification;
-pub(crate) mod route_candidate;
-pub(crate) mod route_observer;
-pub(crate) mod signed;
-#[cfg(test)]
-mod tests;
-pub(crate) mod tls;
+#[path = "compat/tls_lab.rs"]
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod tls_lab;
+#[path = "compat/tls_socket_lab.rs"]
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod tls_socket_lab;
-pub(crate) mod transport;
-pub(crate) mod transport_candidate;
-#[cfg(windows)]
-pub(crate) mod windows;
-
-pub(crate) use crate::sync_api::security_error::{canonical, Result, SecurityError};

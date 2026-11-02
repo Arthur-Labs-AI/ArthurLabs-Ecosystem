@@ -1,7 +1,9 @@
 //! Durable nonsecret CNG slot/public-key anchor, through the existing owner.
 //! Creating/invalidation states survive crashes; neither state regenerates a key.
 use super::capture_store::CaptureStore;
-use crate::sync::security::{identity::*, windows::WindowsIdentity, Result, SecurityError as E};
+use crate::sync_api::security::{
+    identity::*, windows::WindowsIdentity, Result, SecurityError as E,
+};
 use rusqlite::{params, TransactionBehavior};
 use uuid::Uuid;
 // Concrete OS operation under the owner's transaction; no callback or second lock.
@@ -129,7 +131,7 @@ impl DeviceIdentityStore for OwnedDeviceIdentity<'_> {
         let c = self.owner.connection.lock().map_err(|_| E::Storage)?;
         self.check_locked(&c)?;
         let signature = self.key.sign_domain_separated(d, bytes)?;
-        crate::sync::security::identity::verify(&self.expected, d, bytes, &signature)?;
+        crate::sync_api::security::identity::verify(&self.expected, d, bytes, &signature)?;
         Ok(signature)
     }
     fn key_availability(&self) -> KeyAvailability {

@@ -1,7 +1,7 @@
 //! Separately versioned candidate envelopes. Never modifies canonical core bytes.
 //! Not wired into release ingress until N1 and envelope compatibility are reviewed.
 use super::{canonical, identity::*, Result, SecurityError as E};
-use crate::sync::{Envelope, ValidatedEvent};
+use crate::sync_api::{Envelope, ValidatedEvent};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]

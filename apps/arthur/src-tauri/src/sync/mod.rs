@@ -16,10 +16,11 @@ pub(crate) mod security;
 #[cfg(test)]
 #[path = "../storage/sync_tests.rs"]
 mod tests;
-pub(crate) mod trust;
+pub(crate) use crate::sync_api::trust;
 mod validation;
 
-pub(crate) use engine::{SyncEngine, SyncStore};
+pub(crate) use crate::sync_api::SyncStore;
+pub(crate) use engine::SyncEngine;
 pub(crate) use protocol::*;
 pub(crate) use trust::{ClosedTrust, TrustVerifier, VerifiedSession};
 pub(crate) use validation::ValidatedEvent;

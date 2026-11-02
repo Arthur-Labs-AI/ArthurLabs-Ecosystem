@@ -5,7 +5,7 @@ use super::{
     codec::{self, EntityKind, FieldValue, Operation},
     sql_effects, stream,
 };
-use crate::sync::{Error, Result, ValidatedEvent};
+use crate::sync_api::{Error, Result, ValidatedEvent};
 use rusqlite::{ffi, params, Connection, OptionalExtension};
 #[path = "g3_d4.rs"]
 mod d4;

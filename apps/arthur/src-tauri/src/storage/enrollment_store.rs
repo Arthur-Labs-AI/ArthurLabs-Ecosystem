@@ -1,8 +1,10 @@
 //! Nonsecret dormant registry, borrowing the ONE existing native store owner.
 //! No Connection::open, filesystem path, provider work or network I/O here.
 use super::capture_store::CaptureStore;
-pub(crate) use crate::sync::security::enrollment::{MembershipBinding, Root};
-use crate::sync::security::{canonical, enrollment::*, identity::*, Result, SecurityError as E};
+pub(crate) use crate::sync_api::security::enrollment::{MembershipBinding, Root};
+use crate::sync_api::security::{
+    canonical, enrollment::*, identity::*, Result, SecurityError as E,
+};
 use rusqlite::{params, Connection, TransactionBehavior};
 use uuid::Uuid;
 fn sql(_: rusqlite::Error) -> E {
@@ -325,7 +327,7 @@ impl<'a> NetworkRegistry<'a> {
         &self,
         ch: &mut Challenge,
         ticket: Attempt,
-        pending: crate::sync::security::composition::lab::QualifiedPending,
+        pending: crate::sync_api::security::composition::lab::QualifiedPending,
         now: u64,
     ) -> Result<[u8; 32]> {
         let result = (|| {
@@ -671,12 +673,12 @@ pub(crate) fn install(owner: &CaptureStore) {
 #[cfg(test)]
 pub(crate) fn import_with_barrier(
     owner: &CaptureStore,
-    session: &crate::sync::VerifiedSession,
-    event: crate::sync::ValidatedEvent,
-    clock: &dyn crate::sync::SyncClock,
-    cancel: &crate::sync::Cancellation,
+    session: &crate::sync_api::VerifiedSession,
+    event: crate::sync_api::ValidatedEvent,
+    clock: &dyn crate::sync_api::SyncClock,
+    cancel: &crate::sync_api::Cancellation,
     barrier: impl FnOnce(),
-) -> crate::sync::Result<crate::sync::Receipt> {
+) -> crate::sync_api::Result<crate::sync_api::Receipt> {
     let db = super::sync_store::CandidateSyncStore::synthetic(owner);
     db.write(session, clock, cancel, |c| {
         let receipt = super::sync_store::retain_in(c, session, &event, clock, cancel)?;

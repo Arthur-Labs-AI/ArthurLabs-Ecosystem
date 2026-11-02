@@ -10,7 +10,9 @@
 //! 9. Observation: categorical errors only, no bodies, codes, keys or transcripts logged.
 //! 10. Security: identity is not channel proof; ClosedTrust and every live gate stay closed.
 use super::enrollment_store::unverified_root;
-use crate::sync::security::{canonical, enrollment::*, identity::*, Result, SecurityError as E};
+use crate::sync_api::security::{
+    canonical, enrollment::*, identity::*, Result, SecurityError as E,
+};
 use rusqlite::Connection;
 use std::collections::{BTreeMap, BTreeSet};
 

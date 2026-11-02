@@ -1,6 +1,6 @@
 //! Dormant bounded encrypted-stream seam; no socket/TLS/Sync implementation.
-use super::{transport::MAX_RECORD, Result, SecurityError as E};
-use crate::sync::Cancellation;
+use crate::sync_api::security::{transport::MAX_RECORD, Result, SecurityError as E};
+use crate::sync_api::Cancellation;
 use std::{
     collections::VecDeque,
     io,
@@ -28,7 +28,7 @@ impl Interrupt {
             w.wake();
         }
     }
-    pub(super) fn register(&self, cx: &Context<'_>) -> Result<()> {
+    pub(crate) fn register(&self, cx: &Context<'_>) -> Result<()> {
         let next = cx.waker().clone();
         let mut wake = self.wake.lock().map_err(|_| E::State)?;
         if self.flag.cancelled() {
@@ -56,7 +56,7 @@ pub(crate) struct Permit {
     expected: Expected,
     stop: Arc<Interrupt>,
     started: u64,
-    fence: Option<super::network_watch::Fence>,
+    fence: Option<crate::sync_api::security::network_watch::Fence>,
 }
 impl Pool {
     #[cfg(test)]
@@ -112,7 +112,7 @@ impl Pool {
         expected: Expected,
         now: u64,
         cancel: &Arc<Interrupt>,
-        fence: Option<super::network_watch::Fence>,
+        fence: Option<crate::sync_api::security::network_watch::Fence>,
     ) -> Result<Permit> {
         if fence.as_ref().is_some_and(|f| !f.valid()) {
             return Err(E::Cancelled);
@@ -205,7 +205,7 @@ impl crate::sync_api::revocation::RevocationNotifier for Pool {
 
 impl Permit {
     #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
-    pub(super) fn native_fence(&self) -> Result<super::network_watch::Fence> {
+    pub(crate) fn native_fence(&self) -> Result<crate::sync_api::security::network_watch::Fence> {
         let fence = self.fence.clone().ok_or(E::PlatformUnverified)?;
         if !fence.valid() {
             return Err(E::Cancelled);
@@ -214,17 +214,17 @@ impl Permit {
     }
 
     #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
-    pub(super) fn clear_registration(&self) {
+    pub(crate) fn clear_registration(&self) {
         let retired = self.stop.wake.lock().ok().and_then(|mut w| w.take());
         drop(retired);
     }
-    pub(super) fn started(&self) -> u64 {
+    pub(crate) fn started(&self) -> u64 {
         self.started
     }
-    pub(super) fn cancelled(&self) -> bool {
+    pub(crate) fn cancelled(&self) -> bool {
         self.stop.cancelled() || self.fence.as_ref().is_some_and(|f| !f.valid())
     }
-    pub(super) fn register(&self, cx: &Context<'_>) -> Result<()> {
+    pub(crate) fn register(&self, cx: &Context<'_>) -> Result<()> {
         self.stop.register(cx)?;
         if self.cancelled() {
             Err(E::Cancelled)

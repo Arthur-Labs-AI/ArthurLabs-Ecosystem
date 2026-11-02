@@ -83,8 +83,8 @@ pub(crate) fn audited_pake_adapter() -> Result<()> {
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod lab {
     use super::*;
-    use crate::sync::security::pake_qualification::{Binding, ConfirmedExchange};
-    use crate::sync::security::tls_lab::LabChannel;
+    use crate::native_security::pake_qualification::{Binding, ConfirmedExchange};
+    use crate::native_security::tls_lab::LabChannel;
     pub fn binding(context: &Context, channel: &LabChannel) -> Result<Binding> {
         let (server, client) = match context.tls_server {
             Endpoint::Sponsor => (&context.sponsor, &context.joiner),

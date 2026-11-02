@@ -1,7 +1,7 @@
 //! IP Helper snapshots. OS layout comes from locked windows-sys bindings.
 //! IfType is a classification hint, NOT proof of physical LAN or Private profile.
 use super::{ReadResult, Unavailable as U};
-use crate::sync::security::route_candidate::*;
+use crate::native_security::route_candidate::*;
 use std::{
     mem::{size_of, size_of_val},
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},

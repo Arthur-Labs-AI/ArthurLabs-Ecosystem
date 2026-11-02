@@ -188,8 +188,8 @@ impl Drop for Monitor {
     }
 }
 #[cfg(all(target_os = "android", feature = "android-identity-tests"))]
-pub(crate) fn qualify_android(positive: bool) -> crate::sync::security::Result<()> {
-    use crate::sync::security::{
+pub(crate) fn qualify_android(positive: bool) -> crate::native_security::Result<()> {
+    use crate::native_security::{
         route_candidate::{Candidate, Hint, Origin},
         SecurityError as E,
     };

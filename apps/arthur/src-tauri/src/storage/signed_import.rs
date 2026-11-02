@@ -6,7 +6,7 @@ use super::{
     registry_verification,
     sync_store::{self, CandidateSyncStore},
 };
-use crate::sync::{
+use crate::sync_api::{
     security::{canonical, identity::*, signed::SignedOriginal},
     *,
 };
@@ -21,7 +21,7 @@ pub(crate) struct SignedImportStore<'a> {
 fn sql(_: rusqlite::Error) -> Error {
     Error::Storage
 }
-fn trust<T>(r: crate::sync::security::Result<T>) -> Result<T> {
+fn trust<T>(r: crate::sync_api::security::Result<T>) -> Result<T> {
     r.map_err(|_| Error::Trust)
 }
 impl<'a> SignedImportStore<'a> {
