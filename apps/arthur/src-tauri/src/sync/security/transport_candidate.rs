@@ -7,13 +7,10 @@ use std::{
     sync::{Arc, Mutex, Weak},
     task::{Context, Poll, Waker},
 };
+#[cfg(test)]
 use uuid::Uuid;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Expected {
-    pub network: Uuid,
-    pub peer: Uuid,
-}
+pub(crate) use crate::sync_api::revocation::Expected;
 // Expected is local routing metadata, NOT authenticated membership.
 #[derive(Default)]
 pub(crate) struct Interrupt {
@@ -200,6 +197,12 @@ impl Pool {
         }
     }
 }
+impl crate::sync_api::revocation::RevocationNotifier for Pool {
+    fn revoked(&self, expected: Expected) -> Result<()> {
+        self.revoke(expected)
+    }
+}
+
 impl Permit {
     #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn native_fence(&self) -> Result<super::network_watch::Fence> {

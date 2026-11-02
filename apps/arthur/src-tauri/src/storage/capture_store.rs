@@ -89,7 +89,7 @@ impl From<rusqlite::Error> for StoreError {
 pub struct CaptureStore {
     pub(super) connection: Mutex<Connection>,
     transport:
-        std::sync::OnceLock<std::sync::Weak<crate::sync::security::transport_candidate::Pool>>,
+        std::sync::OnceLock<std::sync::Weak<dyn crate::sync_api::revocation::RevocationNotifier>>,
     // Fields drop in declaration order: close the connection before releasing its root lock.
     _ownership: Option<DataRootOwnership>,
     #[cfg(test)]
@@ -99,18 +99,18 @@ pub struct CaptureStore {
 impl CaptureStore {
     pub(crate) fn bind_transport(
         &self,
-        pool: &std::sync::Arc<crate::sync::security::transport_candidate::Pool>,
+        notifier: &std::sync::Arc<dyn crate::sync_api::revocation::RevocationNotifier>,
     ) -> Result<(), StoreError> {
         self.transport
-            .set(std::sync::Arc::downgrade(pool))
+            .set(std::sync::Arc::downgrade(notifier))
             .map_err(|_| StoreError::Invalid("transport already bound".into()))
     }
     pub(super) fn revoked(
         &self,
-        expected: crate::sync::security::transport_candidate::Expected,
-    ) -> crate::sync::security::Result<()> {
-        if let Some(pool) = self.transport.get().and_then(std::sync::Weak::upgrade) {
-            pool.revoke(expected)?;
+        expected: crate::sync_api::revocation::Expected,
+    ) -> crate::sync_api::security_error::Result<()> {
+        if let Some(notifier) = self.transport.get().and_then(std::sync::Weak::upgrade) {
+            notifier.revoked(expected)?;
         }
         Ok(())
     }
@@ -594,5 +594,64 @@ mod tests {
         let extra: Result<CreateCaptureInput, _> =
             serde_json::from_str(r#"{"source":"text","content":"hi","id":"forged"}"#);
         assert!(extra.is_err(), "callers cannot choose ids");
+    }
+
+    #[test]
+    fn revocation_notification_uses_the_owners_weak_lifetime() {
+        use crate::sync_api::revocation::{Expected, RevocationNotifier};
+        use std::sync::{Arc, Mutex};
+
+        #[derive(Default)]
+        struct Notifications(Mutex<Vec<Expected>>);
+        impl RevocationNotifier for Notifications {
+            fn revoked(&self, expected: Expected) -> crate::sync_api::security_error::Result<()> {
+                self.0.lock().unwrap().push(expected);
+                Ok(())
+            }
+        }
+
+        let store = CaptureStore::open_in_memory().unwrap();
+        let expected = Expected {
+            network: Uuid::new_v4(),
+            peer: Uuid::new_v4(),
+        };
+        // An unbound or already-disposed owner has no notification target.
+        store.revoked(expected).unwrap();
+        let owner = Arc::new(Notifications::default());
+        let notifier: Arc<dyn RevocationNotifier> = owner.clone();
+        store.bind_transport(&notifier).unwrap();
+        drop(notifier);
+        assert_eq!(Arc::strong_count(&owner), 1);
+        store.revoked(expected).unwrap();
+        assert_eq!(*owner.0.lock().unwrap(), vec![expected]);
+        let weak = Arc::downgrade(&owner);
+        drop(owner);
+        assert!(weak.upgrade().is_none());
+        store.revoked(expected).unwrap();
+    }
+
+    #[test]
+    fn revocation_notification_preserves_the_typed_failure() {
+        use crate::sync_api::{
+            revocation::{Expected, RevocationNotifier},
+            security_error::{Result, SecurityError},
+        };
+        use std::sync::Arc;
+        struct Unavailable;
+        impl RevocationNotifier for Unavailable {
+            fn revoked(&self, _: Expected) -> Result<()> {
+                Err(SecurityError::State)
+            }
+        }
+        let store = CaptureStore::open_in_memory().unwrap();
+        let notifier: Arc<dyn RevocationNotifier> = Arc::new(Unavailable);
+        store.bind_transport(&notifier).unwrap();
+        assert_eq!(
+            store.revoked(Expected {
+                network: Uuid::new_v4(),
+                peer: Uuid::new_v4()
+            }),
+            Err(SecurityError::State)
+        );
     }
 }

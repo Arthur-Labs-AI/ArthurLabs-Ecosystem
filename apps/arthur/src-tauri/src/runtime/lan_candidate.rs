@@ -144,7 +144,8 @@ impl Coordinator {
         &self,
         store: &crate::storage::capture_store::CaptureStore,
     ) -> std::result::Result<(), crate::storage::capture_store::StoreError> {
-        store.bind_transport(&self.pool)
+        let notifier: Arc<dyn crate::sync_api::revocation::RevocationNotifier> = self.pool.clone();
+        store.bind_transport(&notifier)
     }
     /// Explicit loopback qualification only. Does not mint route/LAN evidence.
     /// Uses this owner's real clock, budget and event fence; never a fresh Pool.

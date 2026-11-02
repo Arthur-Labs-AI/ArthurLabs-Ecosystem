@@ -159,7 +159,7 @@ impl<'a> NetworkRegistry<'a> {
         if let Action::Revoke { device } = &update.body.action {
             if self
                 .owner
-                .revoked(crate::sync::security::transport_candidate::Expected {
+                .revoked(crate::sync_api::revocation::Expected {
                     network: update.body.network,
                     peer: device.peer_id(),
                 })

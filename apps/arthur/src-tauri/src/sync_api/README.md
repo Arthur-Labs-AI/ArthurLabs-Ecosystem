@@ -29,3 +29,9 @@ values and contracts, not an engine, database, transport pool or native owner.
 No existing file below `storage/` is moved or renamed. In particular,
 `storage/journal/codec.rs` remains the compatibility entry point while the
 unchanged codec definitions live here.
+
+The revocation port is injected by the existing runtime owner. CaptureStore
+holds a weak trait object backed by that owner's existing pool; binding does not
+retain the pool or create a new one. Notification still happens after the durable
+registry commit, and its failure still means committed-but-unavailable rather
+than rollback. The pool's owner-only constructor is unchanged.
