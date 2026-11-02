@@ -1,6 +1,9 @@
 # Native sync contracts
 
-This extraction is incremental. The canonical codec is the first cluster;
+This extraction is incremental. Canonical codec and protocol/bootstrap values
+have been extracted, including the clock/transport contracts and cancellation.
+Bootstrap decoding also needs the sealed validated event and its pure canonical
+dependency reduction; those unchanged functions are part of the same cluster.
 production imports will be checked against the final contract after the shared
 values and store port have been extracted.
 

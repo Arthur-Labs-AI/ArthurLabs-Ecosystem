@@ -3,7 +3,7 @@ use super::{
     codec::{EntityKind, RowImage},
     sql_effects, stream,
 };
-use crate::sync::{Error, Result};
+use crate::sync_api::{Error, Result};
 use rusqlite::Connection;
 pub(in crate::storage) fn ready(c: &Connection) -> Result<()> {
     stream::policy(c).map_err(|_| Error::Storage)

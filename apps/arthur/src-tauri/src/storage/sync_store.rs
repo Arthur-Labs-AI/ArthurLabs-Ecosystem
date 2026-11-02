@@ -872,13 +872,13 @@ impl SyncStore for CandidateSyncStore<'_> {
         id: Uuid,
         c: &dyn SyncClock,
         x: &Cancellation,
-    ) -> Result<crate::sync::bootstrap::SnapshotExport> {
+    ) -> Result<crate::sync_api::bootstrap::SnapshotExport> {
         super::bootstrap_store::capture(self, s, id, c, x)
     }
     fn snapshot_offer(
         &self,
         s: &VerifiedSession,
-        o: &crate::sync::bootstrap::SnapshotOffer,
+        o: &crate::sync_api::bootstrap::SnapshotOffer,
         c: &dyn SyncClock,
         x: &Cancellation,
     ) -> Result<()> {
@@ -887,7 +887,7 @@ impl SyncStore for CandidateSyncStore<'_> {
     fn snapshot_chunk(
         &self,
         s: &VerifiedSession,
-        ch: &crate::sync::bootstrap::SnapshotChunk,
+        ch: &crate::sync_api::bootstrap::SnapshotChunk,
         c: &dyn SyncClock,
         x: &Cancellation,
     ) -> Result<()> {
@@ -896,16 +896,16 @@ impl SyncStore for CandidateSyncStore<'_> {
     fn snapshot_publish(
         &self,
         s: &VerifiedSession,
-        o: &crate::sync::bootstrap::SnapshotOffer,
+        o: &crate::sync_api::bootstrap::SnapshotOffer,
         c: &dyn SyncClock,
         x: &Cancellation,
-    ) -> Result<crate::sync::bootstrap::SnapshotReceipt> {
+    ) -> Result<crate::sync_api::bootstrap::SnapshotReceipt> {
         super::bootstrap_store::publish(self, s, o, c, x)
     }
     fn snapshot_receipt(
         &self,
         s: &VerifiedSession,
-        r: &crate::sync::bootstrap::SnapshotReceipt,
+        r: &crate::sync_api::bootstrap::SnapshotReceipt,
         c: &dyn SyncClock,
         x: &Cancellation,
     ) -> Result<()> {
@@ -946,7 +946,7 @@ impl SyncStore for CandidateSyncStore<'_> {
         let mut alternatives=c.prepare("SELECT bytes FROM import_collisions LIMIT 17").map_err(sql)?;
         let mut alternatives=alternatives.query([]).map_err(sql)?;
         while let Some(r)=alternatives.next().map_err(sql)? {
-            let v=ValidatedEvent::parse(crate::sync::bootstrap::envelope(r.get(0).map_err(sql)?)?)?;
+            let v=ValidatedEvent::parse(crate::sync_api::bootstrap::envelope(r.get(0).map_err(sql)?)?)?;
             authorize_event_scope(s,&v)?;
         }
         let mut needs_attention:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM import_events WHERE outcome<>'applied' UNION ALL SELECT 1 FROM import_sent WHERE outcome NOT IN('offered','applied') UNION ALL SELECT 1 FROM import_collisions)",[],|r|r.get(0)).map_err(sql)?;let mut problem:Option<String>=c.query_row("SELECT outcome FROM (SELECT outcome FROM import_events UNION ALL SELECT outcome FROM import_sent WHERE outcome<>'offered' UNION ALL SELECT 'rejected' FROM import_collisions) ORDER BY CASE outcome WHEN 'rejected' THEN 0 WHEN 'conflict' THEN 1 WHEN 'deferred' THEN 2 WHEN 'unsupported' THEN 3 ELSE 4 END LIMIT 1",[],|r|r.get(0)).optional().map_err(sql)?;
