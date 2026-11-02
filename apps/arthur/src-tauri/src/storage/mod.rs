@@ -17,6 +17,8 @@ pub mod integration_store;
 /// builds but invoked by no production write path; schema stays v9.
 pub mod journal;
 pub mod knowledge_store;
+#[cfg(test)]
+mod layering_tests;
 pub mod lineage_store;
 #[cfg(test)]
 mod m05_v10_tests;

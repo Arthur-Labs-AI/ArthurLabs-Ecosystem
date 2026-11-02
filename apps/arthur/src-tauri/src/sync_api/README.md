@@ -58,3 +58,13 @@ private runtime token. The engine has no pool dependency.
 
 No schema, query, journal output, key validation, capability factory or activation
 decision changes in this extraction.
+
+See [the measured reference inventory](INVENTORY.md) for every original reference,
+compile classification and before/after counts. The Rust guard lives in
+`storage/layering_tests.rs`: it checks expressions and grouped imports, validates
+the explicit qualification declarations, and checks contract sources that retain
+their original paths through `#[path]` as well as files in this directory.
+
+Unit-test harness names for primitive-owned tests now begin with
+`native_security::`; callable compatibility paths remain available. The full
+native-suite command is unchanged.
