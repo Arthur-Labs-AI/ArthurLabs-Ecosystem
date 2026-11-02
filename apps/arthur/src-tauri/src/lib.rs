@@ -22,6 +22,7 @@ mod storage;
 mod stt;
 #[allow(dead_code)] // M05 dormant sync candidate; no production composition/ingress.
 mod sync;
+mod sync_api;
 #[allow(dead_code)]
 // M04.7B: only `evolution_runtime` builds synthesis and verification (review-first); parts are exercised by tests alone
 mod synthesis;

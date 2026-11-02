@@ -4,7 +4,7 @@ use super::{
     trust::{TrustVerifier, VerifiedSession},
     validation::ValidatedEvent,
 };
-use crate::storage::journal::codec;
+use crate::sync_api::codec;
 use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 

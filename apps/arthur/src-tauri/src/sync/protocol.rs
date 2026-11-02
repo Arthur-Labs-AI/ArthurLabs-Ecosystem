@@ -1,4 +1,4 @@
-use crate::storage::journal::codec;
+use crate::sync_api::codec;
 use std::sync::atomic::{AtomicBool, Ordering};
 use uuid::Uuid;
 

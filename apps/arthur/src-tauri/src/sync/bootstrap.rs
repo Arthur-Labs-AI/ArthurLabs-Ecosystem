@@ -1,7 +1,7 @@
 //! Separate versioned bootstrap candidate. Journal cores and accepted snapshot
 //! v2 bytes are untouched. Envelopes bind explicit partial-history profiles.
 use super::*;
-use crate::storage::journal::codec;
+use crate::sync_api::codec;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 pub(crate) const BOOTSTRAP_PROFILE: &str = "m05-bootstrap-immutable-v1";
