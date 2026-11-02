@@ -136,6 +136,7 @@ describe('check conclusions handoff', () => {
       expect(text).toContain('never as evidence');
       expect(text).toContain('Race is real.');
     }
+    expect(recovery).toContain('file it as a finding of its own');
     expect(buildRecoveryReportContext(request, '{}')).not.toContain('UNVERIFIED');
     expect(recovery).not.toContain('stopped at its phase deadline');
     expect(recovery).toContain('may be reported as passed');

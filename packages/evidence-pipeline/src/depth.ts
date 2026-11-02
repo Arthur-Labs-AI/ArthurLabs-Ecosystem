@@ -143,6 +143,14 @@ const INLINE_SCRIPT_HEAD =
   /^\s*(?:[^\s"';&|<>`$]*[\\/])?(?:node|nodejs|bun|deno|python3?|ruby|perl)(?:\.exe)?(?:\s+[^\s"';&|<>`$()]+)*?\s+(?:-e|-c|-p|--eval|--print|eval)\s+(?=["'])/i;
 
 /**
+ * `node --input-type=module <<'EOF' … EOF`: the whole command is one interpreter
+ * fed a script through a QUOTED heredoc (the shell expands nothing in it), with
+ * nothing after the terminator.
+ */
+const QUOTED_HEREDOC =
+  /^(\s*(?:[^\s"';&|<>`$]*[\\/])?(?:node|nodejs|bun|deno|python3?|ruby|perl)(?:\.exe)?(?:\s+[^\s"';&|<>`$()]+)*?\s*)<<-?\s*(["'])(\w+)\2[ \t]*\r?\n[\s\S]*?\r?\n[ \t]*\3[ \t]*\r?\n?\s*$/i;
+
+/**
  * An interpreter's inline script is one process whose exit status is the
  * script's, so `;` and newlines inside the quoted script do not make the
  * command compound. Everything outside the quotes is still checked, and a
@@ -150,6 +158,13 @@ const INLINE_SCRIPT_HEAD =
  * Shells (`bash -c`) are not covered: they can mask a failing step.
  */
 function withoutInlineScript(command: string): string {
+  const heredoc = QUOTED_HEREDOC.exec(command);
+  if (heredoc !== null) {
+    // The shell ends the heredoc at the FIRST line equal to the tag; a second one means more commands follow.
+    const body = command.slice(command.indexOf('\n') + 1).split(/\r?\n/);
+    const ends = body.filter((line) => line.trim() === heredoc[3]).length;
+    return ends === 1 ? heredoc[1] + 'script' : command;
+  }
   const head = INLINE_SCRIPT_HEAD.exec(command);
   if (head === null) return command;
   const start = head[0].length;

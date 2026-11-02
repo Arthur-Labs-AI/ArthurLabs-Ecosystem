@@ -194,6 +194,23 @@ describe('proof certification of output handling', () => {
     expect(isExecutableProofOperation(withFlag('node -e "a(); b()"', false))).toBe(true);
   });
 
+  it('accepts an interpreter fed by one quoted heredoc and nothing else', () => {
+    const body = "import { rm } from 'node:fs/promises';\nawait rm('x');\nconsole.log(1);";
+    expect(isExecutableProofOperation(withFlag("node --input-type=module <<'EOF'\n" + body + '\nEOF', false))).toBe(true);
+    expect(isExecutableProofOperation(withFlag('python3 - <<"PY"\nprint(1)\nPY\n', false))).toBe(true);
+  });
+
+  it('rejects a heredoc with unquoted tag, trailing commands or a second terminator', () => {
+    const rejects = [
+      "node - <<EOF\na();\nEOF",
+      "node - <<'EOF'\na();\nEOF\nrm -rf x",
+      "node - <<'EOF'\na();\nEOF\nrm -rf x\nEOF",
+      "bash <<'EOF'\na; b\nEOF",
+      "node - <<'EOF'\na();\nEOF && echo ok",
+    ];
+    for (const command of rejects) expect(isExecutableProofOperation(withFlag(command, true))).toBe(false);
+  });
+
   it('still rejects what follows or hides behind an inline script', () => {
     const rejects = [
       'node -e "a(); b()" && node other.mjs',

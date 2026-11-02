@@ -141,7 +141,7 @@ export function renderCheckConclusions(
 }
 
 const CONCLUSIONS_CAVEAT =
-  'Investigator closing statements per check (AGENT-STATED and UNVERIFIED: use them to know what was concluded and where to look in the receipt and tool output, never as evidence; a finding needs grounded operations, and an ungrounded claim is at most inconclusive): ';
+  'Investigator closing statements per check (AGENT-STATED and UNVERIFIED: use them to know what was concluded and where to look in the receipt and tool output, never as evidence; a finding needs grounded operations, and an ungrounded claim is at most inconclusive). Entries with check "hazard-sweep" belong to no planned check: when one states a reproduced defect, find the probe that showed it in the tool output and the receipt, and file it as a finding of its own (cited operation, trigger, file and line); if you cannot find the probe, say so in limitations instead of dropping it silently: ';
 
 /**
  * One bounded follow-up when a check turn ended without any executable
