@@ -180,7 +180,7 @@ export async function* promisePhase<T>(work: () => Promise<T>): AsyncGenerator<H
 
 type NoteKind = 'read' | 'write' | 'command';
 interface ToolNote {
-  readonly text: string;
+  text: string;
   readonly kind: NoteKind;
   /** A failing or erroring command: the evidence a review needs most. */
   readonly important: boolean;
@@ -194,6 +194,10 @@ const FAILURE_SIGNAL =
   /exit code [1-9]|\b(?:FAIL(?:ED)?|AssertionError|Traceback|panic|ERR_[A-Z_]+|ELIFECYCLE)\b|Error:|✗|×/;
 const NOTES_BUDGET_CHARS = 120_000;
 const READ_NOTE_CHARS = 260;
+/** A passing command's note is cut to this many characters (head + tail) before it is evicted. */
+const SHRUNK_NOTE_CHARS = 1200;
+const SHRUNK_HEAD_CHARS = 400;
+const TRIM_MARKER = ' …[output trimmed]… ';
 
 /**
  * Only already-redacted public tool output, never model reasoning or peers.
@@ -225,6 +229,30 @@ export class ObservedToolNotes {
     this.evict();
   }
 
+  /**
+   * Shortens one long passing command note to its head and tail. A passing probe's
+   * output is the evidence behind a verdict, so it is trimmed before it is dropped.
+   */
+  private shrinkOne(): boolean {
+    const index = this.notes.findIndex(
+      (note, at) =>
+        at < this.notes.length - 1 &&
+        note.kind === 'command' &&
+        !note.important &&
+        note.text.length > SHRUNK_NOTE_CHARS,
+    );
+    if (index < 0) return false;
+    const note = this.notes[index]!;
+    // Always shorter than SHRUNK_NOTE_CHARS, so a trimmed note is never picked again.
+    const text =
+      note.text.slice(0, SHRUNK_HEAD_CHARS) +
+      TRIM_MARKER +
+      note.text.slice(-(SHRUNK_NOTE_CHARS - SHRUNK_HEAD_CHARS - TRIM_MARKER.length));
+    this.chars -= note.text.length - text.length;
+    note.text = text;
+    return true;
+  }
+
   private evict(): void {
     const ranks: Array<(note: ToolNote) => boolean> = [
       (note) => note.kind === 'read',
@@ -233,6 +261,11 @@ export class ObservedToolNotes {
       () => true,
     ];
     while (this.chars > NOTES_BUDGET_CHARS && this.notes.length > 1) {
+      this.truncated = true;
+      const firstRead = this.notes.findIndex(ranks[0]!);
+      if (firstRead < 0 || firstRead === this.notes.length - 1) {
+        if (this.shrinkOne()) continue;
+      }
       let removed = false;
       for (const matches of ranks) {
         const index = this.notes.findIndex(matches);
@@ -242,7 +275,6 @@ export class ObservedToolNotes {
         removed = true;
         break;
       }
-      this.truncated = true;
       if (!removed) break;
     }
   }

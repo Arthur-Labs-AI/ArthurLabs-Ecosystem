@@ -511,8 +511,13 @@ describe('investigateChecks second pass', () => {
     expect(sweep[1]).toContain('packages/fresh/src/index.ts');
     expect(sweep[2]).toContain('packages/probed/src/index.ts');
     expect(codes(events).filter((c) => c === 'QA_HAZARD_SWEEP_TURN')).toHaveLength(3);
-    expect(value.checkConclusions[1]).toContain('HAZARD SWEEP (packages/fresh/src/index.ts');
-    expect(reportContexts.at(-1)).toContain('HAZARD SWEEP');
+    // each file keeps its own entry after the planned checks, none overwrites another
+    expect(value.checkConclusions[2]).toContain('HAZARD SWEEP of packages/wipe/src/index.ts');
+    expect(value.checkConclusions[3]).toContain('HAZARD SWEEP of packages/fresh/src/index.ts');
+    expect(value.checkConclusions[4]).toContain('HAZARD SWEEP of packages/probed/src/index.ts');
+    const context = reportContexts.at(-1) ?? '';
+    for (const file of ['wipe', 'fresh', 'probed']) expect(context).toContain('packages/' + file);
+    expect(context).toContain('hazard-sweep');
   });
 
   it('skips the sweep when the adapter provides no hazard source', async () => {

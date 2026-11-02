@@ -79,6 +79,18 @@ describe('observed tool digest', () => {
     expect(rendered).toContain('Error: boom');
   });
 
+  it('trims long passing command output to head and tail before dropping it', () => {
+    const notes = new ObservedToolNotes();
+    notes.add(message('observed tool bash output: EARLY-VERDICT ' + 'a'.repeat(3800) + ' EARLY-TAIL'));
+    for (let i = 0; i < 70; i += 1)
+      notes.add(message('observed tool bash output: ok ' + 'b'.repeat(3800) + i));
+    const rendered = notes.render();
+    expect(rendered).toContain('EARLY-VERDICT');
+    expect(rendered).toContain('EARLY-TAIL');
+    expect(rendered).toContain('[output trimmed]');
+    expect(rendered.length).toBeLessThan(160_000);
+  });
+
   it('bounds a single read note and ignores model reasoning', () => {
     const notes = new ObservedToolNotes();
     notes.add(message('private model reasoning'));

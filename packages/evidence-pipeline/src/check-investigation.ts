@@ -48,6 +48,8 @@ import {
 
 /** Closing characters of a check turn kept as its conclusion (conclusion plus "Breaks attempted"). */
 const CONCLUSION_CHARS = 1500;
+/** Closing characters kept of each hazard-sweep turn (its conclusion is at the end). */
+const SWEEP_STATEMENT_CHARS = 600;
 
 /** What the shared loop needs from an adapter's collected turn. */
 export interface InvestigationTurn {
@@ -449,8 +451,6 @@ export async function* investigateChecks<T extends InvestigationTurn>(
       )
       .slice(0, MAX_SWEEP_TURNS);
     if (ranked.length === 0) return;
-    // Sweep findings are not tied to one planned check; the last check carries the statement.
-    const carrier = plan.plannedChecks.length - 1;
     yield hooks.event({
       type: 'warning',
       code: 'QA_HAZARD_SWEEP',
@@ -504,13 +504,10 @@ export async function* investigateChecks<T extends InvestigationTurn>(
         });
         if (statement.length > 0 && proved) {
           idle = 0;
-          checkConclusions[carrier] = (
-            (checkConclusions[carrier] ?? '').slice(0, 500) +
-            '\nHAZARD SWEEP (' +
-            file.file +
-            '; extra angles, earlier verdicts stand unless this reproduced a defect): ' +
-            statement
-          ).slice(-CONCLUSION_CHARS);
+          // One entry per file after the planned checks, so a later file never pushes an
+          // earlier file's reproduced defect out of the report context.
+          checkConclusions[plan.plannedChecks.length + n] =
+            'HAZARD SWEEP of ' + file.file + ': ' + statement.slice(-SWEEP_STATEMENT_CHARS);
         } else {
           idle += 1;
         }

@@ -130,7 +130,14 @@ export function renderCheckConclusions(
           },
         ];
   });
-  return entries.length === 0 ? '' : JSON.stringify(entries);
+  // Entries past the planned checks are hazard-sweep notes, one per probed file.
+  const sweep = conclusions.slice(plan.plannedChecks.length).flatMap((statement) =>
+    (statement ?? '').trim().length === 0
+      ? []
+      : [{ check: 'hazard-sweep', description: 'Host-flagged risky source file', statement: statement as string }],
+  );
+  const all = [...entries, ...sweep];
+  return all.length === 0 ? '' : JSON.stringify(all);
 }
 
 const CONCLUSIONS_CAVEAT =
