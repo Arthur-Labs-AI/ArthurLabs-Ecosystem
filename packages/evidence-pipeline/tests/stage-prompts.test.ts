@@ -90,8 +90,8 @@ describe('ordered compact QA stages', () => {
     expect(text).toContain('never `/tmp`');
     expect(text).toContain('PRODUCT defect');
     expect(text).toContain('Never loosen');
-    // Missing dependencies are confirmed once, then routed around.
-    expect(text).toContain('Missing dependencies are a limitation');
+    // A missing tool is confirmed once, bootstrapped once, then replicated or traced.
+    expect(text).toContain('Missing tools: work down this order');
     expect(text).toContain('ONCE');
   });
 
@@ -202,5 +202,24 @@ describe('project profile prompts', () => {
     );
     expect(profileContextEntry('t').note).toContain('UNVERIFIED');
     expect(profileContextEntry('t').note).toContain('never evidence');
+  });
+});
+
+describe('missing tools ladder', () => {
+  const plan = { plannedChecks: ['Check one'] };
+
+  it('tells the investigator to run, then replicate, then trace, and to tag each', () => {
+    const prompt = buildQaCheckInvestigationPrompt(plan, 0, new Map());
+    expect(prompt).toContain('(1) RUN IT');
+    expect(prompt).toContain('(2) REPLICA');
+    expect(prompt).toContain('(3) TRACE');
+    expect(prompt).toContain('[executed], [replica] or [traced]');
+    expect(prompt).not.toContain('stop hunting for package managers');
+  });
+
+  it('keeps replicas and traces from certifying a pass in the report', () => {
+    const report = buildQaReportPrompt(plan, new Map());
+    expect(report).toContain('[replica] or [traced]');
+    expect(report).toContain('cannot make a check passed');
   });
 });
