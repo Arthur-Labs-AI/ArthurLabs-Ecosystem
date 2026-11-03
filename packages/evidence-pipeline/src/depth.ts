@@ -148,7 +148,9 @@ const INLINE_SCRIPT_HEAD =
  * nothing after the terminator.
  */
 const QUOTED_HEREDOC =
-  /^(\s*(?:[^\s"';&|<>`$]*[\\/])?(?:node|nodejs|bun|deno|python3?|ruby|perl)(?:\.exe)?(?:\s+[^\s"';&|<>`$()]+)*?\s*)<<-?\s*(["'])(\w+)\2[ \t]*\r?\n[\s\S]*?\r?\n[ \t]*\3[ \t]*\r?\n?\s*$/i;
+  /^(\s*(?:[^\s"';&|<>`$]*[\\/])?(?:node|nodejs|bun|deno|python3?|ruby|perl)(?:\.exe)?(?:\s+[^\s"';&|<>`$()]+)*?\s*)<<-?\s*(["'])(\w+)\2\s([\s\S]*)$/i;
+/** Adapters record a command with newlines flattened to spaces and cut at 2000 characters. */
+const RECORDED_COMMAND_LIMIT = 1990;
 
 /**
  * An interpreter's inline script is one process whose exit status is the
@@ -160,10 +162,13 @@ const QUOTED_HEREDOC =
 function withoutInlineScript(command: string): string {
   const heredoc = QUOTED_HEREDOC.exec(command);
   if (heredoc !== null) {
-    // The shell ends the heredoc at the FIRST line equal to the tag; a second one means more commands follow.
-    const body = command.slice(command.indexOf('\n') + 1).split(/\r?\n/);
-    const ends = body.filter((line) => line.trim() === heredoc[3]).length;
-    return ends === 1 ? heredoc[1] + 'script' : command;
+    // The script must end the command: the tag appears exactly once, as the last word. A
+    // command cut at the recording limit has lost its end, and is taken as the script itself.
+    const tag = new RegExp('(?:^|\\s)' + heredoc[3] + '(?=\\s|$)', 'g');
+    const tags = heredoc[4]!.match(tag)?.length ?? 0;
+    const ended = tags === 1 && new RegExp('(?:^|\\s)' + heredoc[3] + '\\s*$').test(heredoc[4]!);
+    const cut = tags === 0 && command.length >= RECORDED_COMMAND_LIMIT;
+    return ended || cut ? heredoc[1] + 'script' : command;
   }
   const head = INLINE_SCRIPT_HEAD.exec(command);
   if (head === null) return command;
