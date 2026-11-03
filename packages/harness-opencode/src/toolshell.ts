@@ -1,4 +1,4 @@
-import { chmod, mkdir, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
   BINARY_DOWNLOAD_SKIP_ENVIRONMENT,
@@ -105,6 +105,41 @@ export function normalizeHidePath(raw: string): string | undefined {
 }
 
 /**
+ * Mount points of Windows drives in a /proc/self/mountinfo text (drvfs and 9p, the
+ * filesystems WSL uses for C:, D:, ...), wherever the automount root is configured.
+ */
+export function windowsMountPaths(mountinfo: string): string[] {
+  const found: string[] = [];
+  for (const line of mountinfo.split('\n')) {
+    const [before, after] = line.split(' - ');
+    if (before === undefined || after === undefined) continue;
+    const fstype = after.split(' ')[0];
+    if (fstype !== 'drvfs' && fstype !== '9p') continue;
+    const mountPoint = before.split(' ')[4];
+    // Octal escapes (\040 for a space) keep their form; such a path is simply not hidden here.
+    if (mountPoint !== undefined && mountPoint.startsWith('/') && !mountPoint.includes('\\'))
+      found.push(mountPoint);
+  }
+  return found;
+}
+
+/**
+ * What a tool shell must not see of Windows under WSL: the drive mounts, /mnt (the usual
+ * automount root and /mnt/wsl) and the WSL interop folder. Only paths that exist are returned.
+ */
+export async function windowsHiddenPaths(
+  mountinfoPath = '/proc/self/mountinfo',
+): Promise<string[]> {
+  const mounts = windowsMountPaths(await readFile(mountinfoPath, 'utf8').catch(() => ''));
+  const found: string[] = [];
+  for (const path of [...mounts, '/mnt', '/run/WSL']) {
+    if (found.includes(path)) continue;
+    if (await access(path).then(() => true, () => false)) found.push(path);
+  }
+  return found;
+}
+
+/**
  * Compute the tool-namespace hide list. Hiding the workspace PARENT covers
  * sibling workspaces and everything above it (including the Sentry data
  * root) regardless of layout depth; the workspace itself is re-bound
@@ -115,13 +150,19 @@ export function computeToolHiddenPaths(input: {
   readonly scopeDir: string;
   readonly workspace: string;
   readonly realHome?: string;
+  /** Further existing paths to hide, such as the Windows drive mounts under WSL. */
+  readonly extra?: readonly string[];
 }): readonly string[] {
   const workspace = normalizeHidePath(input.workspace);
   const scopeDir = normalizeHidePath(input.scopeDir);
   if (workspace === undefined || scopeDir === undefined) return [];
   const slash = workspace.lastIndexOf('/');
   const parent = slash > 0 ? workspace.slice(0, slash) : undefined;
-  const candidates: Array<string | undefined> = [scopeDir, parent];
+  const candidates: Array<string | undefined> = [
+    scopeDir,
+    parent,
+    ...(input.extra ?? []).map(normalizeHidePath),
+  ];
   const home =
     input.realHome === undefined || input.realHome.length === 0
       ? undefined
@@ -232,6 +273,8 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
     'exec "$SENTRY_BWRAP" \\',
     '  --ro-bind / / \\',
     '  --unshare-net \\',
+    // Windows interop is reached through this socket variable; without it a shell cannot start .exe files.
+    '  --unsetenv WSL_INTEROP \\',
     '  --dev /dev \\',
     '  --proc /proc \\',
     '  --bind "$SENTRY_RUN_TMP" /tmp \\',

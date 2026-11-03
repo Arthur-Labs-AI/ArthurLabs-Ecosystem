@@ -1,5 +1,48 @@
 import { describe, expect, it } from 'vitest';
 import { computeToolHiddenPaths, normalizeHidePath, renderToolShellWrapper } from '../src/index.js';
+import { windowsHiddenPaths, windowsMountPaths } from '../src/toolshell.js';
+
+const MOUNTINFO = [
+  '24 1 8:48 / / rw,relatime - ext4 /dev/sdd rw',
+  '88 24 0:63 / /mnt/c rw,noatime - 9p C:\\134 rw,aname=drvfs;path=C:\\;uid=1000',
+  '90 24 0:64 / /mnt/d rw,noatime - drvfs D:\\ rw,uid=1000',
+  '91 24 0:65 / /win/e rw,noatime - 9p E:\\134 rw,aname=drvfs',
+  '92 24 0:66 / /run/user/1000 rw - tmpfs tmpfs rw',
+  '93 24 0:67 / /mnt/with\\040space rw - 9p F:\\134 rw',
+].join('\n');
+
+describe('windows drive hiding', () => {
+  it('finds drvfs and 9p mounts wherever the automount root is', () => {
+    expect(windowsMountPaths(MOUNTINFO)).toEqual(['/mnt/c', '/mnt/d', '/win/e']);
+    expect(windowsMountPaths('')).toEqual([]);
+  });
+
+  it('returns only paths that exist, and never fails on a missing mountinfo', async () => {
+    const found = await windowsHiddenPaths('/definitely/not/there');
+    for (const path of found) expect(['/mnt', '/run/WSL']).toContain(path);
+  });
+
+  it('hides extra paths but never the workspace, and unsets the interop socket', () => {
+    const hidden = computeToolHiddenPaths({
+      scopeDir: '/tmp/.scope',
+      workspace: '/tmp/data/w1',
+      extra: ['/mnt/c', '/mnt', '/tmp/data/w1'],
+    });
+    expect(hidden).toContain('/mnt/c');
+    expect(hidden).toContain('/mnt');
+    expect(hidden).not.toContain('/tmp/data/w1');
+    const script = renderToolShellWrapper({
+      realShell: '/bin/bash',
+      bwrap: '/usr/bin/bwrap',
+      hidePaths: hidden,
+      runTmp: '/tmp/.scope/tmp',
+      scopeHome: '/tmp/.scope/home',
+      workspace: '/tmp/data/w1',
+    });
+    expect(script).toContain("--tmpfs '/mnt/c'");
+    expect(script).toContain('--unsetenv WSL_INTEROP');
+  });
+});
 
 describe('tool shell wrapper', () => {
   it('rejects roots and empties from the hide list', () => {

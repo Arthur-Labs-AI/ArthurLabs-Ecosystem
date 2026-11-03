@@ -114,6 +114,7 @@ import { startEgressProxy, type EgressProxy } from './egress.js';
 import {
   TOOL_SHELL_EGRESS_PORT,
   computeToolHiddenPaths,
+  windowsHiddenPaths,
   writeToolShellWrapper,
   type ToolShellEgress,
 } from './toolshell.js';
@@ -692,6 +693,8 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     const realHome = this.hostEnvironment.HOME;
     const egress = await this.startToolShellEgress(scope, entry);
     const toolchains = await this.options.toolchains?.().catch(() => undefined);
+    // Windows drives and interop stay out of reach of model-controlled shells.
+    const windows = await windowsHiddenPaths();
     return writeToolShellWrapper({
       scopeBinDir: scope.binDir,
       spec: {
@@ -700,6 +703,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         hidePaths: computeToolHiddenPaths({
           scopeDir: scope.directory,
           workspace: workspacePath,
+          extra: windows,
           ...(realHome === undefined || realHome.length === 0 ? {} : { realHome }),
         }),
         runTmp: scope.runTmp,
