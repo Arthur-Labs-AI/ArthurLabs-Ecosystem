@@ -15,6 +15,7 @@ import { AGENT_RUN_STATUSES, AGENT_TASK_TYPES, QARUN_STATUSES } from './enums.js
 import { AgentUsageSchema } from './usage.schema.js';
 import { ExecutionSafeguardsSchema } from './agent.schema.js';
 import { RunInstructionsSchema } from './context.schema.js';
+import { RunProfileUsageSchema } from './profile.schema.js';
 
 export const QARunConfigurationSchema = z
   .object({
@@ -23,6 +24,7 @@ export const QARunConfigurationSchema = z
     policy: z.object({ id: z.string().min(1).max(100), version: z.number().int().min(1) }).strict(),
     executionProfileId: z.string().min(1).max(100).optional(),
     executionSafeguards: ExecutionSafeguardsSchema.optional(),
+    profileUsage: RunProfileUsageSchema.optional(),
   })
   .strict();
 export type QARunConfiguration = z.infer<typeof QARunConfigurationSchema>;

@@ -6,7 +6,9 @@ export type RunEngineErrorCode =
   | 'INVALID_TARGET'
   | 'PROJECT_COPY_DRIFT'
   | 'RUN_CANCELLED'
-  | 'RUN_EXECUTION_FAILED';
+  | 'RUN_EXECUTION_FAILED'
+  | 'PROFILE_FAILED'
+  | 'PROJECT_NOT_READY';
 
 export class RunEngineError extends Error {
   constructor(

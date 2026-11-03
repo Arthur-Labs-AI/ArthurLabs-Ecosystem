@@ -47,7 +47,22 @@ export function compactOperationReceipt(
   );
 }
 
+/**
+ * "Get to know the project": the planning stage, reused to write the agent's own
+ * orientation notes. Structure and commands only: a verdict in the notes would
+ * steer every later run, so none is allowed.
+ */
+export function buildProfilePrompt(request: Request): string {
+  return [
+    QA_SESSION_CONTRACT,
+    'PROJECT PROFILE — ORIENTATION ONLY. You are writing notes for your own later QA runs on this project. Read the docs, the directory structure, the main entry points and the build and test configuration, then describe what a QA engineer must know before testing: the purpose, the main modules and what each is responsible for, the entry points, how data, files, processes and network connections move through the system and where they cross a boundary, the build, test and lint commands that really exist and what they need, runtime or sandbox constraints, and local conventions. Facts only, each stated as observed in the files. Do NOT look for bugs. Do NOT say anything is safe, correct, well tested, risky or suspicious; no findings, no verdicts, no rankings, no recommendations. No tests, builds, installs or reproductions. Keep it under 6000 characters; do not inventory every file.',
+    'Return exactly one JSON object; first character is {, last is }. Schema: {"schemaVersion":1,"projectUnderstanding":string (the profile notes),"criticalFlows":string[] (main entry points and flows, one short line each),"weakPoints":[],"plannedChecks":["profile"]}.',
+    'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
+  ].join('\n');
+}
+
 export function buildQaPlanningPrompt(request: Request): string {
+  if (request.task.context?.['profileOnly'] === true) return buildProfilePrompt(request);
   return [
     QA_SESSION_CONTRACT,
     'STAGE 1 — PLANNING ONLY. Read project docs, structure and main entry points, then return a short risk-first plan. Do not inventory every file. No tests, builds, lint, typecheck, installs or reproductions in this stage. plannedChecks must be concise future actions, not executed results. Plan at most ' +

@@ -6,6 +6,7 @@ import {
   buildQaReportPrompt,
   QA_SESSION_CONTRACT,
 } from '../src/stage-prompts.js';
+import { composeProfileText, profileContextEntry } from '../src/profile.js';
 const request = {
   task: {
     prompt: 'Owner intent',
@@ -178,5 +179,28 @@ describe('falsification planning and leads', () => {
     for (const prompt of prompts) expect(prompt).toContain('Do not argue a reproduced violation');
     for (const prompt of prompts.slice(0, 3)) expect(prompt).toContain('the root or container itself');
     expect(prompts[2]).toContain('src/a.ts');
+  });
+});
+
+describe('project profile prompts', () => {
+  const request = { task: { prompt: 'p', context: { profileOnly: true } } };
+
+  it('turns the planning stage into an orientation-only profile turn', () => {
+    const prompt = buildQaPlanningPrompt(request);
+    expect(prompt).toContain('PROJECT PROFILE — ORIENTATION ONLY');
+    expect(prompt).toContain('Do NOT look for bugs');
+    expect(prompt).toContain('no findings, no verdicts');
+    expect(prompt).not.toContain('FALSIFY');
+    expect(buildQaPlanningPrompt({ task: { prompt: 'p', context: {} } })).toContain('FALSIFY');
+  });
+
+  it('composes bounded profile text and labels it unverified', () => {
+    const long = composeProfileText({ projectUnderstanding: 'x'.repeat(20000), criticalFlows: ['a'] });
+    expect(long.length).toBeLessThanOrEqual(8000);
+    expect(composeProfileText({ projectUnderstanding: 'Notes.', criticalFlows: ['src/a.ts'] })).toBe(
+      'Notes.\n\nEntry points and flows:\n- src/a.ts',
+    );
+    expect(profileContextEntry('t').note).toContain('UNVERIFIED');
+    expect(profileContextEntry('t').note).toContain('never evidence');
   });
 });

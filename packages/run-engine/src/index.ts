@@ -1,4 +1,5 @@
-import { depthPolicy } from '@qa/evidence-pipeline';
+import { depthPolicy, profileContextEntry, PROFILE_CONTEXT_KEY } from '@qa/evidence-pipeline';
+import { ProjectProfileBuilder, profileState } from './profile-builder.js';
 import {
   createWorkspacePreparer,
   discoverOfflineCache,
@@ -32,6 +33,7 @@ import {
   type HarnessRunRequest,
   type HarnessWorkspace,
   type QARun,
+  type RunProfileUsage,
   type TargetSpec,
 } from '@qa/schemas';
 import {
@@ -89,6 +91,8 @@ export interface RunOptions {
    * moved. Omitted runs the current revision (unchanged behavior).
    */
   readonly revisionId?: string;
+  /** Hand every agent that has a fresh profile of this revision its own orientation notes. Omitted means off. */
+  readonly useProfile?: boolean;
   readonly onHarnessRequest?: (request: HarnessRunRequest) => void;
   /** Signals this request's identity immediately after the initial row is saved. */
   readonly onRunCreated?: (run: QARun) => void;
@@ -184,6 +188,7 @@ export class RunCoordinator {
   private readonly workspaces: WorkspaceFactory;
   private readonly activities: RunActivityProjector;
   private readonly exporter: RunExporter;
+  readonly profiles: ProjectProfileBuilder;
   /** Runtime-local ownership (§10): adapters owned by THIS coordinator
    *  instance only. Never persisted; the DB cancellation request bridges
    *  processes to this map. */
@@ -205,6 +210,13 @@ export class RunCoordinator {
     this.workspaces = new WorkspaceFactory(dataRoot);
     this.activities = new RunActivityProjector(repository);
     this.exporter = new RunExporter(dataRoot, repository);
+    this.profiles = new ProjectProfileBuilder(
+      dataRoot,
+      repository,
+      this.projects,
+      this.workspaces,
+      this.registry,
+    );
   }
 
   async run(projectId: ProjectId, options: RunOptions): Promise<RunDetails> {
@@ -317,6 +329,12 @@ export class RunCoordinator {
       });
       if (snapshot.contentHash !== (expectedSnapshotHash ?? revision.contentHash))
         throw new Error('PROJECT_COPY_DRIFT');
+      const { usage: profileUsage, texts: profileTexts } = await this.loadProfiles(
+        projectId,
+        selected,
+        revision,
+        options.useProfile === true,
+      );
       const createdAt = nowIsoTimestamp();
       // Persist the initial QARun row before target validation. Status
       // agents_running is the pre-execution state; the same row is updated
@@ -345,6 +363,7 @@ export class RunCoordinator {
                 : SENTRY_SIMULATION_RUN_TIMEOUT_MS),
             ...(options.webAccess === true ? { webAccess: true } : {}),
           },
+          profileUsage,
         },
         createdAt,
         startedAt: createdAt,
@@ -438,6 +457,7 @@ export class RunCoordinator {
           ...(run.configuration.executionSafeguards === undefined
             ? {}
             : { executionSafeguards: run.configuration.executionSafeguards }),
+          profileUsage,
           ...(instructionMessage === undefined
             ? {}
             : { instructions: { message: instructionMessage, createdAt } }),
@@ -499,6 +519,9 @@ export class RunCoordinator {
                 // Agent workspaces materialize from this tree: the current
                 // working copy, or retained material for an older revision.
                 workingCopy: sourceRoot,
+                ...(profileTexts.get(registration.stack.id) === undefined
+                  ? {}
+                  : { profileText: profileTexts.get(registration.stack.id) as string }),
                 rootActivityId: root.id,
                 missionContext: {
                   project: {
@@ -617,6 +640,31 @@ export class RunCoordinator {
     }
   }
 
+  /**
+   * Which agents get their own profile. Only a profile of exactly this revision is used:
+   * a stale one is skipped, and the run records what happened so runs can be compared.
+   */
+  private async loadProfiles(
+    projectId: ProjectId,
+    registrations: readonly { readonly stack: { readonly id: AgentStackId } }[],
+    revision: { readonly contentHash: string },
+    requested: boolean,
+  ): Promise<{ usage: RunProfileUsage; texts: Map<AgentStackId, string> }> {
+    const texts = new Map<AgentStackId, string>();
+    const usage = { requested, usedAgentStackIds: [] as AgentStackId[], staleAgentStackIds: [] as AgentStackId[], missingAgentStackIds: [] as AgentStackId[] };
+    if (!requested) return { usage, texts };
+    for (const { stack } of registrations) {
+      const profile = await this.profiles.store.read(projectId, stack.id);
+      const state = profileState(profile, revision);
+      if (state === 'fresh' && profile !== undefined) {
+        texts.set(stack.id, profile.text);
+        usage.usedAgentStackIds.push(stack.id);
+      } else if (state === 'stale') usage.staleAgentStackIds.push(stack.id);
+      else usage.missingAgentStackIds.push(stack.id);
+    }
+    return { usage, texts };
+  }
+
   private async runAgent(input: {
     readonly run: QARun;
     readonly preparationPolicy?: PreparationPolicy;
@@ -625,6 +673,8 @@ export class RunCoordinator {
     readonly workingCopy: string;
     readonly rootActivityId: ReturnType<RunActivityProjector['stage']>['id'];
     readonly missionContext: Readonly<Record<string, unknown>>;
+    /** This agent's own fresh profile of the revision, when the run uses profiles. */
+    readonly profileText?: string;
     readonly onHarnessRequest?: (request: HarnessRunRequest) => void;
     readonly onHarnessEventPersisted?: (event: HarnessEvent, agentRun: AgentRun) => void;
   }): Promise<void> {
@@ -780,6 +830,9 @@ export class RunCoordinator {
           policyVersion: input.run.configuration.policy.version,
           context: {
             ...input.missionContext,
+            ...(input.profileText === undefined
+              ? {}
+              : { [PROFILE_CONTEXT_KEY]: profileContextEntry(input.profileText) }),
             ...(input.preparationPolicy === undefined
               ? {}
               : { qaDepth: { version: 1, deadlineAt }, workspacePreparation }),
@@ -1630,6 +1683,7 @@ export class RunCoordinator {
 }
 
 export * from './errors.js';
+export * from './profile-builder.js';
 
 export * from './activity-projector.js';
 export * from './exporters.js';
