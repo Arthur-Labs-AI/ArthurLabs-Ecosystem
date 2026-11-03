@@ -84,7 +84,9 @@ export function toolchainEnvironment(
 ): { readonly path: readonly string[]; readonly env: Readonly<Record<string, string>> } {
   switch (id) {
     case 'python':
-      return { path: [join(dir, 'bin')], env: { UV_PYTHON_INSTALL_DIR: join(dir, 'python') } };
+      // No UV_PYTHON_INSTALL_DIR: the mount is read-only and uv writes a lock there. uv finds the
+      // interpreter through the python3 link in bin/ and keeps what it downloads in the run's home.
+      return { path: [join(dir, 'bin')], env: {} };
     case 'dotnet':
       return {
         path: [join(dir, 'dotnet')],
