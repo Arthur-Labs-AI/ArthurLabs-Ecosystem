@@ -1,6 +1,10 @@
 import { chmod, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { BINARY_DOWNLOAD_SKIP_ENVIRONMENT, NON_INTERACTIVE_ENVIRONMENT } from '@qa/shared';
+import {
+  BINARY_DOWNLOAD_SKIP_ENVIRONMENT,
+  NON_INTERACTIVE_ENVIRONMENT,
+  type ToolchainSetup,
+} from '@qa/shared';
 
 /**
  * Sentry-owned tool shell wrapper: OS-enforced filesystem view for
@@ -60,6 +64,8 @@ export interface ToolShellSpec {
   readonly workspace: string;
   /** Registry-only egress through a host-side proxy; omitted means fully offline. */
   readonly egress?: ToolShellEgress | undefined;
+  /** Installed language toolchains: mounted read-only and put on PATH. */
+  readonly toolchains?: ToolchainSetup | undefined;
 }
 
 export interface ToolShellEgress {
@@ -185,6 +191,18 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
             ...NON_INTERACTIVE_ENVIRONMENT,
           }).map(([name, value]) => '  --setenv ' + name + ' ' + q(value) + ' \\'),
         ];
+  const toolchains = spec.toolchains;
+  // Mounted after the home/data-root tmpfs hides, so the read-only folder is visible again.
+  const toolchainBinds =
+    toolchains === undefined
+      ? []
+      : [
+          ...toolchains.binds.map((dir) => `  --ro-bind ${q(dir)} ${q(dir)} \\`),
+          `  --setenv PATH ${q(toolchains.path.join(':'))}":$PATH" \\`,
+          ...Object.entries(toolchains.env).map(
+            ([name, value]) => `  --setenv ${name} ${q(value)} \\`,
+          ),
+        ];
   return [
     '#!/bin/sh',
     '# Sentry-owned OpenCode tool shell wrapper (generated per AgentRun).',
@@ -220,6 +238,7 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
     ...hideArgs,
     '  --bind "$SENTRY_WORKSPACE" "$SENTRY_WORKSPACE" \\',
     '  --bind "$SENTRY_SCOPE_HOME" "$SENTRY_SCOPE_HOME" \\',
+    ...toolchainBinds,
     ...egressBinds,
     egress === undefined
       ? '  -- "$SENTRY_REAL_SHELL" -o pipefail -c "$SCRIPT"'

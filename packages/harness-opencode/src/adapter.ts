@@ -12,6 +12,7 @@ import {
   PACKAGE_REGISTRY_HOSTS,
   type AgentRunId,
   type OperationId,
+  type ToolchainSetup,
   describePlanRejection,
   describeSchemaIssues,
 } from '@qa/shared';
@@ -171,6 +172,8 @@ export interface OpenCodeHarnessAdapterOptions {
    */
   readonly launcherSelector?: OpenCodeLauncherSelector;
   readonly toolShellBuilder?: OpenCodeToolShellBuilder;
+  /** Installed language toolchains to mount into tool shells; read when each run starts. */
+  readonly toolchains?: () => Promise<ToolchainSetup | undefined>;
   readonly shutdownTimeoutMs?: number;
   readonly turnTimeoutMs?: number;
   /** Provider context window in tokens for the configured model.
@@ -688,6 +691,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     }
     const realHome = this.hostEnvironment.HOME;
     const egress = await this.startToolShellEgress(scope, entry);
+    const toolchains = await this.options.toolchains?.().catch(() => undefined);
     return writeToolShellWrapper({
       scopeBinDir: scope.binDir,
       spec: {
@@ -702,6 +706,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         scopeHome: scope.home,
         workspace: workspacePath,
         ...(egress === undefined ? {} : { egress }),
+        ...(toolchains === undefined ? {} : { toolchains }),
       },
     });
   }

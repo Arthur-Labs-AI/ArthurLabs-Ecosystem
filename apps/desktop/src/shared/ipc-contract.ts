@@ -37,6 +37,9 @@ export const IPC_CHANNELS = [
   'providers:detect-binaries',
   'production:readiness',
   'system:info',
+  'toolchains:status',
+  'toolchains:install',
+  'toolchains:remove',
   'system:active-runs',
   'runtime:status',
   'runtime:distros',
@@ -105,6 +108,24 @@ export interface ProjectProfileAgent {
 export interface ProjectProfileStatus {
   readonly projectId: string;
   readonly agents: readonly ProjectProfileAgent[];
+}
+
+export interface ToolchainVersionStatus {
+  readonly version: string;
+  readonly installed: boolean;
+  readonly installing: boolean;
+  readonly sizeMb?: number;
+  readonly error?: string;
+}
+
+export interface ToolchainPackStatus {
+  readonly id: string;
+  readonly label: string;
+  readonly description: string;
+  readonly approxSizeMb: number;
+  readonly defaultVersion: string;
+  readonly note?: string;
+  readonly versions: readonly ToolchainVersionStatus[];
 }
 
 export interface SentryDesktopApi {
@@ -232,6 +253,11 @@ export interface SentryDesktopApi {
     }>;
     selectDistro(distro: string): Promise<{ saved: string; restartRequired: boolean }>;
     reclaimSpace(): Promise<WslSpaceResult>;
+  };
+  readonly toolchains: {
+    status(): Promise<ToolchainPackStatus[]>;
+    install(packId: string, version: string): Promise<{ started: boolean }>;
+    remove(packId: string, version: string): Promise<{ removed: true }>;
   };
   readonly system: {
     info(): Promise<{ dataRoot: string; versions: Record<string, string> }>;

@@ -77,6 +77,13 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
         input?.agentStackIds === undefined ? {} : { agentStackIds: input.agentStackIds },
       ),
   },
+  toolchains: {
+    status: () => invoke('toolchains:status', {}),
+    install: (packId: string, version: string) =>
+      invoke('toolchains:install', { packId, version }),
+    remove: (packId: string, version: string) =>
+      invoke('toolchains:remove', { packId, version }),
+  },
   system: {
     info: () => invoke('system:info', {}),
     activeRuns: () => invoke('system:active-runs', {}),

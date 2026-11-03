@@ -13,6 +13,7 @@ import { Providers } from './pages/Providers.js';
 import { Settings } from './pages/Settings.js';
 import { RuntimeSettings } from './pages/RuntimeSettings.js';
 import { ApplicationSettings } from './pages/ApplicationSettings.js';
+import { Toolchains } from './pages/Toolchains.js';
 
 export function App(): React.JSX.Element {
   return (
@@ -31,6 +32,7 @@ export function App(): React.JSX.Element {
             <Route path="settings/providers" element={<Providers />} />
             <Route path="settings/runtime" element={<RuntimeSettings />} />
             <Route path="settings/application" element={<ApplicationSettings />} />
+            <Route path="settings/toolchains" element={<Toolchains />} />
           </Route>
         </Routes>
       </HashRouter>

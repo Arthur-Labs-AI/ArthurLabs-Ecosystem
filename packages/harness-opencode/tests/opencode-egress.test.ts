@@ -261,6 +261,32 @@ describe('tool shell wrapper egress', () => {
     );
     expect(env['NO_PROXY']).toContain('127.0.0.1');
   });
+
+  it('mounts installed toolchains read-only after the hides and puts them first on PATH', () => {
+    const script = renderToolShellWrapper({
+      ...base,
+      hidePaths: ['/home/u'],
+      toolchains: {
+        binds: ['/home/u/.local/share/sentry/toolchains'],
+        path: ['/home/u/.local/share/sentry/toolchains/dotnet/8.0/dotnet'],
+        env: { DOTNET_ROOT: '/home/u/.local/share/sentry/toolchains/dotnet/8.0/dotnet' },
+      },
+    });
+    const hide = script.indexOf("--tmpfs '/home/u'");
+    const bind = script.indexOf("--ro-bind '/home/u/.local/share/sentry/toolchains'");
+    expect(hide).toBeGreaterThan(-1);
+    expect(bind).toBeGreaterThan(hide);
+    expect(script).toContain(
+      "--setenv PATH '/home/u/.local/share/sentry/toolchains/dotnet/8.0/dotnet'\":$PATH\"",
+    );
+    expect(script).toContain('--setenv DOTNET_ROOT');
+  });
+
+  it('adds nothing without toolchains', () => {
+    const script = renderToolShellWrapper(base);
+    expect(script).not.toContain('--setenv PATH');
+    expect(script).not.toContain('toolchains');
+  });
 });
 
 /** Real bubblewrap + socat + proxy: only runs where all of them exist (Linux/WSL). */
@@ -333,4 +359,40 @@ describe.runIf(realSandbox)('tool shell egress end to end (real bwrap + socat)',
     expect((await run('false | true; echo PIPEFAIL_$?')).stdout).toContain('PIPEFAIL_1');
     expect(dialed).toEqual([['104.16.0.1', 443]]);
   }, 60_000);
+});
+
+describe('tool shell wrapper toolchains', () => {
+  const base: ToolShellSpec = {
+    realShell: '/bin/bash',
+    bwrap: '/usr/bin/bwrap',
+    hidePaths: ['/home/u'],
+    runTmp: '/data/scope/tmp',
+    scopeHome: '/data/scope/home',
+    workspace: '/data/runs/ws',
+  };
+
+  it('mounts installed toolchains read-only after the hides and puts them first on PATH', () => {
+    const script = renderToolShellWrapper({
+      ...base,
+      toolchains: {
+        binds: ['/home/u/.local/share/sentry/toolchains'],
+        path: ['/home/u/.local/share/sentry/toolchains/dotnet/8.0/dotnet'],
+        env: { DOTNET_ROOT: '/home/u/.local/share/sentry/toolchains/dotnet/8.0/dotnet' },
+      },
+    });
+    const hide = script.indexOf("--tmpfs '/home/u'");
+    const bind = script.indexOf("--ro-bind '/home/u/.local/share/sentry/toolchains'");
+    expect(hide).toBeGreaterThan(-1);
+    expect(bind).toBeGreaterThan(hide);
+    expect(script).toContain(
+      `--setenv PATH '/home/u/.local/share/sentry/toolchains/dotnet/8.0/dotnet'":$PATH"`,
+    );
+    expect(script).toContain('--setenv DOTNET_ROOT');
+  });
+
+  it('is unchanged without toolchains', () => {
+    const script = renderToolShellWrapper(base);
+    expect(script).not.toContain('--setenv PATH');
+    expect(script).not.toContain('toolchains');
+  });
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, KeyRound, ServerCog, SlidersHorizontal } from 'lucide-react';
+import { ArrowRight, KeyRound, Package, ServerCog, SlidersHorizontal } from 'lucide-react';
 import { sentryApi } from '../lib/sentry-api.js';
 import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
 import { CollapsibleSection } from '../components/ui/CollapsibleSection.js';
@@ -34,6 +34,20 @@ export function Settings(): React.JSX.Element {
                   Runtime
                 </span>
                 <span className="body-secondary">WSL distribution and runtime health</span>
+              </span>
+              <ArrowRight size={15} aria-hidden="true" className="faint" />
+            </div>
+          </Link>
+          <Link to="/settings/toolchains" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <div className="card agent-row">
+              <Package size={18} aria-hidden="true" className="faint" />
+              <span className="grow">
+                <span className="card-title" style={{ display: 'block' }}>
+                  Toolchains
+                </span>
+                <span className="body-secondary">
+                  Install Python, .NET, Rust, Go and Java for the agents
+                </span>
               </span>
               <ArrowRight size={15} aria-hidden="true" className="faint" />
             </div>

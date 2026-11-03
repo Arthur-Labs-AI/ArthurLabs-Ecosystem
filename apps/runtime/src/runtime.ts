@@ -65,6 +65,7 @@ import {
 } from '@qa/runtime-protocol';
 
 import { runtimeReleaseIdentity } from './distribution.js';
+import { ToolchainManager } from './toolchains.js';
 const releaseIdentity = runtimeReleaseIdentity();
 export const RUNTIME_VERSION = releaseIdentity?.version ?? '1.0.2';
 
@@ -444,6 +445,7 @@ export class SentryRuntimeHost {
   /** Profile builds in flight and the last failure per project and agent (memory only). */
   private readonly profileBuilds = new Map<string, AbortController>();
   private readonly profileErrors = new Map<string, string>();
+  private readonly toolchains: ToolchainManager;
   private readonly activeImports = new Set<AbortController>();
   private readonly activeUpdates = new Set<AbortController>();
   private readonly notify: (event: string, payload?: unknown) => void;
@@ -457,6 +459,7 @@ export class SentryRuntimeHost {
   ) {
     this.notify = notify;
     this.dataRoot = dataRootOverride ?? defaultLinuxDataRoot();
+    this.toolchains = new ToolchainManager(this.dataRoot);
     this.database = new SentryDatabase({ dataRoot: this.dataRoot });
     this.repository = new SentryRepository(this.database);
     this.lease = new RuntimeInstanceLease(this.repository);
@@ -468,6 +471,7 @@ export class SentryRuntimeHost {
       .register(
         createOpenCodeRegistration({
           managedExecutable: managedOpenCodeExecutable(this.dataRoot),
+          toolchains: () => this.toolchains.setup(),
         }),
       )
       .register(createDeepSeekRegistration())
@@ -1394,6 +1398,18 @@ export class SentryRuntimeHost {
         return this.projectDoctor(requireString(params, 'projectId'));
       case 'projects.suggestTargets':
         return this.suggestTargets(requireString(params, 'projectId'));
+      case 'toolchains.status':
+        return this.toolchains.status();
+      case 'toolchains.install':
+        return this.toolchains.install(
+          requireString(params, 'packId'),
+          requireString(params, 'version'),
+        );
+      case 'toolchains.remove':
+        return this.toolchains.remove(
+          requireString(params, 'packId'),
+          requireString(params, 'version'),
+        ).then(() => ({ removed: true }));
       case 'projects.profile':
         return this.profileStatus(requireString(params, 'projectId'));
       case 'projects.buildProfile': {

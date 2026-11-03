@@ -135,6 +135,18 @@ export class DesktopApplicationService {
     return this.call('projects.suggestTargets', { projectId: id });
   }
 
+  toolchainStatus(): Promise<unknown> {
+    return this.call('toolchains.status', {});
+  }
+
+  toolchainInstall(packId: string, version: string): Promise<unknown> {
+    return this.call('toolchains.install', { packId, version });
+  }
+
+  toolchainRemove(packId: string, version: string): Promise<unknown> {
+    return this.call('toolchains.remove', { packId, version });
+  }
+
   profileStatus(projectId: string): Promise<unknown> {
     const id = ProjectIdInput.parse(projectId);
     return this.call('projects.profile', { projectId: id });

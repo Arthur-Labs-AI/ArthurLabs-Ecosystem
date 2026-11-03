@@ -90,6 +90,13 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
     .object({ agentStackIds: z.array(z.string().min(1).max(200)).max(10).optional() })
     .strict(),
   'system:info': z.object({}).strict(),
+  'toolchains:status': z.object({}).strict(),
+  'toolchains:install': z
+    .object({ packId: z.string().min(1).max(40), version: z.string().min(1).max(40) })
+    .strict(),
+  'toolchains:remove': z
+    .object({ packId: z.string().min(1).max(40), version: z.string().min(1).max(40) })
+    .strict(),
   'system:active-runs': z.object({}).strict(),
   'runtime:status': z.object({}).strict(),
   'runtime:distros': z.object({}).strict(),
@@ -320,6 +327,12 @@ export async function dispatchDesktopCommand(
           ? undefined
           : { agentStackIds: parsed['agentStackIds'] as string[] },
       );
+    case 'toolchains:status':
+      return service.toolchainStatus();
+    case 'toolchains:install':
+      return service.toolchainInstall(parsed['packId'] as string, parsed['version'] as string);
+    case 'toolchains:remove':
+      return service.toolchainRemove(parsed['packId'] as string, parsed['version'] as string);
     case 'system:info':
       return service.systemInfo();
     case 'system:active-runs':
