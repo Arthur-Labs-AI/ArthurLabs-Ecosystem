@@ -9,6 +9,8 @@ import { SegmentedControl } from '../components/ui/Tabs.js';
 import { sentryApi } from '../lib/sentry-api.js';
 import { RemoveProjectButton } from '../components/RemoveProjectButton.js';
 import { isConfirmPaidRunsEnabled } from '../lib/app-preferences.js';
+import { ProjectProfilePanel } from '../components/ProjectProfilePanel.js';
+import { useProjectProfile } from '../lib/use-project-profile.js';
 
 const AGENT_ORDER = ['stack_opencode_main', 'stack_deepseek_main', 'stack_glm_main'];
 
@@ -97,6 +99,14 @@ export function ProjectDetail(): React.JSX.Element {
     const base = selectedStacks ?? stacks.map((s) => s.id);
     setSelectedStacks(base.includes(id) ? base.filter((s) => s !== id) : [...base, id]);
   };
+  const profile = useProjectProfile(projectId);
+  const profileAgents = profile.status.data?.agents ?? [];
+  const freshProfileCount = effectiveStacks.filter((id) =>
+    profileAgents.some((agent) => agent.agentStackId === id && agent.state === 'fresh'),
+  ).length;
+  // Default on once a selected agent has fresh notes; the choice is the user's after that.
+  const [useProfileChoice, setUseProfileChoice] = React.useState<boolean | undefined>(undefined);
+  const useProfile = (useProfileChoice ?? true) && freshProfileCount > 0;
   const [confirmStart, setConfirmStart] = React.useState<'full' | 'targeted' | undefined>(
     undefined,
   );
@@ -125,6 +135,7 @@ export function ProjectDetail(): React.JSX.Element {
       : {}),
     ...(effectiveStacks.length === 0 ? {} : { agentStackIds: effectiveStacks }),
     ...(webAccess ? { webAccess: true } : {}),
+    ...(useProfile ? { useProfile: true } : {}),
   });
   const onStarted = (operation: unknown): void => {
     const runId = (operation as { runId?: string }).runId;
@@ -319,6 +330,15 @@ export function ProjectDetail(): React.JSX.Element {
           </div>
         </div>
       </PageSection>
+      <PageSection title="Project profile">
+        <ProjectProfilePanel
+          stacks={stacks}
+          agents={profileAgents}
+          loading={profile.status.isLoading}
+          onBuild={(ids) => profile.build.mutate(ids)}
+          buildError={profile.build.error instanceof Error ? profile.build.error.message : undefined}
+        />
+      </PageSection>
       <PageSection title="Run QA">
         <div className="card">
           <p className="body-secondary" style={{ marginTop: 0 }}>
@@ -392,6 +412,24 @@ export function ProjectDetail(): React.JSX.Element {
             />
             Allow web access
           </label>
+          <label
+            className="metadata"
+            style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '12px 0 6px' }}
+          >
+            <input
+              type="checkbox"
+              aria-label="Use project profile"
+              checked={useProfile}
+              disabled={freshProfileCount === 0}
+              onChange={(e) => setUseProfileChoice(e.target.checked)}
+            />
+            Use project profile
+          </label>
+          <p className="metadata" style={{ margin: '0 0 6px' }}>
+            {freshProfileCount === 0
+              ? 'No selected agent has an up-to-date profile; runs start without one.'
+              : freshProfileCount + ' of ' + effectiveStacks.length + ' selected agents have an up-to-date profile and get it back; the others start without one.'}
+          </p>
           <p className="metadata" style={{ margin: '0 0 6px' }}>
             Package installs from registries are always allowed. Web access also lets agents fetch
             and search the web for docs and advisories.

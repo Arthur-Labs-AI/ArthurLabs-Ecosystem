@@ -38,6 +38,12 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
       ),
     doctor: (projectId: string) => invoke('projects:doctor', { projectId }),
     suggestTargets: (projectId: string) => invoke('projects:suggest-targets', { projectId }),
+    profile: (projectId: string) => invoke('projects:profile', { projectId }),
+    buildProfile: (projectId: string, agentStackIds?: string[]) =>
+      invoke(
+        'projects:build-profile',
+        agentStackIds === undefined ? { projectId } : { projectId, agentStackIds },
+      ),
   },
   runs: {
     list: (projectId: string) => invoke('runs:list', { projectId }),

@@ -16,6 +16,8 @@ export const IPC_CHANNELS = [
   'projects:delete',
   'projects:doctor',
   'projects:suggest-targets',
+  'projects:profile',
+  'projects:build-profile',
   'runs:list',
   'runs:get',
   'runs:status',
@@ -91,6 +93,20 @@ export interface RunUpdatePayload {
 
 export type RunUpdateCallback = (payload: RunUpdatePayload) => void;
 
+export interface ProjectProfileAgent {
+  readonly agentStackId: string;
+  readonly state: 'none' | 'fresh' | 'stale';
+  readonly createdAt?: string;
+  readonly text?: string;
+  readonly building: boolean;
+  readonly error?: string;
+}
+
+export interface ProjectProfileStatus {
+  readonly projectId: string;
+  readonly agents: readonly ProjectProfileAgent[];
+}
+
 export interface SentryDesktopApi {
   readonly projects: {
     list(): Promise<unknown[]>;
@@ -104,6 +120,13 @@ export interface SentryDesktopApi {
     remove(projectId: string): Promise<{ projectId: string; deleted: true }>;
     doctor(projectId: string): Promise<unknown>;
     suggestTargets(projectId: string): Promise<{ projectId: string; paths: string[] }>;
+    /** Each agent's own orientation notes for the project: none, fresh, or stale after an update. */
+    profile(projectId: string): Promise<ProjectProfileStatus>;
+    /** Starts the agents writing their notes (all, or the listed stacks); returns at once. */
+    buildProfile(
+      projectId: string,
+      agentStackIds?: string[],
+    ): Promise<{ projectId: string; started: string[] }>;
   };
   readonly runs: {
     list(projectId: string): Promise<unknown[]>;
@@ -123,6 +146,7 @@ export interface SentryDesktopApi {
         agentStackIds?: string[];
         revisionId?: string;
         webAccess?: boolean;
+        useProfile?: boolean;
       },
     ): Promise<DesktopOperation>;
     /** Back-compat alias for start. */
@@ -135,6 +159,7 @@ export interface SentryDesktopApi {
         agentStackIds?: string[];
         revisionId?: string;
         webAccess?: boolean;
+        useProfile?: boolean;
       },
     ): Promise<DesktopOperation>;
     cancel(runId: string): Promise<unknown>;

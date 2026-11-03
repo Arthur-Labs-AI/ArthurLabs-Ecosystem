@@ -28,7 +28,18 @@ export function RunSummaryPanel({
     }
   }
   const completedAgentCount = agentRuns.filter((agent) => agent['status'] === 'completed').length;
-  const configuration = run['configuration'] as { agentStackIds?: string[] } | undefined;
+  const configuration = run['configuration'] as
+    | {
+        agentStackIds?: string[];
+        profileUsage?: {
+          requested: boolean;
+          usedAgentStackIds: string[];
+          staleAgentStackIds: string[];
+          missingAgentStackIds: string[];
+        };
+      }
+    | undefined;
+  const profileUsage = configuration?.profileUsage;
   const selected = [
     ...new Set(
       configuration?.agentStackIds ?? agentRuns.map((agent) => String(agent['agentStackId'])),
@@ -53,6 +64,20 @@ export function RunSummaryPanel({
             ' QA · ' +
             (run['executionKind'] === 'production' ? 'Production' : 'Legacy simulation')}
         </div>
+        {profileUsage === undefined ? null : (
+          <div className="metadata" style={{ marginTop: 4 }}>
+            {profileUsage.requested
+              ? 'Project profile: used by ' +
+                profileUsage.usedAgentStackIds.length +
+                ' agent(s)' +
+                (profileUsage.staleAgentStackIds.length + profileUsage.missingAgentStackIds.length > 0
+                  ? ', ' +
+                    (profileUsage.staleAgentStackIds.length + profileUsage.missingAgentStackIds.length) +
+                    ' without (out of date or not built)'
+                  : '')
+              : 'Project profile: off'}
+          </div>
+        )}
       </section>
       <section aria-label="Results by agent">
         <div className="section-title" style={{ marginBottom: 8 }}>

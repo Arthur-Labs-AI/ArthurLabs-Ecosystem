@@ -23,6 +23,13 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
     .strict(),
   'projects:doctor': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:suggest-targets': z.object({ projectId: z.string().min(1).max(200) }).strict(),
+  'projects:profile': z.object({ projectId: z.string().min(1).max(200) }).strict(),
+  'projects:build-profile': z
+    .object({
+      projectId: z.string().min(1).max(200),
+      agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
+    })
+    .strict(),
   'runs:list': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'runs:get': z.object({ runId: z.string().min(1).max(100) }).strict(),
   'runs:status': z.object({ runId: z.string().min(1).max(100) }).strict(),
@@ -39,6 +46,7 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
       agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
       runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
       webAccess: z.boolean().optional(),
+      useProfile: z.boolean().optional(),
     })
     .strict(),
   'runs:start-production': z
@@ -54,6 +62,7 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
       agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
       runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
       webAccess: z.boolean().optional(),
+      useProfile: z.boolean().optional(),
     })
     .strict(),
   'runs:cancel': z.object({ runId: z.string().min(1).max(100) }).strict(),
@@ -227,6 +236,13 @@ export async function dispatchDesktopCommand(
       return service.projectDoctor(parsed['projectId'] as string);
     case 'projects:suggest-targets':
       return service.suggestTargets(parsed['projectId'] as string);
+    case 'projects:profile':
+      return service.profileStatus(parsed['projectId'] as string);
+    case 'projects:build-profile':
+      return service.buildProfiles(
+        parsed['projectId'] as string,
+        parsed['agentStackIds'] as string[] | undefined,
+      );
     case 'runs:list':
       return service.listRuns(parsed['projectId'] as string);
     case 'runs:get':
@@ -254,6 +270,7 @@ export async function dispatchDesktopCommand(
         agentStackIds: parsed['agentStackIds'],
         runTimeoutMs: parsed['runTimeoutMs'],
         webAccess: parsed['webAccess'],
+        useProfile: parsed['useProfile'],
         revisionId: parsed['revisionId'],
       });
       if (operation.runId !== undefined)

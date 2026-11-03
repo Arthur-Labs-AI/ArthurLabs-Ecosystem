@@ -42,6 +42,8 @@ describe('runtime protocol framing', () => {
     expect(RUNTIME_METHODS).toContain('runs.exportContent');
     expect(RUNTIME_METHODS).toContain('runs.export');
     expect(RUNTIME_METHODS).toContain('projects.cancelUpdate');
+    expect(RUNTIME_METHODS).toContain('projects.profile');
+    expect(RUNTIME_METHODS).toContain('projects.buildProfile');
     expect(RUNTIME_METHODS).not.toContain('runs.merge');
     expect(RUNTIME_METHODS).not.toContain('runs.verify');
     expect(RUNTIME_METHODS).not.toContain('runs.ingest');

@@ -441,6 +441,9 @@ export class SentryRuntimeHost {
   private readonly registry: HarnessAdapterRegistry;
   private readonly coordinator: RunCoordinator;
   private readonly pendingRuns = new Map<string, PendingRun>();
+  /** Profile builds in flight and the last failure per project and agent (memory only). */
+  private readonly profileBuilds = new Map<string, AbortController>();
+  private readonly profileErrors = new Map<string, string>();
   private readonly activeImports = new Set<AbortController>();
   private readonly activeUpdates = new Set<AbortController>();
   private readonly notify: (event: string, payload?: unknown) => void;
@@ -521,6 +524,7 @@ export class SentryRuntimeHost {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    for (const build of this.profileBuilds.values()) build.abort();
     this.cancelAddProject();
     this.lease.release();
     this.database.close();
@@ -684,6 +688,58 @@ export class SentryRuntimeHost {
       entries = [];
     }
     return { projectId: record.project.id, paths: entries };
+  }
+
+  /** Every agent's profile state for a project, plus builds in flight and the last failure. */
+  async profileStatus(projectId: string): Promise<unknown> {
+    const id = ProjectIdInput.parse(projectId);
+    try {
+      const agents = await this.coordinator.profiles.status(id as never);
+      return {
+        projectId: id,
+        agents: agents.map((agent) => {
+          const key = id + ':' + agent.agentStackId;
+          const error = this.profileErrors.get(key);
+          return {
+            ...agent,
+            building: this.profileBuilds.has(key),
+            ...(error === undefined ? {} : { error }),
+          };
+        }),
+      };
+    } catch (error) {
+      const sanitized = toError(error);
+      throw rpcError(sanitized.code, sanitized.message);
+    }
+  }
+
+  /** Starts the agents' profile builds and returns at once; progress arrives as profile.updated. */
+  buildProfiles(projectId: string, agentStackIds?: string[]): unknown {
+    const id = ProjectIdInput.parse(projectId);
+    if (this.projects.getProject(id as never) === undefined)
+      throw rpcError('PROJECT_NOT_FOUND', 'Project not found: ' + id);
+    const wanted = agentStackIds ?? this.registry.list().map((item) => item.stack.id as string);
+    const started: string[] = [];
+    for (const stackId of wanted) {
+      if (this.registry.resolve(stackId as never) === undefined)
+        throw rpcError('AGENT_STACK_NOT_FOUND', 'Agent stack not found: ' + stackId);
+      const key = id + ':' + stackId;
+      if (this.profileBuilds.has(key)) continue;
+      const controller = new AbortController();
+      this.profileBuilds.set(key, controller);
+      this.profileErrors.delete(key);
+      started.push(stackId);
+      void this.coordinator.profiles
+        .build(id as never, stackId as never, controller.signal)
+        .catch((error: unknown) => {
+          this.profileErrors.set(key, toError(error).message.slice(0, 500));
+        })
+        .finally(() => {
+          this.profileBuilds.delete(key);
+          if (!this.closed) this.notify('profile.updated', { projectId: id, agentStackId: stackId });
+        });
+    }
+    return { projectId: id, started };
   }
 
   async updateProject(projectId: string, sourcePath?: string): Promise<unknown> {
@@ -853,6 +909,7 @@ export class SentryRuntimeHost {
       ...(parsed.runTimeoutMs === undefined ? {} : { runTimeoutMs: parsed.runTimeoutMs }),
       ...(parsed.webAccess === true ? { webAccess: true } : {}),
       ...(parsed.revisionId === undefined ? {} : { revisionId: parsed.revisionId }),
+      ...(parsed.useProfile === true ? { useProfile: true } : {}),
     });
     const settled = runPromise.then(
       (details) => {
@@ -1337,6 +1394,15 @@ export class SentryRuntimeHost {
         return this.projectDoctor(requireString(params, 'projectId'));
       case 'projects.suggestTargets':
         return this.suggestTargets(requireString(params, 'projectId'));
+      case 'projects.profile':
+        return this.profileStatus(requireString(params, 'projectId'));
+      case 'projects.buildProfile': {
+        const ids = params['agentStackIds'];
+        return this.buildProfiles(
+          requireString(params, 'projectId'),
+          ids === undefined ? undefined : z.array(z.string().min(1).max(200)).max(10).parse(ids),
+        );
+      }
       case 'runs.list':
         return this.listRuns(requireString(params, 'projectId'));
       case 'runs.get':
@@ -1384,6 +1450,7 @@ const StartRunParamsSchema = z
     agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
     runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
     webAccess: z.boolean().optional(),
+    useProfile: z.boolean().optional(),
   })
   .strict();
 
