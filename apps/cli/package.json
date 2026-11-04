@@ -22,8 +22,7 @@
     "@qa/project-manager": "workspace:*",
     "@qa/run-engine": "workspace:*",
     "@qa/schemas": "workspace:*",
-    "@qa/shared": "workspace:*",
-    "@qa/verifier": "workspace:*"
+    "@qa/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "catalog:",

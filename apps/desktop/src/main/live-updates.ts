@@ -12,11 +12,6 @@ interface WatchedRun {
   lastPayload: string;
 }
 
-interface WatchedRetest {
-  readonly retestRunId: string;
-  lastPayload: string;
-}
-
 /**
  * Persisted-truth live updates: poll the repository at a bounded cadence
  * (500 ms for watched active runs, 5 s idle sweep) and push normalized
@@ -25,7 +20,6 @@ interface WatchedRetest {
  */
 export class DesktopLiveUpdates {
   private readonly watchedRuns = new Map<string, WatchedRun>();
-  private readonly watchedRetests = new Map<string, WatchedRetest>();
   private activeTimer: NodeJS.Timeout | undefined;
   private idleTimer: NodeJS.Timeout | undefined;
 
@@ -67,30 +61,11 @@ export class DesktopLiveUpdates {
     this.watchedRuns.delete(runId);
   }
 
-  watchRetest(retestRunId: string): void {
-    if (!this.watchedRetests.has(retestRunId))
-      this.watchedRetests.set(retestRunId, { retestRunId, lastPayload: '' });
-    void this.pollWatched();
-  }
-
-  unwatchRetest(retestRunId: string): void {
-    this.watchedRetests.delete(retestRunId);
-  }
-
   notifyRunCreated(runId: string, operationId?: string | undefined): void {
     this.watchRun(runId);
     this.emit({
       kind: 'run-created',
       runId,
-      ...(operationId === undefined ? {} : { operationId }),
-    });
-  }
-
-  notifyRetestCreated(retestRunId: string, operationId?: string | undefined): void {
-    this.watchRetest(retestRunId);
-    this.emit({
-      kind: 'retest-created',
-      retestRunId,
       ...(operationId === undefined ? {} : { operationId }),
     });
   }
@@ -114,21 +89,6 @@ export class DesktopLiveUpdates {
         this.emit({ kind: 'run-snapshot', runId: watched.runId, snapshot });
       } catch {
         // Run may vanish mid-poll; the next renderer read reconciles.
-      }
-    }
-    for (const watched of this.watchedRetests.values()) {
-      try {
-        const snapshot = await this.service.retestSnapshot(watched.retestRunId);
-        const payload = JSON.stringify(snapshot);
-        if (payload === watched.lastPayload) continue;
-        this.watchedRetests.set(watched.retestRunId, { ...watched, lastPayload: payload });
-        const status = (snapshot.retestRun as { status?: string }).status;
-        if (['completed', 'partial', 'failed', 'cancelled'].includes(status ?? '')) {
-          this.watchedRetests.delete(watched.retestRunId);
-        }
-        this.emit({ kind: 'retest-snapshot', retestRunId: watched.retestRunId, snapshot });
-      } catch {
-        // Retest may vanish mid-poll; the next renderer read reconciles.
       }
     }
   }

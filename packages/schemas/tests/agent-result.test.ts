@@ -221,7 +221,6 @@ describe('Phase 3 structured agent contracts', () => {
       status: 'created',
       configuration: {
         agentStackIds: ['stack_muse_main'],
-        verificationLevel: 'strict',
         policy: { id: 'qa-standard', version: 1 },
       },
       createdAt: '2026-09-11T00:00:00.000Z',

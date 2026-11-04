@@ -25,7 +25,7 @@ afterEach(async () => {
 
 /**
  * Service-level smoke over the REAL runtime host (in-process stdio, no providers):
- * add → run → merge → issue, with the desktop service as a pure RPC adapter.
+ * add → run → export, with the desktop service as a pure RPC adapter.
  * Provider adapters never execute here — the runtime registry is real but no
  * run starts (only project + empty-list reads + readiness).
  */

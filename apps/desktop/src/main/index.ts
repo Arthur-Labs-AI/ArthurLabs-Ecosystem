@@ -3,6 +3,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bootstrapDesktop, type BootstrappedDesktop } from './bootstrap.js';
 import { classifyBootFailure, fatalScreenCopy } from './boot-failure.js';
+import { readAppLanguage, translateMainCopy, writeAppLanguage } from './app-locale.js';
 import { parseSentryControlArgs } from './sentry-control.js';
 import { dispatchDesktopCommand } from './desktop-command-router.js';
 import { ProviderCredentialService } from './services/provider-credentials.js';
@@ -108,7 +109,7 @@ async function boot(): Promise<void> {
     });
     const message = classified.message;
     await app.whenReady();
-    const copy = fatalScreenCopy(classified.kind);
+    const copy = fatalScreenCopy(classified.kind, readAppLanguage(app.getPath('userData')));
     const nativeHostFailure = classified.kind === 'native-runtime-offline';
     const runtimeOffline = classified.kind !== 'data-store';
     const fatal = new BrowserWindow({
@@ -161,15 +162,11 @@ async function boot(): Promise<void> {
   liveUpdates = new DesktopLiveUpdates(() => mainWindow, bootstrapped.service);
   const updates: DesktopLiveUpdates = liveUpdates;
   bootstrapped.runtime.onNotification((event, payload) => {
-    const typed = payload as { runId?: string; retestRunId?: string } | undefined;
+    const typed = payload as { runId?: string } | undefined;
     if (event === 'run.created' && typeof typed?.runId === 'string') {
       updates.notifyRunCreated(typed.runId);
     } else if (event === 'run.snapshot' && typeof typed?.runId === 'string') {
       updates.watchRun(typed.runId);
-    } else if (event === 'retest.created' && typeof typed?.retestRunId === 'string') {
-      updates.notifyRetestCreated(typed.retestRunId);
-    } else if (event === 'retest.snapshot' && typeof typed?.retestRunId === 'string') {
-      updates.watchRetest(typed.retestRunId);
     } else if (event === 'activeRuns.updated') {
       updates.refreshActiveRuns();
     }
@@ -207,8 +204,6 @@ async function boot(): Promise<void> {
         {
           maintenanceActive: () => maintenance?.active ?? false,
           onRunCreated: (runId, operationId) => updates.notifyRunCreated(runId, operationId),
-          onRetestCreated: (retestRunId, operationId) =>
-            updates.notifyRetestCreated(retestRunId, operationId),
           // Self-status: external clients may inspect broker liveness and
           // (non-secret) client names; the payload carries no credentials.
           cliStatus: () => cliServer?.status ?? { started: false },
@@ -223,6 +218,9 @@ async function boot(): Promise<void> {
   });
   const broker = cliServer;
   registerDesktopIpc(bootstrapped.service, {
+    persistAppLanguage: (language) => {
+      writeAppLanguage(app.getPath('userData'), language);
+    },
     maintenanceActive: () => maintenance?.active ?? false,
     reclaimSpace: () => {
       if (quitting || maintenance === undefined) throw new Error('Sentry is shutting down.');
@@ -230,9 +228,12 @@ async function boot(): Promise<void> {
     },
     redactErrorText,
     onRunCreated: (runId, operationId) => updates.notifyRunCreated(runId, operationId),
-    onRetestCreated: (retestRunId, operationId) =>
-      updates.notifyRetestCreated(retestRunId, operationId),
     cliStatus: () => broker.status,
+    cliSetEnabled: async (enabled: boolean) => {
+      if (enabled) return broker.start();
+      await broker.stop();
+      return broker.status;
+    },
     requestSavePath: async ({ suggestedFilename, filters }) => {
       const win = mainWindow;
       if (win === undefined) return null;
@@ -265,11 +266,6 @@ async function boot(): Promise<void> {
     if (typeof runId === 'string') liveUpdates?.unwatchRun(runId);
     return { ok: true as const, result: null };
   });
-  ipcMain.handle('sentry:watch-retest', (_event, payload: unknown) => {
-    const retestRunId = (payload as { retestRunId?: unknown }).retestRunId;
-    if (typeof retestRunId === 'string') liveUpdates?.watchRetest(retestRunId);
-    return { ok: true as const, result: null };
-  });
 
   await app.whenReady();
   await createWindow();
@@ -288,9 +284,13 @@ app.on('before-quit', (event) => {
   // bootstrap and runtime shutdown finish; repeated requests share cleanup.
   event.preventDefault();
   if (maintenance?.active) {
+    const language = readAppLanguage(app.getPath('userData'));
     dialog.showErrorBox(
-      'Disk reclamation is running',
-      'Wait for Windows disk reclamation and runtime reconnection to finish before closing Sentry.',
+      translateMainCopy('Disk reclamation is running', language),
+      translateMainCopy(
+        'Wait for Windows disk reclamation and runtime reconnection to finish before closing Sentry.',
+        language,
+      ),
     );
     return;
   }
@@ -299,6 +299,8 @@ app.on('before-quit', (event) => {
   void (async () => {
     try {
       await bootPromise;
+      await bootstrapped?.service.cancelAddProject?.().catch(() => undefined);
+      await bootstrapped?.service.cancelUpdateProject?.().catch(() => undefined);
       // Refusal must leave the window and broker usable for cancellation.
       await bootstrapped?.close();
       liveUpdates?.stop();
@@ -308,9 +310,13 @@ app.on('before-quit', (event) => {
     } catch {
       quitting = false;
       console.error('[sentry] Shutdown cleanup failed; cancel active work and retry sentry stop.');
+      const language = readAppLanguage(app.getPath('userData'));
       dialog.showErrorBox(
-        'Sentry is still running',
-        'Shutdown could not complete. Cancel active QA work, wait for it to finish, then retry sentry stop.',
+        translateMainCopy('Sentry is still running', language),
+        translateMainCopy(
+          'Shutdown could not complete. Cancel active QA work, wait for it to finish, then retry sentry stop.',
+          language,
+        ),
       );
     }
   })();

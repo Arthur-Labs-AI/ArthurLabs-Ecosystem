@@ -39,6 +39,8 @@ function eventTitle(event: HarnessEvent): string {
       return 'Finding: ' + event.finding.title;
     case 'evidence.submitted':
       return 'Evidence submitted';
+    case 'report.checkpoint':
+      return 'Validated report checkpoint saved';
     case 'usage.updated':
       return 'Usage updated';
     case 'warning':
@@ -159,6 +161,7 @@ export class RunActivityProjector {
 
   stage(input: {
     readonly qaRunId: RunActivity['qaRunId'];
+    readonly agentRunId?: RunActivity['agentRunId'];
     readonly parentActivityId?: RunActivityId;
     readonly source: RunActivity['source'];
     readonly kind: RunActivity['kind'];
@@ -171,6 +174,7 @@ export class RunActivityProjector {
       schemaVersion: 1,
       id: createRunActivityId(),
       qaRunId: input.qaRunId,
+      ...(input.agentRunId === undefined ? {} : { agentRunId: input.agentRunId }),
       ...(input.parentActivityId === undefined ? {} : { parentActivityId: input.parentActivityId }),
       source: input.source,
       kind: input.kind,

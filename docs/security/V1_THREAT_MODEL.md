@@ -137,8 +137,8 @@ emits a warning diagnostic and is documented development-only. In-process file
 tools are deny-listed and can only observe a dummy proxy credential. Claude
 Code bootstrap failures (bwrap/bind/mount text without `is_error`) are
 classified as infrastructure failure with `GLM_SANDBOX_UNAVAILABLE`, never as
-exit 0 (`claude-sandbox-truth.test.ts`). Verifier replay uses the systemd
-empty-root mount namespace (`packages/verifier/src/sandbox.ts`) with canary
+exit 0 (`claude-sandbox-truth.test.ts`). Workspace preparation uses the systemd
+empty-root mount namespace (`packages/run-engine/src/sandbox.ts`) with canary
 preflight (work visible, peer + home markers hidden) and honest
 `backend: 'none'` when units cannot start — never host fallback.
 
@@ -153,23 +153,57 @@ verdict per host in the validation report.
 
 ## 5. Agent subprocess -> network and providers
 
-Inputs: model-chosen URLs/commands; provider credentials required for paid calls.
+Inputs: model-chosen URLs/commands; provider credentials required for paid calls;
+dependency installs run by agents.
 
-Properties: model-controlled shells have no network (not even loopback to the
-host auth proxy); the OpenCode parent alone reaches providers normally;
-credentials travel only through designed channels; no silent paid retries.
+Properties: package-registry egress from agent shells is always allowed and
+reaches registry hosts only (`PACKAGE_REGISTRY_HOSTS` in
+`packages/shared/src/agent-network.ts`); every other host, host loopback (incl.
+the OpenCode auth proxy), LAN and private addresses are unreachable from agent
+shells; general web access (agent fetch/search tools) exists only on runs that
+opted in (`executionSafeguards.webAccess`, default off); the OpenCode parent
+alone reaches providers normally; credentials travel only through designed
+channels; no silent paid retries.
 
-Controls: tool shells enter a fresh network namespace with no routes
-(deny-by-default, no toggle); in-process tools see only a dummy proxy
-credential; harness adapters own provider transport with typed errors;
-run-engine performs no automatic retry of paid work (`RUN_MAY_HAVE_STARTED`
-reconciliation instead of re-execution).
+Controls:
 
-Evidence: `opencode-tool-network.test.ts`; adapter error-path tests; Phase 2
-no-duplicate-run regressions. Live provider execution was owner-reported on
-Windows/CachyOS for an earlier candidate — not re-run here.
-Status: VERIFIED (fixture). Live paid-provider acceptance: OWNER ACCEPTANCE
-REQUIRED.
+- OpenCode tool shells keep a fresh network namespace (`--unshare-net`) and gain
+  exactly one way out: a Unix socket to a Sentry-owned egress proxy
+  (`packages/harness-opencode/src/egress.ts`) bridged by `socat` to an
+  in-namespace loopback port. The proxy accepts only `CONNECT` to allowlisted
+  hostnames on ports 443/80, refuses raw IP literals, resolves DNS itself,
+  rejects any non-public resolved address and dials the validated address (no
+  rebinding window). Without `socat` the shells stay fully offline and
+  `OPENCODE_EGRESS_UNAVAILABLE` is reported. Allowed/refused counts and refused
+  hostnames are recorded as `OPENCODE_EGRESS_SUMMARY`.
+- Claude Code (GLM) runs with `sandbox.network.allowedDomains` set to the registry
+  allowlist; with `--permission-prompts none` other hosts are denied, not
+  prompted. WebFetch/WebSearch are stripped from `--allowedTools` and added to
+  `--disallowedTools` unless the run opted in to web access.
+- OpenCode web tools run in the parent process, so they are gated by permission
+  (`webfetch`/`websearch` deny) unless the run opted in.
+- DeepSeek: prompt-level only (it has no web tools). Its sandbox profile is
+  unchanged; if that sandbox blocks the network, installs fail and the agent
+  records a limitation.
+- In-process tools see only a dummy proxy credential; harness adapters own
+  provider transport with typed errors; run-engine performs no automatic retry
+  of paid work (`RUN_MAY_HAVE_STARTED` reconciliation instead of re-execution).
+- A dependency install only prepares a check: install commands never count as
+  executable proof (`DEPENDENCY_INSTALL_COMMAND`).
+
+Residual (accepted by owner, 2026-10-30): installs run third-party lifecycle
+scripts inside the sandbox; an allowlisted host (for example github.com) could
+carry a low-bandwidth exfiltration channel; web tools, when enabled, can send
+arbitrary URLs from the harness parent, which is why they are opt-in.
+
+Evidence: `opencode-tool-network.test.ts`, `opencode-egress.test.ts` (including a
+real bubblewrap + socat end-to-end run where available),
+`claude-sentinel.test.ts`, `agent-network.test.ts`; adapter error-path tests;
+Phase 2 no-duplicate-run regressions. Live provider execution, Claude Code's
+acceptance of `allowedDomains`, and installs through the proxy on a real
+project were not run in CI — OWNER ACCEPTANCE REQUIRED.
+Status: VERIFIED (fixture + local sandbox smoke). Live paid-provider and live
+install acceptance: OWNER ACCEPTANCE REQUIRED.
 
 ## 6. Electron renderer -> preload/IPC
 

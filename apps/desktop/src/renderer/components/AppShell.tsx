@@ -14,6 +14,8 @@ import { sentryApi } from '../lib/sentry-api.js';
 import { CommandPalette } from './CommandPalette.js';
 import { runtimeConnectionState, useRuntimeStatus } from '../lib/use-runtime-status.js';
 import { StatusIcon } from './StatusGlyph.js';
+import { useAppPreferences } from '../lib/app-preferences.js';
+import { useDomTranslationObserver } from '../lib/i18n.js';
 
 const NAV: Array<{ to: string; label: string; end?: boolean; icon: React.ReactNode }> = [
   {
@@ -37,8 +39,6 @@ function pageCrumb(pathname: string): React.ReactNode {
   if (pathname.startsWith('/settings/')) return 'System / Settings';
   if (pathname.startsWith('/runs/')) return 'Project / QA Run';
   if (pathname === '/runs') return 'Workspace / Runs';
-  if (pathname.startsWith('/issues')) return 'Workspace / Issues';
-  if (pathname.startsWith('/retests/')) return 'Project / Retest';
   if (pathname === '/history') return 'Workspace / History';
   return 'Overview / Dashboard';
 }
@@ -46,6 +46,9 @@ function pageCrumb(pathname: string): React.ReactNode {
 export function AppShell(): React.JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
+  const shellRef = React.useRef<HTMLDivElement | null>(null);
+  const { language } = useAppPreferences();
+  useDomTranslationObserver(shellRef, language);
   const [collapsed, setCollapsed] = React.useState<boolean>(() => {
     try {
       return window.localStorage.getItem(SIDEBAR_KEY) === '1';
@@ -65,15 +68,13 @@ export function AppShell(): React.JSX.Element {
     if (runtime.isError || runtime.data?.connected === false) wasUnavailable.current = true;
     if (!runtime.isError && runtime.data?.connected === true && wasUnavailable.current) {
       wasUnavailable.current = false;
-      // Read-only caches; snapshot hooks reconcile their own run/retest IDs.
+      // Read-only caches; snapshot hooks reconcile their own run IDs.
       const keys = new Set([
         'projects',
         'project',
         'project-name',
         'project-runs',
         'project-revisions',
-        'project-issues',
-        'issue-history',
         'system',
         'environment',
         'production-readiness',
@@ -130,17 +131,13 @@ export function AppShell(): React.JSX.Element {
 
   const recentRunId = (runs[0] as { runId?: string } | undefined)?.runId;
   return (
-    <div className="app-shell">
+    <div className="app-shell" ref={shellRef}>
       <aside className={'sidebar' + (collapsed ? ' collapsed' : '')} aria-label="Primary">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">
             <img src="./sentry-logo.png" alt="" />
           </span>
-          {collapsed ? null : (
-            <span className="brand-text">
-              SENTRY<small>OBSERVATION SYSTEM</small>
-            </span>
-          )}
+          {collapsed ? null : <span className="brand-text">SENTRY</span>}
         </div>
         {collapsed ? null : <div className="nav-group">Overview</div>}
         <nav aria-label="Primary navigation">
@@ -212,21 +209,14 @@ export function AppShell(): React.JSX.Element {
               >
                 <span className="status-dot status-running pulse" aria-hidden="true" />
                 {collapsed ? null : (
-                  <span>
-                    {count}{' '}
-                    {runtimeConnected && !activeRuns.isError ? 'active' : 'last known active'} run
-                    {count === 1 ? '' : 's'} · Open
-                  </span>
+                  <span>{count + ' active run' + (count === 1 ? '' : 's') + ' · Open'}</span>
                 )}
               </Link>
             ) : (
               <span>
                 <span className="status-dot status-running pulse" aria-hidden="true" />
                 {collapsed ? null : (
-                  <span>
-                    {' '}
-                    {count} active run{count === 1 ? '' : 's'}
-                  </span>
+                  <span>{' ' + count + ' active run' + (count === 1 ? '' : 's')}</span>
                 )}
               </span>
             )

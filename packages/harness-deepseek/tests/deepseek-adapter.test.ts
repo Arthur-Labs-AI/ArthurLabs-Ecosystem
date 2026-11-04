@@ -75,7 +75,31 @@ function executionResult(finalResponse: string, events: unknown[] = []) {
 }
 
 /** Investigation turn: tool events plus terminal prose (never final JSON). */
-function investigationResult(events: unknown[] = []) {
+/** An executed, successful probe: read-only investigation turns are nudged by the host. */
+function executedProbeEvents(callId = 'default-probe'): unknown[] {
+  return [
+    {
+      type: 'tool/call',
+      data: { callId, name: 'bash', arguments: JSON.stringify({ command: 'node probe.mjs' }) },
+    },
+    {
+      type: 'tool/result',
+      data: {
+        message: {
+          content: [
+            {
+              type: 'tool-result',
+              toolCallId: callId,
+              content: [{ type: 'text', text: 'ok\n[Command finished with exit code 0]' }],
+            },
+          ],
+        },
+      },
+    },
+  ];
+}
+
+function investigationResult(events: unknown[] = executedProbeEvents()) {
   return executionResult('Investigation complete.', events);
 }
 
@@ -466,6 +490,78 @@ describe('DeepSeekHarnessAdapter', () => {
   });
 
   it.each([
+    {
+      name: 'trailing marker after long output',
+      text: 'x'.repeat(5_000) + '\n[exit code: 0]',
+      expected: 1,
+    },
+    {
+      name: 'marker not at end stays unknown',
+      text: '[exit code: 0]\nmore output follows',
+      expected: 0,
+    },
+  ])('exit marker capture: $name', async ({ text, expected }) => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-marker-tail-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        start: async () => undefined,
+        startSession: async () => ({
+          runText: threeStage(
+            planResult(validPlan()),
+            investigationResult([
+              {
+                type: 'tool/call',
+                seq: 1,
+                time: 1,
+                data: {
+                  turn: 2,
+                  step: 1,
+                  callId: 'call-1',
+                  name: 'bash',
+                  arguments: JSON.stringify({ command: 'node probe.mjs' }),
+                },
+              },
+              {
+                type: 'tool/result',
+                seq: 2,
+                time: 2,
+                data: {
+                  turn: 2,
+                  step: 1,
+                  message: {
+                    id: 'msg-1',
+                    role: 'user',
+                    content: [
+                      {
+                        type: 'tool-result',
+                        toolCallId: 'call-1',
+                        content: [{ type: 'text', text }],
+                      },
+                    ],
+                    source: { kind: 'tool', plugin: 'shell', tool: 'bash' },
+                  },
+                },
+              },
+            ]),
+            reportResult(validReportV2()),
+          ),
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.filter((e) => e.type === 'command.executed')).toHaveLength(expected);
+    if (expected === 1)
+      expect(events.find((e) => e.type === 'command.executed')).toMatchObject({ exitCode: 0 });
+  });
+
+  it.each([
     { output: 'Observed failure\n[Command finished with exit code 1]', code: 1 },
     { output: 'Observed behavior\n[Command finished with exit code 0]', code: 0 },
     { output: '[Command finished with exit code 0]', code: 0 },
@@ -536,7 +632,11 @@ describe('DeepSeekHarnessAdapter', () => {
     await adapter.dispose();
     expect(events.at(-1), JSON.stringify(events.at(-1))).toMatchObject({ type: 'run.completed' });
     expect(prompts).toHaveLength(3);
-    expect(prompts[2]).toContain('exitCode: ' + code);
+    expect(
+      JSON.parse(
+        prompts[2]!.split('Authoritative operation receipt (frozen after investigation): ')[1]!,
+      ),
+    ).toContainEqual(expect.objectContaining({ exitCode: code }));
     const started = events.find((event) => event.type === 'tool.started');
     if (started?.type !== 'tool.started') throw new Error('expected observed operation');
     expect(events).toContainEqual(
@@ -568,7 +668,7 @@ describe('DeepSeekHarnessAdapter', () => {
     { name: 'bash', output: '[Command finished with exit code 9007199254740992]' },
     { name: 'read_file', output: 'file contents\n[Command finished with exit code 0]' },
   ])(
-    'rejects strong evidence without a valid shell outcome: $name / $output',
+    'downgrades strong evidence without a valid shell outcome: $name / $output',
     async ({ name, output }) => {
       const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-unknown-marker-'));
       roots.push(root);
@@ -627,21 +727,271 @@ describe('DeepSeekHarnessAdapter', () => {
       });
       const events = await collect(adapter, input);
       await adapter.dispose();
-      expect(events.at(-1)).toMatchObject({
-        type: 'run.failed',
-        failure: {
-          code: 'DEEPSEEK_INVALID_RESULT',
-          message: expect.stringContaining('Strong findings require grounded source/tool evidence'),
-        },
-      });
+      // Specification change (grounding repair): an ungrounded strong claim
+      // no longer discards the whole run. The evidence stays downgraded to
+      // manual reasoning, the finding is preserved at probable confidence,
+      // and no command outcome is fabricated.
+      expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+      // plan, investigation, host nudge (no observed exit), report.
       expect(runText).toHaveBeenCalledTimes(4);
-      expect(
-        events.some((event) =>
-          ['command.executed', 'evidence.submitted', 'finding.submitted'].includes(event.type),
-        ),
-      ).toBe(false);
+      expect(events.some((event) => event.type === 'command.executed')).toBe(false);
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          type: 'finding.submitted',
+          finding: expect.objectContaining({ confidence: 'probable' }),
+        }),
+      );
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          type: 'evidence.submitted',
+          evidence: expect.objectContaining({ type: 'manual' }),
+        }),
+      );
     },
   );
+
+  it('repairs missing grounding with one observed operation, then reports', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-grounding-repair-'));
+    roots.push(root);
+    const input = await request(root);
+    const toolEvents = (callId: string, output: string) => [
+      {
+        type: 'tool/call',
+        data: {
+          callId,
+          name: 'bash',
+          arguments: JSON.stringify({ command: 'python3 reproduce.py' }),
+        },
+      },
+      {
+        type: 'tool/result',
+        data: {
+          message: {
+            content: [
+              {
+                type: 'tool-result',
+                toolCallId: callId,
+                content: [{ type: 'text', text: output }],
+              },
+            ],
+          },
+        },
+      },
+    ];
+    const reproducedReport = (operationKey: string) =>
+      reportResult({
+        ...validReportV2(),
+        evidence: [
+          {
+            key: 'cmd',
+            type: 'command',
+            strength: 'reproduced_failure',
+            description: 'Reproduction failed as claimed.',
+            operationKey,
+          },
+        ],
+        findings: [
+          { ...validReportV2().findings[0], confidence: 'confirmed', evidenceKeys: ['cmd'] },
+        ],
+      });
+    const sequence = [
+      planResult(validPlan()),
+      // Investigation: operation observed without an exit outcome.
+      investigationResult(toolEvents('repair-1', 'some output')),
+      // Host nudge: the unobserved exit leaves no executed proof.
+      executionResult('Nothing more to run.'),
+      // Report 1: reproduced claim citing the unobserved operation (no
+      // exit-code claim of its own: observation is simply missing).
+      reproducedReport('op_1'),
+      // Grounding repair: the same operation, now with an observed exit.
+      investigationResult(toolEvents('repair-2', '[Command finished with exit code 1]')),
+      // Report 2: cites the newly observed operation (host derives the
+      // command text and exit code from the operation itself).
+      reproducedReport('op_2'),
+    ];
+    let calls = 0;
+    const prompts: string[] = [];
+    const runText = vi.fn(async (text: string) => {
+      prompts.push(text);
+      const next = sequence[calls] ?? sequence[sequence.length - 1]!;
+      calls += 1;
+      return next;
+    });
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        start: async () => undefined,
+        startSession: async () => ({ runText }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1), JSON.stringify(events.slice(-4))).toMatchObject({
+      type: 'run.completed',
+    });
+    expect(prompts.some((prompt) => prompt.includes('GROUNDING REPAIR'))).toBe(true);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_GROUNDING_REPAIR' }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'finding.submitted',
+        finding: expect.objectContaining({ confidence: 'confirmed' }),
+      }),
+    );
+  });
+
+  it('investigates one host-driven turn per frozen check', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-per-check-'));
+    roots.push(root);
+    const input = await request(root);
+    const plan = JSON.stringify({
+      schemaVersion: 1,
+      projectUnderstanding: 'Small fixture',
+      criticalFlows: ['Read path'],
+      weakPoints: ['Boundary'],
+      plannedChecks: ['Inspect README', 'Inspect LICENSE'],
+    });
+    const prompts: string[] = [];
+    let calls = 0;
+    const runText = vi.fn(async (text: string) => {
+      prompts.push(text);
+      calls += 1;
+      if (calls === 1) return planResult(plan);
+      if (calls <= 3) return investigationResult();
+      return reportResult({
+        ...validReportV2(),
+        checks: [
+          { name: 'Inspect README', status: 'passed' },
+          { name: 'Inspect LICENSE', status: 'inconclusive', details: 'Not present in fixture.' },
+        ],
+      });
+    });
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => ({
+        start: async () => undefined,
+        startSession: async () => ({ runText }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+    expect(prompts.some((prompt) => prompt.includes('INVESTIGATE CHECK check_1 (1 of 2)'))).toBe(
+      true,
+    );
+    expect(prompts.some((prompt) => prompt.includes('INVESTIGATE CHECK check_2 (2 of 2)'))).toBe(
+      true,
+    );
+    expect(
+      events.some(
+        (e) => e.type === 'agent.status' && e.message.includes('investigating check 2/2'),
+      ),
+    ).toBe(true);
+  });
+
+  it('recovers a context-exceeded report in a fresh compacted session', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-context-'));
+    roots.push(root);
+    const input = await request(root);
+    let clients = 0;
+    let calls = 0;
+    const prompts: string[] = [];
+    const runText = vi.fn(async (text: string) => {
+      prompts.push(text);
+      calls += 1;
+      if (calls === 1) return planResult(validPlan());
+      if (calls === 2) return investigationResult();
+      if (calls === 3)
+        throw new Error(
+          "CONTEXT_WINDOW_EXCEEDED (HTTP 400). This model's maximum context length is 1048576 tokens. However, you requested 1072237 tokens (816237 in the messages, 256000 in the completion).",
+        );
+      return reportResult(validReportV2());
+    });
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      clientFactory: async () => {
+        clients += 1;
+        return {
+          start: async () => undefined,
+          startSession: async () => ({ runText }),
+          close: async () => undefined,
+        };
+      },
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1), JSON.stringify(events.slice(-4))).toMatchObject({
+      type: 'run.completed',
+    });
+    expect(clients).toBe(2);
+    expect(prompts.at(-1)).toContain('REPORT-ONLY RECOVERY');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_CONTEXT_COMPACTED' }),
+    );
+  });
+
+  it('rotates proactively mid-investigation when the context budget is reached', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-rotate-'));
+    roots.push(root);
+    const input = await request(root);
+    const plan = JSON.stringify({
+      schemaVersion: 1,
+      projectUnderstanding: 'Small fixture',
+      criticalFlows: ['Read path'],
+      weakPoints: ['Boundary'],
+      plannedChecks: ['Inspect README', 'Inspect LICENSE'],
+    });
+    let clients = 0;
+    let calls = 0;
+    const prompts: string[] = [];
+    const runText = vi.fn(async (text: string) => {
+      prompts.push(text);
+      calls += 1;
+      if (calls === 1) return planResult(plan);
+      if (calls <= 3) return investigationResult();
+      return reportResult({
+        ...validReportV2(),
+        checks: [
+          { name: 'Inspect README', status: 'passed' },
+          { name: 'Inspect LICENSE', status: 'inconclusive', details: 'Not present in fixture.' },
+        ],
+      });
+    });
+    const adapter = new DeepSeekHarnessAdapter({
+      executable: 'dsh-test',
+      modelId: 'deepseek-v4-flash',
+      environment: {},
+      // Tiny window: the budget trips before the second check turn, so the
+      // host must compact (fresh client, host-facts seed) instead of letting
+      // the provider reject the turn.
+      contextWindowTokens: 10,
+      clientFactory: async () => {
+        clients += 1;
+        return {
+          start: async () => undefined,
+          startSession: async () => ({ runText }),
+          close: async () => undefined,
+        };
+      },
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+    expect(clients).toBeGreaterThanOrEqual(2);
+    expect(prompts.some((prompt) => prompt.includes('CONTEXT COMPACTED BY HOST'))).toBe(true);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_CONTEXT_COMPACTED' }),
+    );
+  });
 
   it('records no code without marker, meta, or error (unknown stays unknown)', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-nocode-'));
@@ -1633,4 +1983,105 @@ describe('DeepSeekHarnessAdapter', () => {
     await adapter.dispose();
     expect(close).toHaveBeenCalledTimes(1);
   });
+  it.each(['success', 'disconnect', 'timeout', 'cancel', 'consumer-return'])(
+    'persists live investigation events before idle and settles %s truthfully',
+    async (outcome) => {
+      const root = await mkdtemp(join(tmpdir(), 'sentry-deepseek-live-'));
+      roots.push(root);
+      const input = await request(root);
+      if (outcome === 'timeout') vi.useFakeTimers();
+      let resolveTurn!: (value: DeepSeekRunResult) => void;
+      let rejectTurn!: (cause: Error) => void;
+      let calls = 0;
+      let finished = false;
+      const call = {
+        type: 'tool/call',
+        data: {
+          callId: 'live-call',
+          name: 'bash',
+          arguments: JSON.stringify({ command: 'node tests/probe.mjs' }),
+        },
+      };
+      const result = {
+        type: 'tool/result',
+        data: {
+          meta: { exitCode: 0 },
+          message: {
+            content: [
+              {
+                type: 'tool-result',
+                toolCallId: 'live-call',
+                content: [{ type: 'text', text: 'probe passed' }],
+              },
+            ],
+          },
+        },
+      };
+      const close = vi.fn(async () => {
+        rejectTurn?.(new Error('owned transport closed'));
+      });
+      const adapter = new DeepSeekHarnessAdapter({
+        executable: 'dsh-test',
+        modelId: 'deepseek-v4-flash',
+        environment: {},
+        turnTimeoutMs: 100,
+        clientFactory: async () => ({
+          start: async () => {},
+          close,
+          startSession: async () => ({
+            runText: async (_text: string, _id?: string, onEvent?: (event: unknown) => void) => {
+              calls += 1;
+              if (calls === 1) return planResult(validPlan());
+              if (calls > 2) return reportResult(validReportV2());
+              onEvent?.(call);
+              if (outcome === 'success') onEvent?.(result);
+              const answer = await new Promise<DeepSeekRunResult>((resolve, reject) => {
+                resolveTurn = resolve;
+                rejectTurn = reject;
+              });
+              finished = true;
+              return answer;
+            },
+          }),
+        }),
+      });
+      const events: HarnessEvent[] = [];
+      const iter = adapter.run(input)[Symbol.asyncIterator]();
+      try {
+        while (!events.some((e) => e.type === 'tool.started')) {
+          const step = await iter.next();
+          expect(step.done).not.toBe(true);
+          events.push(step.value!);
+        }
+        expect(finished).toBe(false);
+        if (outcome === 'consumer-return') {
+          await iter.return?.(undefined);
+          expect(close).toHaveBeenCalledTimes(1);
+          expect(calls).toBe(2);
+          return;
+        }
+        if (outcome === 'success') resolveTurn(investigationResult([call, result]));
+        else if (outcome === 'timeout') await vi.advanceTimersByTimeAsync(100);
+        else if (outcome === 'cancel') await adapter.cancel(input.agentRunId);
+        else rejectTurn(new Error('scripted transport disconnect'));
+        for (let step = await iter.next(); !step.done; step = await iter.next())
+          events.push(step.value);
+        expect(events.filter((e) => e.type === 'tool.started')).toHaveLength(1);
+        expect(events.filter((e) => e.type === 'tool.completed')).toHaveLength(1);
+        const validator = new IncrementalHarnessEventValidator(input.qaRunId, input.agentRunId);
+        for (const event of events) validator.accept(event);
+        validator.finish();
+        expect(events.at(-1)?.type).toBe(outcome === 'success' ? 'run.completed' : 'run.failed');
+        if (outcome !== 'success') {
+          expect(close).toHaveBeenCalled();
+          expect(events.some((e) => e.type === 'command.executed')).toBe(false);
+          const end = events.find((e) => e.type === 'tool.completed');
+          expect(end?.type === 'tool.completed' ? end.tool.exitCode : 999).toBeUndefined();
+        } else expect(events.filter((e) => e.type === 'command.executed')).toHaveLength(1);
+      } finally {
+        vi.useRealTimers();
+        await adapter.dispose();
+      }
+    },
+  );
 });

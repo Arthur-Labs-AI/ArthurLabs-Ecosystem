@@ -1,5 +1,32 @@
 # Changelog
 
+## [Unreleased]
+
+- Remove the merger and verifier packages and the merge, verification, issue and
+  retest services, RPCs, CLI commands (`run merge`, `issue`, `retest`, `verify`)
+  and Desktop pages. See [ADR 0015](docs/adr/0015-remove-merge-verification-issue-retest.md).
+- Add persistence migration 7: drops the merge, verification, issue and retest
+  tables and legacy retest runs. Full and Targeted runs, findings, evidence and
+  exports are kept; issue and retest history is not.
+- Move the workspace-preparation sandbox into `@qa/run-engine`.
+- Staged QA flow: frozen plan, host-driven per-check investigation, deepening,
+  hazard sweep and report, with a proof gate and an operation receipt.
+- Project profile: per-agent orientation notes for a project, a "Use project
+  profile" run option, and a profile-usage record on each run. Notes are labelled
+  unverified and never store past findings.
+- Missing-tools ladder: run it, otherwise a labelled `[replica]`, otherwise a
+  labelled `[traced]` fallback. Replica and trace results can never certify a pass.
+- Toolchain packs (Settings → Toolchains): host-side installs of Python (uv), .NET,
+  Rust, Go and Java, mounted read-only into OpenCode tool shells. Each run picks the
+  project's pinned version (global.json, target framework, go.mod, .python-version,
+  rust-toolchain, pom) and falls back to the newest installed version.
+- Per-run "Allow tool and SDK downloads" option widens the shell allowlist to
+  official vendor hosts. Package registries stay allowed in every run.
+- OpenCode tool shells hide Windows drives, `/mnt` and the WSL interop socket, set
+  `XDG_RUNTIME_DIR` to the private tmp, and stop .NET build servers from holding the
+  shell's output pipe open until the tool timeout.
+- Compatibility: see [docs/beta/compatibility.md](docs/beta/compatibility.md).
+
 ## [1.0.2] - 2026-10-16
 
 - Ship the production CLI frontend and command forwarding in Windows archives,

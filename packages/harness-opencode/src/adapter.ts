@@ -1,3 +1,6 @@
+import { randomBytes } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   createFindingId,
   createHarnessEventId,
@@ -5,13 +8,46 @@ import {
   createInvestigationPlanId,
   createOperationId,
   nowIsoTimestamp,
+  webAccessEnabled,
+  PACKAGE_REGISTRY_HOSTS,
+  allowedAgentHosts,
+  toolDownloadsEnabled,
   type AgentRunId,
   type OperationId,
+  type ToolchainSetup,
+  describePlanRejection,
+  describeSchemaIssues,
 } from '@qa/shared';
 import {
+  limitPhase,
+  reportAttemptDeadline,
+  promisePhase,
+  PhaseDeadlineReached,
+  ObservedToolNotes,
+  maxPlannedChecks,
+  renderCheckConclusions,
+  compactToolOutput,
+  ContextBudget,
+  estimatePromptTokens,
+  isContextWindowExceeded,
+  buildInvestigationCompactionContext,
+  buildRecoveryReportContext,
+  streamObservedWork,
+  investigateChecks,
+  scanHazardFiles,
+  buildQaPlanningPrompt,
+  applyBlockedChecks,
+  applyUnprovenChecks,
+  composeHostFallbackReport,
+  buildQaReportPrompt,
+  boundedValidation,
+  coverageErrors,
+  groundCoverage,
+  resolveReportChecks,
+  reportableDepthPlan,
+  depthPolicy,
   boundCorrectionMessage,
   buildPlanningCorrectionIntro,
-  buildReportCorrectionIntro,
   buildBaselineIndex,
   commandIdentity,
   convertReportEvidence,
@@ -19,19 +55,16 @@ import {
   MAX_PLANNING_ATTEMPTS,
   MAX_REPORT_ATTEMPTS,
   parseWholeJson,
-  renderFrozenLedger,
-  REPORT_CONFIDENCE_CALIBRATION,
-  REPORT_REPRODUCTION_CONTRACT,
-  REPORT_ENVELOPE_SCHEMA,
-  REPORT_LEDGER_RULES,
   summarizeSchemaIssues,
   validateLocation,
   validateProductionFindings,
+  downgradeUngroundedFindings,
+  buildGroundingRepairPrompt,
+  isGroundingRepairableError,
   type EvidencePipelineContext,
   type ObservedOperation,
 } from '@qa/evidence-pipeline';
 import {
-  describeSentryAgentReportContract,
   FindingSchema,
   type Finding,
   HarnessEventSchema,
@@ -70,7 +103,7 @@ import {
   buildOpenCodeToolEnvironment,
 } from './environment.js';
 import { OpenCodeHarnessError } from './errors.js';
-import { redactDiagnostic, redactStructured, secretValues } from './redaction.js';
+import { redactDiagnostic, redactStructured, redactText, secretValues } from './redaction.js';
 import {
   cleanupOpenCodeRunScope,
   createOpenCodeRunScope,
@@ -79,7 +112,14 @@ import {
 } from './scope.js';
 import { findExecutable, type OpenCodeProcessLauncher } from './process.js';
 import { SENTRY_PROXY_DUMMY_KEY, startOpenCodeAuthProxy, type OpenCodeAuthProxy } from './proxy.js';
-import { computeToolHiddenPaths, writeToolShellWrapper } from './toolshell.js';
+import { startEgressProxy, type EgressProxy } from './egress.js';
+import {
+  TOOL_SHELL_EGRESS_PORT,
+  computeToolHiddenPaths,
+  windowsHiddenPaths,
+  writeToolShellWrapper,
+  type ToolShellEgress,
+} from './toolshell.js';
 import {
   createProductionOpenCodeClient,
   selectProductionLauncher,
@@ -135,8 +175,14 @@ export interface OpenCodeHarnessAdapterOptions {
    */
   readonly launcherSelector?: OpenCodeLauncherSelector;
   readonly toolShellBuilder?: OpenCodeToolShellBuilder;
+  /** Installed language toolchains to mount into tool shells; read when each run starts. */
+  readonly toolchains?: (workspace: string) => Promise<ToolchainSetup | undefined>;
   readonly shutdownTimeoutMs?: number;
   readonly turnTimeoutMs?: number;
+  /** Provider context window in tokens for the configured model.
+   *  Conservative 200k default (the configured OpenRouter model varies);
+   *  rotation happens at the shared safety ratio before it is full. */
+  readonly contextWindowTokens?: number;
   readonly onRuntimeIdentity?: (identity: {
     readonly harnessVersion?: string;
     readonly executableVersion?: string;
@@ -172,6 +218,35 @@ export type OpenCodeToolShellBuilder = (
   input: OpenCodeToolShellRequest,
 ) => Promise<string | undefined>;
 
+/**
+ * Default single-turn budget (60 min). A single `opencode run` turn owns a
+ * whole investigation phase: on run_01M5SWNX0RRAB3QFKB6TGF55CS the execution
+ * turn of a 349-file project exceeded the previous 30 min budget with zero
+ * partial results, while the sibling GLM run needed 33.5 min total on the
+ * same project. The budget stays a hard cap (hung turns still die); this
+ * only gives productive single-shot turns room to finish.
+ */
+export const DEFAULT_OPENCODE_TURN_TIMEOUT_MS = 10_800_000;
+
+/**
+ * Names-only summary of upstream proxy traffic observed during a turn (route
+ * ids and counts, never credentials or content). Lets a timed-out turn say
+ * whether the model was talking to the upstream at all — the difference
+ * between "stalled with no traffic" and "working but slower than budget".
+ */
+export function describeTurnUpstreamActivity(
+  before: Readonly<Record<string, number>>,
+  after: Readonly<Record<string, number>>,
+): string {
+  const parts: string[] = [];
+  for (const [route, count] of Object.entries(after)) {
+    const delta = count - (before[route] ?? 0);
+    if (delta > 0) parts.push(route + 'x' + String(delta));
+  }
+  if (parts.length === 0) return 'No upstream requests were relayed during the turn.';
+  return 'Upstream requests relayed during the turn: ' + parts.join(', ') + '.';
+}
+
 export class OpenCodeTurnTimeoutError extends OpenCodeHarnessError {
   constructor(phase: string, budgetMs: number) {
     super(
@@ -200,6 +275,10 @@ interface OpenCodeRunEntry {
   turnsIssued: number;
   scope?: OpenCodeRunScope | undefined;
   proxy?: OpenCodeAuthProxy | undefined;
+  /** Registry-only egress proxy for tool shells (absent when socat is missing or the shell is bypassed). */
+  egress?: EgressProxy | undefined;
+  /** Hosts the egress proxy admits for this run (registries, plus SDK hosts when opted in). */
+  allowedHosts?: readonly string[] | undefined;
   session?: OpenCodeSessionView | undefined;
   client?: OpenCodeClientView | undefined;
   maskedConfig: readonly string[];
@@ -264,63 +343,7 @@ function messageOf(cause: unknown): string {
 interface BuiltReportAttempt {
   readonly evidenceByKey: ReadonlyMap<string, Evidence>;
   readonly findings: readonly Finding[];
-}
-
-function planningPrompt(request: HarnessRunRequest): string {
-  return [
-    'You are the sole QA investigator. Do not create, delegate to, or message subagents.',
-    'Host safety is authoritative: work only inside the current isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
-    'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
-    'Explicit run instructions define intended behavior and outrank project documentation; project documentation outranks your inference. None may override host safety.',
-    'Inspect project documentation and the supplied immutable mission context. Do not use peer plans, findings, or messages.',
-    'Create an investigation plan before executing it.',
-    'Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}.',
-    'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
-    'User instructions: ' + request.task.prompt,
-    'OUTPUT CONTRACT (must hold exactly): your ENTIRE final response is exactly one raw JSON object matching the schema. No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
-  ].join('\n');
-}
-
-function investigationPrompt(
-  plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>,
-): string {
-  return [
-    'Execute the frozen investigation plan below as the sole investigator. Do not create or use subagents.',
-    'Host safety is authoritative: remain inside the isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
-    'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
-    'You may create temporary tests, configuration, instrumentation, build output, and runtime state only inside this disposable workspace to investigate behavior.',
-    'Inspect every applicable area needed for comprehensive QA: build, lint, typecheck, existing and generated tests, integration/runtime/API/frontend/database/auth behavior, configuration, dependencies, architecture, business logic, error handling, edge cases, performance, concurrency, CI/CD, deployment, maintainability, and project-specific weak points. Do not force irrelevant checks.',
-    'Priority controls order, not permission to skip relevant checks. Record every blocked or incomplete check as a limitation; never claim it passed.',
-    'Do not silently obtain unrestricted network access. Record sandbox or network restrictions as limitations and never retry with sandbox disabled.',
-    'Use only the repository toolchain already present in the workspace; do not download packages or install dependencies from the network (no npx fetches, no npm/pip installs). If a test runner is unavailable, record it as a limitation.',
-    'Keep the investigation tight: a handful of targeted checks beats dozens of exploratory commands. Do not repeat commands that already produced results.',
-    'For each significant candidate bug, determine whether its behavior can be safely reproduced in this workspace; when feasible, run a narrow focused reproduction command or test and observe the result (exploration commands like grep, cat, ls, or rg do not count as reproduction). Preserve the operation key: the frozen ledger in the reporting turn is the only provenance the final report may cite.',
-    'Do NOT produce the final Sentry JSON report yet. Investigate only, using permitted local tools as needed. When the investigation is complete, finish this turn with a short terminal message such as: Investigation complete.',
-    'Sentry will provide the authoritative operation ledger in the following reporting turn.',
-    'Frozen plan: ' + JSON.stringify(plan),
-  ].join('\n');
-}
-
-function reportPrompt(
-  plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>,
-  operations: ReadonlyMap<string, ObservedOperation>,
-  correction?: readonly string[],
-): string {
-  return [
-    'Serialize the investigation you just completed into exactly one Sentry report. No new QA: do not run commands, read files, or use any tools in this turn. Temporary evidence keys only; Sentry owns all durable IDs.',
-    ...(correction === undefined ? [] : [buildReportCorrectionIntro(correction)]),
-    REPORT_LEDGER_RULES,
-    REPORT_REPRODUCTION_CONTRACT,
-    REPORT_CONFIDENCE_CALIBRATION,
-    'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value fails validation. Severity MUST be exactly one of: critical, high, medium, low, info.',
-    'Report evidence contract (exact fields per type; copy names exactly): ' +
-      describeSentryAgentReportContract(),
-    REPORT_ENVELOPE_SCHEMA,
-    'Authoritative Sentry operation ledger (frozen after investigation):\n' +
-      renderFrozenLedger(operations),
-    'Frozen plan: ' + JSON.stringify(plan),
-    'OUTPUT CONTRACT (must hold exactly): your ENTIRE final response is exactly one raw JSON object matching SentryAgentReportV2 (schemaVersion 2). No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
-  ].join('\n');
+  readonly groundingRepairs: readonly string[];
 }
 
 /** Extract a shell command or file path from tool-call input, if present. */
@@ -337,7 +360,7 @@ function commandFromToolInput(
     const parts = argv.filter((entry): entry is string => typeof entry === 'string');
     if (parts.length > 0) return parts.join(' ').slice(0, 500);
   }
-  if (/file|read|write|edit|search|glob|patch/i.test(toolName)) {
+  if (/file|read|write|edit|search|glob|patch|grep|list|view|find/i.test(toolName)) {
     for (const key of ['path', 'file', 'filePath', 'pattern', 'query']) {
       const candidate = typeof input[key] === 'string' ? (input[key] as string).trim() : '';
       if (candidate.length > 0) return candidate.slice(0, 500);
@@ -361,6 +384,9 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
   private readonly sessions = new Map<string, OpenCodeRunEntry>();
   private readonly observedCommands = new Set<string>();
   private readonly observedOperations = new Map<string, ObservedOperation>();
+  /** Runs whose tool shell is the pipefail wrapper: a zero exit certifies every pipeline stage. */
+  private readonly pipefailRuns = new Set<AgentRunId>();
+  private readonly toolNotes = new ObservedToolNotes();
   private operationCounter = 0;
   private cancelledRuns = new Set<string>();
   private readonly shutdownDiagnostics: HarnessDiagnostic[] = [];
@@ -370,7 +396,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     this.runtime = resolveOpenCodeRuntime({ ...options, environment: this.hostEnvironment });
     this.clientFactory = options.clientFactory ?? createProductionOpenCodeClient;
     this.shutdownTimeoutMs = options.shutdownTimeoutMs ?? 10_000;
-    this.turnTimeoutMs = options.turnTimeoutMs ?? 1_800_000;
+    this.turnTimeoutMs = options.turnTimeoutMs ?? DEFAULT_OPENCODE_TURN_TIMEOUT_MS;
     const child = buildOpenCodeChildEnvironment({ source: this.hostEnvironment });
     this.baseEnvironment = child.environment;
     this.childEnvironmentReport = child;
@@ -507,10 +533,12 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         commandText: command,
         ...(exitCode === undefined ? {} : { exitCode }),
         isTestOperation: isTestCommand(observation.tool + ' ' + command),
+        ...(this.pipefailRuns.has(agentRunId) ? { pipefail: true } : {}),
       });
     }
     if (observation.status === 'completed' && observation.output !== undefined) {
-      const summary = redactDiagnostic(observation.output.trim(), this.secrets).slice(0, 1000);
+      // Head + tail, not head only: the failing assertion is at the end.
+      const summary = compactToolOutput(redactText(observation.output, this.secrets));
       if (summary.length > 0) {
         out.push(
           emit({
@@ -519,6 +547,24 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           }),
         );
       }
+    }
+    // A probe the agent wrote is the reproduction; it is usually deleted
+    // afterwards, so its source is kept in the digest while it is visible.
+    if (observation.tool === 'write' && observation.status === 'completed') {
+      const path = commandFromToolInput(observation.tool, observation.input) ?? '';
+      const source = observation.input['content'];
+      if (typeof source === 'string' && source.length > 0)
+        out.push(
+          emit({
+            type: 'agent.message',
+            message: (
+              'observed tool write source ' +
+              path +
+              ': ' +
+              redactText(source, this.secrets).slice(0, 1500)
+            ).slice(0, 2000),
+          }),
+        );
     }
     return out;
   }
@@ -532,11 +578,14 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     request: HarnessRunRequest,
     scope: OpenCodeRunScope,
     proxy: OpenCodeAuthProxy,
+    entry: OpenCodeRunEntry,
   ): Promise<NodeJS.ProcessEnv> {
     const scoped = applyOpenCodeScopeEnvironment(this.baseEnvironment, scope);
     let shell: string | undefined;
     if (process.platform === 'linux') {
-      shell = await this.buildToolShell(scope, request.workspace.runtimePath);
+      entry.allowedHosts = allowedAgentHosts(request.executionSafeguards);
+      shell = await this.buildToolShell(scope, request.workspace.runtimePath, entry);
+      if (shell !== undefined) this.pipefailRuns.add(request.agentRunId);
     } else {
       this.shutdownDiagnostics.push({
         code: 'OPENCODE_DIRECT_SHELL',
@@ -588,6 +637,11 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           }
         : {}),
       ...(shell === undefined ? {} : { shell }),
+      // OpenCode web tools run in the parent process with host networking, so
+      // they are gated by permission, not by the tool network namespace.
+      ...(webAccessEnabled(request.executionSafeguards)
+        ? {}
+        : { permission: { webfetch: 'deny', websearch: 'deny' } as const }),
     });
     return { ...scoped, OPENCODE_CONFIG_CONTENT: configContent };
   }
@@ -599,10 +653,11 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
   private async buildToolShell(
     scope: OpenCodeRunScope,
     workspacePath: string,
+    entry: OpenCodeRunEntry,
   ): Promise<string | undefined> {
     const builder = this.options.toolShellBuilder;
     if (builder !== undefined) return builder({ scope, workspacePath });
-    return this.buildProductionToolShell(scope, workspacePath);
+    return this.buildProductionToolShell(scope, workspacePath, entry);
   }
 
   /**
@@ -613,6 +668,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
   private async buildProductionToolShell(
     scope: OpenCodeRunScope,
     workspacePath: string,
+    entry: OpenCodeRunEntry,
   ): Promise<string | undefined> {
     if (openCodeSandboxBypassed(this.hostEnvironment)) {
       this.shutdownDiagnostics.push({
@@ -640,6 +696,10 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       );
     }
     const realHome = this.hostEnvironment.HOME;
+    const egress = await this.startToolShellEgress(scope, entry);
+    const toolchains = await this.options.toolchains?.(workspacePath).catch(() => undefined);
+    // Windows drives and interop stay out of reach of model-controlled shells.
+    const windows = await windowsHiddenPaths();
     return writeToolShellWrapper({
       scopeBinDir: scope.binDir,
       spec: {
@@ -648,13 +708,69 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         hidePaths: computeToolHiddenPaths({
           scopeDir: scope.directory,
           workspace: workspacePath,
+          extra: windows,
           ...(realHome === undefined || realHome.length === 0 ? {} : { realHome }),
         }),
         runTmp: scope.runTmp,
         scopeHome: scope.home,
         workspace: workspacePath,
+        ...(egress === undefined ? {} : { egress }),
+        ...(toolchains === undefined ? {} : { toolchains }),
       },
     });
+  }
+
+  /**
+   * Package installs are always on: start the registry-only egress proxy for
+   * this run's tool shells. Without socat the shells stay fully offline and
+   * the gap is reported, never silently widened.
+   */
+  private async startToolShellEgress(
+    scope: OpenCodeRunScope,
+    entry: OpenCodeRunEntry,
+  ): Promise<ToolShellEgress | undefined> {
+    const socat = await findExecutable(['/usr/bin/socat', '/bin/socat', 'socat']);
+    if (socat === undefined) {
+      this.shutdownDiagnostics.push({
+        code: 'OPENCODE_EGRESS_UNAVAILABLE',
+        severity: 'warning',
+        message:
+          'socat is not installed: OpenCode tool shells stay fully offline, so dependency installs cannot run.',
+        retryable: false,
+      });
+      return undefined;
+    }
+    // Unix socket paths are limited to ~107 bytes; fall back to a short tmp path.
+    let socketPath = join(scope.directory, 'egress.sock');
+    if (Buffer.byteLength(socketPath) > 100)
+      socketPath = join(tmpdir(), 'sentry-eg-' + randomBytes(6).toString('hex') + '.sock');
+    entry.egress = await startEgressProxy({
+      socketPath,
+      allowedHosts: entry.allowedHosts ?? PACKAGE_REGISTRY_HOSTS,
+    });
+    return { socketPath, socat, port: TOOL_SHELL_EGRESS_PORT };
+  }
+
+  /** Closes the egress proxy and records what it admitted and refused (hostnames only). */
+  private async closeEgress(entry: OpenCodeRunEntry): Promise<void> {
+    const egress = entry.egress;
+    if (egress === undefined) return;
+    entry.egress = undefined;
+    const stats = egress.stats();
+    this.shutdownDiagnostics.push({
+      code: 'OPENCODE_EGRESS_SUMMARY',
+      severity: 'info',
+      message:
+        'Tool shell egress: ' +
+        stats.allowed +
+        ' registry tunnel(s) allowed, ' +
+        stats.denied +
+        ' refused' +
+        (stats.deniedHosts.length === 0 ? '' : ' (' + stats.deniedHosts.join(', ') + ')') +
+        '.',
+      retryable: false,
+    });
+    await egress.close().catch(() => undefined);
   }
 
   private turnEnvironment(entry: OpenCodeRunEntry, forbidTools: boolean): NodeJS.ProcessEnv {
@@ -673,6 +789,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     agentRunId: AgentRunId,
     phase: string,
     forbidTools = false,
+    onObserved?: (event: HarnessEvent) => void,
   ): Promise<CollectedTurn> {
     const session = entry.session;
     if (session === undefined) {
@@ -693,7 +810,39 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     const deadline = Date.now() + this.turnTimeoutMs;
     const budget = deadline - Date.now();
     if (budget <= 0) throw new OpenCodeTurnTimeoutError(phase, this.turnTimeoutMs);
+    // Upstream traffic baseline: a failed turn must say whether the model
+    // was talking to the upstream at all. Route ids and counts only — the
+    // proxy never exposes credentials or content through this summary.
+    const relayBefore: Record<string, number> = { ...(entry.proxy?.relayedRoutes() ?? {}) };
+    const withUpstreamEvidence = (error: unknown): unknown => {
+      if (!(error instanceof OpenCodeHarnessError) || error.code !== 'OPENCODE_START_FAILED') {
+        return error;
+      }
+      const message =
+        error.message +
+        ' ' +
+        describeTurnUpstreamActivity(relayBefore, entry.proxy?.relayedRoutes() ?? {});
+      if (error instanceof OpenCodeTurnTimeoutError) {
+        const enriched = new OpenCodeTurnTimeoutError(phase, this.turnTimeoutMs);
+        enriched.message = message;
+        return enriched;
+      }
+      return new OpenCodeHarnessError(error.code, message, error.retryable);
+    };
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const collected: HarnessEvent[] = [];
+    const seen = new Set<string>();
+    const collect = (observation: OpenCodeToolObservation) => {
+      if (seen.has(observation.callID)) return;
+      seen.add(observation.callID);
+      for (const value of this.observeTool(observation, agentRunId, (fields) =>
+        event(agentRunId, fields),
+      )) {
+        collected.push(value);
+        this.toolNotes.add(value);
+        onObserved?.(value);
+      }
+    };
     try {
       const result: OpenCodePromptResult = await Promise.race([
         session.runPrompt(text, {
@@ -702,6 +851,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           ...(entry.openCodeSessionId === undefined ? {} : { sessionId: entry.openCodeSessionId }),
           environment: this.turnEnvironment(entry, forbidTools),
           context: { provider: this.runtime.provider, model: this.runtime.effectiveModelId },
+          ...(onObserved === undefined ? {} : { onTool: collect }),
         }),
         new Promise<never>((_resolve, reject) => {
           timer = setTimeout(
@@ -738,11 +888,8 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           'OpenCode used tools during the reporting turn, which must serialize from the frozen ledger only.',
         );
       }
-      const emit = (value: Readonly<Record<string, unknown>>): HarnessEvent =>
-        event(agentRunId, value);
-      const collected: HarnessEvent[] = [];
       for (const observation of result.toolCalls) {
-        collected.push(...this.observeTool(observation, agentRunId, emit));
+        collect(observation);
       }
       return {
         text: result.text,
@@ -751,6 +898,8 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         usage: result.usage,
         steps: result.steps,
       };
+    } catch (error) {
+      throw withUpstreamEvidence(error);
     } finally {
       if (timer !== undefined) clearTimeout(timer);
     }
@@ -774,11 +923,12 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       });
       evidenceByKey.set(source.key, converted);
     }
-    validateProductionFindings(result.findings, evidenceByKey, (message: string) =>
+    const repaired = downgradeUngroundedFindings(result.findings, evidenceByKey);
+    validateProductionFindings(repaired.findings, evidenceByKey, (message: string) =>
       pipeline.errors.invalidResult(message),
     );
     const findings: Finding[] = [];
-    for (const source of result.findings) {
+    for (const source of repaired.findings) {
       for (const location of source.locations)
         await validateLocation(
           request.workspace.runtimePath,
@@ -806,11 +956,31 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         }),
       );
     }
-    return { evidenceByKey, findings };
+    return { evidenceByKey, findings, groundingRepairs: repaired.repairs };
   }
 
   async *run(request: HarnessRunRequest): AsyncIterable<HarnessEvent> {
     yield event(request.agentRunId, { type: 'run.started' });
+    if (depthPolicy(request.task.context) !== undefined) {
+      yield event(request.agentRunId, {
+        type: 'agent.message',
+        message: 'QA_DEPTH_V1: independent validation enabled.',
+      });
+      const preparation = request.task.context?.['workspacePreparation'] as
+        { status?: string; reason?: string } | undefined;
+      if (preparation !== undefined)
+        yield event(request.agentRunId, {
+          type: 'agent.message',
+          message: 'QA_PREPARATION_RECEIPT: ' + JSON.stringify(preparation),
+        });
+      if (preparation?.status === 'limited')
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_PREPARATION_LIMITED',
+          message: preparation.reason ?? 'Workspace preparation is limited.',
+        });
+    }
+
     yield event(request.agentRunId, {
       type: 'agent.status',
       status: 'planning',
@@ -892,7 +1062,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       });
       // Tool shell wrapper (Linux production): bwrap namespace per shell
       // invocation. Fail closed unless explicitly bypassed for dev/test.
-      const turnBase = await this.buildTurnBase(request, scope, proxy);
+      const turnBase = await this.buildTurnBase(request, scope, proxy, entry);
       entry.turnBase = turnBase;
       // Launcher selection is a HOST capability decision (user-manager
       // reachability), not a turn-scoped one: the turn environment is
@@ -904,54 +1074,105 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
       // selectProductionLauncher (fail-closed, never bypassed implicitly).
       const launcherSelector = this.options.launcherSelector ?? selectProductionLauncher;
       const launcher = await launcherSelector(this.hostEnvironment);
-      const client = await this.clientFactory({
-        executable: this.runtime.executable,
-        cwd: request.workspace.runtimePath,
-        environment: turnBase,
-        modelId: this.runtime.effectiveModelId,
-        shutdownTimeoutMs: this.shutdownTimeoutMs,
-        launcher,
-      });
+      const createClient = () =>
+        this.clientFactory({
+          executable: this.runtime.executable,
+          cwd: request.workspace.runtimePath,
+          environment: turnBase,
+          modelId: this.runtime.effectiveModelId,
+          shutdownTimeoutMs: this.shutdownTimeoutMs,
+          launcher,
+        });
+      const client = await createClient();
       entry.client = client;
       entry.session = await client.startSession();
+      let recoveryContext = '';
+      const contextBudget = new ContextBudget(this.options.contextWindowTokens ?? 200_000);
+      const freshClient = async () => {
+        await entry.client?.close();
+        const cancelled = () =>
+          entry.controller.signal.aborted || this.cancelledRuns.has(request.agentRunId);
+        if (cancelled())
+          throw new OpenCodeHarnessError(
+            'OPENCODE_CANCEL_FAILED',
+            'Run cancelled before report recovery.',
+          );
+        const candidate = await createClient();
+        if (cancelled()) {
+          await candidate.close();
+          throw new OpenCodeHarnessError(
+            'OPENCODE_CANCEL_FAILED',
+            'Run cancelled before report recovery.',
+          );
+        }
+        entry.client = candidate;
+        delete entry.openCodeSessionId;
+        entry.turnsIssued = 0;
+        entry.session = await candidate.startSession();
+        if (cancelled())
+          throw new OpenCodeHarnessError(
+            'OPENCODE_CANCEL_FAILED',
+            'Run cancelled before report recovery.',
+          );
+      };
+      /** The investigator's per-check closing statements, labelled unverified for fresh sessions. */
+      let conclusionBlock = '';
+      const startReportContext = async (conclusions?: string) => {
+        if (conclusions !== undefined) conclusionBlock = conclusions;
+        await freshClient();
+        recoveryContext =
+          buildRecoveryReportContext(request, this.toolNotes.render(), conclusionBlock) + '\n';
+        contextBudget.reset();
+      };
       markOpenCodeRuntimeVerified();
       this.options.onRuntimeIdentity?.({});
       const pipeline = pipelineContext(this.secrets);
       let planResult: ReturnType<typeof SentryInvestigationPlanV1Schema.parse> | undefined;
       let planCorrection: string[] | undefined;
+      let planRejection = '';
       let planningUsage: AgentUsage | undefined;
       let planningSteps = 0;
       for (let attempt = 1; attempt <= MAX_PLANNING_ATTEMPTS; attempt += 1) {
         const planning = await this.runTurn(
           entry,
           planCorrection === undefined
-            ? planningPrompt(request)
-            : buildPlanningCorrectionIntro(planCorrection) +
-                '\nImmutable mission context: ' +
-                JSON.stringify(request.task.context ?? {}),
+            ? buildQaPlanningPrompt(request)
+            : buildPlanningCorrectionIntro(planCorrection),
           request.agentRunId,
           'planning',
         );
         for (const emitted of planning.events) yield emitted;
+        contextBudget.observeTurn(planning.usage);
         planningSteps += planning.steps;
         planningUsage = sumUsage(planningUsage, planning.usage ?? {});
         if (planning.text.trim().length === 0) {
           planCorrection = ['Planning turn produced no response.'];
+          planRejection = describePlanRejection(undefined, true);
         } else {
           try {
-            planResult = SentryInvestigationPlanV1Schema.parse(
-              parseWholeJson(planning.text, 'planning', pipeline),
+            planResult = reportableDepthPlan(
+              SentryInvestigationPlanV1Schema.parse(
+                parseWholeJson(planning.text, 'planning', pipeline),
+              ),
+              depthPolicy(request.task.context) !== undefined,
+              maxPlannedChecks(request.task.context),
             );
             break;
           } catch (cause) {
             planCorrection = [boundCorrectionMessage(messageOf(cause))];
+            planRejection = describePlanRejection(cause);
           }
         }
         if (attempt < MAX_PLANNING_ATTEMPTS) {
           yield event(request.agentRunId, {
             type: 'warning',
             code: 'OPENCODE_PLANNING_RETRY',
-            message: 'OpenCode planning attempt ' + attempt + ' rejected; retrying planning only.',
+            message:
+              'OpenCode planning attempt ' +
+              attempt +
+              ' rejected (' +
+              planRejection +
+              '); retrying planning only.',
           });
         } else {
           throw new OpenCodeHarnessError(
@@ -981,94 +1202,358 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         status: 'investigating',
         message: 'OpenCode is executing the frozen plan.',
       });
-      const investigation = await this.runTurn(
-        entry,
-        investigationPrompt(planResult),
-        request.agentRunId,
-        'investigation',
-      );
-      for (const emitted of investigation.events) yield emitted;
+      // Investigation: one host-driven turn per frozen check, shared by all
+      // adapters (see investigateChecks). A dead turn blocks only its
+      // remaining checks.
+      const depth = depthPolicy(request.task.context);
+      const stopClient = async (): Promise<void> => {
+        await entry.client?.close();
+      };
+      const investigation = yield* investigateChecks<CollectedTurn>({
+        agentLabel: 'OpenCode',
+        agentRunId: request.agentRunId,
+        plan: planResult,
+        depth,
+        operations: this.observedOperations,
+        contextBudget,
+        network: {
+          webAccess: webAccessEnabled(request.executionSafeguards),
+          toolDownloads: toolDownloadsEnabled(request.executionSafeguards),
+        },
+        event: (body) => event(request.agentRunId, body),
+        streamTurn: (turnText) =>
+          streamObservedWork(
+            (emit) =>
+              this.runTurn(entry, turnText, request.agentRunId, 'investigation', false, emit),
+            stopClient,
+          ),
+        stop: stopClient,
+        freshSession: freshClient,
+        compactionSeed: (completedChecks, conclusions) =>
+          buildInvestigationCompactionContext(
+            request,
+            planResult!,
+            this.observedOperations,
+            this.toolNotes.render(),
+            completedChecks,
+            conclusions,
+          ) + '\n',
+        startReportContext,
+        cancelled: () =>
+          entry.controller.signal.aborted || this.cancelledRuns.has(request.agentRunId),
+        hazardFiles: () => scanHazardFiles(request.workspace.runtimePath),
+        isTurnTimeout: (cause) => cause instanceof OpenCodeTurnTimeoutError,
+        // A turn on an aborted session reports a cancel failure even though nobody
+        // cancelled the run (the loop rechecks `cancelled`). With banked work that is
+        // infrastructure loss: report what was observed instead of failing the run.
+        isSalvageable: (cause) =>
+          cause instanceof OpenCodeHarnessError &&
+          cause.code === 'OPENCODE_CANCEL_FAILED' &&
+          this.observedOperations.size > 0,
+      });
+      conclusionBlock = renderCheckConclusions(planResult, investigation.checkConclusions);
+      const { blockedChecks, unprovenChecks, redRetryChecks, checkConclusions } = investigation;
+      const investigationUsage = investigation.usage;
+      const investigationSteps = investigation.steps;
+
       yield event(request.agentRunId, {
         type: 'agent.status',
         status: 'reporting',
         message: 'OpenCode is serializing the frozen investigation into a report.',
       });
+      // Prevention: reporting is the context peak — rotate first when the
+      // investigation session is near its window (see DeepSeek adapter).
+      if (
+        recoveryContext === '' &&
+        contextBudget.shouldRotate(
+          estimatePromptTokens(buildQaReportPrompt(planResult, this.observedOperations)),
+        )
+      ) {
+        await startReportContext();
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_CONTEXT_COMPACTED',
+          message:
+            'Context budget reached before reporting; reporting from a fresh session seeded with host-observed facts only.',
+        });
+      }
+      let contextReportRecovered = false;
       const reportTurns: Array<{ usage?: AgentUsage; steps: number }> = [];
       let result: SentryAgentReportV2 | undefined;
       let built: BuiltReportAttempt | undefined;
       let correction: string[] | undefined;
-      for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
-        let reporting: CollectedTurn | undefined;
-        let errors: string[] | undefined;
+      let groundingRepairUsed = false;
+      let checkpoint: { result: SentryAgentReportV2; built: BuiltReportAttempt } | undefined;
+      let validationCleanupFailed = false;
+      const stopValidation = async (): Promise<void> => {
+        await (entry.client?.close() ?? Promise.resolve());
+      };
+      for (let reportPass = 0; reportPass < (depth === undefined ? 1 : 2); reportPass += 1) {
         try {
-          reporting = await this.runTurn(
-            entry,
-            reportPrompt(planResult, this.observedOperations, correction),
-            request.agentRunId,
-            'reporting',
-            true,
-          );
-        } catch (cause) {
-          if (
-            cause instanceof OpenCodeHarnessError &&
-            cause.code === 'OPENCODE_REPORT_TOOL_FORBIDDEN'
-          ) {
-            errors = [
-              boundCorrectionMessage(messageOf(cause)) +
-                ' The reporting stage is tool-free: ' +
-                'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
-                'Do not run commands, read files, or use any tools.',
-            ];
-          } else {
-            throw cause;
-          }
-        }
-        if (reporting !== undefined) {
-          for (const emitted of reporting.events) yield emitted;
-          reportTurns.push({
-            ...(reporting.usage === undefined ? {} : { usage: reporting.usage }),
-            steps: reporting.steps,
-          });
-          const candidate = parseReportAttempt(reporting.text, pipeline);
-          if (!candidate.ok) {
-            errors = candidate.errors;
-          } else {
+          for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
+            let reporting: CollectedTurn | undefined;
+            let errors: string[] | undefined;
             try {
-              built = await this.buildReportAttempt(request, candidate.report, pipeline);
-              result = candidate.report;
-              break;
+              const reportText =
+                recoveryContext +
+                buildQaReportPrompt(
+                  planResult,
+                  this.observedOperations,
+                  recoveryContext ? undefined : correction,
+                );
+              recoveryContext = '';
+              if (reportPass === 0 && depth !== undefined) {
+                reporting = yield* limitPhase(
+                  promisePhase(() =>
+                    this.runTurn(entry, reportText, request.agentRunId, 'reporting', true),
+                  ),
+                  reportAttemptDeadline(depth.deadlineAt, attempt),
+                  async () => {
+                    await entry.client?.close();
+                  },
+                  'Reporting',
+                );
+              } else
+                reporting =
+                  reportPass === 0
+                    ? await this.runTurn(entry, reportText, request.agentRunId, 'reporting', true)
+                    : await boundedValidation(
+                        () =>
+                          this.runTurn(entry, reportText, request.agentRunId, 'reporting', true),
+                        Math.max(1, depth!.deadlineAt - Date.now() - 30_000),
+                        stopValidation,
+                      );
             } catch (cause) {
-              errors = [boundCorrectionMessage(messageOf(cause))];
+              if (
+                isContextWindowExceeded(cause) &&
+                !contextReportRecovered &&
+                !entry.controller.signal.aborted &&
+                !this.cancelledRuns.has(request.agentRunId)
+              ) {
+                // Reactive compaction: rotate once to a fresh report-only
+                // context and retry there (see DeepSeek adapter).
+                contextReportRecovered = true;
+                await startReportContext();
+                if (attempt >= MAX_REPORT_ATTEMPTS) attempt -= 1;
+                errors = [
+                  'Context window exceeded. Return a shorter complete report from observed facts only.',
+                ];
+                yield event(request.agentRunId, {
+                  type: 'warning',
+                  code: 'QA_CONTEXT_COMPACTED',
+                  message:
+                    'Provider reported context overflow during reporting; retrying in a fresh session seeded with host-observed facts only.',
+                });
+              } else if (
+                cause instanceof PhaseDeadlineReached &&
+                reportPass === 0 &&
+                depth !== undefined &&
+                attempt < MAX_REPORT_ATTEMPTS &&
+                !entry.controller.signal.aborted &&
+                !this.cancelledRuns.has(request.agentRunId)
+              ) {
+                await startReportContext();
+                errors = [
+                  'Reporting time budget reached. Return a shorter complete report from observed facts only.',
+                ];
+              } else if (
+                cause instanceof OpenCodeHarnessError &&
+                cause.code === 'OPENCODE_REPORT_TOOL_FORBIDDEN'
+              ) {
+                errors = [
+                  boundCorrectionMessage(messageOf(cause)) +
+                    ' The reporting stage is tool-free: ' +
+                    'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
+                    'Do not run commands, read files, or use any tools.',
+                ];
+              } else {
+                throw cause;
+              }
+            }
+            if (reporting !== undefined) {
+              for (const emitted of reporting.events) yield emitted;
+              reportTurns.push({
+                ...(reporting.usage === undefined ? {} : { usage: reporting.usage }),
+                steps: reporting.steps,
+              });
+              const candidate = parseReportAttempt(reporting.text, pipeline);
+              if (!candidate.ok) {
+                errors = candidate.errors;
+              } else {
+                try {
+                  const grounded = applyUnprovenChecks(
+                    applyBlockedChecks(
+                      depth === undefined
+                        ? resolveReportChecks(planResult, candidate.report)
+                        : groundCoverage(
+                            resolveReportChecks(planResult, candidate.report),
+                            this.observedOperations,
+                          ),
+                      blockedChecks,
+                    ),
+                    unprovenChecks,
+                    redRetryChecks,
+                  );
+                  const missing = depth === undefined ? [] : coverageErrors(planResult, grounded);
+                  if (missing.length > 0) throw new Error(missing.join('\n'));
+                  built = await this.buildReportAttempt(request, grounded, pipeline);
+                  result = grounded;
+                  if (built.groundingRepairs.length > 0)
+                    yield event(request.agentRunId, {
+                      type: 'warning',
+                      code: 'QA_GROUNDING_DOWNGRADED',
+                      message:
+                        'Ungrounded confidence downgraded, findings preserved: ' +
+                        built.groundingRepairs.join('; '),
+                    });
+                  break;
+                } catch (cause) {
+                  errors = [boundCorrectionMessage(messageOf(cause))];
+                }
+              }
+            }
+            if (errors === undefined) {
+              throw new OpenCodeHarnessError(
+                'OPENCODE_INVALID_RESULT',
+                'OpenCode report attempt produced no result and no error.',
+              );
+            }
+            correction = errors;
+            if (
+              attempt < MAX_REPORT_ATTEMPTS &&
+              !groundingRepairUsed &&
+              !entry.controller.signal.aborted &&
+              !this.cancelledRuns.has(request.agentRunId) &&
+              isGroundingRepairableError(errors)
+            ) {
+              // One bounded tool-enabled repair in the live session (see
+              // the DeepSeek adapter for the shared contract).
+              groundingRepairUsed = true;
+              yield event(request.agentRunId, {
+                type: 'warning',
+                code: 'QA_GROUNDING_REPAIR',
+                message:
+                  'Report lacks observed grounding; running the single missing operation before one report retry.',
+              });
+              try {
+                const repair = await this.runTurn(
+                  entry,
+                  buildGroundingRepairPrompt(errors, this.observedOperations),
+                  request.agentRunId,
+                  'investigation',
+                );
+                for (const emitted of repair.events) yield emitted;
+                reportTurns.push({
+                  ...(repair.usage === undefined ? {} : { usage: repair.usage }),
+                  steps: repair.steps,
+                });
+              } catch {
+                // Fall through: the tool-free correction below still runs.
+              }
+            }
+            if (attempt < MAX_REPORT_ATTEMPTS) {
+              yield event(request.agentRunId, {
+                type: 'warning',
+                code: 'OPENCODE_REPORT_RETRY',
+                message:
+                  'OpenCode report attempt ' +
+                  attempt +
+                  ' rejected; retrying report only (' +
+                  errors.length +
+                  ' issues): ' +
+                  errors
+                    .slice(0, 2)
+                    .map((issue) => issue.slice(0, 240))
+                    .join(' | '),
+              });
+            } else {
+              throw new OpenCodeHarnessError(
+                'OPENCODE_INVALID_RESULT',
+                'OpenCode report failed after ' +
+                  MAX_REPORT_ATTEMPTS +
+                  ' attempts: ' +
+                  errors.map(boundCorrectionMessage).join('; '),
+              );
             }
           }
-        }
-        if (errors === undefined) {
-          throw new OpenCodeHarnessError(
-            'OPENCODE_INVALID_RESULT',
-            'OpenCode report attempt produced no result and no error.',
-          );
-        }
-        correction = errors;
-        if (attempt < MAX_REPORT_ATTEMPTS) {
+        } catch (cause) {
+          if (checkpoint === undefined) {
+            // Banked work must not die with a failed report stage: when the
+            // report hits its deadline or stays invalid, ship a host-composed
+            // partial report (no findings, no passes) instead of failing.
+            const fallbackEligible =
+              depth !== undefined &&
+              this.observedOperations.size > 0 &&
+              !entry.controller.signal.aborted &&
+              !this.cancelledRuns.has(request.agentRunId) &&
+              (cause instanceof PhaseDeadlineReached ||
+                (cause instanceof OpenCodeHarnessError &&
+                  cause.code === 'OPENCODE_INVALID_RESULT'));
+            if (!fallbackEligible) throw cause;
+            const reason =
+              cause instanceof PhaseDeadlineReached
+                ? 'the reporting stage reached its protected deadline before a complete report was returned.'
+                : 'the reporting stage stayed invalid after ' +
+                  MAX_REPORT_ATTEMPTS +
+                  ' attempts (' +
+                  messageOf(cause)
+                    .replace(/^.*?attempts:\s*/, '')
+                    .slice(0, 600) +
+                  ').';
+            const fallback = composeHostFallbackReport(
+              planResult,
+              this.observedOperations,
+              checkConclusions,
+              reason,
+            );
+            built = await this.buildReportAttempt(request, fallback, pipeline);
+            result = fallback;
+            yield event(request.agentRunId, {
+              type: 'warning',
+              code: 'QA_REPORT_HOST_FALLBACK',
+              message:
+                'Report stage failed (' +
+                reason.replace(/\.$/, '') +
+                '); composing a partial report from host-observed facts. Analysis is partial.',
+            });
+            break;
+          }
+          try {
+            await stopValidation();
+          } catch {
+            validationCleanupFailed = true;
+          }
+          if (cause instanceof Error && cause.message === 'QA_VALIDATION_CLEANUP_FAILED')
+            validationCleanupFailed = true;
+          result = checkpoint.result;
+          built = checkpoint.built;
           yield event(request.agentRunId, {
             type: 'warning',
-            code: 'OPENCODE_REPORT_RETRY',
+            code: 'QA_VALIDATION_INCOMPLETE',
             message:
-              'OpenCode report attempt ' +
-              attempt +
-              ' rejected; retrying report only (' +
-              errors.length +
-              ' issues).',
+              'Optional refinement did not complete; the validated checkpoint report is retained. Analysis is partial.',
           });
-        } else {
-          throw new OpenCodeHarnessError(
-            'OPENCODE_INVALID_RESULT',
-            'OpenCode report failed after ' +
-              MAX_REPORT_ATTEMPTS +
-              ' attempts: ' +
-              errors.map(boundCorrectionMessage).join('; '),
-          );
+          break;
         }
+        if (result === undefined || built === undefined) break;
+        if (reportPass > 0 || depth === undefined) break;
+        checkpoint = { result, built };
+        yield event(request.agentRunId, {
+          type: 'report.checkpoint',
+          findings: built.findings,
+          evidence: [...built.evidenceByKey.values()],
+        });
+        yield event(request.agentRunId, {
+          type: 'agent.message',
+          message: 'QA_REPORT_CHECKPOINT_READY: valid report prepared before optional validation.',
+        });
+        // The validated checkpoint IS the final report (see DeepSeek).
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_CHALLENGE_NOT_RUN',
+          message: 'Checkpoint report is final; no self-challenge stage.',
+        });
+        break;
       }
       if (result === undefined || built === undefined)
         throw new OpenCodeHarnessError('OPENCODE_INVALID_RESULT', 'OpenCode produced no report.');
@@ -1102,23 +1587,44 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         yield event(request.agentRunId, { type: 'evidence.submitted', evidence });
       for (const finding of attempt.findings)
         yield event(request.agentRunId, { type: 'finding.submitted', finding });
+      if (
+        depth !== undefined &&
+        result.checks.some((check) => ['not_run', 'inconclusive'].includes(check.status))
+      )
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_COVERAGE_PARTIAL',
+          message: 'Analysis is partial: applicable planned checks remain unverified.',
+        });
       for (const limitation of result.limitations)
         yield event(request.agentRunId, {
           type: 'warning',
           code: 'OPENCODE_LIMITATION',
           message: limitation,
         });
-      let summed = sumUsage(planningUsage, investigation.usage ?? {});
+      let summed = sumUsage(planningUsage, investigationUsage ?? {});
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
         ...summed,
-        turns: planningSteps + investigation.steps + reportTurns.reduce((n, t) => n + t.steps, 0),
+        turns: planningSteps + investigationSteps + reportTurns.reduce((n, t) => n + t.steps, 0),
       };
       yield event(request.agentRunId, { type: 'usage.updated', usage });
-      yield event(request.agentRunId, {
-        type: 'run.completed',
-        usage,
-      });
+      if (validationCleanupFailed) {
+        yield event(request.agentRunId, {
+          type: 'run.failed',
+          failure: {
+            code: 'QA_VALIDATION_CLEANUP_FAILED',
+            message:
+              'Validation process cleanup could not be confirmed; checkpoint output was retained.',
+            retryable: false,
+          },
+        });
+      } else {
+        yield event(request.agentRunId, {
+          type: 'run.completed',
+          usage,
+        });
+      }
     } catch (cause) {
       if (cause instanceof OpenCodeHarnessError && cause.code === 'OPENCODE_CANCEL_FAILED') {
         yield event(request.agentRunId, {
@@ -1132,24 +1638,29 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         return;
       }
       const typed =
-        cause instanceof OpenCodeHarnessError
-          ? cause
-          : cause instanceof Error && cause.name === 'ZodError'
-            ? new OpenCodeHarnessError(
-                'OPENCODE_INVALID_RESULT',
-                'OpenCode returned data that did not match the required schema.',
-              )
-            : new OpenCodeHarnessError(
-                /auth|credential|sign in|api key|unauthorized|401|apicallerror/i.test(
-                  String(cause) + ' ' + messageOf(cause),
+        cause instanceof PhaseDeadlineReached
+          ? new OpenCodeHarnessError('QA_REPORT_DEADLINE', cause.message, false)
+          : cause instanceof OpenCodeHarnessError
+            ? cause
+            : cause instanceof Error && cause.name === 'ZodError'
+              ? new OpenCodeHarnessError(
+                  'OPENCODE_INVALID_RESULT',
+                  'OpenCode returned data that did not match the required schema' +
+                    (describeSchemaIssues(cause) === ''
+                      ? '.'
+                      : ': ' + describeSchemaIssues(cause) + '.'),
                 )
-                  ? 'OPENCODE_AUTH_FAILED'
-                  : /sandbox/i.test(String(cause))
-                    ? 'OPENCODE_SANDBOX_UNAVAILABLE'
-                    : 'OPENCODE_START_FAILED',
-                redactDiagnostic(cause, this.secrets),
-                true,
-              );
+              : new OpenCodeHarnessError(
+                  /auth|credential|sign in|api key|unauthorized|401|apicallerror/i.test(
+                    String(cause) + ' ' + messageOf(cause),
+                  )
+                    ? 'OPENCODE_AUTH_FAILED'
+                    : /sandbox/i.test(String(cause))
+                      ? 'OPENCODE_SANDBOX_UNAVAILABLE'
+                      : 'OPENCODE_START_FAILED',
+                  redactDiagnostic(cause, this.secrets),
+                  true,
+                );
       yield event(request.agentRunId, {
         type: 'run.failed',
         failure: {
@@ -1203,6 +1714,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         });
       }
     }
+    if (entry !== undefined) await this.closeEgress(entry);
     // Auth proxy stops before scope cleanup: no new upstream use, and the
     // key leaves memory with the closure. Scope removal follows.
     if (entry?.proxy !== undefined) {
@@ -1292,6 +1804,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         entry.client = undefined;
         closers.push(client.close().catch(() => undefined));
       }
+      if (entry.egress !== undefined) closers.push(this.closeEgress(entry));
       if (entry.proxy !== undefined) {
         const proxy = entry.proxy;
         entry.proxy = undefined;

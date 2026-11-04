@@ -34,11 +34,7 @@ export function errorExitCode(error: CliError): number {
   if (error.code === 'RUNTIME_MESSAGE_TOO_LARGE') return CLI_EXIT.internal;
   if (error.code === 'PROTOCOL_VERSION_MISMATCH') return CLI_EXIT.internal;
   if (error.code === 'PROVIDER_NOT_READY') return CLI_EXIT.executionFailed;
-  if (
-    error.code === 'PROJECT_NOT_FOUND' ||
-    error.code === 'RUN_NOT_FOUND' ||
-    error.code === 'ISSUE_NOT_FOUND'
-  )
+  if (error.code === 'PROJECT_NOT_FOUND' || error.code === 'RUN_NOT_FOUND')
     return CLI_EXIT.notFound;
   if (error.code === 'PROJECT_SOURCE_NOT_FOUND') return CLI_EXIT.notFound;
   if (RETRYABLE.has(error.code) || error.code === 'PROJECT_COPY_DRIFT') return CLI_EXIT.conflict;

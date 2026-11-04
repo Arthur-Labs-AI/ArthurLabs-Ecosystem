@@ -3,11 +3,9 @@ import {
   assertAgentRunTransition,
   assertManagedProjectCopyTransition,
   assertQARunTransition,
-  assertVerificationTransition,
   canTransitionAgentRun,
   canTransitionManagedProjectCopy,
   canTransitionQARun,
-  canTransitionVerification,
   InvalidStateTransitionError,
 } from '../src/index.js';
 
@@ -35,14 +33,6 @@ describe('state transitions', () => {
     expect(canTransitionAgentRun('running', 'timed_out')).toBe(true);
     expect(canTransitionAgentRun('completed', 'running')).toBe(false);
     expect(() => assertAgentRunTransition('failed', 'completed')).toThrow(
-      InvalidStateTransitionError,
-    );
-  });
-  it('verification transitions', () => {
-    expect(canTransitionVerification('pending', 'running')).toBe(true);
-    expect(canTransitionVerification('running', 'inconclusive')).toBe(true);
-    expect(canTransitionVerification('verified', 'running')).toBe(false);
-    expect(() => assertVerificationTransition('failed', 'verified')).toThrow(
       InvalidStateTransitionError,
     );
   });

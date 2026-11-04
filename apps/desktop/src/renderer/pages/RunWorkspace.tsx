@@ -207,8 +207,6 @@ export function RunWorkspace(): React.JSX.Element {
           Record<string, unknown> & { type: string; agentRunId: string; timestamp: string }
         >;
         targetSpec?: { includePaths?: string[]; userInstructions?: string };
-        // Historical merger/verifier/issues payloads may still arrive from
-        // older runs via runs:get; the active product ignores them.
       }
     | undefined;
 
@@ -302,19 +300,22 @@ export function RunWorkspace(): React.JSX.Element {
     <div className="run-page">
       {snapshot.isError || snapshot.runtimeUnavailable ? (
         <div className="inline-notice tone-warning" role="status">
-          Run refresh unavailable. Cached results remain available; the last recorded status below
-          may have changed. Check <Link to="/settings/runtime">Runtime settings</Link>. This
-          communication error does not mean the QA run failed.
+          {
+            'Run refresh unavailable. Cached results remain available; the last recorded status below may have changed. Check'
+          }{' '}
+          <Link to="/settings/runtime">Runtime settings</Link>
+          {'.'}
+          {'This communication error does not mean the QA run failed.'}
         </div>
       ) : null}
       <nav className="metadata" aria-label="Breadcrumb">
         <Link to="/projects">Projects</Link> /{' '}
-        <Link to={'/projects/' + data.run.projectId}>{resolvedProjectName}</Link> / QA Run
+        <Link to={'/projects/' + data.run.projectId}>{resolvedProjectName}</Link> /{'QA Run'}
       </nav>
       <header className="card run-header" aria-label="Run header">
         <div className="run-header-row">
           <div className="title-block">
-            <h1 className="page-title">{data.run.mode.toUpperCase()} QA</h1>
+            <h1 className="page-title">{data.run.mode.toUpperCase() + ' QA'}</h1>
             <StatusPill status={data.run.status} pulse={isActive} />
             {data.run.executionKind === 'production' ? null : (
               <span
@@ -372,20 +373,24 @@ export function RunWorkspace(): React.JSX.Element {
         </div>
         <div className="run-meta-row">
           <span title={'Started ' + String(data.run.startedAt ?? data.run.createdAt)}>
-            Started {formatClock(data.run.startedAt ?? data.run.createdAt)}
+            {'Started ' + formatClock(data.run.startedAt ?? data.run.createdAt)}
           </span>
           <span>
-            Duration{' '}
-            {formatDuration(data.run.startedAt ?? data.run.createdAt, data.run.completedAt)}
+            {'Duration ' +
+              formatDuration(data.run.startedAt ?? data.run.createdAt, data.run.completedAt)}
           </span>
           <span>
-            {data.run.configuration?.agentStackIds?.length ?? data.agentRuns.length} selected agents
+            {String(data.run.configuration?.agentStackIds?.length ?? data.agentRuns.length) +
+              ' selected agents'}
           </span>
           <span>
-            {data.findings.length} finding{data.findings.length === 1 ? '' : 's'} ·{' '}
-            {data.evidence.length} evidence
+            {String(data.findings.length) +
+              (data.findings.length === 1 ? ' finding' : ' findings') +
+              ' · ' +
+              String(data.evidence.length) +
+              ' evidence'}
           </span>
-          {cancelState !== undefined ? <span>Cancellation: {cancelState}</span> : null}
+          {cancelState !== undefined ? <span>{'Cancellation: ' + cancelState}</span> : null}
         </div>
         <CollapsibleSection title="Details">
           <dl className="kv" style={{ marginTop: 8 }}>
@@ -422,8 +427,8 @@ export function RunWorkspace(): React.JSX.Element {
       </header>
       {['failed', 'partial', 'cancelled'].includes(data.run.status) ? (
         <div className="inline-notice tone-warning" role="status">
-          <strong>Analysis {data.run.status}.</strong> Reported findings and evidence are retained
-          independently for each agent.
+          <strong>{'Analysis ' + data.run.status + '.'}</strong>{' '}
+          <span>Reported findings and evidence are retained independently for each agent.</span>
           {data.agentRuns
             .filter((agent) => ['failed', 'timed_out', 'interrupted'].includes(agent.status))
             .map((agent) => (
@@ -435,8 +440,10 @@ export function RunWorkspace(): React.JSX.Element {
                   : ' Structured failure details were not recorded.'}
               </p>
             ))}
-          {data.agentRuns.length === 0 ? ' No agent execution was recorded.' : ''} Review agent
-          details and Environment before deliberately starting another run.
+          {data.agentRuns.length === 0 ? <span> No agent execution was recorded.</span> : null}{' '}
+          <span>
+            Review agent details and Environment before deliberately starting another run.
+          </span>
         </div>
       ) : null}
       {!terminal ? <div className="inline-notice">Export unlocks at terminal status.</div> : null}

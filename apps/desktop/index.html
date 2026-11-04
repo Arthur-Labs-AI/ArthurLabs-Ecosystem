@@ -9,9 +9,38 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:;"
     />
     <title>Sentry</title>
+    <style>
+      .app-boot-loader {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: #0d100d;
+        color: #a8b0a5;
+        font-family:
+          'Inter',
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        font-size: 13px;
+      }
+      .app-boot-loader img {
+        width: 72px;
+        height: 72px;
+        object-fit: contain;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="app-boot-loader">
+        <img src="./smooth_loader_flat_logo.gif" alt="" />
+        <span>Starting Sentry…</span>
+      </div>
+    </div>
     <script type="module" src="/src/renderer/index.tsx"></script>
   </body>
 </html>

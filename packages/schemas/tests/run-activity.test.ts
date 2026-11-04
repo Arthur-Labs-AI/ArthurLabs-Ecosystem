@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   AgentRunSchema,
-  DEFAULT_VERIFICATION_LEVEL,
   QARunSchema,
   RunActivitySchema,
   RunExportManifestSchema,
@@ -10,7 +9,6 @@ import {
 const T = '2026-09-09T19:00:00.000Z';
 const configuration = {
   agentStackIds: ['stack_muse_main', 'stack_deepseek_main', 'stack_glm_main', 'stack_future_main'],
-  verificationLevel: 'strict',
   instructions: { message: 'Exercise authentication flows.', createdAt: T },
   policy: { id: 'qa-standard', version: 1 },
 };
@@ -26,9 +24,8 @@ const run = {
   createdAt: T,
 };
 
-describe('run, retest, failure, and activity contracts', () => {
-  it('supports arbitrary N-agent runs and recommends strict verification explicitly', () => {
-    expect(DEFAULT_VERIFICATION_LEVEL).toBe('strict');
+describe('run, failure, and activity contracts', () => {
+  it('supports arbitrary N-agent runs', () => {
     for (const count of [1, 2, 3, 4]) {
       expect(
         QARunSchema.safeParse({
@@ -44,30 +41,6 @@ describe('run, retest, failure, and activity contracts', () => {
       QARunSchema.safeParse({ ...run, configuration: { ...configuration, agentStackIds: [] } })
         .success,
     ).toBe(false);
-  });
-
-  it('requires retest lineage only for retest mode', () => {
-    const target = {
-      sourceQARunId: 'run_01K7777777777777777777A8WD',
-      unifiedIssueId: 'issue_01K7777777777777777777A8WB',
-    };
-    expect(QARunSchema.safeParse({ ...run, mode: 'retest' }).success).toBe(false);
-    expect(QARunSchema.safeParse({ ...run, mode: 'retest', retestTarget: target }).success).toBe(
-      true,
-    );
-    expect(
-      QARunSchema.safeParse({
-        ...run,
-        mode: 'retest',
-        retestTarget: target,
-        retestResult: {
-          outcome: 'partially_fixed',
-          evidenceIds: ['ev_01K7777777777777777777A8W9'],
-          completedAt: T,
-        },
-      }).success,
-    ).toBe(true);
-    expect(QARunSchema.safeParse({ ...run, retestTarget: target }).success).toBe(false);
   });
 
   it('requires structured failure details for failed, interrupted, and timed-out agents', () => {

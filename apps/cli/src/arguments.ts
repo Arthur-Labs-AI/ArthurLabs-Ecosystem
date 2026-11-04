@@ -47,6 +47,7 @@ export type ParsedCliCommand =
       readonly wait: boolean;
       readonly instructions?: string;
       readonly runTimeoutMs?: number;
+      readonly webAccess?: boolean;
       readonly paths?: string;
     })
   | (BaseCommand<'run.list'> & { readonly projectId: string })
@@ -58,27 +59,12 @@ export type ParsedCliCommand =
       readonly out?: string;
     })
   | (BaseCommand<'run.result'> & { readonly runId: string })
-  | (BaseCommand<'run.merge'> & { readonly runId: string })
   | (BaseCommand<'run.cancel'> & { readonly runId: string })
   | (BaseCommand<'project.revisions'> & { readonly projectId: string })
-  | (BaseCommand<'issue.list'> & { readonly projectId: string })
-  | (BaseCommand<'issue.show'> & { readonly issueId: string })
-  | (BaseCommand<'issue.history'> & { readonly issueId: string })
-  | (BaseCommand<'issue.ingest'> & { readonly mergeResultId: string })
-  | (BaseCommand<'retest.start'> & {
-      readonly issueId: string;
-      readonly revision?: string;
-      readonly agents: readonly AgentName[];
-    })
-  | (BaseCommand<'retest.show'> & { readonly retestRunId: string })
-  | (BaseCommand<'retest.cancel'> & { readonly retestRunId: string })
   | BaseCommand<'doctor.storage'>
   | (BaseCommand<'doctor.cleanup'> & { readonly apply: boolean })
   | BaseCommand<'doctor.config'>
-  | (BaseCommand<'project.doctor'> & { readonly projectId: string })
-  | (BaseCommand<'verify.start'> & { readonly mergeResultId: string; readonly clusters?: string })
-  | (BaseCommand<'verify.show'> & { readonly verificationRunId: string })
-  | BaseCommand<'verify.doctor'>;
+  | (BaseCommand<'project.doctor'> & { readonly projectId: string });
 
 const SIMULATION_SCENARIOS = new Set<SimulationScenario>([
   'success',
@@ -142,22 +128,11 @@ export function commandHint(args: readonly string[]): CliCommand | 'unknown' {
     'run.status',
     'run.result',
     'run.export',
-    'run.merge',
     'run.cancel',
-    'issue.list',
-    'issue.show',
-    'issue.history',
-    'issue.ingest',
-    'retest.start',
-    'retest.show',
-    'retest.cancel',
     'doctor.storage',
     'doctor.cleanup',
     'doctor.config',
     'project.doctor',
-    'verify.start',
-    'verify.show',
-    'verify.doctor',
   ]);
   return known.has(candidate as CliCommand) ? (candidate as CliCommand) : 'unknown';
 }
@@ -250,6 +225,7 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
       '--instructions',
       '--timeout-ms',
       '--paths',
+      '--web',
     ]);
     const [projectId] = positional(tail);
     if (projectId === undefined || positional(tail).length !== 1) {
@@ -312,6 +288,7 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
       wait,
       ...(instructions === undefined ? {} : { instructions }),
       ...(runTimeoutMs === undefined ? {} : { runTimeoutMs }),
+      ...(tail.includes('--web') ? { webAccess: true } : {}),
       ...(paths === undefined ? {} : { paths }),
     };
   }
@@ -325,11 +302,6 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     const [runId] = assertPositionals(tail, 1, 'qa run ' + action + ' <run-id>');
     return { command: action === 'show' ? 'run.show' : 'run.status', runId: runId as string };
   }
-  if (area === 'run' && action === 'merge') {
-    assertFlags(tail, []);
-    const [runId] = assertPositionals(tail, 1, 'qa run merge <run-id>');
-    return { command: 'run.merge', runId: runId as string };
-  }
   if (area === 'run' && action === 'cancel') {
     assertFlags(tail, []);
     const [runId] = assertPositionals(tail, 1, 'qa run cancel <run-id>');
@@ -339,64 +311,6 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     assertFlags(tail, []);
     const [projectId] = assertPositionals(tail, 1, 'qa project revisions <project-id>');
     return { command: 'project.revisions', projectId: projectId as string };
-  }
-  if (area === 'issue' && action === 'list') {
-    assertFlags(tail, []);
-    const [projectId] = assertPositionals(tail, 1, 'qa issue list <project-id>');
-    return { command: 'issue.list', projectId: projectId as string };
-  }
-  if (area === 'issue' && (action === 'show' || action === 'history')) {
-    assertFlags(tail, []);
-    const [issueId] = assertPositionals(tail, 1, 'qa issue ' + action + ' <issue-id>');
-    return {
-      command: action === 'show' ? 'issue.show' : 'issue.history',
-      issueId: issueId as string,
-    };
-  }
-  if (area === 'issue' && action === 'ingest') {
-    assertFlags(tail, []);
-    const [mergeResultId] = assertPositionals(tail, 1, 'qa issue ingest <merge-result-id>');
-    return { command: 'issue.ingest', mergeResultId: mergeResultId as string };
-  }
-  if (area === 'retest' && action === 'start') {
-    assertFlags(tail, ['--revision', '--agents', '--wait']);
-    const [issueId] = positional(tail);
-    if (issueId === undefined || positional(tail).length !== 1) {
-      fail(
-        'Usage: qa retest start <issue-id> [--revision <revision-id>] [--agents opencode,deepseek,glm] --wait',
-      );
-    }
-    const revision = option(tail, '--revision');
-    const agentsText = option(tail, '--agents');
-    const agents: AgentName[] =
-      agentsText === undefined
-        ? [...AGENT_NAMES]
-        : (agentsText
-            .split(',')
-            .map((value) => value.trim())
-            .filter((value) => value.length > 0) as AgentName[]);
-    if (agents.length === 0) fail('--agents requires at least one agent stack', '--agents');
-    for (const name of agents) {
-      if (name !== 'opencode' && name !== 'deepseek' && name !== 'glm')
-        fail('Unknown agent: ' + name + ' (expected opencode, deepseek, or glm)', '--agents');
-    }
-    if (new Set(agents).size !== agents.length)
-      fail('--agents lists a duplicate agent', '--agents');
-    if (!tail.includes('--wait')) fail('Retest runs require --wait', '--wait');
-    return {
-      command: 'retest.start',
-      issueId,
-      ...(revision === undefined ? {} : { revision }),
-      agents,
-    };
-  }
-  if (area === 'retest' && (action === 'show' || action === 'cancel')) {
-    assertFlags(tail, []);
-    const [retestRunId] = assertPositionals(tail, 1, 'qa retest ' + action + ' <retest-run-id>');
-    return {
-      command: action === 'show' ? 'retest.show' : 'retest.cancel',
-      retestRunId: retestRunId as string,
-    };
   }
   if (area === 'run' && action === 'export') {
     assertFlags(tail, ['--format', '--out']);
@@ -413,29 +327,6 @@ export function parseCommand(args: readonly string[]): ParsedCliCommand {
     assertFlags(tail, []);
     const [runId] = assertPositionals(tail, 1, 'qa run result <run-id>');
     return { command: 'run.result', runId: runId as string };
-  }
-  if (area === 'verify' && action === 'start') {
-    assertFlags(tail, ['--clusters', '--wait', '--json']);
-    const [mergeResultId] = positional(tail);
-    if (mergeResultId === undefined || positional(tail).length !== 1) {
-      fail('Usage: qa verify start <merge-result-id> [--clusters a,b]');
-    }
-    const clusters = option(tail, '--clusters');
-    return {
-      command: 'verify.start',
-      mergeResultId,
-      ...(clusters === undefined ? {} : { clusters }),
-    };
-  }
-  if (area === 'verify' && action === 'show') {
-    assertFlags(tail, ['--json']);
-    const [verificationRunId] = assertPositionals(tail, 1, 'qa verify show <verification-run-id>');
-    return { command: 'verify.show', verificationRunId: verificationRunId as string };
-  }
-  if (area === 'verify' && action === 'doctor') {
-    assertFlags(tail, ['--json']);
-    assertPositionals(tail, 0, 'qa verify doctor');
-    return { command: 'verify.doctor' };
   }
   if (area === 'doctor' && action === 'storage') {
     assertFlags(tail, ['--json']);

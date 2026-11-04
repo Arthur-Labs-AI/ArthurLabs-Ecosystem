@@ -104,8 +104,6 @@ capabilities [--json]
 project list/add/show/update/delete/revisions/doctor
 agent list | agent doctor opencode|deepseek|glm
 run start/list/show/status/cancel/result/export
-issue list/show/history
-retest start/show/cancel
 ```
 
 `project add` accepts normal Windows paths (`C:\Projects\SampleApp`); the
@@ -146,10 +144,23 @@ and do not retry a start blindly after an uncertain response.
 sentry cli run start proj_ID --mode full --agents opencode,deepseek,glm --json
 sentry cli run start proj_ID --mode targeted --agents deepseek --paths src/auth,src/api --json
 sentry cli run start proj_ID --mode full --agents opencode --wait --timeout-ms 1800000 --json
+sentry cli run start proj_ID --mode full --agents opencode,glm --web --json
 sentry cli run list proj_ID --json
 sentry cli run show run_ID --json
 sentry cli run status run_ID --json
 ```
+
+### Dependency installs and web access
+
+Agents install the project's dependencies (with its own package manager and
+lockfile) before running build, lint, typecheck and tests. Installs always work
+and reach package registries only (npm, PyPI, crates.io, Go, RubyGems, Maven,
+NuGet, Packagist, GitHub release archives); every other host stays blocked.
+
+General web access (agent web fetch/search for docs and advisories) is off by
+default. Pass `--web` to `run start` to enable it for that run only; the Desktop
+start dialog has the same "Allow web access" checkbox. DeepSeek has no web
+tools, so the flag does not change it.
 
 ### Results and exports
 
@@ -179,8 +190,7 @@ sentry cli project delete proj_ID --yes --json
 
 A. Canonical through the broker: capabilities, agent list/doctor, project
 add/list/show/update/delete/revisions/doctor, run
-start/list/show/status/cancel/result/export, issue list/show/history,
-retest start/show/cancel, plus system/runtime status reads.
+start/list/show/status/cancel/result/export, plus system/runtime status reads.
 
 B. Added to the canonical runtime for this interface: `projects.delete`
 (with `--yes` preserved), the `runs:export-content` channel, and the
@@ -192,9 +202,6 @@ deterministic local development):
 
 ```text
 run simulate ......... FAKE harness runs (development only).
-run merge ............ retired merger RPC (use the Desktop run workspace).
-issue ingest ......... retired merger RPC.
-verify start/show/doctor .. retired verifier RPCs.
 doctor storage/cleanup/config .. Windows-local inspection; the data root now
    lives in WSL, so use the Desktop Environment page instead.
 ```

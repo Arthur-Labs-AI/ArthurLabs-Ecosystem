@@ -296,6 +296,33 @@ describe('full production path: cli to canonical runtime', () => {
     }
   });
 
+  it('forwards --web through the whole start path and keeps web access off by default', async () => {
+    expect(parseCommand(['run', 'start', PROJECT_ID, '--mode', 'full'])).not.toHaveProperty(
+      'webAccess',
+    );
+    expect(parseCommand(['run', 'start', PROJECT_ID, '--mode', 'full', '--web'])).toMatchObject({
+      webAccess: true,
+    });
+    const h = await harness();
+    try {
+      const off = await executeFrontendCommand(
+        parseCommand(['run', 'start', PROJECT_ID, '--mode', 'full']),
+        { createClient: h.client },
+      );
+      expect(off.ok).toBe(true);
+      const on = await executeFrontendCommand(
+        parseCommand(['run', 'start', PROJECT_ID, '--mode', 'full', '--web']),
+        { createClient: h.client },
+      );
+      expect(on.ok).toBe(true);
+      const starts = h.seenRuntime.filter((call) => call.method === 'runs.start');
+      expect(starts[0]?.params).not.toHaveProperty('webAccess');
+      expect(starts[1]?.params['webAccess']).toBe(true);
+    } finally {
+      await h.close();
+    }
+  });
+
   it('keeps machine stdout to exactly one JSON document on the real path', async () => {
     const h = await harness();
     const previous = process.env['SENTRY_CLI_PIPE_PATH'];

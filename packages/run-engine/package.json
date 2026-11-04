@@ -14,14 +14,13 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "lint": "eslint .",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:preparation-sandbox": "node tests/preparation-sandbox.smoke.mjs"
   },
   "dependencies": {
     "@qa/domain": "workspace:*",
     "@qa/evidence-pipeline": "workspace:*",
     "@qa/harness-protocol": "workspace:*",
-    "@qa/merger": "workspace:*",
-    "@qa/verifier": "workspace:*",
     "@qa/persistence": "workspace:*",
     "@qa/project-manager": "workspace:*",
     "@qa/schemas": "workspace:*",

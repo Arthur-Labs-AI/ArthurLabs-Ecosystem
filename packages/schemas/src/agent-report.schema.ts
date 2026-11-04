@@ -148,6 +148,8 @@ export const SentryAgentReportV2Schema = z
             name: z.string().min(1).max(500),
             status: z.enum(['passed', 'failed', 'inconclusive', 'not_run']),
             details: z.string().min(1).max(5_000).optional(),
+            coverage: z.enum(['complete', 'partial']).optional(),
+            operationKeys: z.array(ReportKeySchema).max(100).optional(),
           })
           .strict(),
       )

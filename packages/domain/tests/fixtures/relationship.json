@@ -1,5 +1,5 @@
 {
-  "$comment": "Project -> ManagedCopy -> Revision -> Snapshot -> Context -> QARun -> AgentRun -> Plan -> Hypothesis -> Finding -> Evidence -> UnifiedIssue (references by ID only)",
+  "$comment": "Project -> ManagedCopy -> Revision -> Snapshot -> Context -> QARun -> AgentRun -> Plan -> Hypothesis -> Finding -> Evidence (references by ID only)",
   "project": "fixtures/project.json",
   "managedProjectCopy": "fixtures/managed-project-copy.json",
   "projectRevision": "fixtures/project-revision.json",
@@ -15,14 +15,5 @@
   "emergentHypothesis": "fixtures/emergent-hypothesis.json",
   "findings": ["fixtures/finding.json", "fixtures/finding-2.json"],
   "evidence": ["fixtures/evidence.json", "fixtures/evidence-2.json"],
-  "unifiedIssue": "fixtures/unified-issue.json",
-  "verification": "fixtures/verification.json",
-  "fixProposal": "fixtures/fix-proposal.json",
-  "runActivity": "fixtures/run-activity.json",
-  "retest": {
-    "projectRevision": "fixtures/project-revision-2.json",
-    "snapshot": "fixtures/snapshot-2.json",
-    "projectContextSnapshot": "fixtures/project-context-2.json",
-    "qaRun": "fixtures/retest-qa-run.json"
-  }
+  "runActivity": "fixtures/run-activity.json"
 }

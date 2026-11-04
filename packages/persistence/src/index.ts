@@ -5,6 +5,7 @@ export * from './migrations.js';
 export * from './database.js';
 export * from './repository.js';
 export * from './artifact-store.js';
+export * from './profile-store.js';
 export * from './filesystem.js';
 export * from './exclusions.js';
 export * from './runtime-lease.js';

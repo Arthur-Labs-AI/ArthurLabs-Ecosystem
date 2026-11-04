@@ -16,7 +16,6 @@ const RUN = {
   status: 'created',
   configuration: {
     agentStackIds: ['stack_muse_main'],
-    verificationLevel: 'strict',
     policy: { id: 'qa-standard', version: 1 },
   },
   createdAt: '2026-09-09T19:00:00.000Z',
@@ -27,36 +26,23 @@ const SPEC = {
   qaRunId: 'run_01K7777777777777777777A8W3',
   snapshotId: 'snap_01K7777777777777777777A8W2',
   includePaths: ['src/auth'],
-  issueIds: [],
   createdAt: '2026-09-09T19:00:00.000Z',
 } as const;
 
 describe('Phase 7 canonical QA modes (closure §30-§33)', () => {
-  it('accepts canonical execution modes; retest stays a legacy workflow label', () => {
+  it('accepts canonical execution modes', () => {
     expect(QAModeSchema.parse('full')).toBe('full');
     expect(QAModeSchema.parse('targeted')).toBe('targeted');
-    expect(QAModeSchema.parse('retest')).toBe('retest');
     expect(CANONICAL_QA_MODES).toEqual(['full', 'targeted']);
   });
   it('rejects legacy inferred modes as QAMode', () => {
-    for (const mode of ['quick', 'ci', 'verify', 'cicd']) {
+    for (const mode of ['quick', 'ci', 'verify', 'retest', 'cicd']) {
       expect(QAModeSchema.safeParse(mode).success).toBe(false);
     }
   });
-  it('keeps targeted as a standard QARun mode with lineage support', () => {
-    const run = QARunSchema.parse({
-      ...RUN,
-      mode: 'targeted',
-      lineage: { parentRunId: 'run_01K7777777777777777777A8WD' },
-    });
+  it('keeps targeted as a standard QARun mode', () => {
+    const run = QARunSchema.parse({ ...RUN, mode: 'targeted' });
     expect(run.mode).toBe('targeted');
-    if (run.mode !== 'retest') {
-      expect(run.lineage?.parentRunId).toBe('run_01K7777777777777777777A8WD');
-    }
-  });
-  it('keeps historical rows without lineage decoding', () => {
-    const run = QARunSchema.parse({ ...RUN, mode: 'full' });
-    expect(run.lineage).toBeUndefined();
   });
 });
 
@@ -108,7 +94,6 @@ describe('Phase 7 TargetSpec (§9-§10, §77)', () => {
   });
   it('computes a deterministic input digest independent of order', () => {
     const base = {
-      issueIds: [] as string[],
       agentStackIds: ['stack_muse_main', 'stack_glm_main'],
       snapshotId: 'snap_01K7777777777777777777A8W2',
       policyId: 'qa-standard',

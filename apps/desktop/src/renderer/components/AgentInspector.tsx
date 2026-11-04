@@ -1,4 +1,5 @@
 import React from 'react';
+import { coverageLabel, proofLabel } from '../lib/qa-quality.js';
 import {
   Activity,
   AlertTriangle,
@@ -17,6 +18,7 @@ import {
   formatCount,
   formatElapsed,
   projectTimeline,
+  stageLabel,
   stageStateLabel,
   truncateMiddle,
 } from '../lib/agent-telemetry.js';
@@ -161,6 +163,7 @@ export function AgentInspector({
         </h3>
         <div style={{ marginTop: 6 }}>
           <StatusPill status={view.status} />
+          <p className="faint">{coverageLabel(data.events ?? [], view.status)}</p>
         </div>
       </div>
       <Tabs tabs={tabs} active={activeTab} onChange={setTab} label="Agent details" />
@@ -196,7 +199,7 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
         <dt>Elapsed</dt>
         <dd>{formatElapsed(view.elapsedMs)}</dd>
         <dt>Stage</dt>
-        <dd>{view.currentStage === 'working' ? 'Working' : view.currentStage}</dd>
+        <dd>{view.currentStage === 'working' ? 'Working' : stageLabel(view.currentStage)}</dd>
       </dl>
       <div>
         <div className="metadata">Current operation</div>
@@ -230,7 +233,9 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
                   <StatusIcon status={stage.state} size={12} />
                 )}
               </span>{' '}
-              {stage.label} — {stageStateLabel(stage.state)}
+              {stage.label}
+              {' — '}
+              {stageStateLabel(stage.state)}
             </li>
           ))}
         </ul>
@@ -267,9 +272,12 @@ function OverviewTab({ view }: { view: AgentNodeView }): React.JSX.Element {
       </div>
       {view.inputTokens !== undefined || view.outputTokens !== undefined ? (
         <p className="mono metadata" style={{ margin: 0 }}>
-          Input {view.inputTokens !== undefined ? formatCount(view.inputTokens) : '\u2014'} · Output{' '}
-          {view.outputTokens !== undefined ? formatCount(view.outputTokens) : '\u2014'} · Cached{' '}
-          {view.cachedInputTokens !== undefined ? formatCount(view.cachedInputTokens) : '\u2014'}
+          {'Input ' +
+            (view.inputTokens !== undefined ? formatCount(view.inputTokens) : '\u2014') +
+            ' · Output ' +
+            (view.outputTokens !== undefined ? formatCount(view.outputTokens) : '\u2014') +
+            ' · Cached ' +
+            (view.cachedInputTokens !== undefined ? formatCount(view.cachedInputTokens) : '\u2014')}
         </p>
       ) : null}
       {Object.keys(view.severityCounts).length > 0 ? (
@@ -359,8 +367,9 @@ function FindingsTab({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {['failed', 'cancelled', 'timed_out', 'interrupted'].includes(status) ? (
         <p className="inline-notice">
-          Partial report — agent {status.replaceAll('_', ' ')}. Reported findings and evidence are
-          retained; analysis is incomplete.
+          {'Partial report — agent ' +
+            status.replaceAll('_', ' ') +
+            '. Reported findings and evidence are retained; analysis is incomplete.'}
         </p>
       ) : null}
       {showFilter ? (
@@ -540,7 +549,7 @@ function DiagnosticsTab({
         </pre>
       </details>
       <details>
-        <summary className="muted">Raw events ({events.length})</summary>
+        <summary className="muted">{'Raw events (' + events.length + ')'}</summary>
         <pre className="mono" style={{ whiteSpace: 'pre-wrap', fontSize: 11 }}>
           {JSON.stringify(events, null, 2).slice(0, 8000)}
         </pre>
@@ -614,10 +623,10 @@ export function FindingCard({
             : ''}
         </div>
       ) : null}
-      <div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <button className="compact" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
           {expanded ? 'Hide details' : 'View details'}
-        </button>{' '}
+        </button>
         <CopyId id={finding.id} />
       </div>
       {expanded ? <FindingDetail finding={finding} evidence={evidence} /> : null}
@@ -648,7 +657,19 @@ export function FindingDetail({
   return (
     <div style={{ marginTop: 8, borderTop: '1px solid var(--border-default)', paddingTop: 8 }}>
       <h4 style={{ margin: '0 0 4px' }}>{finding.title}</h4>
-      {section('Severity', <span>{finding.severity.toUpperCase()}</span>)}
+      {section(
+        'Evidence',
+        proofLabel(
+          (finding.evidenceIds ?? []).flatMap((id) => {
+            const item = evidenceById.get(id);
+            return item === undefined ? [] : [item];
+          }),
+        ),
+      )}
+      {section(
+        'Severity',
+        <span style={{ textTransform: 'uppercase' }}>{finding.severity.toLowerCase()}</span>,
+      )}
       {section(
         'Confidence',
         finding.confidence !== undefined ? (

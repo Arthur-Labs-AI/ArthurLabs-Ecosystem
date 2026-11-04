@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { buildPaletteEntries, filterPaletteEntries } from '../lib/palette.js';
+import { useAppPreferences } from '../lib/app-preferences.js';
 import { sentryApi } from '../lib/sentry-api.js';
 import { ArrowUpRight, Command, Search } from 'lucide-react';
 
@@ -47,8 +48,12 @@ export function CommandPalette({
     [navigate, onClose],
   );
 
+  const { language } = useAppPreferences();
   const entries = React.useMemo(() => buildPaletteEntries(projectList, go), [projectList, go]);
-  const filtered = React.useMemo(() => filterPaletteEntries(entries, query), [entries, query]);
+  const filtered = React.useMemo(
+    () => filterPaletteEntries(entries, query, language),
+    [entries, query, language],
+  );
   const visible = filtered.slice(0, 12);
 
   React.useEffect(() => {

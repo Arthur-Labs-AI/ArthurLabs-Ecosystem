@@ -3,7 +3,7 @@ import { accessSync, constants, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { nowIsoTimestamp } from '@qa/shared';
 import type { HarnessHealthResult } from '@qa/harness-protocol';
-import { buildOpenCodeModelId } from './model.js';
+import { buildOpenCodeModelId, normalizeOpenCodeProvider } from './model.js';
 import { OpenCodeHarnessError } from './errors.js';
 import { probeSystemdUser } from './process.js';
 import { redactDiagnostic, secretValues } from './redaction.js';
@@ -753,7 +753,16 @@ export async function doctorOpenCode(
   }
   // Credential presence only (never values, never a live probe): opening
   // Settings/Environment must not spend provider credit.
-  const providerId = runtime?.provider ?? 'openrouter';
+  let fallbackProvider = 'openrouter';
+  try {
+    fallbackProvider = normalizeOpenCodeProvider(
+      input.provider ?? environment.SENTRY_OPENCODE_PROVIDER,
+      input.modelId ?? environment.SENTRY_OPENCODE_MODEL,
+    );
+  } catch {
+    fallbackProvider = 'openrouter';
+  }
+  const providerId = runtime?.provider ?? fallbackProvider;
   const credentialEnv = credentialEnvForProvider(providerId);
   const credentialOk = openCodeCredentialPresent(providerId, environment);
   checks.push({

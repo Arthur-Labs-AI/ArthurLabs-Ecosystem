@@ -6,13 +6,10 @@ import {
   CICDPlanIdSchema,
   EvidenceIdSchema,
   FindingIdSchema,
-  FixProposalIdSchema,
   HarnessEventIdSchema,
   ProjectIdSchema,
   QARunIdSchema,
   SnapshotIdSchema,
-  UnifiedIssueIdSchema,
-  VerificationIdSchema,
 } from '../src/index.js';
 
 describe('central ID schemas', () => {
@@ -23,9 +20,6 @@ describe('central ID schemas', () => {
     ['AgentRunId', AgentRunIdSchema],
     ['FindingId', FindingIdSchema],
     ['EvidenceId', EvidenceIdSchema],
-    ['UnifiedIssueId', UnifiedIssueIdSchema],
-    ['VerificationId', VerificationIdSchema],
-    ['FixProposalId', FixProposalIdSchema],
     ['CICDPlanId', CICDPlanIdSchema],
     ['ArtifactId', ArtifactIdSchema],
     ['HarnessEventId', HarnessEventIdSchema],

@@ -38,7 +38,6 @@ export const STDIO_START_TIMEOUT_MS = 120_000;
 export const STDIO_ROW_CREATION_TIMEOUT_MS = 600_000;
 export const STDIO_ROW_CREATION_METHODS: ReadonlySet<string> = new Set([
   'runs.start',
-  'retests.start',
   'projects.add',
   'projects.update',
 ]);

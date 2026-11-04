@@ -1,4 +1,5 @@
 import type { AgentUsage } from '@qa/schemas';
+import { StringDecoder } from 'node:string_decoder';
 import { OpenCodeHarnessError, type OpenCodeHarnessErrorCode } from './errors.js';
 import {
   DirectOpenCodeProcessLauncher,
@@ -176,6 +177,7 @@ export function classifyOpenCodeTurnFailure(input: {
 }
 
 export interface OpenCodeRunPromptOptions {
+  readonly onTool?: (observation: OpenCodeToolObservation) => void;
   readonly timeoutMs: number;
   readonly signal?: AbortSignal;
   /** Continue an existing OpenCode session (turns 2+). */
@@ -276,18 +278,28 @@ class ProductionSession implements OpenCodeSessionView {
 
   private stopPromise: Promise<boolean> | undefined;
 
+  private stopOwned(owned: OwnedOpenCodeProcess): Promise<boolean> {
+    const pending = owned.stop().catch(() => false);
+    this.stopPromise = pending;
+    return pending;
+  }
+
   abort(): void {
     this.aborted = true;
     const owned = this.owned;
     this.owned = undefined;
     if (owned !== undefined) {
-      this.stopPromise = owned.stop().catch(() => false);
+      this.stopOwned(owned);
     }
   }
 
   /** Resolve when the owned boundary has actually terminated. */
   async settled(): Promise<void> {
-    await this.stopPromise?.catch(() => undefined);
+    if ((await this.stopPromise) === false)
+      throw new OpenCodeHarnessError(
+        'OPENCODE_CANCEL_FAILED',
+        'Owned process shutdown could not be confirmed.',
+      );
   }
 
   runPrompt(prompt: string, options: OpenCodeRunPromptOptions): Promise<OpenCodePromptResult> {
@@ -335,6 +347,8 @@ class ProductionSession implements OpenCodeSessionView {
       let stderr = '';
       let settled = false;
       let stdinFailed = false;
+      let pendingLine = '';
+      const decoder = new StringDecoder('utf8');
       const settle = (conclude: () => void): void => {
         if (settled) return;
         settled = true;
@@ -344,7 +358,7 @@ class ProductionSession implements OpenCodeSessionView {
         conclude();
       };
       const onAbort = (): void => {
-        const stop = owned.stop();
+        const stop = this.stopOwned(owned);
         settle(() => {
           void stop.catch(() => undefined);
           reject(
@@ -353,7 +367,7 @@ class ProductionSession implements OpenCodeSessionView {
         });
       };
       const timer = setTimeout(() => {
-        const stop = owned.stop();
+        const stop = this.stopOwned(owned);
         settle(() => {
           void stop.catch(() => undefined);
           reject(
@@ -386,7 +400,7 @@ class ProductionSession implements OpenCodeSessionView {
       }
       if (stdinFailed) {
         settle(() => {
-          void owned.stop().catch(() => undefined);
+          void this.stopOwned(owned);
           reject(
             new OpenCodeHarnessError(
               'OPENCODE_START_FAILED',
@@ -398,16 +412,34 @@ class ProductionSession implements OpenCodeSessionView {
         return;
       }
       child.stdout?.on('data', (chunk: Buffer) => {
-        const text = chunk.toString('utf8');
+        const text = decoder.write(chunk);
         stdout += stripChatter ? stripSystemdClientChatter(text) : text;
         if (stdout.length > 2_000_000) stdout = stdout.slice(-2_000_000);
+        if (options.onTool !== undefined && !settled) {
+          pendingLine += text;
+          const lines = pendingLine.split(/\r?\n/);
+          pendingLine = lines.pop() ?? '';
+          if (pendingLine.length > 2_000_000) pendingLine = pendingLine.slice(-2_000_000);
+          try {
+            for (const line of lines)
+              for (const observation of parseOpenCodeTurn(line).tools) options.onTool(observation);
+          } catch (cause) {
+            const stopping = this.stopOwned(owned);
+            settle(() => {
+              void stopping.then(
+                () => reject(cause),
+                () => reject(cause),
+              );
+            });
+          }
+        }
       });
       child.stderr?.on('data', (chunk: Buffer) => {
         stderr += chunk.toString('utf8');
         if (stderr.length > 200_000) stderr = stderr.slice(-200_000);
       });
       child.once('error', (cause: NodeJS.ErrnoException) => {
-        const stop = owned.stop();
+        const stop = this.stopOwned(owned);
         settle(() => {
           void stop.catch(() => undefined);
           reject(
@@ -422,6 +454,7 @@ class ProductionSession implements OpenCodeSessionView {
         });
       });
       child.once('close', (code, signal) => {
+        stdout += decoder.end();
         settle(() => {
           if (signal !== null) {
             reject(

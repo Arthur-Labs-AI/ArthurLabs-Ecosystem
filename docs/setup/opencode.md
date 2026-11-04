@@ -68,29 +68,39 @@ fallback model or fake execution: real runs require the real binary.
 
 ## 2. Set the provider, model, and credential
 
+Sentry supports three upstream providers for the OpenCode harness:
+
+| Provider (`SENTRY_OPENCODE_PROVIDER`) | Plan / Gateway                                                                          | API Key Field (`Providers` UI)                                | Example `SENTRY_OPENCODE_MODEL`                |
+| ------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------- |
+| `opencode-go`                         | **OpenCode Go / Go Plus** (monthly subscription on `opencode.ai/console`)               | `OPENCODE_API_KEY` (**OpenCode API key (Zen & Go)**)          | `kimi-k3` or `gemini-4-argon-contributor`      |
+| `opencode`                            | **OpenCode Zen** (pay-as-you-go Console credits & free models on `opencode.ai/console`) | `OPENCODE_API_KEY` (**OpenCode API key (Zen & Go)**)          | `gpt-5.5` or `muse-spark-1.3-contributor-free` |
+| `openrouter` (default when unset)     | **OpenRouter** (third-party pay-as-you-go gateway on `openrouter.ai`)                   | `OPENROUTER_API_KEY` (**OpenRouter API key (Pay-as-you-go)**) | `anthropic/claude-sonnet-4`                    |
+
 Upstream provider (`openrouter` for OpenRouter, `opencode` for OpenCode Zen,
 `opencode-go` for the Go subscription gateway):
 
 ```bash
-SENTRY_OPENCODE_PROVIDER=opencode
+SENTRY_OPENCODE_PROVIDER=opencode-go
 ```
 
 Model id (examples only — use a currently available id). Sentry composes
-the effective OpenCode id as `provider/model`:
+the effective OpenCode id as `provider/model` (and if `SENTRY_OPENCODE_PROVIDER`
+is unset, prefixing `SENTRY_OPENCODE_MODEL` with `opencode-go/`, `opencode/`,
+or `openrouter/` also selects that provider automatically):
 
 ```bash
-SENTRY_OPENCODE_MODEL=muse-spark-1.3-contributor-free
-# effective: opencode/muse-spark-1.3-contributor-free
+SENTRY_OPENCODE_MODEL=muse-spark-1.3-contributor
+# effective: opencode-go/muse-spark-1.3-contributor
 ```
 
 Set the matching provider credential (memory-only in the runtime; never
 persisted to SQLite, events, artifacts, or logs):
 
 ```bash
-# OpenRouter path:
-OPENROUTER_API_KEY=<your key>
-# OpenCode Zen path:
-OPENCODE_API_KEY=<your key>
+# OpenCode Go (subscription) or OpenCode Zen (pay-as-you-go Console credits):
+OPENCODE_API_KEY=<your OpenCode Console key>
+# OpenRouter path (third-party pay-as-you-go):
+OPENROUTER_API_KEY=<your OpenRouter key>
 ```
 
 In Sentry Desktop, paste the model id, provider, and key on the Providers

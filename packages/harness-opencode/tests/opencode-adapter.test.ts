@@ -11,12 +11,15 @@ import {
   createSnapshotId,
 } from '@qa/shared';
 import {
+  DEFAULT_OPENCODE_TURN_TIMEOUT_MS,
+  describeTurnUpstreamActivity,
   DirectOpenCodeProcessLauncher,
   OpenCodeHarnessAdapter,
   type OpenCodeClientFactory,
   type OpenCodeHarnessAdapterOptions,
   type OpenCodePromptResult,
 } from '../src/index.js';
+import { OpenCodeHarnessError } from '../src/errors.js';
 
 const SENTINEL_VALUE = 'sentry-test-sentinel-credential';
 const FAKE_SESSION = 'ses_test_111111111111111111111111';
@@ -271,6 +274,475 @@ describe('OpenCodeHarnessAdapter', () => {
     await adapter.dispose();
   });
 
+  it('recovers a context-exceeded report in a fresh compacted session', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-context-'));
+    roots.push(root);
+    const input = await request(root);
+    let clients = 0;
+    let calls = 0;
+    const prompts: string[] = [];
+    const factory: OpenCodeClientFactory = async () => {
+      clients += 1;
+      return {
+        startSession: async () => ({
+          runPrompt: async (prompt: string, options) => {
+            prompts.push(prompt);
+            calls += 1;
+            if (calls === 1) return textTurn(validPlan());
+            if (calls === 2) {
+              // Executed proof, so the host does not issue an execution nudge.
+              const probe = {
+                callID: 'context_probe',
+                tool: 'bash',
+                input: { command: 'node probe.mjs' },
+                status: 'completed' as const,
+                output: 'ok',
+                exitCode: 0,
+              };
+              options.onTool?.(probe);
+              return { ...textTurn('Investigation complete.'), toolCalls: [probe] };
+            }
+            if (calls === 3) throw new Error('prompt is too long: 213462 tokens > 200000 maximum');
+            return textTurn(JSON.stringify(validReportV2()));
+          },
+          abort: () => undefined,
+        }),
+        close: async () => undefined,
+      };
+    };
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1), JSON.stringify(events.slice(-4))).toMatchObject({
+      type: 'run.completed',
+    });
+    expect(clients).toBe(2);
+    expect(prompts.at(-1)).toContain('REPORT-ONLY RECOVERY');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_CONTEXT_COMPACTED' }),
+    );
+  });
+
+  it('nudges once when a check turn ends without executable proof', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-nudge-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const factory: OpenCodeClientFactory = async () => ({
+      startSession: async () => ({
+        runPrompt: async (prompt: string, options) => {
+          prompts.push(prompt);
+          if (prompts.length === 1) return textTurn(validPlan());
+          if (prompts.length === 2) return textTurn('Read the code; looks fine.');
+          if (prompts.length === 3) {
+            const probe = {
+              callID: 'nudge_probe',
+              tool: 'bash',
+              input: { command: 'node probe.mjs' },
+              status: 'completed' as const,
+              output: 'ok',
+              exitCode: 0,
+            };
+            options.onTool?.(probe);
+            return { ...textTurn('Probed.'), toolCalls: [probe] };
+          }
+          return textTurn(JSON.stringify(validReportV2()));
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    });
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(prompts[2]).toContain('EXECUTION REQUIRED');
+    expect(prompts).toHaveLength(4);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_EXECUTION_NUDGE' }),
+    );
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+  });
+
+  /** A check turn that keeps issuing tools, then hangs until the host closes the client. */
+  function stuckFactory(
+    prompts: string[],
+    stuck: (onTool: (tool: Record<string, unknown>) => void) => void,
+    attemptsThatStick = 0,
+  ): OpenCodeClientFactory {
+    let attemptsSeen = 0;
+    return async () => {
+      let release: () => void = () => undefined;
+      const hang = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return {
+        startSession: async () => ({
+          runPrompt: async (prompt: string, options) => {
+            prompts.push(prompt);
+            const emit = (tool: Record<string, unknown>) => options.onTool?.(tool as never);
+            if (prompt.includes('STAGE 1')) return textTurn(validPlan());
+            if (prompt.includes('STAGE 3')) return textTurn(JSON.stringify(validReportV2()));
+            const isAttempt = prompt.includes('APPROACH CHANGE');
+            if (isAttempt) attemptsSeen += 1;
+            if (!isAttempt || attemptsSeen <= attemptsThatStick) {
+              stuck(emit);
+              await hang;
+              return textTurn('stopped');
+            }
+            const probe = {
+              callID: 'alt_probe_' + attemptsSeen,
+              tool: 'bash',
+              input: { command: 'node alternative.mjs' },
+              status: 'completed' as const,
+              output: 'ok',
+              exitCode: 0,
+            };
+            emit(probe);
+            return { ...textTurn('Decided by a direct probe.'), toolCalls: [probe] };
+          },
+          abort: () => undefined,
+        }),
+        close: async () => {
+          release();
+        },
+      };
+    };
+  }
+
+  const failingRun = (index: number) => ({
+    callID: 'red_' + index,
+    tool: 'bash',
+    input: { command: 'vitest run probe.test.ts' },
+    status: 'error' as const,
+    error: 'assertion failed',
+    exitCode: 1,
+  });
+
+  it('stops a retry-until-green check turn and grants a different-approach attempt', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-redretry-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: stuckFactory(prompts, (emit) => {
+        for (const i of [1, 2, 3]) emit(failingRun(i));
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    const attempt = prompts.find((prompt) => prompt.includes('APPROACH CHANGE'));
+    expect(attempt).toContain('attempt 1 of 3');
+    expect(attempt).toContain('vitest run probe.test.ts');
+    expect(attempt).toContain('Do not re-run those commands');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_APPROACH_CHANGE' }),
+    );
+    expect(events).not.toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_APPROACH_EXHAUSTED' }),
+    );
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+  });
+
+  it('stops a read-only spiral and keeps the check inconclusive when every approach sticks', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-spiral-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: stuckFactory(
+        prompts,
+        (emit) => {
+          for (let i = 0; i < 35; i += 1)
+            emit({
+              callID: 'read_' + i + '_' + prompts.length,
+              tool: 'read',
+              input: { filePath: 'src/file-' + i + '-' + prompts.length + '.ts' },
+              status: 'completed',
+              output: 'x',
+            });
+        },
+        3,
+      ),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(prompts.filter((prompt) => prompt.includes('APPROACH CHANGE'))).toHaveLength(3);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_APPROACH_EXHAUSTED' }),
+    );
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+  });
+
+  it('ships a host-composed partial report when the report stage never becomes valid', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-fallback-'));
+    roots.push(root);
+    const base = await request(root);
+    const input = {
+      ...base,
+      task: {
+        ...base.task,
+        context: { qaDepth: { version: 1, deadlineAt: Date.now() + 600_000 } },
+      },
+    };
+    const factory: OpenCodeClientFactory = async () => ({
+      startSession: async () => ({
+        runPrompt: async (prompt: string, options) => {
+          if (prompt.includes('STAGE 1')) return textTurn(validPlan());
+          if (prompt.includes('STAGE 2')) {
+            const probe = {
+              callID: 'fb_probe',
+              tool: 'bash',
+              input: { command: 'node probe.mjs' },
+              status: 'completed' as const,
+              output: 'ok',
+              exitCode: 0,
+            };
+            options.onTool?.(probe);
+            return {
+              ...textTurn('README has no executable claims; probe passed.'),
+              toolCalls: [probe],
+            };
+          }
+          return textTurn('this is not a json report');
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    });
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_REPORT_HOST_FALLBACK' }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_COVERAGE_PARTIAL' }),
+    );
+    expect(events.some((e) => e.type === 'finding.submitted')).toBe(false);
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+  });
+
+  it('does not nudge a check turn whose executed probe failed', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-rednonudge-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const factory: OpenCodeClientFactory = async () => ({
+      startSession: async () => ({
+        runPrompt: async (prompt: string, options) => {
+          prompts.push(prompt);
+          if (prompt.includes('STAGE 1')) return textTurn(validPlan());
+          if (prompt.includes('STAGE 2')) {
+            const probe = {
+              callID: 'red_once',
+              tool: 'bash',
+              input: { command: 'node probe.mjs' },
+              status: 'error' as const,
+              error: 'assertion failed: defect reproduced',
+              exitCode: 1,
+            };
+            options.onTool?.(probe);
+            return { ...textTurn('Probe reproduced the defect.'), toolCalls: [probe] };
+          }
+          return textTurn(JSON.stringify(validReportV2()));
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    });
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(prompts.some((prompt) => prompt.includes('EXECUTION REQUIRED'))).toBe(false);
+    expect(events).not.toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_EXECUTION_NUDGE' }),
+    );
+  });
+
+  it('keeps the tail of a long command output and the source of a written probe', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-digest-'));
+    roots.push(root);
+    const input = await request(root);
+    const factory: OpenCodeClientFactory = async () => ({
+      startSession: async () => ({
+        runPrompt: async (prompt: string, options) => {
+          if (prompt.includes('STAGE 1')) return textTurn(validPlan());
+          if (prompt.includes('STAGE 2')) {
+            const write = {
+              callID: 'digest_write',
+              tool: 'write',
+              input: {
+                filePath: '/ws/probe.mjs',
+                content: 'assert(lease.acquire() && lease.acquire())',
+              },
+              status: 'completed' as const,
+              output: 'Wrote file successfully.',
+            };
+            const longOutput = ['Progress: resolved 1009, downloaded 8']
+              .concat(Array.from({ length: 300 }, (_, i) => 'log line ' + i))
+              .concat(['AssertionError: lease acquired twice'])
+              .join(String.fromCharCode(10));
+            const run = {
+              callID: 'digest_run',
+              tool: 'bash',
+              input: { command: 'node probe.mjs' },
+              status: 'completed' as const,
+              output: longOutput,
+              exitCode: 0,
+            };
+            options.onTool?.(write);
+            options.onTool?.(run);
+            return { ...textTurn('Probed.'), toolCalls: [write, run] };
+          }
+          return textTurn(JSON.stringify(validReportV2()));
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    });
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    const messages = events.flatMap((event) =>
+      event.type === 'agent.message' ? [event.message] : [],
+    );
+    const output = messages.find((message) => message.startsWith('observed tool bash output'));
+    expect(output).toContain('AssertionError: lease acquired twice');
+    expect(output).not.toContain('Progress: resolved');
+    expect(output).toMatch(/characters omitted/);
+    expect(
+      messages.some(
+        (message) =>
+          message.startsWith('observed tool write source /ws/probe.mjs') &&
+          message.includes('lease.acquire()'),
+      ),
+    ).toBe(true);
+  });
+
+  it('counts grep calls toward the read-only spiral', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-grepspiral-'));
+    roots.push(root);
+    const input = await request(root);
+    const prompts: string[] = [];
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: stuckFactory(prompts, (emit) => {
+        // Only greps: the ledger used to skip them, so this never tripped.
+        for (let i = 0; i < 31; i += 1)
+          emit({
+            callID: 'grep_' + i + '_' + prompts.length,
+            tool: 'grep',
+            input: { pattern: 'lease' + i + '_' + prompts.length },
+            status: 'completed',
+            output: 'a.ts:1: lease',
+          });
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(prompts.some((prompt) => prompt.includes('APPROACH CHANGE'))).toBe(true);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_APPROACH_CHANGE' }),
+    );
+  });
+
+  it('reports banked work instead of failing when an aborted session raises a cancel failure nobody requested', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-falsecancel-'));
+    roots.push(root);
+    const input = await request(root);
+    const factory: OpenCodeClientFactory = async () => ({
+      startSession: async () => ({
+        runPrompt: async (prompt: string, options) => {
+          if (prompt.includes('STAGE 1')) return textTurn(validPlan());
+          if (prompt.includes('STAGE 2')) {
+            options.onTool?.({
+              callID: 'banked_probe',
+              tool: 'bash',
+              input: { command: 'node probe.mjs' },
+              status: 'completed' as const,
+              output: 'ok',
+              exitCode: 0,
+            });
+            // Same error OpenCode's client raises when a stopped session is reused.
+            throw new OpenCodeHarnessError(
+              'OPENCODE_CANCEL_FAILED',
+              'OpenCode session was aborted.',
+            );
+          }
+          return textTurn(JSON.stringify(validReportV2()));
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    });
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_INVESTIGATION_INCOMPLETE' }),
+    );
+    expect(events.at(-1)).toMatchObject({ type: 'run.completed' });
+  });
+
+  it('still fails a genuinely cancelled run', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-realcancel-'));
+    roots.push(root);
+    const input = await request(root);
+    const holder: { adapter?: OpenCodeHarnessAdapter } = {};
+    const factory: OpenCodeClientFactory = async () => ({
+      startSession: async () => ({
+        runPrompt: async (prompt: string, options) => {
+          if (prompt.includes('STAGE 1')) return textTurn(validPlan());
+          options.onTool?.({
+            callID: 'cancel_probe',
+            tool: 'bash',
+            input: { command: 'node probe.mjs' },
+            status: 'completed' as const,
+            output: 'ok',
+            exitCode: 0,
+          });
+          await holder.adapter?.cancel(input.agentRunId);
+          throw new OpenCodeHarnessError('OPENCODE_CANCEL_FAILED', 'OpenCode turn was cancelled.');
+        },
+        abort: () => undefined,
+      }),
+      close: async () => undefined,
+    });
+    holder.adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      clientFactory: factory,
+    });
+    const events = await collect(holder.adapter, input);
+    await holder.adapter.dispose();
+    expect(events).not.toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_INVESTIGATION_INCOMPLETE' }),
+    );
+    expect(events.at(-1)).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'OPENCODE_CANCEL_FAILED' },
+    });
+  });
+
   it('runs all turns in one OpenCode session with composed model id', async () => {
     const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-success-'));
     roots.push(root);
@@ -298,7 +770,7 @@ describe('OpenCodeHarnessAdapter', () => {
               {
                 callID: 'call_bash_1',
                 tool: 'bash',
-                input: { command: 'rg important README.md' },
+                input: { command: 'node probe.mjs' },
                 status: 'completed',
                 output: 'important line',
                 exitCode: 0,
@@ -639,6 +1111,58 @@ describe('OpenCodeHarnessAdapter', () => {
       failure: { code: 'OPENCODE_START_FAILED' },
     });
     await adapter.dispose();
+  });
+
+  it('keeps a 3h default single-turn budget for full-project investigations', () => {
+    // Regression pin for run_01M61FYQ7QD3DWVAVSD90PWAKB: GLM's single
+    // investigation turn died at its 30 min cap mid-work on a large project.
+    // All three adapters share the 3h cap; the run fuse and the 15-minute
+    // stall watchdog remain the real stuck-work protection.
+    expect(DEFAULT_OPENCODE_TURN_TIMEOUT_MS).toBe(10_800_000);
+  });
+
+  it('says whether a timed-out turn talked to the upstream at all', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-opencode-timeout-evidence-'));
+    roots.push(root);
+    const input = await request(root);
+    const adapter = new OpenCodeHarnessAdapter({
+      ...logicalAdapterDefaults(),
+      turnTimeoutMs: 50,
+      clientFactory: async () => ({
+        startSession: async () => ({
+          runPrompt: async () => new Promise<never>(() => undefined),
+          abort: () => undefined,
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    const failure = events.at(-1);
+    expect(failure).toMatchObject({
+      type: 'run.failed',
+      failure: { code: 'OPENCODE_START_FAILED' },
+    });
+    // A hanging stub relays nothing: the failure must say so explicitly so
+    // the next real timeout distinguishes a stall from slow-but-working.
+    // Route ids and counts only — never credentials or content.
+    expect(JSON.stringify(failure)).toContain('No upstream requests were relayed');
+    expect(JSON.stringify(events)).not.toContain(SENTINEL_VALUE);
+    await adapter.dispose();
+  });
+
+  it('summarizes upstream relay deltas without credentials or content', () => {
+    expect(describeTurnUpstreamActivity({}, {})).toBe(
+      'No upstream requests were relayed during the turn.',
+    );
+    expect(describeTurnUpstreamActivity({ a: 2 }, { a: 2 })).toBe(
+      'No upstream requests were relayed during the turn.',
+    );
+    expect(describeTurnUpstreamActivity({}, { chat: 3, models: 1 })).toBe(
+      'Upstream requests relayed during the turn: chatx3, modelsx1.',
+    );
+    expect(describeTurnUpstreamActivity({ chat: 5 }, { chat: 8 })).toBe(
+      'Upstream requests relayed during the turn: chatx3.',
+    );
   });
 
   it('fails closed before launch when workspace masking is impossible', async () => {

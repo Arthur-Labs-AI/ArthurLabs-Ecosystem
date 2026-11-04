@@ -9,6 +9,9 @@ import { revealSavedExport, saveExportRun } from './services/export-save.js';
 export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
   'projects:list': z.object({}).strict(),
   'projects:add': z.object({ sourcePath: z.string().min(1).max(2000) }).strict(),
+  'projects:cancel-add': z.object({}).strict(),
+  'projects:cancel-update': z.object({}).strict(),
+  'app:set-language': z.object({ language: z.enum(['en', 'bg']) }).strict(),
   'projects:get': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:revisions': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:delete': z.object({ projectId: z.string().min(1).max(200) }).strict(),
@@ -20,6 +23,13 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
     .strict(),
   'projects:doctor': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'projects:suggest-targets': z.object({ projectId: z.string().min(1).max(200) }).strict(),
+  'projects:profile': z.object({ projectId: z.string().min(1).max(200) }).strict(),
+  'projects:build-profile': z
+    .object({
+      projectId: z.string().min(1).max(200),
+      agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
+    })
+    .strict(),
   'runs:list': z.object({ projectId: z.string().min(1).max(200) }).strict(),
   'runs:get': z.object({ runId: z.string().min(1).max(100) }).strict(),
   'runs:status': z.object({ runId: z.string().min(1).max(100) }).strict(),
@@ -27,20 +37,34 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
     .object({
       projectId: z.string().min(1).max(200),
       mode: z.enum(['full', 'targeted']),
+      revisionId: z
+        .string()
+        .regex(/^rev_[0-9A-HJKMNP-TV-Z]{26}$/)
+        .optional(),
       includePaths: z.array(z.string().min(1).max(500)).max(100).optional(),
       instructions: z.string().min(1).max(5000).optional(),
       agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
       runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
+      webAccess: z.boolean().optional(),
+      toolDownloads: z.boolean().optional(),
+      useProfile: z.boolean().optional(),
     })
     .strict(),
   'runs:start-production': z
     .object({
       projectId: z.string().min(1).max(200),
       mode: z.enum(['full', 'targeted']),
+      revisionId: z
+        .string()
+        .regex(/^rev_[0-9A-HJKMNP-TV-Z]{26}$/)
+        .optional(),
       includePaths: z.array(z.string().min(1).max(500)).max(100).optional(),
       instructions: z.string().min(1).max(5000).optional(),
       agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
       runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
+      webAccess: z.boolean().optional(),
+      toolDownloads: z.boolean().optional(),
+      useProfile: z.boolean().optional(),
     })
     .strict(),
   'runs:cancel': z.object({ runId: z.string().min(1).max(100) }).strict(),
@@ -54,19 +78,6 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
   'runs:export-content': z
     .object({ runId: z.string().min(1).max(100), format: z.enum(['log', 'json']) })
     .strict(),
-  'issues:list': z.object({ projectId: z.string().min(1).max(200) }).strict(),
-  'issues:get': z.object({ issueId: z.string().min(1).max(100) }).strict(),
-  'issues:history': z.object({ issueId: z.string().min(1).max(100) }).strict(),
-  'retests:list': z.object({ issueId: z.string().min(1).max(100) }).strict(),
-  'retests:start': z
-    .object({
-      issueId: z.string().min(1).max(100),
-      revisionId: z.string().min(1).max(100).optional(),
-      agentStackIds: z.array(z.string().min(1).max(200)).max(10).optional(),
-    })
-    .strict(),
-  'retests:get': z.object({ retestRunId: z.string().min(1).max(100) }).strict(),
-  'retests:cancel': z.object({ retestRunId: z.string().min(1).max(100) }).strict(),
   'doctors:environment': z.object({}).strict(),
   'providers:status': z.object({}).strict(),
   'providers:save': z
@@ -81,12 +92,20 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
     .object({ agentStackIds: z.array(z.string().min(1).max(200)).max(10).optional() })
     .strict(),
   'system:info': z.object({}).strict(),
+  'toolchains:status': z.object({}).strict(),
+  'toolchains:install': z
+    .object({ packId: z.string().min(1).max(40), version: z.string().min(1).max(40) })
+    .strict(),
+  'toolchains:remove': z
+    .object({ packId: z.string().min(1).max(40), version: z.string().min(1).max(40) })
+    .strict(),
   'system:active-runs': z.object({}).strict(),
   'runtime:status': z.object({}).strict(),
   'runtime:distros': z.object({}).strict(),
   'runtime:select-distro': z.object({ distro: z.string().min(1).max(200) }).strict(),
   'runtime:reclaim-space': z.object({}).strict(),
   'cli:status': z.object({}).strict(),
+  'cli:set-enabled': z.object({ enabled: z.boolean() }).strict(),
 };
 export type DesktopChannel = keyof typeof DesktopChannelSchemas;
 
@@ -105,11 +124,13 @@ export interface CommandRouterHooks {
   readonly maintenanceActive?: () => boolean;
   readonly reclaimSpace?: () => Promise<unknown>;
   readonly onRunCreated?: (runId: string, operationId?: string) => void;
-  readonly onRetestCreated?: (retestRunId: string, operationId?: string) => void;
   readonly requestSavePath?: (options: SaveDialogOptions) => Promise<string | null>;
   readonly cliStatus?: () => unknown;
+  readonly cliSetEnabled?: (enabled: boolean) => Promise<unknown>;
   readonly showInFolder?: (path: string) => void;
   readonly redactErrorText?: (text: string) => string;
+  /** Persist the renderer-selected interface language for main-process UI. Best-effort. */
+  readonly persistAppLanguage?: (language: 'en' | 'bg') => void;
 }
 
 export interface SafeErrorOptions {
@@ -183,7 +204,12 @@ export async function dispatchDesktopCommand(
     });
   }
   const parsed = schema.parse(payload ?? {}) as Record<string, unknown>;
-  if (hooks.maintenanceActive?.() && channel !== 'runtime:status' && channel !== 'cli:status') {
+  if (
+    hooks.maintenanceActive?.() &&
+    channel !== 'runtime:status' &&
+    channel !== 'cli:status' &&
+    channel !== 'app:set-language'
+  ) {
     throw Object.assign(new Error('Windows disk reclamation is running. Wait for it to finish.'), {
       code: 'RUNTIME_MAINTENANCE',
     });
@@ -200,6 +226,10 @@ export async function dispatchDesktopCommand(
       return service.listProjects();
     case 'projects:add':
       return service.addProject(parsed['sourcePath'] as string);
+    case 'projects:cancel-add':
+      return service.cancelAddProject();
+    case 'projects:cancel-update':
+      return service.cancelUpdateProject();
     case 'projects:get':
       return service.getProject(parsed['projectId'] as string);
     case 'projects:revisions':
@@ -215,6 +245,13 @@ export async function dispatchDesktopCommand(
       return service.projectDoctor(parsed['projectId'] as string);
     case 'projects:suggest-targets':
       return service.suggestTargets(parsed['projectId'] as string);
+    case 'projects:profile':
+      return service.profileStatus(parsed['projectId'] as string);
+    case 'projects:build-profile':
+      return service.buildProfiles(
+        parsed['projectId'] as string,
+        parsed['agentStackIds'] as string[] | undefined,
+      );
     case 'runs:list':
       return service.listRuns(parsed['projectId'] as string);
     case 'runs:get':
@@ -241,6 +278,10 @@ export async function dispatchDesktopCommand(
         instructions: parsed['instructions'],
         agentStackIds: parsed['agentStackIds'],
         runTimeoutMs: parsed['runTimeoutMs'],
+        webAccess: parsed['webAccess'],
+        toolDownloads: parsed['toolDownloads'],
+        useProfile: parsed['useProfile'],
+        revisionId: parsed['revisionId'],
       });
       if (operation.runId !== undefined)
         hooks.onRunCreated?.(operation.runId, operation.operationId);
@@ -267,31 +308,6 @@ export async function dispatchDesktopCommand(
       const show = hooks.showInFolder;
       return revealSavedExport(parsed['path'] as string, { showInFolder: (path) => show(path) });
     }
-    case 'issues:list':
-      return service.listIssues(parsed['projectId'] as string);
-    case 'issues:get':
-      return service.getIssue(parsed['issueId'] as string);
-    case 'issues:history':
-      return service.issueHistory(parsed['issueId'] as string);
-    case 'retests:list':
-      return service.listRetests(parsed['issueId'] as string);
-    case 'retests:start': {
-      const operation = await service.startRetest(parsed['issueId'] as string, {
-        ...(parsed['revisionId'] === undefined
-          ? {}
-          : { revisionId: parsed['revisionId'] as string }),
-        ...(parsed['agentStackIds'] === undefined
-          ? {}
-          : { agentStackIds: parsed['agentStackIds'] as string[] }),
-      });
-      if (operation.retestRunId !== undefined)
-        hooks.onRetestCreated?.(operation.retestRunId, operation.operationId);
-      return operation;
-    }
-    case 'retests:get':
-      return service.retestSnapshot(parsed['retestRunId'] as string);
-    case 'retests:cancel':
-      return service.cancelRetest(parsed['retestRunId'] as string);
     case 'doctors:environment':
       return service.environmentDoctors();
     case 'providers:status':
@@ -314,6 +330,12 @@ export async function dispatchDesktopCommand(
           ? undefined
           : { agentStackIds: parsed['agentStackIds'] as string[] },
       );
+    case 'toolchains:status':
+      return service.toolchainStatus();
+    case 'toolchains:install':
+      return service.toolchainInstall(parsed['packId'] as string, parsed['version'] as string);
+    case 'toolchains:remove':
+      return service.toolchainRemove(parsed['packId'] as string, parsed['version'] as string);
     case 'system:info':
       return service.systemInfo();
     case 'system:active-runs':
@@ -328,6 +350,23 @@ export async function dispatchDesktopCommand(
       if (hooks.cliStatus === undefined)
         throw Object.assign(new Error('CLI broker unavailable'), { code: 'CLI_UNAVAILABLE' });
       return hooks.cliStatus();
+    }
+    case 'app:set-language': {
+      // Renderer owns the selection; main only mirrors it for native UI.
+      // Persistence is best-effort and never fails the call.
+      try {
+        hooks.persistAppLanguage?.(parsed['language'] as 'en' | 'bg');
+      } catch {
+        /* selection already applied in the renderer */
+      }
+      return { saved: true, language: parsed['language'] };
+    }
+    case 'cli:set-enabled': {
+      if (hooks.cliSetEnabled === undefined)
+        throw Object.assign(new Error('CLI broker toggle unavailable'), {
+          code: 'CLI_UNAVAILABLE',
+        });
+      return hooks.cliSetEnabled(parsed['enabled'] as boolean);
     }
     default:
       throw Object.assign(new Error('Unknown command: ' + channel), {

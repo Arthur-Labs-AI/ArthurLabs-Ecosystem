@@ -1,3 +1,14 @@
+import { depthPolicy, profileContextEntry, PROFILE_CONTEXT_KEY } from '@qa/evidence-pipeline';
+import { ProjectProfileBuilder, profileState } from './profile-builder.js';
+import {
+  createWorkspacePreparer,
+  discoverOfflineCache,
+  offlineCacheCandidates,
+  removeBuildCaches,
+  type PreparationPolicy,
+  type PreparationReceipt,
+  type WorkspacePreparer,
+} from './workspace-preparation.js';
 import {
   createAgentRunId,
   createQARunId,
@@ -5,8 +16,8 @@ import {
   type AgentRunId,
   type AgentStackId,
   type ProjectId,
-  type ProjectRevisionId,
   type QARunId,
+  describeSchemaIssues,
 } from '@qa/shared';
 import {
   AgentRunSchema,
@@ -15,15 +26,15 @@ import {
   RunActivitySchema,
   TargetSpecSchema,
   type AgentRun,
+  type ProjectRevision,
   type Evidence,
   type Finding,
   type HarnessEvent,
   type HarnessRunRequest,
   type HarnessWorkspace,
   type QARun,
-  type QARunLineage,
+  type RunProfileUsage,
   type TargetSpec,
-  type VerificationLevel,
 } from '@qa/schemas';
 import {
   aggregateAgentUsage,
@@ -38,6 +49,7 @@ import {
   type HarnessAdapterRegistration,
 } from '@qa/harness-protocol';
 import {
+  matchImportExclusion,
   projectDataPaths,
   RuntimeInstanceLease,
   RuntimePersistenceError,
@@ -51,68 +63,42 @@ import { WorkspaceFactory } from '@qa/workspace-factory';
 import { RunActivityProjector } from './activity-projector.js';
 import { RunExporter } from './exporters.js';
 import { RunEngineError } from './errors.js';
-import { recoverRetests } from './retest-service.js';
-import { recoverVerifications } from './verification-service.js';
 
 export interface TargetedScope {
   /** Project-relative target paths (§9-§10). Validated against the frozen
    *  snapshot manifest before agents start; rejected when unknown. */
   readonly includePaths: readonly string[];
-  readonly issueIds?: readonly string[];
   readonly userInstructions?: string;
 }
 
 export interface RunOptions {
   readonly agentStackIds?: readonly AgentStackId[];
   readonly executionKind: 'simulation' | 'production';
-  readonly verificationLevel?: VerificationLevel;
   readonly instructions?: string;
   readonly runTimeoutMs?: number;
+  /** Opt in to general web access for agents; package installs are always allowed. Omitted means off. */
+  readonly webAccess?: boolean;
+  /** Opt in to the official download hosts of language toolchains and SDKs. Omitted means off. */
+  readonly toolDownloads?: boolean;
   /** Phase 7 (§8-§13): TARGETED QA. Same independent agent architecture
    *  and FULL-strength responsibility class, focused on a narrower scope.
    *  Omitted (or mode 'full') preserves FULL semantics unchanged (§7). */
   readonly mode?: 'full' | 'targeted';
   readonly target?: TargetedScope;
-  /** Phase 7 run lineage (§37): e.g. FULL → TARGETED follow-up. */
-  readonly lineage?: {
-    readonly parentRunId?: QARunId;
-    readonly sourceRevisionId?: ProjectRevisionId;
-    readonly targetRevisionId?: ProjectRevisionId;
-  };
+  /**
+   * Run against an older project revision instead of the current working
+   * copy. The revision must belong to the project and its retained material
+   * must still exist (revisions predating retention cannot run). The run
+   * snapshots the retained material read-only: the working copy is never
+   * moved. Omitted runs the current revision (unchanged behavior).
+   */
+  readonly revisionId?: string;
+  /** Hand every agent that has a fresh profile of this revision its own orientation notes. Omitted means off. */
+  readonly useProfile?: boolean;
   readonly onHarnessRequest?: (request: HarnessRunRequest) => void;
   /** Signals this request's identity immediately after the initial row is saved. */
   readonly onRunCreated?: (run: QARun) => void;
   readonly onHarnessEventPersisted?: (event: HarnessEvent, agentRun: AgentRun) => void;
-  /** Finish-pass §29/§35: fires after revision integrity + snapshot freeze
-   *  (lock held), BEFORE target validation + TargetSpec persistence + any
-   *  agent adapter start. May return `overrideIncludePaths` to replace the
-   *  requested TARGETED scope with snapshot-manifest-resolved paths
-   *  (Retest historical resolution). Generic: any caller may use it. */
-  readonly onSnapshotFrozen?: (
-    frozen: SnapshotFrozenContext,
-  ) =>
-    | Promise<{ mode?: 'full' | 'targeted'; overrideIncludePaths?: readonly string[] } | void>
-    | { mode?: 'full' | 'targeted'; overrideIncludePaths?: readonly string[] }
-    | void;
-}
-
-/** Finish-pass §36: the frozen half of a run — revision + snapshot + the
- *  immutable file manifest, before target validation and agent start. */
-export interface SnapshotFrozenContext {
-  readonly runId: QARunId;
-  readonly projectId: ProjectId;
-  readonly revision: {
-    readonly id: string;
-    readonly contentHash: string;
-  };
-  readonly snapshot: {
-    readonly id: string;
-    readonly projectRevisionId: string;
-  };
-  /** Immutable file set from the frozen manifest (never the mutable tree). */
-  readonly snapshotFiles: ReadonlySet<string>;
-  readonly mode: 'full' | 'targeted';
-  readonly requestedIncludePaths: readonly string[] | undefined;
 }
 
 export interface RunDetails {
@@ -173,7 +159,30 @@ export interface RunStatus {
 
 class RunTimeoutError extends Error {}
 
+/** Stall watchdog: an agent that emits no event for this long is wedged,
+ *  however generous the run fuse is. Deliberately independent of
+ *  runTimeoutMs — raising the fuse must never raise the silence window. */
+export const STALL_SILENCE_MS = 900_000;
+
+export function silenceWindowMs(runTimeoutMs: number): number {
+  return Math.min(runTimeoutMs, STALL_SILENCE_MS);
+}
+
 export const CANCELLATION_POLL_INTERVAL_MS = 500;
+
+/**
+ * Bounded description of a schema validation failure: where it happened and
+ * which fields were rejected, never the offending values (the raw message is
+ * JSON that may contain agent output and must not be persisted verbatim).
+ */
+export function summarizeValidationFailure(cause: unknown, handlingEvent?: string): string {
+  const described = describeSchemaIssues(cause);
+  return (
+    'Agent output failed schema validation' +
+    (handlingEvent === undefined ? '' : ' while handling ' + handlingEvent) +
+    (described.length === 0 ? '.' : ': ' + described + '.')
+  ).slice(0, 500);
+}
 
 export class RunCoordinator {
   private readonly projects: ProjectManager;
@@ -181,6 +190,7 @@ export class RunCoordinator {
   private readonly workspaces: WorkspaceFactory;
   private readonly activities: RunActivityProjector;
   private readonly exporter: RunExporter;
+  readonly profiles: ProjectProfileBuilder;
   /** Runtime-local ownership (§10): adapters owned by THIS coordinator
    *  instance only. Never persisted; the DB cancellation request bridges
    *  processes to this map. */
@@ -191,6 +201,7 @@ export class RunCoordinator {
     private readonly repository: SentryRepository,
     private readonly runtimeLease?: RuntimeInstanceLease,
     private readonly registry: HarnessAdapterRegistry = new HarnessAdapterRegistry(),
+    private readonly prepareWorkspace: WorkspacePreparer = createWorkspacePreparer(),
   ) {
     this.projects = new ProjectManager(
       dataRoot,
@@ -201,9 +212,30 @@ export class RunCoordinator {
     this.workspaces = new WorkspaceFactory(dataRoot);
     this.activities = new RunActivityProjector(repository);
     this.exporter = new RunExporter(dataRoot, repository);
+    this.profiles = new ProjectProfileBuilder(
+      dataRoot,
+      repository,
+      this.projects,
+      this.workspaces,
+      this.registry,
+    );
   }
 
   async run(projectId: ProjectId, options: RunOptions): Promise<RunDetails> {
+    const configuredSeed = process.env['SENTRY_QA_CACHE_SEED']?.trim();
+    const cacheSeed =
+      configuredSeed ||
+      (process.platform === 'linux'
+        ? await discoverOfflineCache(offlineCacheCandidates(this.dataRoot))
+        : undefined);
+    const preparationPolicy: PreparationPolicy | undefined =
+      options.executionKind === 'production' && process.env['SENTRY_QA_DEPTH'] !== '0'
+        ? {
+            enabled: true,
+            path: process.env['PATH'] ?? '',
+            ...(cacheSeed === undefined ? {} : { cacheSeed }),
+          }
+        : undefined;
     const runtimeLease = this.requireRuntimeLease();
     const project = this.projects.getProject(projectId);
     if (project === undefined)
@@ -237,45 +269,78 @@ export class RunCoordinator {
     const runId = createQARunId();
     this.projects.lockProjectForRun(projectId, runId);
     // Final micro-fix §7/§14: pre-execution boundary. The initial QARun row
-    // persists before the frozen hook (active-Retest fix — must remain), so
+    // persists before target validation, so
     // any handled failure before worker launch must terminalize that same
     // row as failed. Execution starts at first runAgent() launch only.
     let runPersisted = false;
     let executionStarted = false;
     let stagedRoot: ReturnType<RunActivityProjector['stage']> | undefined;
     try {
-      const revision = await this.projects.assertWorkingCopyIntegrity(projectId);
+      // Revision selection: omitted (or explicitly the current revision)
+      // targets the current working-copy revision exactly as before. An
+      // explicit older revision snapshots its retained material read-only —
+      // the working copy is never moved, so concurrent state stays intact.
+      let revision: ProjectRevision;
+      let sourceRoot: string;
+      /** What the frozen snapshot must hash to: the revision hash, or its retained view. */
+      let expectedSnapshotHash: string | undefined;
+      const currentId = project.revision.id;
+      if (options.revisionId === undefined || options.revisionId === currentId) {
+        revision = await this.projects.assertWorkingCopyIntegrity(projectId);
+        sourceRoot = projectDataPaths(this.dataRoot, projectId).workingCopy;
+      } else {
+        if (!/^rev_[0-9A-HJKMNP-TV-Z]{26}$/.test(options.revisionId)) {
+          throw new RunEngineError(
+            'INVALID_TARGET',
+            'Malformed revision id: ' + options.revisionId,
+          );
+        }
+        const stored = this.repository.getRevision(options.revisionId);
+        if (stored === undefined || stored.projectId !== projectId) {
+          throw new RunEngineError(
+            'INVALID_TARGET',
+            'Revision ' + options.revisionId + ' is not part of this project',
+          );
+        }
+        const material = await this.projects.revisionMaterialRoot(projectId, stored.id);
+        if (material === undefined) {
+          throw new RunEngineError(
+            'INVALID_TARGET',
+            'Revision ' +
+              options.revisionId +
+              ' predates retained run material and cannot run; update the project instead',
+          );
+        }
+        revision = stored;
+        sourceRoot = material;
+        expectedSnapshotHash = await this.projects.expectedRetainedHash(projectId, stored);
+      }
       const context = project.context ?? this.repository.getContextForRevision(revision.id);
       if (context === undefined) throw new Error('PROJECT_CONTEXT_NOT_FOUND: ' + revision.id);
-      const workingCopy = projectDataPaths(this.dataRoot, projectId).workingCopy;
       const snapshot = await this.snapshots.createSnapshot({
         projectId,
         projectRevisionId: revision.id,
         qaRunId: runId,
-        workingCopyPath: workingCopy,
+        workingCopyPath: sourceRoot,
+        // HashVersion 2 revisions were hashed under the default import
+        // exclusions; the snapshot must hash the same tree or excluded
+        // noise (installed dependencies, logs) reports phantom drift.
+        ...(revision.hashVersion === 2
+          ? { exclude: (relativePath: string) => matchImportExclusion(relativePath) }
+          : {}),
       });
-      if (snapshot.contentHash !== revision.contentHash) throw new Error('PROJECT_COPY_DRIFT');
+      if (snapshot.contentHash !== (expectedSnapshotHash ?? revision.contentHash))
+        throw new Error('PROJECT_COPY_DRIFT');
+      const { usage: profileUsage, texts: profileTexts } = await this.loadProfiles(
+        projectId,
+        selected,
+        revision,
+        options.useProfile === true,
+      );
       const createdAt = nowIsoTimestamp();
-      const lineage: QARunLineage | undefined =
-        options.lineage === undefined
-          ? undefined
-          : {
-              ...(options.lineage.parentRunId === undefined
-                ? {}
-                : { parentRunId: options.lineage.parentRunId }),
-              ...(options.lineage.sourceRevisionId === undefined
-                ? {}
-                : { sourceRevisionId: options.lineage.sourceRevisionId }),
-              ...(options.lineage.targetRevisionId === undefined
-                ? {}
-                : { targetRevisionId: options.lineage.targetRevisionId }),
-            };
-      // Micro-patch §7: persist the initial child QARun row BEFORE the
-      // frozen hook so callbacks (Retest targetQaRunId) can reference it
-      // without violating the qa_runs FK. Status agents_running is the
-      // existing pre-execution state (minimum change — no new status).
-      // The hook may still adjust mode before agents begin (§8); the same
-      // row is updated, never a second QARun.
+      // Persist the initial QARun row before target validation. Status
+      // agents_running is the pre-execution state; the same row is updated
+      // once preparation completes, never a second QARun.
       let run = QARunSchema.parse({
         schemaVersion: 1,
         id: runId,
@@ -286,10 +351,8 @@ export class RunCoordinator {
         projectContextSnapshotId: context.id,
         mode,
         status: 'agents_running',
-        ...(lineage === undefined ? {} : { lineage }),
         configuration: {
           agentStackIds: selected.map((item) => item.stack.id),
-          verificationLevel: options.verificationLevel ?? 'strict',
           ...(options.instructions === undefined
             ? {}
             : { instructions: { message: options.instructions, createdAt } }),
@@ -300,7 +363,10 @@ export class RunCoordinator {
               (options.executionKind === 'production'
                 ? SENTRY_PRODUCTION_RUN_TIMEOUT_MS
                 : SENTRY_SIMULATION_RUN_TIMEOUT_MS),
+            ...(options.webAccess === true ? { webAccess: true } : {}),
+            ...(options.toolDownloads === true ? { toolDownloads: true } : {}),
           },
+          profileUsage,
         },
         createdAt,
         startedAt: createdAt,
@@ -311,35 +377,9 @@ export class RunCoordinator {
       // Frozen manifest file set: the immutable source of truth for scope
       // validation (never the mutable working copy).
       const frozenBaseline = await this.snapshots.baselineFileHashes(snapshot.id);
-      const frozenFiles: ReadonlySet<string> = new Set(frozenBaseline.keys());
-      // Finish-pass §29/§35 hook: fires after freeze (lock held), before
-      // target validation + TargetSpec persistence + agent start. The hook
-      // may assert revision identity (Retest B≠C race) and override the
-      // TARGETED scope with manifest-resolved paths, or flip to full for
-      // the explicit focused full-snapshot fallback.
-      let effectiveMode = mode;
-      let effectiveIncludePaths: readonly string[] | undefined =
+      const effectiveMode = mode;
+      const effectiveIncludePaths: readonly string[] | undefined =
         options.target?.includePaths === undefined ? undefined : [...options.target.includePaths];
-      if (options.onSnapshotFrozen !== undefined) {
-        const hookResult = await options.onSnapshotFrozen({
-          runId,
-          projectId,
-          revision: { id: revision.id, contentHash: revision.contentHash },
-          snapshot: { id: snapshot.id, projectRevisionId: snapshot.projectRevisionId },
-          snapshotFiles: frozenFiles,
-          mode,
-          requestedIncludePaths: effectiveIncludePaths,
-        });
-        if (hookResult !== undefined) {
-          if (hookResult.mode !== undefined) effectiveMode = hookResult.mode;
-          if (effectiveMode === 'full') {
-            // Explicit focused full-snapshot fallback: no target scope.
-            effectiveIncludePaths = undefined;
-          } else if (hookResult.overrideIncludePaths !== undefined) {
-            effectiveIncludePaths = [...hookResult.overrideIncludePaths];
-          }
-        }
-      }
       if (effectiveMode === 'full' && effectiveIncludePaths !== undefined) {
         throw new RunEngineError(
           'INVALID_TARGET',
@@ -358,8 +398,12 @@ export class RunCoordinator {
       let targetSpec: TargetSpec | undefined;
       if (effectiveMode === 'targeted') {
         const scope = {
-          includePaths: [...(effectiveIncludePaths as readonly string[])],
-          ...(options.target?.issueIds === undefined ? {} : { issueIds: options.target.issueIds }),
+          // Directory suggestions are emitted with a trailing slash
+          // (projects:suggest-targets); normalize before manifest matching
+          // and persist the normalized form.
+          includePaths: [...(effectiveIncludePaths as readonly string[])].map((candidate) =>
+            candidate.replace(/\/+$/, ''),
+          ),
           ...(options.target?.userInstructions === undefined
             ? {}
             : { userInstructions: options.target.userInstructions }),
@@ -380,7 +424,6 @@ export class RunCoordinator {
           qaRunId: runId,
           snapshotId: snapshot.id,
           includePaths: [...scope.includePaths],
-          issueIds: scope.issueIds === undefined ? [] : [...scope.issueIds],
           ...(scope.userInstructions === undefined
             ? {}
             : { userInstructions: scope.userInstructions }),
@@ -410,7 +453,6 @@ export class RunCoordinator {
         mode: effectiveMode,
         configuration: {
           agentStackIds: run.configuration.agentStackIds,
-          verificationLevel: run.configuration.verificationLevel,
           ...(run.configuration.policy === undefined ? {} : { policy: run.configuration.policy }),
           ...(run.configuration.executionProfileId === undefined
             ? {}
@@ -418,6 +460,7 @@ export class RunCoordinator {
           ...(run.configuration.executionSafeguards === undefined
             ? {}
             : { executionSafeguards: run.configuration.executionSafeguards }),
+          profileUsage,
           ...(instructionMessage === undefined
             ? {}
             : { instructions: { message: instructionMessage, createdAt } }),
@@ -473,9 +516,15 @@ export class RunCoordinator {
           : selected.map((registration, index) =>
               this.runAgent({
                 run,
+                ...(preparationPolicy === undefined ? {} : { preparationPolicy }),
                 registration,
                 index,
-                workingCopy,
+                // Agent workspaces materialize from this tree: the current
+                // working copy, or retained material for an older revision.
+                workingCopy: sourceRoot,
+                ...(profileTexts.get(registration.stack.id) === undefined
+                  ? {}
+                  : { profileText: profileTexts.get(registration.stack.id) as string }),
                 rootActivityId: root.id,
                 missionContext: {
                   project: {
@@ -520,17 +569,13 @@ export class RunCoordinator {
                 producedUsableOutput: this.repository.agentProducedUsableOutput(agentRun.id),
               })),
             );
-      const finalStages =
-        options.executionKind === 'simulation'
-          ? ([
-              ['merger', 'merger', 'Merger (deterministic no-op)'],
-              ['verifier', 'verification', 'Verification (simulated)'],
-              ['report', 'report', 'Report'],
-            ] as const)
-          : ([['report', 'report', 'Report']] as const);
-      for (const [source, kind, title] of finalStages) {
-        this.activities.stage({ qaRunId: runId, parentActivityId: root.id, source, kind, title });
-      }
+      this.activities.stage({
+        qaRunId: runId,
+        parentActivityId: root.id,
+        source: 'report',
+        kind: 'report',
+        title: 'Report',
+      });
       const completedAt = nowIsoTimestamp();
       run = QARunSchema.parse({
         ...run,
@@ -598,13 +643,46 @@ export class RunCoordinator {
     }
   }
 
+  /**
+   * Which agents get their own profile. Only a profile of exactly this revision is used:
+   * a stale one is skipped, and the run records what happened so runs can be compared.
+   */
+  private async loadProfiles(
+    projectId: ProjectId,
+    registrations: readonly { readonly stack: { readonly id: AgentStackId } }[],
+    revision: { readonly contentHash: string },
+    requested: boolean,
+  ): Promise<{ usage: RunProfileUsage; texts: Map<AgentStackId, string> }> {
+    const texts = new Map<AgentStackId, string>();
+    const usage = {
+      requested,
+      usedAgentStackIds: [] as AgentStackId[],
+      staleAgentStackIds: [] as AgentStackId[],
+      missingAgentStackIds: [] as AgentStackId[],
+    };
+    if (!requested) return { usage, texts };
+    for (const { stack } of registrations) {
+      const profile = await this.profiles.store.read(projectId, stack.id);
+      const state = profileState(profile, revision);
+      if (state === 'fresh' && profile !== undefined) {
+        texts.set(stack.id, profile.text);
+        usage.usedAgentStackIds.push(stack.id);
+      } else if (state === 'stale') usage.staleAgentStackIds.push(stack.id);
+      else usage.missingAgentStackIds.push(stack.id);
+    }
+    return { usage, texts };
+  }
+
   private async runAgent(input: {
     readonly run: QARun;
+    readonly preparationPolicy?: PreparationPolicy;
     readonly registration: HarnessAdapterRegistration;
     readonly index: number;
     readonly workingCopy: string;
     readonly rootActivityId: ReturnType<RunActivityProjector['stage']>['id'];
     readonly missionContext: Readonly<Record<string, unknown>>;
+    /** This agent's own fresh profile of the revision, when the run uses profiles. */
+    readonly profileText?: string;
     readonly onHarnessRequest?: (request: HarnessRunRequest) => void;
     readonly onHarnessEventPersisted?: (event: HarnessEvent, agentRun: AgentRun) => void;
   }): Promise<void> {
@@ -622,6 +700,8 @@ export class RunCoordinator {
           };
     const agentRunId = createAgentRunId();
     const startedAt = nowIsoTimestamp();
+    /** Type of the harness event being handled, so a validation failure can say where it happened. */
+    let handlingEvent: string | undefined;
     let agentRun = AgentRunSchema.parse({
       schemaVersion: 1,
       id: agentRunId,
@@ -670,6 +750,75 @@ export class RunCoordinator {
         baseline: { snapshotId: input.run.snapshotId, fileHashByPath: baselineHashes },
       });
       this.activeAdapters.set(agentRunId, adapter);
+      const deadlineAt =
+        Date.now() +
+        (input.run.configuration.executionSafeguards?.runTimeoutMs ??
+          SENTRY_PRODUCTION_RUN_TIMEOUT_MS);
+      let workspacePreparation: PreparationReceipt | undefined;
+      if (input.preparationPolicy !== undefined) {
+        const controller = new AbortController();
+        const watcher = this.startCancellationWatcher({
+          qaRunId: input.run.id,
+          agentRunId,
+          adapter,
+          onCancelDelivered: () => controller.abort(),
+        });
+        try {
+          workspacePreparation = await this.prepareWorkspace({
+            workspaceRoot: workspace.runtimePath,
+            policy: input.preparationPolicy,
+            deadlineAt,
+            signal: controller.signal,
+          });
+          if (workspacePreparation.needsFreshCopy) {
+            controller.signal.throwIfAborted();
+            workspace = await this.workspaces.create({
+              projectId: input.run.projectId,
+              qaRunId: input.run.id,
+              agentRunId,
+              snapshotId: input.run.snapshotId,
+              workingCopyPath: input.workingCopy,
+              baseline: { snapshotId: input.run.snapshotId, fileHashByPath: baselineHashes },
+              signal: controller.signal,
+            });
+            await removeBuildCaches(workspace.runtimePath, controller.signal);
+          }
+          this.activities.stage({
+            qaRunId: input.run.id,
+            parentActivityId: input.rootActivityId,
+            agentRunId,
+            source: 'sentry',
+            kind: 'runtime',
+            status: workspacePreparation.status === 'ready' ? 'completed' : 'warning',
+            title:
+              'Workspace preparation: ' +
+              workspacePreparation.status +
+              ' � ' +
+              workspacePreparation.reason,
+          });
+        } catch (cause) {
+          if (
+            !controller.signal.aborted ||
+            (cause instanceof Error && cause.message === 'QA_PREPARATION_PROCESS_CLEANUP_FAILED')
+          )
+            throw cause;
+        } finally {
+          watcher.stop();
+          await watcher.delivery();
+        }
+        if (controller.signal.aborted) {
+          agentRun = AgentRunSchema.parse({
+            ...agentRun,
+            status: 'cancelled',
+            completedAt: nowIsoTimestamp(),
+          });
+          this.persistAgentRunUnlessCancelled(agentRunId, agentRun);
+          return;
+        }
+      }
+
+      if (input.preparationPolicy !== undefined && Date.now() >= deadlineAt)
+        throw new RunTimeoutError('workspace preparation exhausted the run budget');
       const request = HarnessRunRequestSchema.parse({
         schemaVersion: 1,
         agentRunId,
@@ -689,6 +838,12 @@ export class RunCoordinator {
           policyVersion: input.run.configuration.policy.version,
           context: {
             ...input.missionContext,
+            ...(input.profileText === undefined
+              ? {}
+              : { [PROFILE_CONTEXT_KEY]: profileContextEntry(input.profileText) }),
+            ...(input.preparationPolicy === undefined
+              ? {}
+              : { qaDepth: { version: 1, deadlineAt }, workspacePreparation }),
             agentStack: stack,
           },
         },
@@ -701,6 +856,7 @@ export class RunCoordinator {
         request,
         timeoutMs,
         async (event) => {
+          handlingEvent = event.type;
           this.requireRuntimeLease();
           validator.accept(event);
           this.repository.transaction(() => {
@@ -715,6 +871,7 @@ export class RunCoordinator {
             agentRun = this.projectAgentRunEvent(agentRun, event);
           });
           input.onHarnessEventPersisted?.(event, agentRun);
+          handlingEvent = undefined;
         },
       );
       // Race safety (§12): reconcile against durable state before the
@@ -791,7 +948,7 @@ export class RunCoordinator {
           message: timedOut
             ? 'Agent exceeded run budget (' + cause.message + ').'
             : zodFailure
-              ? 'Agent output failed schema validation.'
+              ? summarizeValidationFailure(cause, handlingEvent)
               : protocolViolation
                 ? cause instanceof Error
                   ? cause.message
@@ -832,33 +989,56 @@ export class RunCoordinator {
       }
     } finally {
       this.activeAdapters.delete(agentRunId);
-      await adapter?.dispose();
-      // Generic shutdown observability: after dispose(), surface any adapter
-      // shutdown diagnostics as run warnings before workspace cleanup.
-      for (const diagnostic of adapter?.getShutdownDiagnostics?.() ?? []) {
-        this.activities.stage({
-          qaRunId: input.run.id,
-          parentActivityId: input.rootActivityId,
-          source: 'sentry',
-          kind: 'runtime',
-          title:
-            diagnostic.severity === 'error'
-              ? 'Shutdown diagnostic (error): ' + diagnostic.code
-              : 'Shutdown diagnostic: ' + diagnostic.code,
-          status: diagnostic.severity === 'error' ? 'failed' : 'warning',
-        });
-      }
-      if (workspace !== undefined) {
-        const cleanup = await this.workspaces.cleanup(workspace);
-        if (cleanup.warning !== undefined) {
+      try {
+        try {
+          await adapter?.dispose();
+          // Generic shutdown observability: after dispose(), surface any adapter
+          // shutdown diagnostics as run warnings before workspace cleanup.
+          for (const diagnostic of adapter?.getShutdownDiagnostics?.() ?? []) {
+            this.activities.stage({
+              qaRunId: input.run.id,
+              parentActivityId: input.rootActivityId,
+              source: 'sentry',
+              kind: 'runtime',
+              title:
+                diagnostic.severity === 'error'
+                  ? 'Shutdown diagnostic (error): ' + diagnostic.code
+                  : 'Shutdown diagnostic: ' + diagnostic.code,
+              status: diagnostic.severity === 'error' ? 'failed' : 'warning',
+            });
+          }
+        } catch {
           this.activities.stage({
             qaRunId: input.run.id,
             parentActivityId: input.rootActivityId,
             source: 'sentry',
             kind: 'runtime',
-            title: cleanup.warning,
             status: 'warning',
+            title: 'Adapter shutdown failed; workspace cleanup continues.',
           });
+        }
+      } finally {
+        // A hard deadline/transport loss can stop the generator before it emits
+        // final facts. Restore only when no final output has been submitted.
+        try {
+          if (agentRun.status !== 'completed')
+            this.repository.transaction(() =>
+              this.restoreReportCheckpointWithinTransaction(input.run.id, agentRunId),
+            );
+        } finally {
+          if (workspace !== undefined) {
+            const cleanup = await this.workspaces.cleanup(workspace);
+            if (cleanup.warning !== undefined) {
+              this.activities.stage({
+                qaRunId: input.run.id,
+                parentActivityId: input.rootActivityId,
+                source: 'sentry',
+                kind: 'runtime',
+                title: cleanup.warning,
+                status: 'warning',
+              });
+            }
+          }
         }
       }
     }
@@ -985,22 +1165,53 @@ export class RunCoordinator {
     // A run emitting real work never trips; a wedged transport does.
     const startedAt = Date.now();
     const absoluteMaxMs = timeoutMs * 3;
+    const silenceMs = silenceWindowMs(timeoutMs);
+    const hardDeadline = depthPolicy(request.task.context)?.deadlineAt;
     let lastEventAt = startedAt;
     const timeout = new Promise<never>((_resolve, reject) => {
       const check = (): void => {
         const now = Date.now();
-        if (now - startedAt >= absoluteMaxMs) {
-          reject(new RunTimeoutError('absolute cap ' + String(absoluteMaxMs) + ' ms reached'));
+        if (
+          (hardDeadline !== undefined && now >= hardDeadline) ||
+          now - startedAt >= absoluteMaxMs
+        ) {
+          reject(
+            new RunTimeoutError(
+              hardDeadline !== undefined && now >= hardDeadline
+                ? 'configured run deadline reached'
+                : 'absolute cap ' + String(absoluteMaxMs) + ' ms reached',
+            ),
+          );
           return;
         }
-        if (now - lastEventAt >= timeoutMs) {
-          reject(new RunTimeoutError('no events for ' + String(timeoutMs) + ' ms'));
+        if (now - lastEventAt >= silenceMs) {
+          reject(new RunTimeoutError('no events for ' + String(silenceMs) + ' ms'));
           return;
         }
-        timer = setTimeout(check, Math.min(30_000, timeoutMs));
+        timer = setTimeout(
+          check,
+          Math.max(
+            1,
+            Math.min(
+              30_000,
+              timeoutMs,
+              hardDeadline === undefined ? Infinity : hardDeadline - Date.now(),
+            ),
+          ),
+        );
         (timer as unknown as { unref: () => void }).unref?.();
       };
-      timer = setTimeout(check, Math.min(30_000, timeoutMs));
+      timer = setTimeout(
+        check,
+        Math.max(
+          1,
+          Math.min(
+            30_000,
+            timeoutMs,
+            hardDeadline === undefined ? Infinity : hardDeadline - Date.now(),
+          ),
+        ),
+      );
       (timer as unknown as { unref: () => void }).unref?.();
     });
     try {
@@ -1218,7 +1429,7 @@ export class RunCoordinator {
   /** Synchronous owner acknowledge for the narrow single-process case:
    *  the caller IS the local owner AND holds live adapters AND the run is
    *  not currently executing inside this coordinator's run() (e.g. stale
-   *  rows, tests, retest cascade within the owner process). Refuses foreign
+   *  rows, tests). Refuses foreign
    *  runtimes outright. Production cross-process cancellation never calls
    *  this from a foreign process — the owner's workers drive it. */
   acknowledgeRunCancellation(runId: QARunId): {
@@ -1322,11 +1533,10 @@ export class RunCoordinator {
   /** Owner-process cancel: request, then acknowledge as the verified local
    *  owner. Foreign runtimes are refused by acknowledgeRunCancellation;
    *  cross-process callers use requestRunCancellation and let the owner
-   *  workers drive cancellation. Preserved for in-process callers (tests,
-   *  retest cascade within the owner process).
+   *  workers drive cancellation. Preserved for in-process callers (tests).
    */
   /** Legacy single-process cancel: request + immediately acknowledge as
-   *  owner. Preserved for in-process callers (tests, retest cascade).
+   *  owner. Preserved for in-process callers (tests).
    *  Cross-process callers should use requestRunCancellation and let the
    *  owner acknowledge. */
   cancelRun(runId: QARunId): { runId: QARunId; status: 'cancelled'; cancelledAgents: number } {
@@ -1353,6 +1563,18 @@ export class RunCoordinator {
       );
     }
     return { runId, status: 'cancelled' as const, cancelledAgents: acknowledged.cancelledAgents };
+  }
+
+  private restoreReportCheckpointWithinTransaction(qaRunId: QARunId, agentRunId: AgentRunId): void {
+    if (this.repository.agentProducedUsableOutput(agentRunId)) return;
+    let checkpoint: Extract<HarnessEvent, { type: 'report.checkpoint' }> | undefined;
+    for (const stored of this.repository.iterateRunEvents(qaRunId)) {
+      if (stored.event.agentRunId === agentRunId && stored.event.type === 'report.checkpoint')
+        checkpoint = stored.event;
+    }
+    if (checkpoint === undefined) return;
+    for (const evidence of checkpoint.evidence) this.repository.saveEvidence(evidence);
+    for (const finding of checkpoint.findings) this.repository.saveFinding(finding);
   }
 
   async recover(): Promise<void> {
@@ -1396,6 +1618,7 @@ export class RunCoordinator {
             )
           )
             continue;
+          this.restoreReportCheckpointWithinTransaction(run.id, agentRun.id);
           this.repository.saveAgentRun(
             AgentRunSchema.parse({
               ...agentRun,
@@ -1453,17 +1676,6 @@ export class RunCoordinator {
         }
       }
     }
-    // Verification crash recovery uses the same lease freshness — no
-    // parallel lease system (§64). Stale-owned running verifications
-    // become interrupted with completed observations preserved.
-    // Product note: new runs no longer create verification runs, but this
-    // compatibility path stays so historical nonterminal verification rows
-    // can never corrupt boot recovery. Do not remove while historical
-    // VerificationRun rows remain readable.
-    await recoverVerifications(this.repository, (instanceId) => lease.isFresh(instanceId as never));
-    // Retest crash recovery (§55): stale-owned nonterminal retest runs
-    // become interrupted; completed assessments and occurrences persist.
-    recoverRetests(this.repository, (instanceId) => lease.isFresh(instanceId as never));
   }
 
   private requireRuntimeLease(): RuntimeInstanceLease {
@@ -1479,11 +1691,9 @@ export class RunCoordinator {
 }
 
 export * from './errors.js';
+export * from './profile-builder.js';
 
 export * from './activity-projector.js';
 export * from './exporters.js';
-export * from './merge-service.js';
-export * from './issue-service.js';
-export * from './retest-service.js';
-export * from './verification-service.js';
+export * from './sandbox.js';
 export * from './simulation.js';

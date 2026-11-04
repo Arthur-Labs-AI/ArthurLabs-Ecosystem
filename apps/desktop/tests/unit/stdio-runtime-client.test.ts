@@ -328,7 +328,7 @@ describe('stdio runtime transport', () => {
   });
 
   it('selects the long timeout only for row-creation methods', () => {
-    for (const method of ['runs.start', 'retests.start', 'projects.add', 'projects.update']) {
+    for (const method of ['runs.start', 'projects.add', 'projects.update']) {
       expect(resolveRequestTimeout(method)).toBe(STDIO_ROW_CREATION_TIMEOUT_MS);
     }
     for (const method of ['runs.list', 'system.info', 'runtime.hello', 'projects.delete']) {

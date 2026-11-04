@@ -95,20 +95,10 @@ export class RunExporter {
     const run = this.repository.getRun(runId);
     if (run === undefined) throw new Error('RUN_NOT_FOUND: ' + runId);
     const existing = this.repository.listExports(runId).find((item) => item.format === format);
-    // Exports are cached per (run, format), but a merge computed AFTER the
-    // cached export would otherwise be omitted forever. Regenerate only
-    // when merge state is newer than the cached artifact; execution data
-    // is immutable once the run is terminal, so merges are the sole
-    // staleness source. The superseded artifact is removed AFTER the new
-    // manifest lands: the old manifest row still references it until the
-    // upsert, so deletion must come second. Old exports are superseded,
-    // never mutated.
-    const superseded =
-      existing !== undefined && this.repository.getArtifact(existing.artifactId) !== undefined
-        ? existing
-        : undefined;
-    if (superseded !== undefined && !this.isExportStale(runId, superseded.createdAt)) {
-      return superseded;
+    // Exports are cached per (run, format). Execution data is immutable once
+    // the run is terminal, so a cached export never goes stale.
+    if (existing !== undefined && this.repository.getArtifact(existing.artifactId) !== undefined) {
+      return existing;
     }
     const runPaths = runDataPaths(this.dataRoot, run.projectId, runId);
     const absolute = runPaths.exports + '/run.' + format;
@@ -132,13 +122,6 @@ export class RunExporter {
       createdAt: nowIsoTimestamp(),
     });
     this.repository.saveExport(manifest);
-    if (superseded !== undefined && superseded.artifactId !== artifact.id) {
-      // Drop only the superseded metadata row: both artifacts share the
-      // same stable file path (already overwritten with new content),
-      // so byte deletion would destroy the fresh export. FK-safe now
-      // that the manifest upsert no longer references the old row.
-      this.repository.deleteArtifact(superseded.artifactId);
-    }
     return manifest;
   }
 
@@ -175,30 +158,6 @@ export class RunExporter {
     };
   }
 
-  /** An export is stale when a merge, verification, issue ingest, or
-   *  retest assessment touching this run was persisted after it. Run
-   *  execution data is immutable once terminal, so these are the only
-   *  staleness sources. String comparison is safe: all timestamps are
-   *  canonical ISO-8601 UTC with fixed width. */
-  private isExportStale(runId: QARunId, exportedAt: string): boolean {
-    for (const merge of this.repository.iterateMergeResults(runId)) {
-      if (merge.createdAt > exportedAt) return true;
-      for (const verificationRun of this.repository.listVerificationRuns(merge.id)) {
-        if (verificationRun.createdAt > exportedAt) return true;
-      }
-    }
-    for (const occurrence of this.repository.listOccurrencesForRun(runId)) {
-      if (occurrence.createdAt > exportedAt) return true;
-      for (const event of this.repository.listIssueEvents(occurrence.issueId)) {
-        if (event.createdAt > exportedAt) return true;
-      }
-      for (const assessment of this.repository.listRetestAssessments(occurrence.issueId)) {
-        if (assessment.assessedAt > exportedAt) return true;
-      }
-    }
-    return false;
-  }
-
   private async *logSource(runId: QARunId): AsyncGenerator<string> {
     const run = this.repository.getRun(runId);
     if (run === undefined) return;
@@ -209,8 +168,7 @@ export class RunExporter {
       ' created\n';
     for (const stored of this.repository.iterateRunEvents(runId)) yield eventLogLine(stored);
     // Independent-agents product: the human log leads with one block per
-    // agent (never a merged/deduplicated view). Merge / verification /
-    // issue sections below only appear when historical rows exist.
+    // agent (never a merged/deduplicated view).
     const logAt = nowIsoTimestamp();
     yield `[${logAt}] [SENTRY] ${run.mode.toUpperCase()} QA RUN — independent agent results\n`;
     for (const agentRun of this.repository.iterateAgentRuns(runId)) {
@@ -222,91 +180,11 @@ export class RunExporter {
         yield `[${logAt}] [SENTRY] Finding [${finding.severity.toUpperCase()}] ${finding.title}\n`;
       }
     }
-    for (const merge of this.repository.iterateMergeResults(runId)) {
-      const at = nowIsoTimestamp();
-      const clusters = [...this.repository.iterateClusters(merge.id)];
-      yield `[${at}] [SENTRY] Merge result ${merge.id} (${clusters.length} clusters)\n`;
-      for (const cluster of clusters) yield* this.mergeClusterLines(at, cluster);
-      for (const verificationRun of this.repository.listVerificationRuns(merge.id)) {
-        yield* this.verificationRunLines(at, verificationRun.id);
-      }
-    }
-    yield* this.issueLineageLines(runId);
     yield '[' +
       (run.completedAt ?? nowIsoTimestamp()) +
       '] [SENTRY] Run status: ' +
       run.status +
       '\n';
-  }
-
-  /** Human lineage rendering (§81): one block per issue observed on this
-   *  run — first-seen revision and mode, then each retest crossing. */
-  private *issueLineageLines(runId: QARunId): Generator<string> {
-    const at = nowIsoTimestamp();
-    for (const occurrence of this.repository.listOccurrencesForRun(runId)) {
-      const issue = this.repository.getIssue(occurrence.issueId);
-      if (issue === undefined) continue;
-      const sourceRun = this.repository.getRun(occurrence.qaRunId);
-      yield `[${at}] [SENTRY] Issue: ${issue.id} (${issue.title})\n`;
-      yield `[${at}] [SENTRY] First seen: revision ${occurrence.projectRevisionId} ` +
-        `${sourceRun?.mode ?? 'unknown'} run ${occurrence.qaRunId}\n`;
-      for (const assessment of this.repository.listRetestAssessments(issue.id)) {
-        yield `[${at}] [SENTRY] Retest: revision ${assessment.targetRevisionId} ` +
-          `${assessment.result.toUpperCase().replace(/_/g, ' ')}\n`;
-      }
-    }
-  }
-
-  /** Log rendering keeps agreement visibly separate from verification
-   *  (§72): support lists come from the cluster, outcomes only from
-   *  fresh verification observations. */
-  private *verificationRunLines(at: string, verificationRunId: string): Generator<string> {
-    for (const attempt of this.repository.iterateVerificationAttempts(verificationRunId)) {
-      const outcome = (attempt.outcome ?? 'pending').toUpperCase().replace(/_/g, ' ');
-      yield `[${at}] [SENTRY] Verification\n`;
-      yield `[${at}] [SENTRY] Cluster: ${attempt.findingClusterId}\n`;
-      yield `[${at}] [SENTRY] Outcome: ${outcome}\n`;
-      for (const assertion of this.repository.listVerificationAssertions(attempt.id)) {
-        const mark =
-          assertion.state === 'confirmed' ? '✓' : assertion.state === 'contradicted' ? '✗' : '?';
-        yield `[${at}] [SENTRY] ${mark} ${assertion.subject}: ${assertion.detail}\n`;
-      }
-      const observations = this.repository.listVerificationObservations(attempt.id);
-      yield `[${at}] [SENTRY] Verification: ${observations.length} fresh observation${observations.length === 1 ? '' : 's'}\n`;
-    }
-  }
-
-  private *mergeClusterLines(
-    at: string,
-    cluster: {
-      readonly id: string;
-      readonly agreementState: string;
-      readonly sourceAgentStackIds: readonly string[];
-      readonly unavailableAgentStackIds: readonly string[];
-      readonly sourceFindingIds: readonly string[];
-      readonly evidenceIds: readonly string[];
-      readonly representativeFindingId: string;
-      readonly fieldDisagreements: ReadonlyArray<{
-        readonly field: string;
-        readonly valuesByAgentStackId: Readonly<Record<string, string>>;
-      }>;
-    },
-  ): Generator<string> {
-    const reported = [...new Set(cluster.sourceAgentStackIds)].sort();
-    yield `[${at}] [SENTRY] Cluster ${cluster.id} [${cluster.agreementState}] support=${reported.join(',') || '(none)'}\n`;
-    const unavailable =
-      cluster.unavailableAgentStackIds.length > 0
-        ? cluster.unavailableAgentStackIds.join(',')
-        : '(none unavailable)';
-    yield `[${at}] [SENTRY] Not reported is not disagreement; unavailable: ${unavailable}\n`;
-    const severities = cluster.fieldDisagreements.find((d) => d.field === 'severity');
-    if (severities !== undefined) {
-      const parts = Object.entries(severities.valuesByAgentStackId)
-        .map(([stack, value]) => `${stack}: ${value}`)
-        .join('; ');
-      yield `[${at}] [SENTRY] Severity reports: ${parts}\n`;
-    }
-    yield `[${at}] [SENTRY] Source findings: ${cluster.sourceFindingIds.join(',')}; evidence: ${cluster.evidenceIds.join(',') || '(none)'}\n`;
   }
 
   private async *jsonSource(runId: QARunId): AsyncGenerator<string> {
@@ -355,44 +233,6 @@ export class RunExporter {
       yield part;
     for await (const part of section('evidence', this.repository.iterateEvidence(runId), true))
       yield part;
-    for await (const part of section(
-      'mergeResults',
-      this.repository.iterateMergeResults(runId),
-      true,
-    ))
-      yield part;
-    const clusterDocs: unknown[] = [];
-    for (const merge of this.repository.iterateMergeResults(runId)) {
-      for (const cluster of this.repository.iterateClusters(merge.id)) clusterDocs.push(cluster);
-    }
-    for await (const part of section('findingClusters', clusterDocs, true)) yield part;
-    // Verification sections are additive; absent when nothing verified.
-    const verificationRuns: unknown[] = [];
-    const verificationAttempts: unknown[] = [];
-    const verificationObservations: unknown[] = [];
-    const verificationAssertions: unknown[] = [];
-    for (const merge of this.repository.iterateMergeResults(runId)) {
-      for (const verificationRun of this.repository.listVerificationRuns(merge.id)) {
-        verificationRuns.push(verificationRun);
-        for (const attempt of this.repository.iterateVerificationAttempts(verificationRun.id)) {
-          verificationAttempts.push(attempt);
-          for (const observation of this.repository.listVerificationObservations(attempt.id)) {
-            verificationObservations.push(observation);
-          }
-          for (const assertion of this.repository.listVerificationAssertions(attempt.id)) {
-            verificationAssertions.push(assertion);
-          }
-        }
-      }
-    }
-    for await (const part of section('verificationRuns', verificationRuns, true)) yield part;
-    for await (const part of section('verificationAttempts', verificationAttempts, true))
-      yield part;
-    for await (const part of section('verificationObservations', verificationObservations, true))
-      yield part;
-    for await (const part of section('verificationAssertions', verificationAssertions, true))
-      yield part;
-    // Phase 7 lineage sections are additive; absent when nothing ingested.
     // Giant artifacts are never inlined — only metadata rows and records.
     const targetSpec = this.repository.getTargetSpec(runId);
     for await (const part of section(
@@ -401,25 +241,6 @@ export class RunExporter {
       true,
     ))
       yield part;
-    const occurrences = this.repository.listOccurrencesForRun(runId);
-    for await (const part of section('issueOccurrences', occurrences, true)) yield part;
-    const issueIds = [...new Set(occurrences.map((occurrence) => occurrence.issueId))];
-    const issues: unknown[] = [];
-    const issueEvents: unknown[] = [];
-    const retestRuns: unknown[] = [];
-    const retestAssessments: unknown[] = [];
-    for (const issueId of issueIds) {
-      const issue = this.repository.getIssue(issueId);
-      if (issue !== undefined) issues.push(issue);
-      for (const event of this.repository.listIssueEvents(issueId)) issueEvents.push(event);
-      for (const retest of this.repository.listRetestRuns(issueId)) retestRuns.push(retest);
-      for (const assessment of this.repository.listRetestAssessments(issueId))
-        retestAssessments.push(assessment);
-    }
-    for await (const part of section('issues', issues, true)) yield part;
-    for await (const part of section('issueEvents', issueEvents, true)) yield part;
-    for await (const part of section('retestRuns', retestRuns, true)) yield part;
-    for await (const part of section('retestAssessments', retestAssessments, true)) yield part;
     for await (const part of section('artifacts', this.repository.iterateArtifacts(runId), false))
       yield part;
     yield '}';

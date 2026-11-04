@@ -15,8 +15,13 @@ describe('vendor SDK self-resolution (no mocks, no spawn, no network)', () => {
     await harness.close();
   });
 
-  it('F: installed dsh package version matches the harness pin', () => {
-    const manifest = requirePkg('@deepseek-ai/dsh/package.json') as { version?: unknown };
+  it('F: SDK-owned dsh package version matches the harness pin', () => {
+    // dsh is a dependency of the vendor SDK, not of our adapter. Strict pnpm
+    // layouts do not expose it from this test's package; use the SDK's scope.
+    const requireSdk = createRequire(
+      requirePkg.resolve('@deepseek-ai/dsh-sdk-client/package.json'),
+    );
+    const manifest = requireSdk('@deepseek-ai/dsh/package.json') as { version?: unknown };
     expect(manifest.version).toBe(DEEPSEEK_SDK_VERSION);
   });
 

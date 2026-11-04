@@ -96,4 +96,41 @@ describe('Providers distinguishes missing, storage and query failures', () => {
     );
     expect(screen.queryByRole('status')).toBeNull();
   });
+  it('warns when OpenCode API key is saved without selecting opencode-go or opencode provider', async () => {
+    const query = vi.fn().mockResolvedValue([
+      {
+        name: 'SENTRY_OPENCODE_PROVIDER',
+        configured: false,
+        source: 'missing',
+        persistence: 'missing',
+        hint: 'missing',
+      },
+      {
+        name: 'SENTRY_OPENCODE_MODEL',
+        configured: true,
+        source: 'persisted',
+        persistence: 'persisted',
+        hint: 'kimi-k3',
+      },
+      {
+        name: 'OPENCODE_API_KEY',
+        configured: true,
+        source: 'stored',
+        persistence: 'secure',
+        hint: 'Configured · Stored securely',
+      },
+      {
+        name: 'OPENROUTER_API_KEY',
+        configured: false,
+        source: 'missing',
+        persistence: 'missing',
+        hint: 'missing',
+      },
+    ]);
+    mount(query);
+    const openCodeCard = within(screen.getByRole('region', { name: 'OpenCode provider settings' }));
+    await waitFor(() => expect(openCodeCard.getByText(/Provider selection needed:/)).toBeTruthy());
+    expect(openCodeCard.getAllByText('Explanation')).toHaveLength(2);
+    expect(openCodeCard.queryAllByText('Advanced')).toHaveLength(0);
+  });
 });

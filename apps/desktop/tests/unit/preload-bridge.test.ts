@@ -44,16 +44,7 @@ describe('preload bridge exposure', () => {
       expect(result.stderr).toBe('');
       const exposed = JSON.parse(result.stdout) as Record<string, string[]>;
       const namespaces = exposed['sentry'] ?? [];
-      for (const ns of [
-        'projects',
-        'runs',
-        'issues',
-        'retests',
-        'doctors',
-        'providers',
-        'system',
-        'subscribe',
-      ]) {
+      for (const ns of ['projects', 'runs', 'doctors', 'providers', 'system', 'subscribe']) {
         expect(namespaces).toContain(ns);
       }
     } finally {

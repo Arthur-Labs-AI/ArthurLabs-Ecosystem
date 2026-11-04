@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -818,5 +818,108 @@ describe('fake end-to-end run engine', () => {
     expect(json.harnessEvents).toHaveLength(result.events.length + 2_000);
     f.lease.release();
     f.database.close();
+  });
+});
+
+describe('revision-targeted runs', () => {
+  it('runs against an older revision snapshot without moving the working copy', async () => {
+    const f = await fixture();
+    try {
+      const firstRevision = f.added.revision.id;
+      await writeFile(join(f.source, 'src', 'value.txt'), 'B');
+      const updated = await f.manager.updateProjectCopy(f.added.project.id);
+      expect(updated.revision.id).not.toBe(firstRevision);
+      const result = await coordinator(f).simulate(f.added.project.id, {
+        revisionId: firstRevision,
+      });
+      expect(result.run.status).toBe('completed');
+      expect(f.repository.getSnapshot(result.run.snapshotId)?.projectRevisionId).toBe(
+        firstRevision,
+      );
+      // The working copy still tracks the current revision; the old tree
+      // reached the agents only through the frozen snapshot.
+      expect(f.manager.getProject(f.added.project.id)?.revision.id).toBe(updated.revision.id);
+      expect(
+        await readFile(
+          join(projectDataPaths(f.dataRoot, f.added.project.id).workingCopy, 'src', 'value.txt'),
+          'utf8',
+        ),
+      ).toBe('B');
+    } finally {
+      f.lease.release();
+      f.database.close();
+    }
+  });
+
+  it('runs an older revision whose retained copy left external and broken links out', async () => {
+    const f = await fixture();
+    try {
+      try {
+        await writeFile(join(f.root, 'outside.txt'), 'outside the project');
+        await symlink(join('..', 'outside.txt'), join(f.source, 'external.txt'));
+        await symlink('missing.txt', join(f.source, 'broken.txt'));
+      } catch {
+        return; // this platform refuses symlinks without privileges
+      }
+      // Revision B contains inert links; its retained copy omits them by design.
+      const withLinks = await f.manager.updateProjectCopy(f.added.project.id);
+      await writeFile(join(f.source, 'src', 'value.txt'), 'C');
+      const current = await f.manager.updateProjectCopy(f.added.project.id);
+      expect(current.revision.id).not.toBe(withLinks.revision.id);
+      // Used to throw PROJECT_COPY_DRIFT: the snapshot of the retained view was compared with
+      // the revision hash that still covered the omitted links.
+      const result = await coordinator(f).simulate(f.added.project.id, {
+        revisionId: withLinks.revision.id,
+      });
+      expect(result.run.status).toBe('completed');
+      expect(f.repository.getSnapshot(result.run.snapshotId)?.projectRevisionId).toBe(
+        withLinks.revision.id,
+      );
+    } finally {
+      f.lease.release();
+      f.database.close();
+    }
+  });
+
+  it('rejects malformed, foreign, and unknown revisions', async () => {
+    const f = await fixture();
+    try {
+      const c = coordinator(f);
+      await expect(c.simulate(f.added.project.id, { revisionId: 'nope' })).rejects.toMatchObject({
+        code: 'INVALID_TARGET',
+      });
+      await expect(
+        c.simulate(f.added.project.id, { revisionId: 'rev_11111111111111111111111111' }),
+      ).rejects.toMatchObject({ code: 'INVALID_TARGET' });
+      const otherSource = join(f.root, 'other');
+      await mkdir(join(otherSource, 'src'), { recursive: true });
+      await writeFile(join(otherSource, 'src', 'value.txt'), 'other');
+      const other = await f.manager.addProject(otherSource);
+      await expect(
+        c.simulate(f.added.project.id, { revisionId: other.revision.id }),
+      ).rejects.toMatchObject({ code: 'INVALID_TARGET' });
+    } finally {
+      f.lease.release();
+      f.database.close();
+    }
+  });
+});
+
+describe('schema validation failure summary', () => {
+  it('says where the failure happened and which fields, without values', async () => {
+    const { summarizeValidationFailure } = await import('../src/index.js');
+    const zodLike = Object.assign(new Error('{"received":"super-secret-agent-output"}'), {
+      name: 'ZodError',
+      issues: [{ path: ['tool', 'durationMs'], code: 'invalid_type' }],
+    });
+    const text = summarizeValidationFailure(zodLike, 'tool.completed');
+    expect(text).toBe(
+      'Agent output failed schema validation while handling tool.completed: tool.durationMs [invalid_type].',
+    );
+    expect(text).not.toContain('super-secret');
+    expect(summarizeValidationFailure(zodLike)).toContain('failed schema validation: ');
+    expect(summarizeValidationFailure(new Error('x'))).toBe(
+      'Agent output failed schema validation.',
+    );
   });
 });

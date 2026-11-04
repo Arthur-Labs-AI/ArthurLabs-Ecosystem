@@ -17,7 +17,8 @@ const GENERATED_DIRECTORIES = new Set([
 ]);
 
 export function excludeGeneratedSource(relativePath: string): boolean {
-  if (matchImportExclusion(relativePath)) return true;
+  if (matchImportExclusion(relativePath) || relativePath.toLowerCase().endsWith('.tsbuildinfo'))
+    return true;
   return relativePath
     .replaceAll('\\', '/')
     .split('/')

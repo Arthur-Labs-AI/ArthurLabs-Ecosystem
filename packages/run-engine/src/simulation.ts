@@ -5,7 +5,7 @@ import {
   type FakeScenario,
 } from '@qa/harness-protocol';
 import { createEvidenceId, createFindingId, nowIsoTimestamp, type AgentStackId } from '@qa/shared';
-import type { HarnessEvent, HarnessRunRequest, VerificationLevel } from '@qa/schemas';
+import type { HarnessEvent, HarnessRunRequest } from '@qa/schemas';
 import type { AgentRun } from '@qa/schemas';
 
 export type SimulationScenario =
@@ -82,7 +82,8 @@ export function createFakeHarnessRegistry(scenario: SimulationScenario): Harness
 export interface SimulateRunOptions {
   readonly agentStackIds?: readonly AgentStackId[];
   readonly scenario?: SimulationScenario;
-  readonly verificationLevel?: VerificationLevel;
+  /** Run against an older project revision (same semantics as RunOptions). */
+  readonly revisionId?: string;
   readonly instructions?: string;
   readonly runTimeoutMs?: number;
   readonly onHarnessRequest?: (request: HarnessRunRequest) => void;

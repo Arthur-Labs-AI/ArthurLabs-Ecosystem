@@ -5,7 +5,7 @@
  * - stdin: one JSON request object per line (NDJSON).
  * - stdout: PROTOCOL ONLY (one JSON response/notification per line).
  * - stderr: bounded human diagnostics (never secrets, never protocol).
- * Long operations (runs.start / retests.start) return the persisted identity
+ * Long operations (runs.start) return the persisted identity
  * as soon as the row exists; the promise stays owned here. Live state flows
  * via notifications plus renderer polling.
  */
@@ -22,15 +22,7 @@ import {
   resolveSentryDataRoot,
 } from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
-import {
-  RunCoordinator,
-  mergeRun,
-  verifyMerge,
-  ingestMergeIssues,
-  retestIssue,
-  requestRetestCancellation,
-  cancelRetestRun,
-} from '@qa/run-engine';
+import { RunCoordinator, SystemdSandboxBackend, sandboxStagingParent } from '@qa/run-engine';
 import {
   createOpenCodeRegistration,
   credentialEnvForProvider,
@@ -58,14 +50,7 @@ import {
   type ClaudeExecutableIdentity,
 } from '@qa/harness-claude-code';
 import { HarnessAdapterRegistry } from '@qa/harness-protocol';
-import { selectCurrentMergeResult } from '@qa/merger';
-import { projectIssueState } from '@qa/schemas';
-import {
-  RUN_TIMEOUT_MS_MAX,
-  RUN_TIMEOUT_MS_MIN,
-  createQARunId,
-  createRetestRunId,
-} from '@qa/shared';
+import { RUN_TIMEOUT_MS_MAX, RUN_TIMEOUT_MS_MIN, createQARunId } from '@qa/shared';
 import {
   RUNTIME_EXPORT_MAX_RAW_BYTES,
   RUNTIME_PROTOCOL_VERSION,
@@ -80,14 +65,12 @@ import {
 } from '@qa/runtime-protocol';
 
 import { runtimeReleaseIdentity } from './distribution.js';
+import { ToolchainManager } from './toolchains.js';
 const releaseIdentity = runtimeReleaseIdentity();
 export const RUNTIME_VERSION = releaseIdentity?.version ?? '1.0.2';
 
 const ProjectIdInput = z.string().min(1).max(200);
 const RunIdInput = z.string().regex(/^run_[0-9A-HJKMNP-TV-Z]{26}$/);
-const IssueIdInput = z.string().regex(/^issue_[0-9A-HJKMNP-TV-Z]{26}$/);
-const RetestRunIdInput = z.string().regex(/^retest_[0-9A-HJKMNP-TV-Z]{26}$/);
-const MergeResultIdInput = z.string().regex(/^merge_[0-9A-HJKMNP-TV-Z]{26}$/);
 
 function toError(error: unknown): { code: string; message: string } {
   if (typeof error === 'object' && error !== null && 'code' in error) {
@@ -459,7 +442,12 @@ export class SentryRuntimeHost {
   private readonly registry: HarnessAdapterRegistry;
   private readonly coordinator: RunCoordinator;
   private readonly pendingRuns = new Map<string, PendingRun>();
-  private readonly pendingRetests = new Map<string, PendingRun>();
+  /** Profile builds in flight and the last failure per project and agent (memory only). */
+  private readonly profileBuilds = new Map<string, AbortController>();
+  private readonly profileErrors = new Map<string, string>();
+  private readonly toolchains: ToolchainManager;
+  private readonly activeImports = new Set<AbortController>();
+  private readonly activeUpdates = new Set<AbortController>();
   private readonly notify: (event: string, payload?: unknown) => void;
   private configuredModels: { opencode?: string; deepseek?: string; glm?: string } = {};
   private closed = false;
@@ -471,6 +459,7 @@ export class SentryRuntimeHost {
   ) {
     this.notify = notify;
     this.dataRoot = dataRootOverride ?? defaultLinuxDataRoot();
+    this.toolchains = new ToolchainManager(this.dataRoot);
     this.database = new SentryDatabase({ dataRoot: this.dataRoot });
     this.repository = new SentryRepository(this.database);
     this.lease = new RuntimeInstanceLease(this.repository);
@@ -482,6 +471,7 @@ export class SentryRuntimeHost {
       .register(
         createOpenCodeRegistration({
           managedExecutable: managedOpenCodeExecutable(this.dataRoot),
+          toolchains: (workspace) => this.toolchains.setup(workspace),
         }),
       )
       .register(createDeepSeekRegistration())
@@ -538,6 +528,8 @@ export class SentryRuntimeHost {
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    for (const build of this.profileBuilds.values()) build.abort();
+    this.cancelAddProject();
     this.lease.release();
     this.database.close();
   }
@@ -644,9 +636,29 @@ export class SentryRuntimeHost {
     const input = z.string().min(1).max(2000).parse(sourcePath);
     const translated = translateWindowsPath(input);
     await assertReadableDir(translated);
-    return this.projects.addProject(translated, {
-      ...(this.importIncludeAll() ? { includeAll: true as const } : {}),
-    });
+    const controller = new AbortController();
+    this.activeImports.add(controller);
+    try {
+      return await this.projects.addProject(translated, {
+        signal: controller.signal,
+        ...(this.importIncludeAll() ? { includeAll: true as const } : {}),
+      });
+    } finally {
+      this.activeImports.delete(controller);
+    }
+  }
+
+  cancelAddProject(): { cancelled: boolean; count: number } {
+    const count = this.activeImports.size;
+    for (const controller of this.activeImports) {
+      try {
+        controller.abort(new Error('Project import cancelled by user'));
+      } catch {
+        /* ignore */
+      }
+    }
+    this.activeImports.clear();
+    return { cancelled: count > 0, count };
   }
 
   getProject(projectId: string): unknown {
@@ -682,6 +694,59 @@ export class SentryRuntimeHost {
     return { projectId: record.project.id, paths: entries };
   }
 
+  /** Every agent's profile state for a project, plus builds in flight and the last failure. */
+  async profileStatus(projectId: string): Promise<unknown> {
+    const id = ProjectIdInput.parse(projectId);
+    try {
+      const agents = await this.coordinator.profiles.status(id as never);
+      return {
+        projectId: id,
+        agents: agents.map((agent) => {
+          const key = id + ':' + agent.agentStackId;
+          const error = this.profileErrors.get(key);
+          return {
+            ...agent,
+            building: this.profileBuilds.has(key),
+            ...(error === undefined ? {} : { error }),
+          };
+        }),
+      };
+    } catch (error) {
+      const sanitized = toError(error);
+      throw rpcError(sanitized.code, sanitized.message);
+    }
+  }
+
+  /** Starts the agents' profile builds and returns at once; progress arrives as profile.updated. */
+  buildProfiles(projectId: string, agentStackIds?: string[]): unknown {
+    const id = ProjectIdInput.parse(projectId);
+    if (this.projects.getProject(id as never) === undefined)
+      throw rpcError('PROJECT_NOT_FOUND', 'Project not found: ' + id);
+    const wanted = agentStackIds ?? this.registry.list().map((item) => item.stack.id as string);
+    const started: string[] = [];
+    for (const stackId of wanted) {
+      if (this.registry.resolve(stackId as never) === undefined)
+        throw rpcError('AGENT_STACK_NOT_FOUND', 'Agent stack not found: ' + stackId);
+      const key = id + ':' + stackId;
+      if (this.profileBuilds.has(key)) continue;
+      const controller = new AbortController();
+      this.profileBuilds.set(key, controller);
+      this.profileErrors.delete(key);
+      started.push(stackId);
+      void this.coordinator.profiles
+        .build(id as never, stackId as never, controller.signal)
+        .catch((error: unknown) => {
+          this.profileErrors.set(key, toError(error).message.slice(0, 500));
+        })
+        .finally(() => {
+          this.profileBuilds.delete(key);
+          if (!this.closed)
+            this.notify('profile.updated', { projectId: id, agentStackId: stackId });
+        });
+    }
+    return { projectId: id, started };
+  }
+
   async updateProject(projectId: string, sourcePath?: string): Promise<unknown> {
     const id = ProjectIdInput.parse(projectId);
     // Salvage pass: a previous update killed mid-flight (client timeout,
@@ -697,12 +762,37 @@ export class SentryRuntimeHost {
       // Salvage is best-effort; the update below reports authoritatively.
     }
     const includeAll = this.importIncludeAll() ? { includeAll: true as const } : {};
-    if (sourcePath === undefined)
-      return this.projects.updateProjectCopy(id as never, undefined, includeAll);
-    const parsed = z.string().min(1).max(2000).parse(sourcePath);
-    const translated = translateWindowsPath(parsed);
-    await assertReadableDir(translated);
-    return this.projects.updateProjectCopy(id as never, translated, includeAll);
+    const controller = new AbortController();
+    this.activeUpdates.add(controller);
+    try {
+      if (sourcePath === undefined)
+        return await this.projects.updateProjectCopy(id as never, undefined, {
+          ...includeAll,
+          signal: controller.signal,
+        });
+      const parsed = z.string().min(1).max(2000).parse(sourcePath);
+      const translated = translateWindowsPath(parsed);
+      await assertReadableDir(translated);
+      return await this.projects.updateProjectCopy(id as never, translated, {
+        ...includeAll,
+        signal: controller.signal,
+      });
+    } finally {
+      this.activeUpdates.delete(controller);
+    }
+  }
+
+  cancelUpdateProject(): { cancelled: boolean; count: number } {
+    const count = this.activeUpdates.size;
+    for (const controller of this.activeUpdates) {
+      try {
+        controller.abort(new Error('Project revision update cancelled by user'));
+      } catch {
+        /* ignore */
+      }
+    }
+    this.activeUpdates.clear();
+    return { cancelled: count > 0, count };
   }
 
   async deleteProject(projectId: string): Promise<unknown> {
@@ -732,7 +822,6 @@ export class SentryRuntimeHost {
       currentRevisionId: record.revision.id,
       revisionCount: this.repository.listRevisions(id as never).length,
       runCount: this.repository.countProjectRuns(id as never),
-      issueCount: this.repository.listIssues(id as never).length,
       detectedEcosystem: ecosystem,
       warnings:
         ecosystem.length === 0 ? ['No known ecosystem markers at the working-copy root.'] : [],
@@ -746,33 +835,12 @@ export class SentryRuntimeHost {
       ...run,
       agentSummary: this.coordinator.getRunStatus(run.id).agents,
       findingCount: this.repository.countRunFindings(run.id),
-      issueCount: this.repository.listOccurrencesForRun(run.id).length,
     }));
   }
 
   runSnapshot(runId: string): unknown {
     const id = RunIdInput.parse(runId);
     const details = this.coordinator.getRunDetails(id as never);
-    const mergeResults = this.repository.listMergeResults(id as never).map((merge) => ({
-      ...merge,
-      clusters: this.repository.listClusters(merge.id),
-    }));
-    // Authoritative current MergeResult (§12): highest supported
-    // mergerVersion for this run — never repository ordering ([0]).
-    // Historical results remain viewable in mergeResults.
-    const currentMergeResultId = selectCurrentMergeResult(mergeResults)?.id;
-    const verificationRuns = mergeResults.flatMap((m) =>
-      this.repository.listVerificationRuns(m.id).map((vrun) => ({
-        ...vrun,
-        attempts: this.repository.listVerificationAttempts(vrun.id).map((attempt) => ({
-          ...attempt,
-          steps: this.repository.listVerificationSteps(attempt.id),
-          observations: this.repository.listVerificationObservations(attempt.id),
-          assertions: this.repository.listVerificationAssertions(attempt.id),
-        })),
-      })),
-    );
-    const issues = this.repository.listOccurrencesForRun(id as never);
     let targetSpec: unknown;
     try {
       targetSpec = this.repository.getTargetSpec(id as never) ?? undefined;
@@ -812,10 +880,6 @@ export class SentryRuntimeHost {
       },
       activities: details.activities,
       events: details.events.map((e) => e.event),
-      mergeResults,
-      ...(currentMergeResultId === undefined ? {} : { currentMergeResultId }),
-      verificationRuns,
-      issues,
       ...(targetSpec === undefined ? {} : { targetSpec }),
     };
   }
@@ -848,6 +912,10 @@ export class SentryRuntimeHost {
         ? {}
         : { agentStackIds: [...parsed.agentStackIds] as never }),
       ...(parsed.runTimeoutMs === undefined ? {} : { runTimeoutMs: parsed.runTimeoutMs }),
+      ...(parsed.webAccess === true ? { webAccess: true } : {}),
+      ...(parsed.toolDownloads === true ? { toolDownloads: true } : {}),
+      ...(parsed.revisionId === undefined ? {} : { revisionId: parsed.revisionId }),
+      ...(parsed.useProfile === true ? { useProfile: true } : {}),
     });
     const settled = runPromise.then(
       (details) => {
@@ -895,21 +963,6 @@ export class SentryRuntimeHost {
     }
   }
 
-  mergeRun(runId: string): unknown {
-    const id = RunIdInput.parse(runId);
-    return mergeRun(this.repository, id as never);
-  }
-
-  async verifyMerge(mergeResultId: string): Promise<unknown> {
-    const id = MergeResultIdInput.parse(mergeResultId);
-    return verifyMerge(this.repository, this.dataRoot, id as never);
-  }
-
-  ingestIssues(mergeResultId: string): unknown {
-    const id = MergeResultIdInput.parse(mergeResultId);
-    return ingestMergeIssues(this.repository, id as never);
-  }
-
   /** Narrow Save As source: validated runId + format only. No caller-
    *  supplied paths ever reach the filesystem; bytes always come from the
    *  canonical RunExporter artifact for this run + format. The artifact
@@ -942,143 +995,6 @@ export class SentryRuntimeHost {
     return this.coordinator.exportRun(id as never, parsed);
   }
 
-  // ---- issues ----
-  listIssues(projectId: string): unknown[] {
-    const id = ProjectIdInput.parse(projectId);
-    return this.repository.listIssues(id as never).map((issue) => ({
-      ...issue,
-      currentState: projectIssueState(this.repository.listIssueEvents(issue.id)),
-    }));
-  }
-
-  getIssue(issueId: string): unknown {
-    const id = IssueIdInput.parse(issueId);
-    const issue = this.repository.getIssue(id as never);
-    if (issue === undefined) throw rpcError('ISSUE_NOT_FOUND', 'Issue not found: ' + id);
-    return {
-      ...issue,
-      currentState: projectIssueState(this.repository.listIssueEvents(id as never)),
-    };
-  }
-
-  issueHistory(issueId: string): unknown {
-    const id = IssueIdInput.parse(issueId);
-    const events = this.repository.listIssueEvents(id as never);
-    return {
-      issue: this.repository.getIssue(id as never),
-      currentState: projectIssueState(events),
-      occurrences: this.repository.listIssueOccurrences(id as never),
-      events,
-      assessments: this.repository.listRetestAssessments(id as never),
-      retests: this.repository.listRetestRuns(id as never),
-    };
-  }
-
-  // ---- retests (async: retestRunId as soon as the row exists) ----
-  listRetests(issueId: string): unknown[] {
-    const id = IssueIdInput.parse(issueId);
-    return this.repository.listRetestRuns(id as never);
-  }
-
-  async startRetest(
-    issueId: string,
-    params: unknown,
-  ): Promise<{ operationId: string; retestRunId?: string }> {
-    const id = IssueIdInput.parse(issueId);
-    const parsed = StartRetestParamsSchema.parse(params ?? {});
-    const operationId = 'dop_' + createRetestRunId().slice(7);
-    let created!: (retestRunId: string) => void;
-    const identity = new Promise<string>((resolve) => {
-      created = resolve;
-    });
-    const retestPromise = retestIssue(
-      {
-        dataRoot: this.dataRoot,
-        repository: this.repository,
-        lease: this.lease,
-        registry: this.registry,
-      },
-      id as never,
-      {
-        onRetestCreated: (run) => created(run.id),
-        ...(parsed.revisionId === undefined
-          ? {}
-          : { targetRevisionId: parsed.revisionId as never }),
-        ...(parsed.agentStackIds === undefined
-          ? {}
-          : { agentStackIds: [...parsed.agentStackIds] as never }),
-      },
-    );
-    const settled = retestPromise.then(
-      (result) => {
-        this.pendingRetests.delete(operationId);
-        this.notify('retest.snapshot', { retestRunId: result.retestRun.id });
-        return result;
-      },
-      (error: unknown) => {
-        this.pendingRetests.delete(operationId);
-        throw error;
-      },
-    );
-    settled.then(undefined, () => undefined);
-    this.pendingRetests.set(operationId, { operationId, promise: settled });
-    const retestRunId = await Promise.race([
-      identity,
-      settled.then((result) => result.retestRun.id),
-    ]);
-    if (this.repository.getRetestRun(retestRunId) === undefined) {
-      throw rpcError(
-        'RETEST_NOT_FOUND',
-        'Retest row missing immediately after start: ' + retestRunId,
-      );
-    }
-    this.notify('retest.created', { retestRunId, operationId });
-    return { operationId, retestRunId };
-  }
-
-  retestSnapshot(retestRunId: string): unknown {
-    const id = RetestRunIdInput.parse(retestRunId);
-    const retestRun = this.repository.getRetestRun(id as never);
-    if (retestRun === undefined) throw rpcError('RETEST_NOT_FOUND', 'Retest not found: ' + id);
-    const assessments = this.repository.listRetestAssessmentsForRun(id as never);
-    let spec: unknown;
-    try {
-      spec = this.repository.getRetestSpec(id as never) ?? undefined;
-    } catch {
-      spec = undefined;
-    }
-    let targetRun: unknown;
-    try {
-      if (retestRun.targetQaRunId !== undefined) {
-        targetRun = this.runSnapshot(retestRun.targetQaRunId as string);
-      }
-    } catch {
-      targetRun = undefined;
-    }
-    return {
-      retestRun,
-      assessments,
-      ...(spec === undefined ? {} : { spec }),
-      ...(targetRun === undefined ? {} : { targetRun }),
-    };
-  }
-
-  cancelRetest(retestRunId: string): unknown {
-    const id = RetestRunIdInput.parse(retestRunId);
-    const deps = {
-      dataRoot: this.dataRoot,
-      repository: this.repository,
-      lease: this.lease,
-      registry: this.registry,
-    };
-    try {
-      requestRetestCancellation(deps, id as never);
-      return cancelRetestRun(deps, id as never);
-    } catch (error) {
-      const sanitized = toError(error);
-      throw rpcError(sanitized.code, sanitized.message);
-    }
-  }
   // ---- doctors / system (all inside the Linux runtime) ----
   async environmentDoctors(): Promise<unknown> {
     const [{ doctorOpenCode }, { doctorDeepSeek }, { doctorGlm }] = await Promise.all([
@@ -1114,29 +1030,22 @@ export class SentryRuntimeHost {
       runtimeVerified: doctor?.runtimeVerified ?? false,
       readiness: doctor?.readiness ?? 'unknown',
     });
-    let verifier: Record<string, unknown> = {
+    let sandbox: Record<string, unknown> = {
       sandboxAvailable: false,
-      runtimeReplaySupported: false,
       reason: 'probe pending',
     };
     try {
-      const [{ SystemdSandboxBackend }, { verifierStagingParent }, { mkdir }] = await Promise.all([
-        import('@qa/verifier'),
-        import('@qa/run-engine'),
-        import('node:fs/promises'),
-      ]);
-      const probeParent = verifierStagingParent(this.dataRoot);
+      const { mkdir } = await import('node:fs/promises');
+      const probeParent = sandboxStagingParent(this.dataRoot);
       await mkdir(probeParent, { recursive: true });
       const availability = await new SystemdSandboxBackend().preflight(probeParent);
-      verifier = {
+      sandbox = {
         sandboxAvailable: availability.available,
-        runtimeReplaySupported: availability.available,
         ...(availability.reason === undefined ? {} : { reason: availability.reason }),
       };
     } catch (error) {
-      verifier = {
+      sandbox = {
         sandboxAvailable: false,
-        runtimeReplaySupported: false,
         reason: error instanceof Error ? error.message.slice(0, 300) : 'probe failed',
       };
     }
@@ -1145,6 +1054,8 @@ export class SentryRuntimeHost {
         | {
             executable?: string;
             executableSource?: string;
+            modelId?: string;
+            provider?: string;
             checks?: Array<{ name: string; status: string; message?: string }>;
           }
         | undefined;
@@ -1157,6 +1068,10 @@ export class SentryRuntimeHost {
         s.id === 'stack_opencode_main'
           ? {
               ...stackStatus(s.id, opencode as never),
+              ...(opencodeDoctor?.modelId === undefined ? {} : { modelId: opencodeDoctor.modelId }),
+              ...(opencodeDoctor?.provider === undefined
+                ? {}
+                : { provider: opencodeDoctor.provider }),
               executionPath: opencodeDoctor?.executable ?? managedOpenCodeExecutable(this.dataRoot),
               ...(opencodeDoctor?.executableSource === undefined
                 ? {}
@@ -1186,7 +1101,7 @@ export class SentryRuntimeHost {
       runtime: await this.runtimeIdentity(),
       agentStacks: stacks,
       sandboxDeps,
-      verifier,
+      sandbox,
       dataRoot: this.dataRoot,
     };
   }
@@ -1205,7 +1120,7 @@ export class SentryRuntimeHost {
   systemInfo(): unknown {
     return {
       dataRoot: this.dataRoot,
-      versions: { runtime: RUNTIME_VERSION, merger: '2', verifier: '3', retest: '2' },
+      versions: { runtime: RUNTIME_VERSION },
     };
   }
 
@@ -1337,7 +1252,10 @@ export class SentryRuntimeHost {
     // Sandbox/isolation probes run per requested provider that needs them —
     // never defaulted to true for unprobed providers.
     if (wants('stack_opencode_main')) {
-      const provider = normalizeOpenCodeProvider(env['SENTRY_OPENCODE_PROVIDER']);
+      const provider = normalizeOpenCodeProvider(
+        env['SENTRY_OPENCODE_PROVIDER'],
+        env['SENTRY_OPENCODE_MODEL'],
+      );
       // Shared resolution+probe: the exact executable production execution
       // would launch, probed with the spawn-based helper (PATH-aware — the
       // same effective runtime environment production uses).
@@ -1449,18 +1367,24 @@ export class SentryRuntimeHost {
       case 'runtime.environment':
         return this.environmentDoctors();
       case 'runtime.shutdown':
-        if (this.pendingRuns.size > 0 || this.pendingRetests.size > 0) {
+        if (this.pendingRuns.size > 0) {
           throw rpcError(
             'RUNTIME_BUSY',
             'QA work is still active. Cancel it, wait for completion, then retry sentry stop.',
           );
         }
+        this.cancelAddProject();
+        this.cancelUpdateProject();
         this.shutdownRequested = true;
         return { shuttingDown: true };
       case 'projects.list':
         return this.listProjects();
       case 'projects.add':
         return this.addProject(requireString(params, 'sourcePath'));
+      case 'projects.cancelAdd':
+        return this.cancelAddProject();
+      case 'projects.cancelUpdate':
+        return this.cancelUpdateProject();
       case 'projects.get':
         return this.getProject(requireString(params, 'projectId'));
       case 'projects.revisions':
@@ -1476,6 +1400,26 @@ export class SentryRuntimeHost {
         return this.projectDoctor(requireString(params, 'projectId'));
       case 'projects.suggestTargets':
         return this.suggestTargets(requireString(params, 'projectId'));
+      case 'toolchains.status':
+        return this.toolchains.status();
+      case 'toolchains.install':
+        return this.toolchains.install(
+          requireString(params, 'packId'),
+          requireString(params, 'version'),
+        );
+      case 'toolchains.remove':
+        return this.toolchains
+          .remove(requireString(params, 'packId'), requireString(params, 'version'))
+          .then(() => ({ removed: true }));
+      case 'projects.profile':
+        return this.profileStatus(requireString(params, 'projectId'));
+      case 'projects.buildProfile': {
+        const ids = params['agentStackIds'];
+        return this.buildProfiles(
+          requireString(params, 'projectId'),
+          ids === undefined ? undefined : z.array(z.string().min(1).max(200)).max(10).parse(ids),
+        );
+      }
       case 'runs.list':
         return this.listRuns(requireString(params, 'projectId'));
       case 'runs.get':
@@ -1489,30 +1433,10 @@ export class SentryRuntimeHost {
       }
       case 'runs.cancel':
         return this.requestRunCancellation(requireString(params, 'runId'));
-      // Merger / Verifier / issue-ingest RPCs are retired from the active
-      // product. The class methods below stay for CLI + historical
-      // compatibility but are no longer reachable over the WSL bridge.
       case 'runs.export':
         return this.exportRun(requireString(params, 'runId'), requireString(params, 'format'));
       case 'runs.exportContent':
         return this.exportContent(requireString(params, 'runId'), requireString(params, 'format'));
-      case 'issues.list':
-        return this.listIssues(requireString(params, 'projectId'));
-      case 'issues.get':
-        return this.getIssue(requireString(params, 'issueId'));
-      case 'issues.history':
-        return this.issueHistory(requireString(params, 'issueId'));
-      case 'retests.list':
-        return this.listRetests(requireString(params, 'issueId'));
-      case 'retests.start': {
-        const { issueId: _issueId, ...rest } = params;
-        void _issueId;
-        return this.startRetest(requireString(params, 'issueId'), rest);
-      }
-      case 'retests.get':
-        return this.retestSnapshot(requireString(params, 'retestRunId'));
-      case 'retests.cancel':
-        return this.cancelRetest(requireString(params, 'retestRunId'));
       case 'system.activeRuns':
         return this.activeRuns();
       case 'system.info':
@@ -1534,17 +1458,17 @@ export class SentryRuntimeHost {
 const StartRunParamsSchema = z
   .object({
     mode: z.enum(['full', 'targeted']),
+    revisionId: z
+      .string()
+      .regex(/^rev_[0-9A-HJKMNP-TV-Z]{26}$/)
+      .optional(),
     includePaths: z.array(z.string().min(1).max(500)).max(100).optional(),
     instructions: z.string().min(1).max(5000).optional(),
     agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
     runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
-  })
-  .strict();
-
-const StartRetestParamsSchema = z
-  .object({
-    revisionId: z.string().min(1).max(100).optional(),
-    agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
+    webAccess: z.boolean().optional(),
+    toolDownloads: z.boolean().optional(),
+    useProfile: z.boolean().optional(),
   })
   .strict();
 
@@ -1605,7 +1529,6 @@ function wslDistroName(): string | undefined {
 
 async function systemdIdentity(): Promise<Record<string, unknown>> {
   try {
-    const { SystemdSandboxBackend } = await import('@qa/verifier');
     const backend = new SystemdSandboxBackend();
     const available = typeof backend.preflight === 'function';
     void available;

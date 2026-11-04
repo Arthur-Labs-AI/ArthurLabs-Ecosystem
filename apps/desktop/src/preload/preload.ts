@@ -26,6 +26,8 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
   projects: {
     list: () => invoke('projects:list', {}),
     add: (sourcePath: string) => invoke('projects:add', { sourcePath }),
+    cancelAdd: () => invoke('projects:cancel-add', {}),
+    cancelUpdate: () => invoke('projects:cancel-update', {}),
     get: (projectId: string) => invoke('projects:get', { projectId }),
     revisions: (projectId: string) => invoke('projects:revisions', { projectId }),
     remove: (projectId: string) => invoke('projects:delete', { projectId }),
@@ -36,6 +38,12 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
       ),
     doctor: (projectId: string) => invoke('projects:doctor', { projectId }),
     suggestTargets: (projectId: string) => invoke('projects:suggest-targets', { projectId }),
+    profile: (projectId: string) => invoke('projects:profile', { projectId }),
+    buildProfile: (projectId: string, agentStackIds?: string[]) =>
+      invoke(
+        'projects:build-profile',
+        agentStackIds === undefined ? { projectId } : { projectId, agentStackIds },
+      ),
   },
   runs: {
     list: (projectId: string) => invoke('runs:list', { projectId }),
@@ -49,25 +57,6 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
     exportSave: (runId: string, format: 'log' | 'json') =>
       invoke('runs:export-save', { runId, format }),
     revealExport: (path: string) => invoke('runs:export-reveal', { path }),
-  },
-  issues: {
-    list: (projectId: string) => invoke('issues:list', { projectId }),
-    get: (issueId: string) => invoke('issues:get', { issueId }),
-    history: (issueId: string) => invoke('issues:history', { issueId }),
-  },
-  retests: {
-    list: (issueId: string) => invoke('retests:list', { issueId }),
-    start: (
-      issueId: string,
-      options?: { revisionId?: string | undefined; agentStackIds?: string[] },
-    ) =>
-      invoke('retests:start', {
-        issueId,
-        ...(options?.revisionId === undefined ? {} : { revisionId: options.revisionId }),
-        ...(options?.agentStackIds === undefined ? {} : { agentStackIds: options.agentStackIds }),
-      }),
-    get: (retestRunId: string) => invoke('retests:get', { retestRunId }),
-    cancel: (retestRunId: string) => invoke('retests:cancel', { retestRunId }),
   },
   doctors: {
     environment: () => invoke('doctors:environment', {}),
@@ -88,12 +77,21 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
         input?.agentStackIds === undefined ? {} : { agentStackIds: input.agentStackIds },
       ),
   },
+  toolchains: {
+    status: () => invoke('toolchains:status', {}),
+    install: (packId: string, version: string) => invoke('toolchains:install', { packId, version }),
+    remove: (packId: string, version: string) => invoke('toolchains:remove', { packId, version }),
+  },
   system: {
     info: () => invoke('system:info', {}),
     activeRuns: () => invoke('system:active-runs', {}),
   },
   cli: {
     status: () => invoke('cli:status', {}),
+    setEnabled: (enabled: boolean) => invoke('cli:set-enabled', { enabled }),
+  },
+  app: {
+    setLanguage: (language: 'en' | 'bg') => invoke('app:set-language', { language }),
   },
   runtime: {
     status: () => invoke('runtime:status', {}),
@@ -106,12 +104,7 @@ const api: SentryDesktopApi & { dialogs: { pickDirectory(): Promise<string | nul
       const isRunUpdate = (value: unknown): value is Parameters<RunUpdateCallback>[0] => {
         if (typeof value !== 'object' || value === null) return false;
         const kind = (value as { kind?: unknown }).kind;
-        return (
-          kind === 'run-created' ||
-          kind === 'run-snapshot' ||
-          kind === 'retest-created' ||
-          kind === 'retest-snapshot'
-        );
+        return kind === 'run-created' || kind === 'run-snapshot';
       };
       const listener = (_event: unknown, payload: unknown) => {
         if (isRunUpdate(payload)) callback(payload);

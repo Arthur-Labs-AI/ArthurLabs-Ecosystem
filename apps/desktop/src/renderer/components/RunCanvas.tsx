@@ -367,7 +367,7 @@ function RunCanvasScene({
         />
       </ReactFlow>
       <div className="canvas-hint" aria-hidden="true">
-        Drag to arrange <span>·</span> Scroll to zoom <span>·</span> F to fit
+        {'Drag to arrange · Scroll to zoom · F to fit'}
       </div>
     </div>
   );

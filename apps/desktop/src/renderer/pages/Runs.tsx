@@ -32,7 +32,6 @@ export function Runs(): React.JSX.Element {
           executionKind?: string;
           agentSummary?: { completed?: number; configured?: number };
           findingCount?: number;
-          issueCount?: number;
         }>
       | undefined) ?? []
   ).filter((run) => {
@@ -91,7 +90,7 @@ export function Runs(): React.JSX.Element {
               </p>
               <p className="muted">
                 {run.agentSummary?.completed ?? '?'}/{run.agentSummary?.configured ?? '?'} agents ·{' '}
-                {run.findingCount ?? 0} findings · {run.issueCount ?? 0} issues
+                {run.findingCount ?? 0} findings
               </p>
               <p className="mono muted">{run.createdAt}</p>
               <p>

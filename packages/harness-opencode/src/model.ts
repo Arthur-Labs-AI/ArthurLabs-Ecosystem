@@ -38,9 +38,25 @@ function fail(message: string): never {
   throw new OpenCodeHarnessError('OPENCODE_MODEL_NOT_CONFIGURED', message);
 }
 
-export function normalizeOpenCodeProvider(provider: string | undefined): string {
+/** Known built-in OpenCode upstream provider IDs supported by Sentry. */
+export const KNOWN_OPENCODE_PROVIDERS: ReadonlySet<string> = new Set([
+  'openrouter',
+  'opencode',
+  'opencode-go',
+]);
+
+function inferProviderFromModelPrefix(model: string | undefined): string | undefined {
+  const configured = (model ?? '').trim();
+  if (configured.length === 0 || !configured.includes('/')) return undefined;
+  const head = (configured.split('/')[0] ?? '').toLowerCase();
+  return KNOWN_OPENCODE_PROVIDERS.has(head) ? head : undefined;
+}
+
+export function normalizeOpenCodeProvider(provider: string | undefined, model?: string): string {
   const value = (provider ?? '').trim().toLowerCase();
-  if (value.length === 0) return 'openrouter';
+  if (value.length === 0) {
+    return inferProviderFromModelPrefix(model) ?? 'openrouter';
+  }
   if (value.includes('/') || /\s/.test(value)) {
     throw new OpenCodeHarnessError(
       'OPENCODE_MODEL_NOT_CONFIGURED',
@@ -54,7 +70,7 @@ export function buildOpenCodeModelId(
   provider: string | undefined,
   model: string | undefined,
 ): OpenCodeModelIdentity {
-  const normalizedProvider = normalizeOpenCodeProvider(provider);
+  const normalizedProvider = normalizeOpenCodeProvider(provider, model);
   const configuredModel = (model ?? '').trim();
   if (configuredModel.length === 0) {
     fail('OpenCode model is not configured. Set SENTRY_OPENCODE_MODEL to an exact model id.');

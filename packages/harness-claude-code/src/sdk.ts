@@ -1,8 +1,10 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import type { ReportTurnOptions } from '@qa/evidence-pipeline';
+import { PACKAGE_REGISTRY_HOSTS } from '@qa/shared';
 import {
   DirectClaudeProcessLauncher,
+  feedClaudeStdin,
   type ClaudeProcessLauncher,
   type OwnedClaudeProcess,
 } from './launcher.js';
@@ -65,6 +67,20 @@ export function classifyClaudeCodeVersion(version: string | undefined): ClaudeCo
 export const CLAUDE_PLANNING_ALLOWED_TOOLS = 'Bash,Read,WebFetch,WebSearch' as const;
 export const CLAUDE_INVESTIGATION_ALLOWED_TOOLS =
   'Bash,Read,Edit,Write,WebFetch,WebSearch' as const;
+
+/** Web tools exist only on runs that opted in to web access. */
+export const CLAUDE_WEB_TOOLS = ['WebFetch', 'WebSearch'] as const;
+
+export function withoutWebTools(list: string): string {
+  return list
+    .split(',')
+    .filter((name) => !(CLAUDE_WEB_TOOLS as readonly string[]).includes(name.trim()))
+    .join(',');
+}
+
+/** Tools that stay denied on every turn (unchanged policy). */
+const CLAUDE_ALWAYS_DENIED_TOOLS =
+  'Agent,Task,TaskOutput,TaskStop,Skill,CronCreate,CronDelete,CronList,ScheduleWakeup,EnterWorktree,ExitWorktree,Artifact';
 
 /** One parsed stream-json line (structural parse only, never scraped text). */
 export interface ClaudeStreamEvent {
@@ -166,6 +182,8 @@ export interface ClaudeSpawnSpec {
    * tests either omit this (direct) or inject fakes.
    */
   readonly launcher?: ClaudeProcessLauncher | undefined;
+  /** Per-run opt-in to WebFetch/WebSearch; omitted means off. Package installs are always allowed. */
+  readonly webAccess?: boolean;
 }
 
 export type ClaudeClientFactory = (spec: ClaudeSpawnSpec) => Promise<ClaudeClientView>;
@@ -193,12 +211,17 @@ export function parseStreamJsonLine(line: string): ClaudeStreamEvent | undefined
 }
 
 /** Settings JSON Sentry writes per AgentRun (fail-closed sandbox). */
-export function buildClaudeSettings(): Record<string, unknown> {
+export function buildClaudeSettings(
+  input: { readonly allowedDomains?: readonly string[] } = {},
+): Record<string, unknown> {
   return {
     sandbox: {
       enabled: true,
       failIfUnavailable: true,
       allowUnsandboxedCommands: false,
+      // Shell network reaches package registries only; with
+      // --permission-prompts none every other host is denied, not prompted.
+      network: { allowedDomains: [...(input.allowedDomains ?? PACKAGE_REGISTRY_HOSTS)] },
     },
     disableBypassPermissionsMode: 'disable',
     // No subagent fanout: the Agent/Task tools stay denied at the CLI
@@ -230,7 +253,10 @@ export function buildClaudeArgs(input: {
    * compatibility. Reporting passes none (firewall-enforced tool-free).
    */
   readonly allowedTools?: string;
+  /** Opt-in to WebFetch/WebSearch. Otherwise they are stripped from the allowlist and denied. */
+  readonly webAccess?: boolean;
 }): string[] {
+  const webAccess = input.webAccess === true;
   return [
     '-p',
     '--verbose',
@@ -269,9 +295,13 @@ export function buildClaudeArgs(input: {
     // verified syntax. Forbidden tools stay denied (disallowed wins on
     // overlap; TaskStop joins the fanout family: background-task control
     // with no QA use).
-    ...(input.allowedTools === undefined ? [] : ['--allowedTools', input.allowedTools]),
+    ...(input.allowedTools === undefined
+      ? []
+      : ['--allowedTools', webAccess ? input.allowedTools : withoutWebTools(input.allowedTools)]),
     '--disallowedTools',
-    'Agent,Task,TaskOutput,TaskStop,Skill,CronCreate,CronDelete,CronList,ScheduleWakeup,EnterWorktree,ExitWorktree,Artifact',
+    webAccess
+      ? CLAUDE_ALWAYS_DENIED_TOOLS
+      : CLAUDE_ALWAYS_DENIED_TOOLS + ',' + CLAUDE_WEB_TOOLS.join(','),
     // Session identity: a fresh turn mints the id via --session-id; a
     // continuing turn resumes via --resume ALONE. Combining --session-id
     // with --resume is rejected without --fork-session (verified on
@@ -372,6 +402,7 @@ class LiveClaudeTurn implements ClaudeTurnStream {
   private readonly turnTimer: ReturnType<typeof setTimeout>;
   private stdoutTail = '';
   private stderrTail = '';
+  private resultFailure = '';
 
   constructor(
     private readonly child: ChildProcess,
@@ -398,7 +429,22 @@ class LiveClaudeTurn implements ClaudeTurnStream {
         if (event !== undefined) this.push(event);
       }
       if (code !== 0) {
-        this.finish({ kind: 'failed', code: code ?? undefined, stderr: this.stderrTail });
+        this.finish({
+          kind: 'failed',
+          code: code ?? undefined,
+          stderr:
+            this.resultFailure ||
+            this.stderrTail
+              .split('\n')
+              .filter(
+                (line) =>
+                  !/\[claude-code:unrecognized_model\]|Permission mode forced to default|Declare allowedTools explicitly/.test(
+                    line,
+                  ),
+              )
+              .join('\n') ||
+            'No provider error detail was returned; stderr contained only startup warnings.',
+        });
         return;
       }
       this.finish({ kind: 'exited' });
@@ -418,6 +464,23 @@ class LiveClaudeTurn implements ClaudeTurnStream {
   }
 
   private push(event: ClaudeStreamEvent): void {
+    if (
+      event.type === 'result' &&
+      (event.raw['is_error'] === true ||
+        (typeof event.raw['subtype'] === 'string' && event.raw['subtype'].startsWith('error')))
+    ) {
+      const errors = event.raw['errors'];
+      const result = event.raw['result'];
+      this.resultFailure = [
+        ...(Array.isArray(errors)
+          ? errors.filter((item): item is string => typeof item === 'string')
+          : []),
+        ...(typeof result === 'string' ? [result] : []),
+      ]
+        .filter((item) => item.trim().length > 0)
+        .join('; ')
+        .slice(0, 2_000);
+    }
     if (isClaudeInitEvent(event) && !this.initializedFlag) {
       this.initializedFlag = true;
       clearTimeout(this.initTimer);
@@ -553,22 +616,25 @@ function spawnOwnedClaudeTurn(
     resume,
     ...(jsonSchema === undefined ? {} : { jsonSchema }),
     ...(allowedTools === undefined ? {} : { allowedTools }),
+    ...(spec.webAccess === true ? { webAccess: true } : {}),
   });
   // Process boundary: the test seam wins when present; otherwise the
   // spec launcher (systemd-isolated on WSL workers) or direct spawn.
   // No shell anywhere: argv arrays end to end.
   let owned: OwnedClaudeProcess;
   if (spec.spawnProcess !== undefined) {
-    const child = spec.spawnProcess(spec.executable, [...args, prompt], {
+    const child = spec.spawnProcess(spec.executable, args, {
       cwd: spec.cwd,
       env: buildClaudeSpawnEnv(spec),
     });
+    feedClaudeStdin(child, prompt);
     owned = { child, unitName: undefined, stopOwnedUnit: async () => true };
   } else {
     const launcher: ClaudeProcessLauncher = spec.launcher ?? new DirectClaudeProcessLauncher();
     owned = launcher.launch({
       executable: spec.executable,
-      argv: [...args, prompt],
+      argv: args,
+      stdin: prompt,
       cwd: spec.cwd,
       env: buildClaudeSpawnEnv(spec),
     });
@@ -640,11 +706,13 @@ export class ClaudeClient implements ClaudeClientView {
   }
 
   /** Stop exactly the owned transient unit behind a child (no-op direct). */
+  private shutdownFailed = false;
+
   private async stopChildUnit(child: ChildProcess): Promise<void> {
     const stop = this.unitStops.get(child);
     if (stop === undefined) return;
     this.unitStops.delete(child);
-    await stop().catch(() => false);
+    if (!(await stop().catch(() => false))) this.shutdownFailed = true;
   }
 
   constructor(private readonly spec: ClaudeSpawnSpec) {}
@@ -714,7 +782,7 @@ export class ClaudeClient implements ClaudeClientView {
     } catch {
       // already gone
     }
-    await waitForExit(child, 2_000);
+    if (!(await waitForExit(child, 2_000))) this.shutdownFailed = true;
   }
 
   async close(): Promise<void> {
@@ -743,9 +811,12 @@ export class ClaudeClient implements ClaudeClientView {
           // already gone
         }
       }
-      await Promise.all(survivors.map((child) => waitForExit(child, 2_000)));
+      const stopped = await Promise.all(survivors.map((child) => waitForExit(child, 2_000)));
+      if (stopped.some((value) => !value)) this.shutdownFailed = true;
       this.active.clear();
       this.continued.delete(this.sessionId);
+      if (this.shutdownFailed)
+        throw new Error('Owned Claude Code process shutdown could not be confirmed.');
     })();
     return this.closePromise;
   }

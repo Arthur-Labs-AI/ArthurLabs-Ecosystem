@@ -62,6 +62,32 @@ async function settleStream(stream: AsyncIterable<unknown>): Promise<void> {
 }
 
 describe('Claude owned-process lifecycle', () => {
+  it('refuses successful close when owned unit shutdown was not confirmed', async () => {
+    const fixture = spec();
+    const { spawnProcess: _, ...base } = fixture;
+    void _;
+    let child: ChildProcess | undefined;
+    const client = new ClaudeClient({
+      ...base,
+      launcher: {
+        kind: 'wsl-isolated',
+        launch: () => ({
+          child: (child = spawnHanger()),
+          unitName: 'sentry-synthetic-unit',
+          stopOwnedUnit: async () => false,
+        }),
+      },
+    });
+    const stream = liveStream(await client.startSession(), 'hang');
+    const draining = settleStream(stream);
+    try {
+      await expect(client.close()).rejects.toThrow('shutdown could not be confirmed');
+      expect(await waitUntilGone(child!, 5000)).toBe(true);
+      await draining;
+    } finally {
+      child?.kill('SIGKILL');
+    }
+  });
   it('terminates the active child on close and proves it is gone at OS level', async () => {
     let owned: ChildProcess | undefined;
     const client = new ClaudeClient({

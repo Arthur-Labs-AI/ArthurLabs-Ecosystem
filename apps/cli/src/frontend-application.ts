@@ -29,7 +29,6 @@ export interface FrontendOptions {
 }
 
 const TERMINAL_RUN = new Set(['completed', 'partial', 'failed', 'cancelled']);
-const TERMINAL_RETEST = new Set(['completed', 'partial', 'failed', 'cancelled', 'interrupted']);
 const AGENT_NAMES = ['opencode', 'deepseek', 'glm'] as const;
 const MODEL_ENV: Record<string, string> = {
   opencode: 'SENTRY_OPENCODE_MODEL',
@@ -167,21 +166,6 @@ async function pollRunStatus(
   }
 }
 
-async function pollRetest(
-  broker: Broker,
-  retestRunId: string,
-  onDiagnostic?: (message: string) => void,
-): Promise<Record<string, unknown>> {
-  for (;;) {
-    const snapshot = (await broker.request('retests:get', { retestRunId })) as {
-      retestRun: { status?: string };
-    } & Record<string, unknown>;
-    const state = String(snapshot.retestRun?.status ?? '');
-    if (TERMINAL_RETEST.has(state)) return snapshot;
-    onDiagnostic?.('retest ' + retestRunId + ' status: ' + state);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-  }
-}
 function adaptRunListItem(row: Record<string, unknown>): Record<string, unknown> {
   return {
     runId: row['id'],
@@ -279,19 +263,6 @@ function adaptAgentDoctor(
   };
 }
 
-function adaptIssueListItem(
-  issue: Record<string, unknown>,
-  occurrenceCount: number,
-): Record<string, unknown> {
-  return {
-    issueId: issue['id'],
-    projectId: issue['projectId'],
-    title: issue['title'],
-    currentState: issue['currentState'],
-    occurrenceCount,
-    updatedAt: issue['updatedAt'],
-  };
-}
 export async function executeFrontendCommand(
   input: ParsedCliCommand,
   options: FrontendOptions = {},
@@ -305,10 +276,8 @@ export async function executeFrontendCommand(
           runInspection: true,
           fakeRunSimulation: true,
           realAgentExecution: true,
-          retestExecution: true,
           runCancellation: true,
           targetedExecution: true,
-          issueLineage: true,
         },
         agentStacks: [
           { id: 'opencode', displayName: 'OpenCode QA Agent', harness: 'opencode' },
@@ -417,9 +386,8 @@ export async function executeFrontendCommand(
         projectId: input.projectId,
       })) as Record<string, unknown>;
       const environment = (await broker.request('doctors:environment', {})) as {
-        verifier?: {
+        sandbox?: {
           sandboxAvailable?: boolean;
-          runtimeReplaySupported?: boolean;
           reason?: string;
         };
         agentStacks?: Array<{ id?: string; binaryAvailable?: boolean }>;
@@ -430,12 +398,11 @@ export async function executeFrontendCommand(
         runtimes: [{ name: 'node', available: true }].concat(
           ecosystem.filter((name) => name !== 'node').map((name) => ({ name, available: false })),
         ),
-        verifier: {
-          sandboxAvailable: environment.verifier?.sandboxAvailable === true,
-          runtimeReplaySupported: environment.verifier?.runtimeReplaySupported === true,
-          ...(environment.verifier?.reason === undefined
+        sandbox: {
+          sandboxAvailable: environment.sandbox?.sandboxAvailable === true,
+          ...(environment.sandbox?.reason === undefined
             ? {}
-            : { reason: environment.verifier.reason }),
+            : { reason: environment.sandbox.reason }),
         },
         warnings: ((report['warnings'] ?? []) as string[]).concat(
           ecosystem.some((name) => name !== 'node')
@@ -459,6 +426,7 @@ export async function executeFrontendCommand(
         ...(input.instructions === undefined ? {} : { instructions: input.instructions }),
         agentStackIds: input.agents.map((name) => stackIdForAgent(name)),
         ...(input.runTimeoutMs === undefined ? {} : { runTimeoutMs: input.runTimeoutMs }),
+        ...(input.webAccess === true ? { webAccess: true } : {}),
       })) as { operationId?: string; runId?: string; status?: string } & Record<string, unknown>;
       if (typeof started.runId !== 'string') {
         throw new DesktopProtocolError(
@@ -586,101 +554,6 @@ export async function executeFrontendCommand(
           ? {}
           : { ownerAcknowledged: outcome.ownerAcknowledged }),
         findings: { total: status.findings?.total ?? 0 },
-      });
-    }
-    if (input.command === 'issue.list') {
-      const issues = (await broker.request('issues:list', { projectId: input.projectId })) as Array<
-        Record<string, unknown>
-      >;
-      const items = await Promise.all(
-        issues.map(async (issue) => {
-          const issueId = String(issue['id'] ?? '');
-          try {
-            const history = (await broker.request('issues:history', { issueId })) as {
-              occurrences?: unknown[];
-            } & Record<string, unknown>;
-            return adaptIssueListItem(
-              issue,
-              Array.isArray(history.occurrences) ? history.occurrences.length : 0,
-            );
-          } catch {
-            return adaptIssueListItem(issue, 0);
-          }
-        }),
-      );
-      return success(input.command, { projectId: input.projectId, issues: items });
-    }
-    if (input.command === 'issue.show' || input.command === 'issue.history') {
-      if (!/^issue_[0-9A-HJKMNP-TV-Z]{26}$/.test(input.issueId)) {
-        throw new DesktopProtocolError('ISSUE_NOT_FOUND', 'Issue not found: ' + input.issueId);
-      }
-      const history = (await broker.request('issues:history', {
-        issueId: input.issueId,
-      })) as Record<string, unknown>;
-      if (input.command === 'issue.show') {
-        return success(input.command, {
-          issue: history['issue'],
-          currentState: history['currentState'],
-          occurrences: history['occurrences'],
-          assessments: history['assessments'],
-        });
-      }
-      return success(input.command, {
-        issue: history['issue'],
-        currentState: history['currentState'],
-        events: history['events'],
-        occurrences: history['occurrences'],
-        assessments: history['assessments'],
-      });
-    }
-    if (input.command === 'retest.start') {
-      const started = (await broker.request('retests:start', {
-        issueId: input.issueId,
-        ...(input.revision === undefined ? {} : { revisionId: input.revision }),
-        agentStackIds: input.agents.map((name) => stackIdForAgent(name)),
-      })) as { operationId?: string; retestRunId?: string } & Record<string, unknown>;
-      if (typeof started.retestRunId !== 'string') {
-        throw new DesktopProtocolError(
-          'DESKTOP_ERROR',
-          'Desktop started a retest without returning its id',
-        );
-      }
-      const snapshot = (await pollRetest(broker, started.retestRunId, options.onDiagnostic)) as {
-        retestRun: Record<string, unknown>;
-        targetRun?: { run?: { id?: string } };
-        assessments?: Array<{ id?: string; result?: string }>;
-      } & Record<string, unknown>;
-      const assessments = Array.isArray(snapshot.assessments) ? snapshot.assessments : [];
-      const assessment = assessments.length === 0 ? undefined : assessments[assessments.length - 1];
-      return success(input.command, {
-        retestRunId: started.retestRunId,
-        issueId: input.issueId,
-        status: (snapshot.retestRun as { status?: string }).status,
-        ...(assessment?.id === undefined ? {} : { assessmentId: assessment.id }),
-        ...(assessment?.result === undefined ? {} : { result: assessment.result }),
-        ...(snapshot.targetRun?.run?.id === undefined
-          ? {}
-          : { targetRunId: snapshot.targetRun.run.id }),
-      });
-    }
-    if (input.command === 'retest.show') {
-      const snapshot = (await broker.request('retests:get', {
-        retestRunId: input.retestRunId,
-      })) as { retestRun?: unknown; assessments?: unknown[] } & Record<string, unknown>;
-      const assessments = Array.isArray(snapshot.assessments) ? snapshot.assessments : [];
-      return success(input.command, {
-        run: snapshot.retestRun,
-        ...(assessments.length === 0 ? {} : { assessment: assessments[assessments.length - 1] }),
-        assessments,
-      });
-    }
-    if (input.command === 'retest.cancel') {
-      const outcome = (await broker.request('retests:cancel', {
-        retestRunId: input.retestRunId,
-      })) as { retestRunId?: string; status?: string } & Record<string, unknown>;
-      return success(input.command, {
-        retestRunId: outcome.retestRunId ?? input.retestRunId,
-        status: outcome.status,
       });
     }
     devOnly(input.command);

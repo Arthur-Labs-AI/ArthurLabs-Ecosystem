@@ -396,110 +396,6 @@ describe('qa cli', () => {
     // load; the larger test-only budget leaves production timeouts unchanged.
   }, 240_000);
 
-  it('merges a simulated run deterministically with stable exit semantics', async () => {
-    const f = await fixture();
-    const add = await invoke(['project', 'add', f.source, '--json'], f.dataRoot);
-    expect(add.status).toBe(0);
-    const added = machine(add, 'project.add');
-    if (!added.ok || added.command !== 'project.add') throw new Error('Unexpected response');
-    const simulate = await invoke(
-      ['run', 'simulate', added.data.projectId, '--scenario', 'success', '--json'],
-      f.dataRoot,
-    );
-    expect(simulate.status).toBe(5);
-    const simulated = machine(simulate, 'run.simulate');
-    if (!simulated.ok || simulated.command !== 'run.simulate')
-      throw new Error('Unexpected response');
-    const runId = simulated.data.runId;
-    const merged = await invoke(['run', 'merge', runId, '--json'], f.dataRoot);
-    expect(merged.status).toBe(0);
-    const mergeResponse = machine(merged, 'run.merge');
-    if (!mergeResponse.ok || mergeResponse.command !== 'run.merge') {
-      throw new Error('Unexpected response');
-    }
-    expect(mergeResponse.data).toMatchObject({
-      runId,
-      reused: false,
-      sourceFindings: 3,
-      usableAgents: 3,
-    });
-    expect(mergeResponse.data.clusters).toBeGreaterThan(0);
-    expect(mergeResponse.data.mergeResultId).toMatch(/^merge_/);
-    // Idempotent: second merge reuses the persisted result.
-    const remerged = await invoke(['run', 'merge', runId, '--json'], f.dataRoot);
-    expect(remerged.status).toBe(0);
-    const remergeResponse = machine(remerged, 'run.merge');
-    if (!remergeResponse.ok || remergeResponse.command !== 'run.merge') {
-      throw new Error('Unexpected response');
-    }
-    expect(remergeResponse.data).toMatchObject({
-      runId,
-      reused: true,
-      mergeResultId: mergeResponse.data.mergeResultId,
-    });
-    // Unknown run maps to the established not-found exit category.
-    const missing = await invoke(
-      ['run', 'merge', 'run_01K7777777777777777777A8W9', '--json'],
-      f.dataRoot,
-    );
-    expect(missing.status).toBe(3);
-    const missingResponse = machine(missing, 'run.merge');
-    expect(!missingResponse.ok && missingResponse.error.code).toBe('RUN_NOT_FOUND');
-  }, 60_000);
-
-  it('verifies a merged simulated run with stable exit semantics', async () => {
-    const f = await fixture();
-    const add = await invoke(['project', 'add', f.source, '--json'], f.dataRoot);
-    expect(add.status).toBe(0);
-    const added = machine(add, 'project.add');
-    if (!added.ok || added.command !== 'project.add') throw new Error('Unexpected response');
-    const simulate = await invoke(
-      ['run', 'simulate', added.data.projectId, '--scenario', 'success', '--json'],
-      f.dataRoot,
-    );
-    expect(simulate.status).toBe(5);
-    const simulated = machine(simulate, 'run.simulate');
-    if (!simulated.ok || simulated.command !== 'run.simulate')
-      throw new Error('Unexpected response');
-    const merged = await invoke(['run', 'merge', simulated.data.runId, '--json'], f.dataRoot);
-    expect(merged.status).toBe(0);
-    const mergeResponse = machine(merged, 'run.merge');
-    if (!mergeResponse.ok || mergeResponse.command !== 'run.merge') {
-      throw new Error('Unexpected response');
-    }
-    const started = await invoke(
-      ['verify', 'start', mergeResponse.data.mergeResultId, '--json'],
-      f.dataRoot,
-    );
-    expect(started.status).toBe(0);
-    const verifyResponse = machine(started, 'verify.start');
-    if (!verifyResponse.ok || verifyResponse.command !== 'verify.start') {
-      throw new Error('Unexpected response');
-    }
-    expect(verifyResponse.data.mergeResultId).toBe(mergeResponse.data.mergeResultId);
-    expect(verifyResponse.data.verificationRunId).toMatch(/^vrun_/);
-    expect(verifyResponse.data.attempts.total).toBeGreaterThan(0);
-    // Verification outcomes never affect the exit code (§70).
-    const shown = await invoke(
-      ['verify', 'show', verifyResponse.data.verificationRunId, '--json'],
-      f.dataRoot,
-    );
-    expect(shown.status).toBe(0);
-    const showResponse = machine(shown, 'verify.show');
-    if (!showResponse.ok || showResponse.command !== 'verify.show') {
-      throw new Error('Unexpected response');
-    }
-    expect(showResponse.data.attempts.length).toBe(verifyResponse.data.attempts.total);
-    // Unknown merge result maps to the not-found exit category.
-    const missing = await invoke(
-      ['verify', 'start', 'merge_01K7777777777777777777A8W9', '--json'],
-      f.dataRoot,
-    );
-    expect(missing.status).toBe(3);
-    const missingResponse = machine(missing, 'verify.start');
-    expect(!missingResponse.ok && missingResponse.error.code).toBe('RUN_NOT_FOUND');
-  }, 120_000);
-
   it('returns typed machine errors and stable exit categories', async () => {
     const f = await fixture();
     const invalid = await invoke(['project', 'add', '--json'], f.dataRoot);
@@ -663,7 +559,7 @@ describe('qa cli', () => {
     }
   }, 120_000);
 
-  it('serves Phase 7 targeted validation, cancel, revisions, and issue inspection', async () => {
+  it('serves Phase 7 targeted validation, cancel and revisions', async () => {
     const f = await fixture();
     const add = machine(
       await invoke(['project', 'add', f.source, '--json'], f.dataRoot),
@@ -705,26 +601,6 @@ describe('qa cli', () => {
         revisionsResponse.data.revisions[0],
     ).toMatchObject({ current: true, runIds: [] });
 
-    // No issues yet: empty list, stable not-found for show/history.
-    const empty = await invoke(['issue', 'list', projectId, '--json'], f.dataRoot);
-    expect(empty.status).toBe(0);
-    const emptyResponse = machine(empty, 'issue.list');
-    expect(
-      emptyResponse.ok && emptyResponse.command === 'issue.list' && emptyResponse.data.issues,
-    ).toEqual([]);
-    const missing = await invoke(
-      ['issue', 'show', 'issue_01K7777777777777777777A8W9', '--json'],
-      f.dataRoot,
-    );
-    expect(missing.status).toBe(3);
-    const missingResponse = machine(missing, 'issue.show');
-    expect(!missingResponse.ok && missingResponse.error.code).toBe('ISSUE_NOT_FOUND');
-    const missingHistory = await invoke(
-      ['issue', 'history', 'issue_01K7777777777777777777A8W9', '--json'],
-      f.dataRoot,
-    );
-    expect(missingHistory.status).toBe(3);
-
     // Terminal runs report already_terminal (honest machine state, exit 0)
     // with outputs intact — never a fake cancel, never a state-conflict error.
     const simulate = machine(
@@ -740,64 +616,16 @@ describe('qa cli', () => {
     expect(cancelResponse.data.status).toBe('already_terminal');
     expect(cancelResponse.data.ownerAcknowledged).toBe(false);
 
-    // Issue ingest creates one open issue per cluster, idempotently.
-    const merged = machine(
-      await invoke(['run', 'merge', simulate.data.runId, '--json'], f.dataRoot),
-      'run.merge',
-    );
-    if (!merged.ok || merged.command !== 'run.merge') throw new Error('Unexpected response');
-    const ingest = await invoke(
-      ['issue', 'ingest', merged.data.mergeResultId, '--json'],
-      f.dataRoot,
-    );
-    expect(ingest.status).toBe(0);
-    const ingestResponse = machine(ingest, 'issue.ingest');
-    expect(
-      ingestResponse.ok &&
-        ingestResponse.command === 'issue.ingest' &&
-        ingestResponse.data.issues.length,
-    ).toBeGreaterThan(0);
-    const reingest = await invoke(
-      ['issue', 'ingest', merged.data.mergeResultId, '--json'],
-      f.dataRoot,
-    );
-    expect(reingest.status).toBe(0);
-    const reingestResponse = machine(reingest, 'issue.ingest');
-    expect(
-      reingestResponse.ok &&
-        reingestResponse.command === 'issue.ingest' &&
-        reingestResponse.data.issues.every((issue: { created: boolean }) => !issue.created),
-    ).toBe(true);
-    const listed = machine(
-      await invoke(['issue', 'list', projectId, '--json'], f.dataRoot),
-      'issue.list',
-    );
-    expect(listed.ok && listed.command === 'issue.list' && listed.data.issues[0]).toMatchObject({
-      currentState: 'open',
-    });
-    const issueId = (
-      ingestResponse.ok && ingestResponse.command === 'issue.ingest'
-        ? ingestResponse.data.issues[0]
-        : undefined
-    ) as { issueId: string } | undefined;
-    if (issueId === undefined) throw new Error('ingest produced no issue');
-    const history = machine(
-      await invoke(['issue', 'history', issueId.issueId, '--json'], f.dataRoot),
-      'issue.history',
-    );
-    expect(
-      history.ok && history.command === 'issue.history' && history.data.events.length,
-    ).toBeGreaterThan(0);
-
-    // Retest guards: unknown issue → not-found; unknown retest run → not-found;
-    // retest start requires --wait.
-    const retestMissing = await invoke(
-      ['retest', 'show', 'retest_01K7777777777777777777A8W9', '--json'],
-      f.dataRoot,
-    );
-    expect(retestMissing.status).toBe(3);
-    const noWait = await invoke(['retest', 'start', issueId.issueId, '--json'], f.dataRoot);
-    expect(noWait.status).toBe(2);
+    // Removed commands are rejected as invalid arguments.
+    for (const removed of [
+      ['run', 'merge', simulate.data.runId],
+      ['issue', 'list', projectId],
+      ['retest', 'show', 'retest_01K7777777777777777777A8W9'],
+      ['verify', 'doctor'],
+    ]) {
+      const result = await invoke([...removed, '--json'], f.dataRoot);
+      expect(result.status).toBe(2);
+    }
   }, 240_000);
 
   it('supports actual built CLI invocation', () => {
