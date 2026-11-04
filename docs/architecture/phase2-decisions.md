@@ -120,6 +120,96 @@ spec section 44 ("Record intentional deviations in
   enabled, extraction failures are swallowed and never fail the turn.
 - Chain-of-thought is not stored anywhere (spec §44).
 
+## SC-01 freeze (Software Core v1)
+
+- **Status: FROZEN** — Software Core milestone SC-01. Frozen schema version:
+  `1` (`CURRENT_MEMORY_SCHEMA_VERSION`).
+- **SC-01 implementation commit:** `534ece2f79c9e5342549194c27baa46cdd37171a`
+  (`feat(memory): harden and freeze phase 2 memory` — the complete SC-01
+  implementation, freeze suite, and this freeze record's first version).
+- **Freeze metadata commit:** `docs(memory): record SC-01 freeze SHAs and F16 verdict`
+  (docs-only follow-up; HEAD of this freeze sequence — resolve via
+  `git log --oneline --decorate`. A commit can never embed its own SHA, so
+  this record names the authoritative implementation SHA above and
+  identifies the metadata commit by message; the implementation commit SHA
+  is the freeze reference and is unaffected by metadata amendments).
+- **Freeze invariants (immutable for Software Core v1):**
+  - **M1 trusted domain authority** — the domain comes only from the trusted
+    server-side session (`memoryContextFromSession`); API schemas stay strict
+    with no `domain`/`database`/`namespace`/`context_key` fields (F01 gate).
+  - **M2 physical Personal/Business isolation** — separate SQLite files, and
+    startup now proves it with `MemoryDbIdentity` physical identity
+    (absolute → realpath, nearest-existing-parent fallback, case-insensitive
+    on Windows, device/inode comparison when both files exist). Same target
+    or same device+inode → startup rejection; broken aliases fail closed.
+    Only `:memory:`+`:memory:` is allowed (separate private handles).
+    (F02/F03 gates.)
+  - **M3 no cross-domain fallback** — a failing store degrades only its own
+    domain to no-memory mode (F01 failure-injection gate).
+  - **M4 acknowledged memory is durable** — file-backed stores enforce
+    `journal_mode=WAL`, `synchronous=FULL`, `foreign_keys=ON`,
+    `busy_timeout=10000`, verified by reading the effective PRAGMAs back;
+    WAL failure on a persistent DB fails startup, never silently downgrades.
+    `:memory:` is exempt from WAL (tests only). (F06/F07 gates.)
+- **Schema/migration contract (SC-01C)** — `CURRENT_MEMORY_SCHEMA_VERSION`
+  is explicit; startup validates columns, primary keys, NOT NULL, the
+  `memory_chunks → memory_items` FK with `ON DELETE CASCADE`, the
+  `uq_items_active_hash` / `uq_sources_hash` UNIQUE indexes, the FTS5 table,
+  the known migration ledger, and per-store domain purity. A newer schema,
+  unknown migration, missing table, or wrong-domain row fails closed — never
+  downgrade, repair, delete, or recreate. (F04/F05 gates.)
+- **Document lifecycle (SC-01D)** — each ingestion mints a fresh memory
+  incarnation (`mem-doc-<uuid>`); concurrent identical ingestions converge
+  onto one ACTIVE row via `uq_items_active_hash` (chunks/FTS/metadata follow
+  the survivor). Delete leaves a tombstone; re-ingestion with either a new
+  or the original `client_request_id` creates a fresh ACTIVE incarnation.
+  Document write + ingestion completion commit in ONE SQLite transaction
+  (`writeDocumentAtomic` + `completion`), so no durable
+  (document-exists, ingestion-writing) state survives a crash. (F08/F10.)
+- **Integrity verification (SC-01E)** — `verifyMemoryDatabase` asserts
+  `integrity_check` is exactly `ok`, `foreign_key_check` finds 0
+  violations, chunk↔FTS parity holds with no duplicate FTS chunk entries,
+  and wrong-domain rows are 0. Diagnostic/acceptance only, never per turn.
+  (F14/F15 gates.)
+- **Security boundary (SC-01F)** — explicit remember rejects secret-like
+  content with zero embedding calls; document content is sanitized before
+  chunk/embed/persist (recording-provider gate proves the raw secret never
+  reaches embeddings); direct DB inspection of `memory_items`,
+  `memory_chunks`, `memory_fts5`, and `memory_sources` finds no raw marker;
+  model-payload regression stays green. (F11 gates.)
+- **Retrieval contract (SC-01G)** — ACTIVE retrievable; SUPERSEDED/EXPIRED/
+  DELETED excluded from vector, FTS, and hybrid channels (per-channel
+  stores plus hybrid end-to-end, fail-closed on foreign ids). (F09/F12.)
+- **Hard context budget** — total `estimateTokens` ≤
+  `ARTHUR_MEMORY_MAX_CONTEXT_TOKENS` with no margin, and every snippet ≤
+  `ARTHUR_MEMORY_MAX_SINGLE_CHUNK_TOKENS` (tightened regression). (F13.)
+- **Crash/restart acceptance** — simulated windows (item-before-chunks,
+  same-process/restart retry, duplicate concurrent remembers/documents,
+  Personal+Business concurrency) plus a file-backed child-process test:
+  committed write → child exit → restart → memory exists. (F07/F08.)
+- **Freeze suite** — `tests/memory/sc01_freeze.test.ts` (15 tests, F01–F15)
+  is deterministic/offline (no DeepSeek API, microphone, wake model, Piper,
+  Whisper, or network); symlink tests skip only when the OS truly forbids
+  them, hardlink/path-alias coverage is mandatory. Full offline suite
+  (unit+memory+integration: 407 tests) passes.
+- **SC01-F16 full-repository regression:** `npm test` gives 576 tests —
+  530 pass, 36 fail, 10 skipped. All 36 failures are voice-engine
+  child-process/stdio tests (capture, STT, TTS, playback, STT wrapper) and
+  reproduce byte-identically on the pristine pre-SC-01 tree (verified via
+  `git stash` + rerun: same 36, same names). Zero SC-01 regression delta:
+  no memory, unit, or integration test fails. Status: PASS with an
+explicitly evidenced pre-existing/environment-only exception for the 36
+  voice-engine tests; no Memory code was changed and no test was weakened
+  to obtain this result.
+
+## Rules after freeze
+
+- Changes to database schema, domain routing, physical isolation, idempotency
+  semantics, deletion semantics, secret boundary, or retrieval lifecycle
+  semantics require an explicit architecture decision + migration when
+  applicable + new regression coverage + SC-01 compatibility verification.
+  Bug fixes must not silently change frozen contracts.
+
 ## Deviations and notes
 
 - **No dedicated vector database** (spec permits the local interface);

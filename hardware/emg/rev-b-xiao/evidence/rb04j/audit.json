@@ -1,0 +1,360 @@
+{
+ "pad23_pcb": {
+  "thru_hole": {
+   "size": 2.3,
+   "drill": 1.9,
+   "mask_margin": -0.175,
+   "layers": [
+    "*.Cu",
+    "*.Mask"
+   ],
+   "net": "VBAT",
+   "at": [
+    -4.445,
+    -0.4075
+   ],
+   "opening": 1.95
+  },
+  "smd": {
+   "size": 3.0,
+   "drill": null,
+   "mask_margin": 0.0,
+   "layers": [
+    "B.Cu",
+    "B.Mask"
+   ],
+   "net": "VBAT",
+   "at": [
+    -4.445,
+    -0.4075
+   ],
+   "opening": 3.0
+  }
+ },
+ "pad23_library": {
+  "thru_hole": {
+   "size": 2.3,
+   "drill": 1.9,
+   "mask_margin": -0.175,
+   "layers": [
+    "*.Cu",
+    "F.Mask",
+    "B.Mask"
+   ],
+   "net": null,
+   "at": [
+    -4.445,
+    -0.4075
+   ],
+   "opening": 1.95
+  },
+  "smd": {
+   "size": 3.0,
+   "drill": null,
+   "mask_margin": 0.0,
+   "layers": [
+    "B.Cu",
+    "B.Mask"
+   ],
+   "net": null,
+   "at": [
+    -4.445,
+    -0.4075
+   ],
+   "opening": 3.0
+  }
+ },
+ "pad23_abs": [
+  44.635,
+  54.79
+ ],
+ "gerber_at_post": {
+  "drill": {
+   "holes": {
+    "0.3": 201,
+    "1.9": 1
+   },
+   "ph": [
+    [
+     44.635,
+     -54.79
+    ]
+   ],
+   "tool_attr": [
+    "; #@! TA.AperFunction,Plated,PTH,ViaDrill",
+    "; #@! TA.AperFunction,Plated,PTH,ComponentDrill"
+   ]
+  },
+  "In2_Cu.g2": [
+   [
+    "C",
+    2.3,
+    "ComponentPad"
+   ]
+  ],
+  "In1_Cu.g1": [
+   [
+    "C",
+    2.3,
+    "ComponentPad"
+   ]
+  ],
+  "F_Mask.gts": [
+   [
+    "C",
+    1.95,
+    null
+   ]
+  ],
+  "F_Cu.gtl": [
+   [
+    "C",
+    2.3,
+    "ComponentPad"
+   ]
+  ],
+  "B_Mask.gbs": [
+   [
+    "C",
+    1.95,
+    null
+   ],
+   [
+    "C",
+    3.0,
+    null
+   ]
+  ],
+  "B_Cu.gbl": [
+   [
+    "C",
+    2.3,
+    "ComponentPad"
+   ],
+   [
+    "C",
+    3.0,
+    "SMDPad,CuDef"
+   ]
+  ]
+ },
+ "VBAT_nodes": [
+  [
+   "J1",
+   "1"
+  ],
+  [
+   "R4001",
+   "1"
+  ],
+  [
+   "R7107",
+   "1"
+  ],
+  [
+   "TP1",
+   "1"
+  ],
+  [
+   "U1",
+   "23"
+  ]
+ ],
+ "U1_pin23_nets": [
+  "VBAT"
+ ],
+ "nets_containing_U1_pins_1_14_5V_3V3_GND": {
+  "12": [
+   "/XIAO_Brain_Interface/XIAO_3V3"
+  ],
+  "13": [
+   "GND"
+  ],
+  "14": [
+   "/XIAO_5V"
+  ]
+ },
+ "VBAT_copper_touching_land": [
+  "F.Cu w0.5 (44.635,54.2)-(43.9,54.2)",
+  "F.Cu w0.5 (44.635,54.79)-(44.635,54.2)",
+  "F.Cu w0.5 (43.2,54.2)-(43.9,54.2)"
+ ],
+ "foreign_copper_within_4mm_of_post": [
+  [
+   0.715,
+   "F.Cu",
+   "/XIAO_Brain_Interface/VBAT_SENSE",
+   "track",
+   "to \u00d82.3 land/inner pad"
+  ],
+  [
+   1.06,
+   "In2.Cu",
+   "/DRDY_N",
+   "track",
+   "to \u00d82.3 land/inner pad"
+  ],
+  [
+   1.406,
+   "F.Cu",
+   "/AFE_EN_REQ",
+   "track",
+   "to \u00d82.3 land/inner pad"
+  ],
+  [
+   1.406,
+   "F.Cu",
+   "/AFE_EN_REQ",
+   "track",
+   "to \u00d82.3 land/inner pad"
+  ],
+  [
+   1.781,
+   "F.Cu",
+   "/AFE_EN_REQ",
+   "track",
+   "to \u00d82.3 land/inner pad"
+  ],
+  [
+   1.96,
+   "In2.Cu",
+   "/SYNC_RESET_N",
+   "track",
+   "to \u00d82.3 land/inner pad"
+  ]
+ ],
+ "nearest_foreign_to_F_Cu_ring_edge": [
+  0.715,
+  "F.Cu",
+  "/XIAO_Brain_Interface/VBAT_SENSE",
+  "track",
+  "to \u00d82.3 land/inner pad"
+ ],
+ "module_pads_board": {
+  "GND0": {
+   "x": 44.635,
+   "y": 56.695,
+   "w": 2.032,
+   "h": 1.016
+  },
+  "BAT0": {
+   "x": 44.635,
+   "y": 54.79,
+   "w": 2.032,
+   "h": 1.016
+  }
+ },
+ "BAT0_to_GND0_pitch": 1.905,
+ "module_underside_other_pads_nearest_to_BAT0": [
+  [
+   1.91,
+   "GND0",
+   "GND"
+  ],
+  [
+   3.24,
+   "TP7",
+   "ESP_USB_D-"
+  ],
+  [
+   4.49,
+   "TP2",
+   "MTMS/IO42/PDM_CLK"
+  ],
+  [
+   4.89,
+   "USB_S4",
+   "GND(shell)"
+  ],
+  [
+   5.64,
+   "USB_NPTH",
+   "hole"
+  ]
+ ],
+ "separation_matrix": {
+  "BAT0_pad_edge_to_GND0_pad_edge": 0.889,
+  "post_edge_to_GND0_pad_edge (post at the pad limit toward GND0: edge at pad half-height)": 0.839,
+  "solder_cone_to_GND0_pad_edge (cone wets the pad only; +0.10 meniscus overflow)": 0.739,
+  "exposed_host_VBAT_copper (opening edge + registration) to GND0 pad edge, incl. module shift": 0.235,
+  "exposed_host_VBAT_copper to GND0, no module shift": 0.322,
+  "mask_covered_ring_edge_to_GND0 (plan view; NOT an exposed-metal clearance)": 0.085,
+  "B.Cu_land_and_bottom_fillet_to_GND0 (3-D: through 1.6 mm board; plan overlap is not a clearance)": ">= 1.6 mm (board thickness; In1/In2 planes between)",
+  "nearest_other_module_underside_pad_to_BAT0_centre": [
+   1.91,
+   "GND0",
+   "GND"
+  ]
+ },
+ "parameters": {
+  "gnd0_edge": 1.3970000000000011,
+  "reg": 0.05,
+  "gnd_tol": 0.05,
+  "hole_pos": 0.075,
+  "p": 0.1,
+  "host_reg": 0.05,
+  "datum": 0.022,
+  "post_on_pad": 0.25,
+  "hole_lo": 0.08,
+  "hole_hi": 0.13,
+  "ring_tol": 0.025,
+  "post_d": 0.511,
+  "cone_d": 1.0,
+  "pad_half_v": 0.508,
+  "mask_open": 1.95,
+  "drill": 1.9,
+  "ring": 2.3,
+  "bcu": 3.0
+ },
+ "stack": {
+  "e_axis_linear": 0.497,
+  "hole_radius_min": 0.91,
+  "cone_margin_centred": 0.41,
+  "shift_needed": 0.087,
+  "u_allowed": 0.15,
+  "v_allowed": 0.513,
+  "by_cone": {
+   "0.8": 0,
+   "1.0": 0.087,
+   "1.1": 0.137,
+   "1.2": 0.187
+  }
+ },
+ "compensation_vs_mask_opening": {
+  "compensation +0.00": {
+   "drill_tool": 1.9,
+   "opening 1.95 minus tool": 0.05,
+   "opening 2.05 minus tool": 0.15,
+   "opening 2.10 minus tool": 0.2,
+   "opening 2.15 minus tool": 0.25
+  },
+  "compensation +0.05": {
+   "drill_tool": 1.95,
+   "opening 1.95 minus tool": 0.0,
+   "opening 2.05 minus tool": 0.1,
+   "opening 2.10 minus tool": 0.15,
+   "opening 2.15 minus tool": 0.2
+  },
+  "compensation +0.10": {
+   "drill_tool": 2.0,
+   "opening 1.95 minus tool": -0.05,
+   "opening 2.05 minus tool": 0.05,
+   "opening 2.10 minus tool": 0.1,
+   "opening 2.15 minus tool": 0.15
+  },
+  "compensation +0.15": {
+   "drill_tool": 2.05,
+   "opening 1.95 minus tool": -0.1,
+   "opening 2.05 minus tool": 0.0,
+   "opening 2.10 minus tool": 0.05,
+   "opening 2.15 minus tool": 0.1
+  }
+ },
+ "solder_volume_mm3": {
+  "cone_d1p0_h0p4": 0.191,
+  "cone_d1p0_h0p5": 0.262,
+  "cone_d1p1_h0p5": 0.303,
+  "slug_1mm_of_0p5mm_wire": 0.196,
+  "slug_1mm_of_0p8mm_wire": 0.503
+ }
+}

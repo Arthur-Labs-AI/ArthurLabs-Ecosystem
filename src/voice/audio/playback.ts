@@ -134,14 +134,78 @@ export class FakeAudioPlayback implements AudioPlayback {
  *
  * Spawns a configured local playback command (e.g. ffplay/aplay reading raw
  * mono s16le PCM from stdin) and streams AudioChunk PCM into its stdin with
- * backpressure, preserving chunk order. stop() kills the child immediately
- * and discards queued audio so barge-in stays under the 250 ms target; once
+ * backpressure, preserving chunk order. Explicit cancellation (stop():
+ * barge-in, user interrupt, disable) kills the child immediately and
+ * discards queued audio so barge-in stays under the 250 ms target; normal
+ * completion instead waits on a dedicated EOF-drain deadline so a healthy
+ * player draining its buffer is never misclassified as a failure. Once
  * stopped, stale-generation audio can never resume (the consumption loop is
  * latched and the child is reaped).
  */
+export interface PlaybackWriteEvent {
+  /** Wall-clock instant (same clock as start/eof) the chunk was accepted. */
+  atMs: number;
+  /** Declared audio duration of the chunk in ms. */
+  durationMs: number;
+}
+
+export interface PlaybackDrainEstimate {
+  /** Estimated instant the player finishes audible playback. */
+  estimatedEndMs: number;
+  /** Buffered audio still owed to the player at stdin EOF. */
+  remainingAudioMs: number;
+  /** Bounded normal-EOF wait: grace + capped backlog. */
+  drainTimeoutMs: number;
+}
+
+/**
+ * Estimate the normal-EOF drain deadline from the ACTUAL PCM write timeline
+ * (DEV-VOICE-CLI-1-F1).
+ *
+ * Each accepted chunk books playback time from the later of its arrival and
+ * the previously booked end (`estimatedEnd = max(now, estimatedEnd) + dur`),
+ * so TTS starvation gaps - during which the player has nothing new to buffer
+ * - never shrink the backlog. At stdin EOF the remaining audio is
+ * `max(0, estimatedEnd - eofAtMs)` and the bounded wait is
+ * `eofDrainGraceMs + min(remaining, maxPlaybackMs)` (never unbounded).
+ *
+ * Pure and clock-agnostic so the drain semantics are unit-testable without
+ * spawning a player process. Only `durationMs > 0` chunks are booked, which
+ * mirrors the play() loop guard.
+ */
+export function estimatePlaybackDrainTimeoutMs(args: {
+  startAtMs: number;
+  writes: readonly PlaybackWriteEvent[];
+  eofAtMs: number;
+  eofDrainGraceMs: number;
+  maxPlaybackMs: number;
+}): PlaybackDrainEstimate {
+  let estimatedEndMs = args.startAtMs;
+  for (const write of args.writes) {
+    if (!(write.durationMs > 0)) continue;
+    estimatedEndMs = Math.max(write.atMs, estimatedEndMs) + write.durationMs;
+  }
+  const remainingAudioMs = Math.max(0, estimatedEndMs - args.eofAtMs);
+  const drainTimeoutMs = args.eofDrainGraceMs + Math.min(remainingAudioMs, args.maxPlaybackMs);
+  return { estimatedEndMs, remainingAudioMs, drainTimeoutMs };
+}
+
 export interface LocalAudioPlaybackOptions {
-  /** Grace window for terminating the child (default 250 ms). */
+  /**
+   * Grace window for terminating the child on EXPLICIT cancellation
+   * (stop()/barge-in). Interruption latency target: <= 250 ms (default).
+   */
   killGraceMs?: number;
+  /**
+   * Grace for NORMAL completion, measured after all PCM was written and
+   * stdin was closed (default 2000 ms). A healthy player may legitimately
+   * take longer than the kill grace to exit on EOF because it still has to
+   * drain buffered audio. This window is additionally extended by the
+   * estimated remaining buffered audio (from AudioChunk duration metadata),
+   * capped by maxPlaybackMs. Distinct from killGraceMs on purpose: barge-in
+   * must be fast, normal EOF must not be misclassified as a failure.
+   */
+  eofDrainGraceMs?: number;
   /** Hard cap on a single play() session (default 5 minutes). */
   maxPlaybackMs?: number;
   /** Secret-safe logger (app Logger redacts known secrets). */
@@ -151,6 +215,12 @@ export interface LocalAudioPlaybackOptions {
   /** Extra environment passed to the playback command. */
   env?: Record<string, string>;
   events?: AudioPlaybackEvents;
+  /**
+   * Injectable clock for deterministic tests (default Date.now). Threaded
+   * through the max-duration guard and the EOF drain-timeline estimate so
+   * bursty/streaming timing is testable without real-time sleeps.
+   */
+  now?: () => number;
 }
 
 export class LocalAudioPlayback implements AudioPlayback {
@@ -158,22 +228,26 @@ export class LocalAudioPlayback implements AudioPlayback {
   private stopped = false;
   private child: ChildProcess | undefined;
   private readonly killGraceMs: number;
+  private readonly eofDrainGraceMs: number;
   private readonly maxPlaybackMs: number;
   private readonly logger: LogSink | undefined;
   private readonly sanitizer: TextSanitizer | undefined;
   private readonly extraEnv: Record<string, string>;
   private readonly events: AudioPlaybackEvents;
+  private readonly now: () => number;
 
   constructor(
     private readonly command: string,
     opts: LocalAudioPlaybackOptions = {},
   ) {
     this.killGraceMs = opts.killGraceMs ?? 250;
+    this.eofDrainGraceMs = opts.eofDrainGraceMs ?? 2_000;
     this.maxPlaybackMs = opts.maxPlaybackMs ?? 300_000;
     this.logger = opts.logger;
     this.sanitizer = opts.sanitizer;
     this.extraEnv = opts.env ?? {};
     this.events = opts.events ?? {};
+    this.now = opts.now ?? Date.now;
   }
 
   id(): string {
@@ -216,13 +290,23 @@ export class LocalAudioPlayback implements AudioPlayback {
     }
     try {
       this.events.onStarted?.();
-      const deadline = Date.now() + this.maxPlaybackMs;
+      const startedAtMs = this.now();
+      // Estimated playback timeline (DEV-VOICE-CLI-1-F1): each accepted PCM
+      // chunk books audible time from the later of its arrival and the
+      // previously booked end, so TTS starvation gaps - during which the
+      // player idles with nothing new to buffer - never shrink the backlog.
+      // Wall-clock-since-spawn minus total audio is wrong for bursty
+      // streaming TTS: it treats starvation as drain and kills healthy
+      // players with a too-short EOF wait (false code:null failures).
+      const writes: PlaybackWriteEvent[] = [];
+      const deadline = startedAtMs + this.maxPlaybackMs;
       for await (const chunk of chunks) {
         if (this.stopped || this.child !== child) break;
-        if (Date.now() > deadline) {
+        if (this.now() > deadline) {
           killChild(child);
           throw new Error("playback exceeded max duration");
         }
+        if (chunk.duration_ms > 0) writes.push({ atMs: this.now(), durationMs: chunk.duration_ms });
         if (child.stdin && !child.stdin.write(chunk.data)) {
           await drainOrClose(child.stdin, child);
           if (this.stopped || this.child !== child) break;
@@ -230,10 +314,24 @@ export class LocalAudioPlayback implements AudioPlayback {
       }
       if (!this.stopped && this.child === child) {
         child.stdin?.end();
-        let code = await waitForClose(child, this.killGraceMs);
+        // NORMAL completion is not an interruption. The player still has to
+        // drain its internal buffer after stdin EOF, which can legitimately
+        // exceed the 250 ms kill grace (observed with ffplay on Windows:
+        // false "exited abnormally code:null" failures). Wait on a dedicated
+        // normal-drain deadline: eofDrainGraceMs plus the timeline-booked
+        // remaining audio, capped by maxPlaybackMs - never unbounded.
+        const { drainTimeoutMs } = estimatePlaybackDrainTimeoutMs({
+          startAtMs: startedAtMs,
+          writes,
+          eofAtMs: this.now(),
+          eofDrainGraceMs: this.eofDrainGraceMs,
+          maxPlaybackMs: this.maxPlaybackMs,
+        });
+        let code = await waitForClose(child, drainTimeoutMs);
         if (this.stopped || this.child !== child) return;
         if (code === null) {
-          // The player did not exit on EOF; reap it and treat as failure.
+          // The player did not exit within the normal-drain deadline: reap it
+          // (bounded by the kill grace) and only then classify as failure.
           await terminateChild(child, this.killGraceMs).catch(() => undefined);
           code = child.exitCode;
         }

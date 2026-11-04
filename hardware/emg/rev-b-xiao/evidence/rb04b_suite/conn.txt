@@ -1,0 +1,1 @@
+nets checked 71 | nets whose pads are not one connected component (TP pads excluded): {}

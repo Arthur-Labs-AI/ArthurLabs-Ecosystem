@@ -7,6 +7,9 @@
   "engines": {
     "node": ">=22.5.0"
   },
+  "bin": {
+    "arthur": "bin/arthur.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "build:test": "tsc -p tsconfig.json",
@@ -16,10 +19,16 @@
     "test": "npm run build:test && node --disable-warning=ExperimentalWarning --experimental-test-isolation=none --test \"dist/tests/**/*.test.js\"",
     "test:unit": "npm run build:test && node --disable-warning=ExperimentalWarning --experimental-test-isolation=none --test \"dist/tests/unit/**/*.test.js\"",
     "test:integration": "npm run build:test && node --disable-warning=ExperimentalWarning --experimental-test-isolation=none --test \"dist/tests/integration/**/*.test.js\"",
-    "test:contract": "npm run build:test && node --env-file-if-exists=.env --disable-warning=ExperimentalWarning --experimental-test-isolation=none --test \"dist/tests/contract/**/*.test.js\""
+    "test:contract": "npm run build:test && node --env-file-if-exists=.env --disable-warning=ExperimentalWarning --experimental-test-isolation=none --test \"dist/tests/contract/**/*.test.js\"",
+    "test:architecture": "npm run build:test && node --disable-warning=ExperimentalWarning --experimental-test-isolation=none --test \"dist/tests/architecture/**/*.test.js\"",
+    "arthur:install": "npm ci --prefix apps/arthur",
+    "arthur:dev": "npm run dev --prefix apps/arthur",
+    "arthur:check": "npm run check --prefix apps/arthur",
+    "check:foundation": "npm run test:architecture && npm run arthur:check"
   },
   "dependencies": {
     "ajv": "^8.17.1",
+    "sherpa-onnx-node": "1.13.7",
     "zod": "^3.23.8"
   },
   "devDependencies": {

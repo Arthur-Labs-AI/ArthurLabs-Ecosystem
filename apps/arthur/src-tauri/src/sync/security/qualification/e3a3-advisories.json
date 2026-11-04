@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-10-24T18:53:40.8263583+03:00",
+  "source": "https://api.osv.dev/v1/querybatch",
+  "scope": "Locked all-target transitive closure of opaque-ke and argon2; includes target/build dependencies",
+  "packages": 69,
+  "findings": [
+    {
+      "package": "crypto-bigint",
+      "version": "0.5.5",
+      "advisory": "RUSTSEC-2026-0387"
+    }
+  ]
+}

@@ -1,0 +1,755 @@
+{
+  "kind": "A.R.T.H.U.R. curated EMG hardware integration",
+  "source_branch": "feature/ads131m04-cost-first",
+  "source_commit": "d096bdf4ba16e59f97d0ab3659c7698dc94781e3",
+  "base_branch": "dev",
+  "base_commit": "b73e4929a3ebd49a15e6744824023298561934a5",
+  "selection_note": "SHA-referenced copies of selected tracked source blobs; original hardware branch remains the complete archive. No original blob contents changed.",
+  "files": [
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/adc.kicad_sch",
+      "git_blob_sha": "4d9aa78f9196a8d4c5f7cd83a250c4b10c53a53d",
+      "bytes": 39796
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/AGENTS.md",
+      "git_blob_sha": "46a3ca0da1b27bfd184cace64f34ee6372a41975",
+      "bytes": 3089
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/analog_power.kicad_sch",
+      "git_blob_sha": "ba76f9fafb17c50cc450fa34b746e34fc4d5d5bd",
+      "bytes": 44701
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR_EMG_RevA_Cost_Phase3A_ThreeNetClean.kicad_pcb",
+      "git_blob_sha": "76822f95153387036cb02cf42a349f500dfeeecd",
+      "bytes": 643546
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR_EMG_RevA_Cost_Phase3B_FinalClean.kicad_dru",
+      "git_blob_sha": "7c2aa738392f0d3960f3a210d0d200195da890b3",
+      "bytes": 1042
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR_EMG_RevA_Cost_Phase3B_FinalClean.kicad_pcb",
+      "git_blob_sha": "64d81caa7cc21eda14535928d6a48836d7039ed6",
+      "bytes": 694824
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR_EMG_RevA_Cost_Phase3B_FinalClean.kicad_pro",
+      "git_blob_sha": "4db30b38a979a6dbf4df810d425bddd27dcb0ff6",
+      "bytes": 34664
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR_EMG_RevA_Cost.kicad_dru",
+      "git_blob_sha": "7c2aa738392f0d3960f3a210d0d200195da890b3",
+      "bytes": 1042
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR_EMG_RevA_Cost.kicad_pcb",
+      "git_blob_sha": "64d81caa7cc21eda14535928d6a48836d7039ed6",
+      "bytes": 694824
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR_EMG_RevA_Cost.kicad_pro",
+      "git_blob_sha": "4db30b38a979a6dbf4df810d425bddd27dcb0ff6",
+      "bytes": 34664
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR_EMG_RevA_Cost.kicad_sch",
+      "git_blob_sha": "872d6b37524d9b74a4669e0c9ac51775772576d1",
+      "bytes": 40408
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR.kicad_sym",
+      "git_blob_sha": "6c880d990c082589b7293accf61f8dd569e77330",
+      "bytes": 99822
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR.pretty/C_0402_1005Metric.kicad_mod",
+      "git_blob_sha": "b7e69aef93aef52ae6b2faa7664045ec95a5586d",
+      "bytes": 1339
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR.pretty/R_0402_1005Metric.kicad_mod",
+      "git_blob_sha": "075c70061b49c7c4f6d0582bd72853bd983c4ba8",
+      "bytes": 1770
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR.pretty/TP_SMD_1x1mm.kicad_mod",
+      "git_blob_sha": "05f670566fea2d6b2355387ffde609bd6589d482",
+      "bytes": 1208
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR.pretty/TPD4E05U06_DQA_2x2mm_P0.5mm.kicad_mod",
+      "git_blob_sha": "481a75b6385546c20552ee73aada5eca01e734cf",
+      "bytes": 4036
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR.pretty/TPS63031_DSK_2.5x2.0mm_P0.5mm.kicad_mod",
+      "git_blob_sha": "df12ae952372ab9f58fe8819591c840512701a5d",
+      "bytes": 4159
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR.pretty/TSSOP-14_4.4x5.0mm_P0.65mm.kicad_mod",
+      "git_blob_sha": "662084d1d2aacfae80f0afd11047ea6b8c474a08",
+      "bytes": 3125
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR.pretty/TSSOP-20_4.4x6.5mm_P0.65mm.kicad_mod",
+      "git_blob_sha": "d953bcc0a2bb617bafda8031624975c157495196",
+      "bytes": 3922
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/COMPONENT_SELECTION.md",
+      "git_blob_sha": "5c64bf4bcfad33db85dcb09996c3fc2d67d31b3e",
+      "bytes": 2945
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ELECTRICAL_DESIGN_FREEZE.md",
+      "git_blob_sha": "c90b585ca4055ead0471c6565be977f336e375bb",
+      "bytes": 7778
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/emg_channel.kicad_sch",
+      "git_blob_sha": "8d6a1ea7b2503d59a71ba335a65ac890d07581e9",
+      "bytes": 38486
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ERC_UNRESOLVED.md",
+      "git_blob_sha": "e94c2766c67f106ba11743db6c56f6bec72bf802",
+      "bytes": 2346
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/fp-lib-table",
+      "git_blob_sha": "e30eb353ee29d4af37c645220a271a5d5615994c",
+      "bytes": 1492
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/mcu_ble.kicad_sch",
+      "git_blob_sha": "20b7a96696ea759470b72ff0439c4e78d775a55e",
+      "bytes": 35265
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3a_routing_freeze.json",
+      "git_blob_sha": "525c7ac26db1aca88757a24535aa85152d3c2f6a",
+      "bytes": 1736
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3A_ROUTING_FREEZE.md",
+      "git_blob_sha": "9ef0312d2730623cbaaf959c27d50e785c6be5fc",
+      "bytes": 1858
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3A_THREE_NET_CLEAN_REPORT.md",
+      "git_blob_sha": "270c83faaa707cb5c3d5d376cb18c5185b10056e",
+      "bytes": 5429
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3a_three_net_verification.json",
+      "git_blob_sha": "7ff20ca154da3cafc22dfbbfa8813c68d681c381",
+      "bytes": 2643
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b_final_drc.json",
+      "git_blob_sha": "064fd2a14cf232cc17c901032d8d70d9a8df3d53",
+      "bytes": 464038
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b_final_freeze.py",
+      "git_blob_sha": "df3d75a090602eb0f503a2e54ebaa655eaacc9b8",
+      "bytes": 20949
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b_final_prepare.py",
+      "git_blob_sha": "5bb3798f3e3dbf0590c7af09b767667f8dd0daec",
+      "bytes": 1105
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b_final_route_metrics.py",
+      "git_blob_sha": "ed93e079b0dcf1cb1413a9bf1ded9e13908cd428",
+      "bytes": 4815
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b_final_verification.json",
+      "git_blob_sha": "7df1ee0852554987e7dcfa9588312dce551fd6c7",
+      "bytes": 266205
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b_final_verify.py",
+      "git_blob_sha": "48be2f0b39084495fb08025876cf1d347cadb080",
+      "bytes": 22296
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B_ROUTING_DISCOVERY.md",
+      "git_blob_sha": "6d03bf0fac0beb863fa06db26a725e7c2f99a34c",
+      "bytes": 47987
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b_routing_freeze.json",
+      "git_blob_sha": "e1fb49be4eda466a10322d37ad1566e24707fb72",
+      "bytes": 12285
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B_ROUTING_FREEZE.md",
+      "git_blob_sha": "bea2cc7f428d959a7733e0a7432b8c31f4b7d310",
+      "bytes": 17198
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b1_reference_finalize.py",
+      "git_blob_sha": "32b8f3deca38179184a3df9bcc54f59b75eac154",
+      "bytes": 8774
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B1_REFERENCE_REPORT.md",
+      "git_blob_sha": "5fdacdcf117a03f691d58f5f86772543bca0528f",
+      "bytes": 6732
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b1_reference_verify.py",
+      "git_blob_sha": "382f284ce976c0c07c18b8cf62e6fd4f37b7877e",
+      "bytes": 9379
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b2_vcm_finalize.py",
+      "git_blob_sha": "77aa404d644c3622ecc190c2d86ee49e345fc744",
+      "bytes": 9289
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B2_VCM_REPORT.md",
+      "git_blob_sha": "9ae1cd58ab428808704c3cebb1f6a9e42b4a3ef6",
+      "bytes": 8218
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b2_vcm_verify.py",
+      "git_blob_sha": "85fabe11676a06b52b32454e2b97f9cd53ec0fbb",
+      "bytes": 10681
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b3_followers_finalize.py",
+      "git_blob_sha": "5f41199273d79acf6ca4bec9cee2ed1d1262e5a7",
+      "bytes": 7959
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B3_FOLLOWERS_REPORT.md",
+      "git_blob_sha": "f4c840f4a526c88fc7c0c99595b7bc76148764ea",
+      "bytes": 6480
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b3_followers_verify.py",
+      "git_blob_sha": "9ad987802e34025c3637b92a972871062ffd314d",
+      "bytes": 9099
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b4_rld_finalize.py",
+      "git_blob_sha": "88bafaa966b53903b4aa462df485ca8adf9d5c57",
+      "bytes": 8683
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B4_RLD_REPORT.md",
+      "git_blob_sha": "09a4576f0e21e10c53c9d4782a5e57da66b7cd78",
+      "bytes": 7119
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b4_rld_verify.py",
+      "git_blob_sha": "77bbdeb4e874f68f7b5cd4bb38a4e0946d66655e",
+      "bytes": 10355
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b5_afe3v0_blocker_verify.py",
+      "git_blob_sha": "ee4991b0ca51103dd22560b0ac314df3aa3fed90",
+      "bytes": 5621
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B5_AFE3V0_REPORT.md",
+      "git_blob_sha": "32f7b2217e65fb5cfe2f7451a134e55a8455915c",
+      "bytes": 10074
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b5a_u503_supply_finalize.py",
+      "git_blob_sha": "e38510be5533c25291fff07dedfc6a3b6c8d2b73",
+      "bytes": 12449
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B5A_U503_SUPPLY_REPORT.md",
+      "git_blob_sha": "7b4cec1ba1e258760418d039cf33b4cf83d67baa",
+      "bytes": 9686
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b5a_u503_supply_verify.py",
+      "git_blob_sha": "4401e5e444d0ed889111b2ddd7ee93146a5cc783",
+      "bytes": 11823
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b5b_opamp_supply_finalize.py",
+      "git_blob_sha": "c244afe39fc55b9190161fd1528a7ee66ba98a08",
+      "bytes": 13072
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B5B_OPAMP_SUPPLY_REPORT.md",
+      "git_blob_sha": "e59d1c4a15aed60525054f6e771ddc51e1c639d8",
+      "bytes": 10376
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b5b_opamp_supply_verify.py",
+      "git_blob_sha": "e6d63f25d6ea747903973e508d0e2a1beffced5b",
+      "bytes": 12947
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b5c_clamp_rail_finalize.py",
+      "git_blob_sha": "c9cde5f7a113be789b7b8112ef3104c698b96418",
+      "bytes": 14398
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B5C_CLAMP_RAIL_REPORT.md",
+      "git_blob_sha": "3dec8730c82ffd34e9869711465ba009597c1d48",
+      "bytes": 10211
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b5c_clamp_rail_verify.py",
+      "git_blob_sha": "5329758a79f68fb3149251664048b8842125ce4d",
+      "bytes": 13114
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b5d_adc3v0_finalize.py",
+      "git_blob_sha": "16aa97abcc19763398f34c392947ae8ca2675355",
+      "bytes": 13454
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B5D_ADC3V0_REPORT.md",
+      "git_blob_sha": "57b4d6bb397b3b6b91d8dd0219cc58692251cd77",
+      "bytes": 10518
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b5d_adc3v0_verify.py",
+      "git_blob_sha": "19538b5ea4d0c1041633a76c40f82d94dc93a193",
+      "bytes": 13819
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b5e_vcm_exception_finalize.py",
+      "git_blob_sha": "d970776b30b100987306908ced787f9c8089f9e1",
+      "bytes": 5562
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B5E_VCM_EXCEPTION_REPORT.md",
+      "git_blob_sha": "43f98add2670b946683957e32c5203eb5c481395",
+      "bytes": 3860
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b5e_vcm_exception_verify.py",
+      "git_blob_sha": "8756079d7bc0ff3803da18c4dc9fdc589d36a1b4",
+      "bytes": 9139
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b6_local_gnd_finalize.py",
+      "git_blob_sha": "bd57f1e88854666aa253813dc9ec1197b326b5e9",
+      "bytes": 12904
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3B6_LOCAL_GND_REPORT.md",
+      "git_blob_sha": "4b99d83a0803b8308189125b3678934eb9289621",
+      "bytes": 11150
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3b6_local_gnd_verify.py",
+      "git_blob_sha": "b770030abebdf901c2f99d839aea77279ddc53da",
+      "bytes": 10738
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3C_USB_DISCOVERY.md",
+      "git_blob_sha": "87b909e044b8a24f6428ba573342ff41ac9360a0",
+      "bytes": 19794
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3C0_USB_CORRECTION_REPORT.md",
+      "git_blob_sha": "2bd2980f6815aa6667f91a266c2958084e11b20f",
+      "bytes": 10806
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3C0_USB_MECHANICAL_PREFLIGHT.md",
+      "git_blob_sha": "dc17ddce2d2da1e8cddf04c7afd65c4b38f8de7e",
+      "bytes": 18811
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3C0M_USB_ARCHITECTURE_SEARCH.md",
+      "git_blob_sha": "7ce307e5d74826772f5c40f6e2ffeebc6f990285",
+      "bytes": 22419
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3C0P_USB_CORRECTION_PLAN.md",
+      "git_blob_sha": "84b267ca9a0e9feac302ca291df8eec55a365bec",
+      "bytes": 26034
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3C0Q_USB4215_QUALIFICATION.md",
+      "git_blob_sha": "65ff720a89ad91b9484c04f020aa25c071cd7054",
+      "bytes": 18266
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PHASE3C0R_USB_DFM_RESOLUTION.md",
+      "git_blob_sha": "93e4e66d0945b0cd99838d2a009d8d2e7f6d0f01",
+      "bytes": 16312
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/POWER_BUDGET.md",
+      "git_blob_sha": "071380eb0b5020edb696069c03b2916699c1e0fa",
+      "bytes": 2380
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/power_charging.kicad_sch",
+      "git_blob_sha": "4925c625b382b19cd1084116354167d4a4336f34",
+      "bytes": 47065
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/PRE_LAYOUT_AUDIT_2_ADS1294_POWER.md",
+      "git_blob_sha": "220dfb18b83f6f16d64332af4fd9c159f37f55a6",
+      "bytes": 12285
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/reference_vcm.kicad_sch",
+      "git_blob_sha": "486884750e15b91771c04d5fc2d08e1308078208",
+      "bytes": 24439
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/SAFETY_ASSUMPTIONS.md",
+      "git_blob_sha": "98eaec79efdf14e89159dc7dbf70dceb3c8ecedd",
+      "bytes": 2037
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/SCHEMATIC_ARCHITECTURE.md",
+      "git_blob_sha": "ee7cf49c961c1f15ff3884daca8a0e79d678f956",
+      "bytes": 7615
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/sym-lib-table",
+      "git_blob_sha": "0724d3b5a73e8f0c6446cba8158ef487b683a2b3",
+      "bytes": 173
+    },
+    {
+      "path": "hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/usb_c_interlock.kicad_sch",
+      "git_blob_sha": "9cf412019265644693b4e6e62d119c3b0cf27207",
+      "bytes": 45605
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/adc.kicad_sch",
+      "git_blob_sha": "8bb1567595a86c89cfa54038517b102db895dacf",
+      "bytes": 108688
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/analog_power.kicad_sch",
+      "git_blob_sha": "0b37ba28bdfe326f5f21737052e5898a11242afa",
+      "bytes": 44646
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/ARTHUR_EMG_RevA-erc.json",
+      "git_blob_sha": "e1125bb21fcd2e73a259d432e51c3188925d50f1",
+      "bytes": 3796
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/ARTHUR_EMG_RevA.kicad_dru",
+      "git_blob_sha": "7c2aa738392f0d3960f3a210d0d200195da890b3",
+      "bytes": 1042
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/ARTHUR_EMG_RevA.kicad_pcb",
+      "git_blob_sha": "bc09faf7c65a6ea012a0c2d2dc5f845853541034",
+      "bytes": 306124
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/ARTHUR_EMG_RevA.kicad_pro",
+      "git_blob_sha": "05da7c7d4411201d46a06d97136da99053ffebc3",
+      "bytes": 33910
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/ARTHUR_EMG_RevA.kicad_sch",
+      "git_blob_sha": "0606ae97f96178ff6fc95bb9492deaf35943d335",
+      "bytes": 44728
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/ARTHUR.kicad_sym",
+      "git_blob_sha": "18547fc911b509c203b87a3e788ba8eed11746f3",
+      "bytes": 89193
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/ARTHUR.pretty/R_0402_1005Metric.kicad_mod",
+      "git_blob_sha": "075c70061b49c7c4f6d0582bd72853bd983c4ba8",
+      "bytes": 1770
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/ARTHUR.pretty/TP_SMD_1x1mm.kicad_mod",
+      "git_blob_sha": "05f670566fea2d6b2355387ffde609bd6589d482",
+      "bytes": 1208
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/ARTHUR.pretty/TPD4E05U06_DQA_2x2mm_P0.5mm.kicad_mod",
+      "git_blob_sha": "481a75b6385546c20552ee73aada5eca01e734cf",
+      "bytes": 4036
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/ARTHUR.pretty/TPS63031_DSK_2.5x2.0mm_P0.5mm.kicad_mod",
+      "git_blob_sha": "df12ae952372ab9f58fe8819591c840512701a5d",
+      "bytes": 4159
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/COMPONENT_SELECTION.md",
+      "git_blob_sha": "5c64bf4bcfad33db85dcb09996c3fc2d67d31b3e",
+      "bytes": 2945
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/debug.kicad_sch",
+      "git_blob_sha": "27a54e44dc9a410373537b12c528970e3693dc2f",
+      "bytes": 12147
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/ELECTRICAL_DESIGN_FREEZE.md",
+      "git_blob_sha": "c90b585ca4055ead0471c6565be977f336e375bb",
+      "bytes": 7778
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/emg_channel.kicad_sch",
+      "git_blob_sha": "bab25133bea82d51b93204cce272db00bb6f1b45",
+      "bytes": 29708
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/ERC_UNRESOLVED.md",
+      "git_blob_sha": "e94c2766c67f106ba11743db6c56f6bec72bf802",
+      "bytes": 2346
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/fp-lib-table",
+      "git_blob_sha": "e30eb353ee29d4af37c645220a271a5d5615994c",
+      "bytes": 1492
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/mcu_ble.kicad_sch",
+      "git_blob_sha": "c5c3654df64541091a25aa93a4652bdc0b20b822",
+      "bytes": 36053
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/POWER_BUDGET.md",
+      "git_blob_sha": "071380eb0b5020edb696069c03b2916699c1e0fa",
+      "bytes": 2380
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/power_charging.kicad_sch",
+      "git_blob_sha": "fb218be4f9ab9e21b87584da3c919215b065996d",
+      "bytes": 47032
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/PRE_LAYOUT_AUDIT_2_ADS1294_POWER.md",
+      "git_blob_sha": "220dfb18b83f6f16d64332af4fd9c159f37f55a6",
+      "bytes": 12285
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/reference_vcm.kicad_sch",
+      "git_blob_sha": "54b00a6730083a1507ae70305dbd1f57a23876de",
+      "bytes": 18267
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/SAFETY_ASSUMPTIONS.md",
+      "git_blob_sha": "98eaec79efdf14e89159dc7dbf70dceb3c8ecedd",
+      "bytes": 2037
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/SCHEMATIC_ARCHITECTURE.md",
+      "git_blob_sha": "ee7cf49c961c1f15ff3884daca8a0e79d678f956",
+      "bytes": 7615
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/sym-lib-table",
+      "git_blob_sha": "0724d3b5a73e8f0c6446cba8158ef487b683a2b3",
+      "bytes": 173
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/ARTHUR_EMG_RevA/usb_c_interlock.kicad_sch",
+      "git_blob_sha": "c4aa59042734405cbdc967cafea68df34e92b701",
+      "bytes": 43280
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/PCB_PLACEMENT_PLAN.md",
+      "git_blob_sha": "4efddc5f6c5e5d631f910eacb40e1188102ba79c",
+      "bytes": 30856
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/PCB_ROUTING_LOG.md",
+      "git_blob_sha": "fcc1dececba5feca3f3a3a2a7b4f20a2e2cac47d",
+      "bytes": 10784
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/PCB_ROUTING_RULES.md",
+      "git_blob_sha": "e72b534331ac2c9d9e1fb902f82af3e4446a685a",
+      "bytes": 28565
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/pl_bom.py",
+      "git_blob_sha": "aeff811d3d48dda76baaa8a14f84c0506a69a414",
+      "bytes": 599
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/pl_emitmain.py",
+      "git_blob_sha": "3e803cb007106eb2bf2f51bf2b1b11183d898f43",
+      "bytes": 6244
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/pl_genpcb.py",
+      "git_blob_sha": "817ea37272d101114c8c6a8c3ed91ac8298a70f3",
+      "bytes": 1543
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/pl_place.py",
+      "git_blob_sha": "888525e7c460775f29ac4b8eb1c0f4f55b9918a3",
+      "bytes": 15252
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/pl_rows_a.py",
+      "git_blob_sha": "8298b72d7585d72037749d2b05e18c98f1a0c4ff",
+      "bytes": 2274
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/pl_rows_b.py",
+      "git_blob_sha": "214e926cc76c627089752a56092c700be06871de",
+      "bytes": 3991
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/PLACEMENT_GENERATOR.md",
+      "git_blob_sha": "ba53e86223194147e9e2e5aeea336073c86b9cd5",
+      "bytes": 8092
+    },
+    {
+      "path": "hardware/emg/rev-a/kicad/PRE_ROUTING_ECO.md",
+      "git_blob_sha": "dba2fd814ac3cf8707dbdcec3ddeac77bfe2c843",
+      "bytes": 5137
+    },
+    {
+      "path": "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/adc.kicad_sch",
+      "git_blob_sha": "1d9f36425f2e2a068c3959676ca60a1401d12ec4",
+      "bytes": 75473
+    },
+    {
+      "path": "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/analog_power_interlock.kicad_sch",
+      "git_blob_sha": "adedc420f0b842623d888892b83a798377ba51e6",
+      "bytes": 98416
+    },
+    {
+      "path": "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pro",
+      "git_blob_sha": "e0674e8e77b4968ccdb2f3b874b9831fe701dfd2",
+      "bytes": 1328
+    },
+    {
+      "path": "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_sch",
+      "git_blob_sha": "e3a7bf6f9e544f026400476958e1a46b527a1fac",
+      "bytes": 26344
+    },
+    {
+      "path": "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_RevB.kicad_sym",
+      "git_blob_sha": "40b5eb12ec4e3776fd7609129af239a876b50e98",
+      "bytes": 46942
+    },
+    {
+      "path": "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/emg_channel.kicad_sch",
+      "git_blob_sha": "85a2b52da804e7975269f70a2e0616da635cc51a",
+      "bytes": 121722
+    },
+    {
+      "path": "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/reference_vcm.kicad_sch",
+      "git_blob_sha": "9395b7c42900e8f3010d47c311d923060af13cd9",
+      "bytes": 108596
+    },
+    {
+      "path": "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/sym-lib-table",
+      "git_blob_sha": "e38d8e94d1ba03de8658f159341e71eedb6e43fe",
+      "bytes": 230
+    },
+    {
+      "path": "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/xiao_brain_interface.kicad_sch",
+      "git_blob_sha": "c432c95a8ee8170ca5eb9179934831250bdad4dd",
+      "bytes": 97180
+    },
+    {
+      "path": "hardware/emg/REVB_ARCHITECTURE_PROPOSAL.md",
+      "git_blob_sha": "a2756ee815c2522c5775b588eb2d0e0c55475578",
+      "bytes": 18595
+    },
+    {
+      "path": "hardware/emg/REVB_COST_MODEL.md",
+      "git_blob_sha": "b55b9d5f2ffff09d049c7a73de498c97b09c4a3f",
+      "bytes": 5765
+    },
+    {
+      "path": "hardware/emg/REVB_DIRECT_XIAO_ARCHITECTURE.md",
+      "git_blob_sha": "a66bef81c31efd1dbfa27f04ada7fdebc80f753f",
+      "bytes": 10791
+    },
+    {
+      "path": "hardware/emg/REVB_INTERFACE_SPEC.md",
+      "git_blob_sha": "338c64b9d24ac69c03cdbc7090d91cc8cbf60339",
+      "bytes": 11985
+    },
+    {
+      "path": "hardware/emg/REVB_MANUFACTURING_CONSTRAINTS.md",
+      "git_blob_sha": "b940fc1d7ab0739de39ca82e6c872393f8765297",
+      "bytes": 10071
+    },
+    {
+      "path": "hardware/emg/REVB_MIGRATION_MATRIX.md",
+      "git_blob_sha": "7e628fb2fa412545c52969e59f1c6fd31f206c49",
+      "bytes": 12346
+    },
+    {
+      "path": "hardware/emg/REVB_POWER_ARCHITECTURE.md",
+      "git_blob_sha": "9e60c022cb4463f517d4d66acf8132298e5c81cc",
+      "bytes": 10636
+    },
+    {
+      "path": "hardware/emg/REVB_RB00_CLOSURE.md",
+      "git_blob_sha": "4464043b40e79150a775e72897ce9b49e19b061e",
+      "bytes": 22933
+    },
+    {
+      "path": "hardware/emg/REVB_RB01_BOM.md",
+      "git_blob_sha": "b64d1fdf9be88ed06743e5843fc6b1ebb5ca67fc",
+      "bytes": 11154
+    },
+    {
+      "path": "hardware/emg/REVB_RB01_ERC_REPORT.md",
+      "git_blob_sha": "a03da3287d4506188c293f28635bbc11dbc1a827",
+      "bytes": 34817
+    },
+    {
+      "path": "hardware/emg/REVB_RB01_NETLIST_AUDIT.md",
+      "git_blob_sha": "d917bfdbcb5d1515821111b8aaa43ed028d4e988",
+      "bytes": 22722
+    },
+    {
+      "path": "hardware/emg/REVB_RB01_SCHEMATIC_REPORT.md",
+      "git_blob_sha": "5f7ebcf44a716546a3eb36d50a3c30e672606b53",
+      "bytes": 19288
+    },
+    {
+      "path": "hardware/emg/REVB_XIAO_ASSEMBLY_PROCEDURE.md",
+      "git_blob_sha": "a2c1f46b71b0e7d9099133f17b5097c8af8ee96d",
+      "bytes": 6979
+    },
+    {
+      "path": "hardware/emg/REVB_XIAO_MECHANICAL_CHECKLIST.md",
+      "git_blob_sha": "dcbaf6412a2b1a20e5c06ffacdf6f5aeccdaee34",
+      "bytes": 4169
+    },
+    {
+      "path": "hardware/emg/REVB_XIAO_MOUNTING_SPEC.md",
+      "git_blob_sha": "7360ce60db0de42cc0c1742cd1c9e8f683d96143",
+      "bytes": 9458
+    },
+    {
+      "path": "hardware/emg/XIAO_MOUNTING_1TO1.pdf",
+      "git_blob_sha": "4830c686cfadf1525dfaadd0309c00b562b52d7f",
+      "bytes": 33570
+    },
+    {
+      "path": "hardware/emg/XIAO_MOUNTING_1TO1.py",
+      "git_blob_sha": "d310928cb7cb4dfcf220c2ed8630c08762946dff",
+      "bytes": 16473
+    }
+  ]
+}

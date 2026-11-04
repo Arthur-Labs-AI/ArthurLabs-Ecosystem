@@ -1,0 +1,1033 @@
+{
+ "frozen": {
+  "frozen_at": "2026-10-08T16:55:01.126Z",
+  "corpus_sha256": "6a548ee51af52f2b1b656aef753b78b37d44f1155c0faf53b1caa6566eb83819",
+  "objective": "On dev, undisputed cases, first request per case: choose the threshold with the highest sensitivity on reframing=true cases subject to a false-alarm rate <= 20% on correct-target REVISE cases; ties -> higher threshold (more recall). Declared before any data was seen.",
+  "gate_thresholds_inherited_unchanged_from_p1a": {
+   "noul": {
+    "revise": 0.95,
+    "gap": 0.5,
+    "ambig": 0.4,
+    "new": 0.2
+   },
+   "choice": {
+    "revise": 0.99,
+    "margin": 0.8,
+    "new": 0.7
+   },
+   "hybrid": "REVISE only if Noul and Choice both REVISE with the same target; NEW only if both NEW; otherwise UNCERTAIN"
+  },
+  "project_boundary": "a REVISE whose target candidate is in a different Project than the capture becomes NEW",
+  "guard": {
+   "noul_redef_block_at_or_above": 0.8,
+   "choice_kind_reframing_block_at_or_above": 0.95
+  },
+  "dev_guard_fit": {
+   "n_reframing": 11,
+   "n_correct_revise": 22,
+   "auc_noul_redef": 1,
+   "auc_choice_reframing": 1,
+   "noul_rows": [
+    {
+     "t": 0.05,
+     "sens": 1,
+     "fpr": 0.9545454545454546
+    },
+    {
+     "t": 0.1,
+     "sens": 1,
+     "fpr": 0.3181818181818182
+    },
+    {
+     "t": 0.15,
+     "sens": 1,
+     "fpr": 0.18181818181818182
+    },
+    {
+     "t": 0.2,
+     "sens": 1,
+     "fpr": 0.045454545454545456
+    },
+    {
+     "t": 0.25,
+     "sens": 1,
+     "fpr": 0.045454545454545456
+    },
+    {
+     "t": 0.3,
+     "sens": 1,
+     "fpr": 0.045454545454545456
+    },
+    {
+     "t": 0.35,
+     "sens": 1,
+     "fpr": 0.045454545454545456
+    },
+    {
+     "t": 0.4,
+     "sens": 1,
+     "fpr": 0.045454545454545456
+    },
+    {
+     "t": 0.45,
+     "sens": 1,
+     "fpr": 0.045454545454545456
+    },
+    {
+     "t": 0.5,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.55,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.6,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.65,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.7,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.75,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.8,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.85,
+     "sens": 0.9090909090909091,
+     "fpr": 0
+    },
+    {
+     "t": 0.9,
+     "sens": 0.5454545454545454,
+     "fpr": 0
+    },
+    {
+     "t": 0.95,
+     "sens": 0.09090909090909091,
+     "fpr": 0
+    }
+   ],
+   "choice_rows": [
+    {
+     "t": 0.05,
+     "sens": 1,
+     "fpr": 0.09090909090909091
+    },
+    {
+     "t": 0.1,
+     "sens": 1,
+     "fpr": 0.09090909090909091
+    },
+    {
+     "t": 0.15,
+     "sens": 1,
+     "fpr": 0.09090909090909091
+    },
+    {
+     "t": 0.2,
+     "sens": 1,
+     "fpr": 0.09090909090909091
+    },
+    {
+     "t": 0.25,
+     "sens": 1,
+     "fpr": 0.045454545454545456
+    },
+    {
+     "t": 0.3,
+     "sens": 1,
+     "fpr": 0.045454545454545456
+    },
+    {
+     "t": 0.35,
+     "sens": 1,
+     "fpr": 0.045454545454545456
+    },
+    {
+     "t": 0.4,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.45,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.5,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.55,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.6,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.65,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.7,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.75,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.8,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.85,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.9,
+     "sens": 1,
+     "fpr": 0
+    },
+    {
+     "t": 0.95,
+     "sens": 1,
+     "fpr": 0
+    }
+   ]
+  }
+ },
+ "results": {
+  "holdout": {
+   "H0 hybrid (P1A gate)": {
+    "n": 60,
+    "clear_false_merges": "0/30 = 0.0% [-0.0%–11.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "13/22 = 59.1% [38.7%–76.7%]",
+    "missed_revisions": "9/22 = 40.9% [23.3%–61.3%]",
+    "disputed_merges": "0/8 = 0.0% [0.0%–32.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "0/10 = 0.0% [0.0%–27.8%]",
+    "reframing_merged_disputed": "0/4 = 0.0% [0.0%–49.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 13,
+     "rev": 22,
+     "safe": 30,
+     "disp": 8,
+     "dispMerge": 0
+    }
+   },
+   "H1 +project boundary": {
+    "n": 60,
+    "clear_false_merges": "0/30 = 0.0% [-0.0%–11.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "13/22 = 59.1% [38.7%–76.7%]",
+    "missed_revisions": "9/22 = 40.9% [23.3%–61.3%]",
+    "disputed_merges": "0/8 = 0.0% [0.0%–32.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "0/10 = 0.0% [0.0%–27.8%]",
+    "reframing_merged_disputed": "0/4 = 0.0% [0.0%–49.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 13,
+     "rev": 22,
+     "safe": 30,
+     "disp": 8,
+     "dispMerge": 0
+    }
+   },
+   "H2 +Noul guard": {
+    "n": 60,
+    "clear_false_merges": "0/30 = 0.0% [-0.0%–11.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "13/22 = 59.1% [38.7%–76.7%]",
+    "missed_revisions": "9/22 = 40.9% [23.3%–61.3%]",
+    "disputed_merges": "0/8 = 0.0% [0.0%–32.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "0/10 = 0.0% [0.0%–27.8%]",
+    "reframing_merged_disputed": "0/4 = 0.0% [0.0%–49.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 13,
+     "rev": 22,
+     "safe": 30,
+     "disp": 8,
+     "dispMerge": 0
+    }
+   },
+   "H3 +Choice guard": {
+    "n": 60,
+    "clear_false_merges": "0/30 = 0.0% [-0.0%–11.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "13/22 = 59.1% [38.7%–76.7%]",
+    "missed_revisions": "9/22 = 40.9% [23.3%–61.3%]",
+    "disputed_merges": "0/8 = 0.0% [0.0%–32.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "0/10 = 0.0% [0.0%–27.8%]",
+    "reframing_merged_disputed": "0/4 = 0.0% [0.0%–49.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 13,
+     "rev": 22,
+     "safe": 30,
+     "disp": 8,
+     "dispMerge": 0
+    }
+   },
+   "H4 +both guards": {
+    "n": 60,
+    "clear_false_merges": "0/30 = 0.0% [-0.0%–11.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "13/22 = 59.1% [38.7%–76.7%]",
+    "missed_revisions": "9/22 = 40.9% [23.3%–61.3%]",
+    "disputed_merges": "0/8 = 0.0% [0.0%–32.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "0/10 = 0.0% [0.0%–27.8%]",
+    "reframing_merged_disputed": "0/4 = 0.0% [0.0%–49.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 13,
+     "rev": 22,
+     "safe": 30,
+     "disp": 8,
+     "dispMerge": 0
+    }
+   },
+   "C0 Choice only (P1A gate)": {
+    "n": 60,
+    "clear_false_merges": "7/30 = 23.3% [11.8%–40.9%]",
+    "clear_false_merge_ids": [
+     "Q001",
+     "Q005",
+     "Q008",
+     "Q015",
+     "Q021",
+     "Q022",
+     "Q027"
+    ],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "21/22 = 95.5% [78.2%–99.2%]",
+    "missed_revisions": "1/22 = 4.5% [0.8%–21.8%]",
+    "disputed_merges": "2/8 = 25.0% [7.1%–59.1%]",
+    "disputed_merge_ids": [
+     "Q009",
+     "Q013"
+    ],
+    "reframing_merged_undisputed": "7/10 = 70.0% [39.7%–89.2%]",
+    "reframing_merged_disputed": "2/4 = 50.0% [15.0%–85.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 7,
+     "wrongT": 0,
+     "accepted": 21,
+     "rev": 22,
+     "safe": 30,
+     "disp": 8,
+     "dispMerge": 2
+    }
+   },
+   "C1 +project boundary": {
+    "n": 60,
+    "clear_false_merges": "7/30 = 23.3% [11.8%–40.9%]",
+    "clear_false_merge_ids": [
+     "Q001",
+     "Q005",
+     "Q008",
+     "Q015",
+     "Q021",
+     "Q022",
+     "Q027"
+    ],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "21/22 = 95.5% [78.2%–99.2%]",
+    "missed_revisions": "1/22 = 4.5% [0.8%–21.8%]",
+    "disputed_merges": "2/8 = 25.0% [7.1%–59.1%]",
+    "disputed_merge_ids": [
+     "Q009",
+     "Q013"
+    ],
+    "reframing_merged_undisputed": "7/10 = 70.0% [39.7%–89.2%]",
+    "reframing_merged_disputed": "2/4 = 50.0% [15.0%–85.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 7,
+     "wrongT": 0,
+     "accepted": 21,
+     "rev": 22,
+     "safe": 30,
+     "disp": 8,
+     "dispMerge": 2
+    }
+   },
+   "C2 +Noul guard": {
+    "n": 60,
+    "clear_false_merges": "1/30 = 3.3% [0.6%–16.7%]",
+    "clear_false_merge_ids": [
+     "Q008"
+    ],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "21/22 = 95.5% [78.2%–99.2%]",
+    "missed_revisions": "1/22 = 4.5% [0.8%–21.8%]",
+    "disputed_merges": "0/8 = 0.0% [0.0%–32.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "1/10 = 10.0% [1.8%–40.4%]",
+    "reframing_merged_disputed": "0/4 = 0.0% [0.0%–49.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 1,
+     "wrongT": 0,
+     "accepted": 21,
+     "rev": 22,
+     "safe": 30,
+     "disp": 8,
+     "dispMerge": 0
+    }
+   },
+   "C3 +Choice guard": {
+    "n": 60,
+    "clear_false_merges": "1/30 = 3.3% [0.6%–16.7%]",
+    "clear_false_merge_ids": [
+     "Q027"
+    ],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "21/22 = 95.5% [78.2%–99.2%]",
+    "missed_revisions": "1/22 = 4.5% [0.8%–21.8%]",
+    "disputed_merges": "0/8 = 0.0% [0.0%–32.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "1/10 = 10.0% [1.8%–40.4%]",
+    "reframing_merged_disputed": "0/4 = 0.0% [0.0%–49.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 1,
+     "wrongT": 0,
+     "accepted": 21,
+     "rev": 22,
+     "safe": 30,
+     "disp": 8,
+     "dispMerge": 0
+    }
+   },
+   "C4 +both guards": {
+    "n": 60,
+    "clear_false_merges": "0/30 = 0.0% [-0.0%–11.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "21/22 = 95.5% [78.2%–99.2%]",
+    "missed_revisions": "1/22 = 4.5% [0.8%–21.8%]",
+    "disputed_merges": "0/8 = 0.0% [0.0%–32.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "0/10 = 0.0% [0.0%–27.8%]",
+    "reframing_merged_disputed": "0/4 = 0.0% [0.0%–49.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 21,
+     "rev": 22,
+     "safe": 30,
+     "disp": 8,
+     "dispMerge": 0
+    }
+   },
+   "D gpt-4.1-mini": {
+    "n": 60,
+    "clear_false_merges": "10/30 = 33.3% [19.2%–51.2%]",
+    "clear_false_merge_ids": [
+     "Q001",
+     "Q005",
+     "Q008",
+     "Q015",
+     "Q018",
+     "Q021",
+     "Q022",
+     "Q027",
+     "Q099",
+     "Q111"
+    ],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "22/22 = 100.0% [85.1%–100.0%]",
+    "missed_revisions": "0/22 = 0.0% [0.0%–14.9%]",
+    "disputed_merges": "2/8 = 25.0% [7.1%–59.1%]",
+    "disputed_merge_ids": [
+     "Q013",
+     "Q096"
+    ],
+    "reframing_merged_undisputed": "8/10 = 80.0% [49.0%–94.3%]",
+    "reframing_merged_disputed": "1/4 = 25.0% [4.6%–69.9%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 10,
+     "wrongT": 0,
+     "accepted": 22,
+     "rev": 22,
+     "safe": 30,
+     "disp": 8,
+     "dispMerge": 2
+    }
+   },
+   "D+boundary": {
+    "n": 60,
+    "clear_false_merges": "10/30 = 33.3% [19.2%–51.2%]",
+    "clear_false_merge_ids": [
+     "Q001",
+     "Q005",
+     "Q008",
+     "Q015",
+     "Q018",
+     "Q021",
+     "Q022",
+     "Q027",
+     "Q099",
+     "Q111"
+    ],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "22/22 = 100.0% [85.1%–100.0%]",
+    "missed_revisions": "0/22 = 0.0% [0.0%–14.9%]",
+    "disputed_merges": "2/8 = 25.0% [7.1%–59.1%]",
+    "disputed_merge_ids": [
+     "Q013",
+     "Q096"
+    ],
+    "reframing_merged_undisputed": "8/10 = 80.0% [49.0%–94.3%]",
+    "reframing_merged_disputed": "1/4 = 25.0% [4.6%–69.9%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 10,
+     "wrongT": 0,
+     "accepted": 22,
+     "rev": 22,
+     "safe": 30,
+     "disp": 8,
+     "dispMerge": 2
+    }
+   }
+  },
+  "dev": {
+   "H0 hybrid (P1A gate)": {
+    "n": 60,
+    "clear_false_merges": "0/33 = 0.0% [0.0%–10.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "9/22 = 40.9% [23.3%–61.3%]",
+    "missed_revisions": "13/22 = 59.1% [38.7%–76.7%]",
+    "disputed_merges": "1/5 = 20.0% [3.6%–62.4%]",
+    "disputed_merge_ids": [
+     "Q023"
+    ],
+    "reframing_merged_undisputed": "0/11 = 0.0% [0.0%–25.9%]",
+    "reframing_merged_disputed": "1/3 = 33.3% [6.1%–79.2%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 9,
+     "rev": 22,
+     "safe": 33,
+     "disp": 5,
+     "dispMerge": 1
+    }
+   },
+   "H1 +project boundary": {
+    "n": 60,
+    "clear_false_merges": "0/33 = 0.0% [0.0%–10.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "9/22 = 40.9% [23.3%–61.3%]",
+    "missed_revisions": "13/22 = 59.1% [38.7%–76.7%]",
+    "disputed_merges": "1/5 = 20.0% [3.6%–62.4%]",
+    "disputed_merge_ids": [
+     "Q023"
+    ],
+    "reframing_merged_undisputed": "0/11 = 0.0% [0.0%–25.9%]",
+    "reframing_merged_disputed": "1/3 = 33.3% [6.1%–79.2%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 9,
+     "rev": 22,
+     "safe": 33,
+     "disp": 5,
+     "dispMerge": 1
+    }
+   },
+   "H2 +Noul guard": {
+    "n": 60,
+    "clear_false_merges": "0/33 = 0.0% [0.0%–10.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "9/22 = 40.9% [23.3%–61.3%]",
+    "missed_revisions": "13/22 = 59.1% [38.7%–76.7%]",
+    "disputed_merges": "0/5 = 0.0% [0.0%–43.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "0/11 = 0.0% [0.0%–25.9%]",
+    "reframing_merged_disputed": "0/3 = 0.0% [0.0%–56.2%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 9,
+     "rev": 22,
+     "safe": 33,
+     "disp": 5,
+     "dispMerge": 0
+    }
+   },
+   "H3 +Choice guard": {
+    "n": 60,
+    "clear_false_merges": "0/33 = 0.0% [0.0%–10.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "9/22 = 40.9% [23.3%–61.3%]",
+    "missed_revisions": "13/22 = 59.1% [38.7%–76.7%]",
+    "disputed_merges": "0/5 = 0.0% [0.0%–43.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "0/11 = 0.0% [0.0%–25.9%]",
+    "reframing_merged_disputed": "0/3 = 0.0% [0.0%–56.2%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 9,
+     "rev": 22,
+     "safe": 33,
+     "disp": 5,
+     "dispMerge": 0
+    }
+   },
+   "H4 +both guards": {
+    "n": 60,
+    "clear_false_merges": "0/33 = 0.0% [0.0%–10.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "9/22 = 40.9% [23.3%–61.3%]",
+    "missed_revisions": "13/22 = 59.1% [38.7%–76.7%]",
+    "disputed_merges": "0/5 = 0.0% [0.0%–43.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "0/11 = 0.0% [0.0%–25.9%]",
+    "reframing_merged_disputed": "0/3 = 0.0% [0.0%–56.2%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 9,
+     "rev": 22,
+     "safe": 33,
+     "disp": 5,
+     "dispMerge": 0
+    }
+   },
+   "C0 Choice only (P1A gate)": {
+    "n": 60,
+    "clear_false_merges": "5/33 = 15.2% [6.7%–30.9%]",
+    "clear_false_merge_ids": [
+     "Q002",
+     "Q010",
+     "Q011",
+     "Q012",
+     "Q020"
+    ],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "19/22 = 86.4% [66.7%–95.3%]",
+    "missed_revisions": "3/22 = 13.6% [4.7%–33.3%]",
+    "disputed_merges": "3/5 = 60.0% [23.1%–88.2%]",
+    "disputed_merge_ids": [
+     "Q014",
+     "Q017",
+     "Q023"
+    ],
+    "reframing_merged_undisputed": "5/11 = 45.5% [21.3%–72.0%]",
+    "reframing_merged_disputed": "3/3 = 100.0% [43.8%–100.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 5,
+     "wrongT": 0,
+     "accepted": 19,
+     "rev": 22,
+     "safe": 33,
+     "disp": 5,
+     "dispMerge": 3
+    }
+   },
+   "C1 +project boundary": {
+    "n": 60,
+    "clear_false_merges": "5/33 = 15.2% [6.7%–30.9%]",
+    "clear_false_merge_ids": [
+     "Q002",
+     "Q010",
+     "Q011",
+     "Q012",
+     "Q020"
+    ],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "19/22 = 86.4% [66.7%–95.3%]",
+    "missed_revisions": "3/22 = 13.6% [4.7%–33.3%]",
+    "disputed_merges": "3/5 = 60.0% [23.1%–88.2%]",
+    "disputed_merge_ids": [
+     "Q014",
+     "Q017",
+     "Q023"
+    ],
+    "reframing_merged_undisputed": "5/11 = 45.5% [21.3%–72.0%]",
+    "reframing_merged_disputed": "3/3 = 100.0% [43.8%–100.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 5,
+     "wrongT": 0,
+     "accepted": 19,
+     "rev": 22,
+     "safe": 33,
+     "disp": 5,
+     "dispMerge": 3
+    }
+   },
+   "C2 +Noul guard": {
+    "n": 60,
+    "clear_false_merges": "0/33 = 0.0% [0.0%–10.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "19/22 = 86.4% [66.7%–95.3%]",
+    "missed_revisions": "3/22 = 13.6% [4.7%–33.3%]",
+    "disputed_merges": "0/5 = 0.0% [0.0%–43.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "0/11 = 0.0% [0.0%–25.9%]",
+    "reframing_merged_disputed": "0/3 = 0.0% [0.0%–56.2%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 19,
+     "rev": 22,
+     "safe": 33,
+     "disp": 5,
+     "dispMerge": 0
+    }
+   },
+   "C3 +Choice guard": {
+    "n": 60,
+    "clear_false_merges": "0/33 = 0.0% [0.0%–10.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "19/22 = 86.4% [66.7%–95.3%]",
+    "missed_revisions": "3/22 = 13.6% [4.7%–33.3%]",
+    "disputed_merges": "0/5 = 0.0% [0.0%–43.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "0/11 = 0.0% [0.0%–25.9%]",
+    "reframing_merged_disputed": "0/3 = 0.0% [0.0%–56.2%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 19,
+     "rev": 22,
+     "safe": 33,
+     "disp": 5,
+     "dispMerge": 0
+    }
+   },
+   "C4 +both guards": {
+    "n": 60,
+    "clear_false_merges": "0/33 = 0.0% [0.0%–10.4%]",
+    "clear_false_merge_ids": [],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "19/22 = 86.4% [66.7%–95.3%]",
+    "missed_revisions": "3/22 = 13.6% [4.7%–33.3%]",
+    "disputed_merges": "0/5 = 0.0% [0.0%–43.4%]",
+    "disputed_merge_ids": [],
+    "reframing_merged_undisputed": "0/11 = 0.0% [0.0%–25.9%]",
+    "reframing_merged_disputed": "0/3 = 0.0% [0.0%–56.2%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 0,
+     "wrongT": 0,
+     "accepted": 19,
+     "rev": 22,
+     "safe": 33,
+     "disp": 5,
+     "dispMerge": 0
+    }
+   },
+   "D gpt-4.1-mini": {
+    "n": 60,
+    "clear_false_merges": "8/33 = 24.2% [12.8%–41.0%]",
+    "clear_false_merge_ids": [
+     "Q002",
+     "Q006",
+     "Q010",
+     "Q011",
+     "Q012",
+     "Q016",
+     "Q024",
+     "Q094"
+    ],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "22/22 = 100.0% [85.1%–100.0%]",
+    "missed_revisions": "0/22 = 0.0% [0.0%–14.9%]",
+    "disputed_merges": "4/5 = 80.0% [37.6%–96.4%]",
+    "disputed_merge_ids": [
+     "Q014",
+     "Q017",
+     "Q023",
+     "Q093"
+    ],
+    "reframing_merged_undisputed": "7/11 = 63.6% [35.4%–84.8%]",
+    "reframing_merged_disputed": "3/3 = 100.0% [43.8%–100.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 8,
+     "wrongT": 0,
+     "accepted": 22,
+     "rev": 22,
+     "safe": 33,
+     "disp": 5,
+     "dispMerge": 4
+    }
+   },
+   "D+boundary": {
+    "n": 60,
+    "clear_false_merges": "8/33 = 24.2% [12.8%–41.0%]",
+    "clear_false_merge_ids": [
+     "Q002",
+     "Q006",
+     "Q010",
+     "Q011",
+     "Q012",
+     "Q016",
+     "Q024",
+     "Q094"
+    ],
+    "wrong_target": "0/22 = 0.0% [0.0%–14.9%]",
+    "accepted_revisions": "22/22 = 100.0% [85.1%–100.0%]",
+    "missed_revisions": "0/22 = 0.0% [0.0%–14.9%]",
+    "disputed_merges": "4/5 = 80.0% [37.6%–96.4%]",
+    "disputed_merge_ids": [
+     "Q014",
+     "Q017",
+     "Q023",
+     "Q093"
+    ],
+    "reframing_merged_undisputed": "7/11 = 63.6% [35.4%–84.8%]",
+    "reframing_merged_disputed": "3/3 = 100.0% [43.8%–100.0%]",
+    "errors": 0,
+    "_k": {
+     "clearFM": 8,
+     "wrongT": 0,
+     "accepted": 22,
+     "rev": 22,
+     "safe": 33,
+     "disp": 5,
+     "dispMerge": 4
+    }
+   }
+  }
+ },
+ "guard": {
+  "holdout": {
+   "undisputed": {
+    "n_reframing": 10,
+    "n_detail_revisions": 22,
+    "noul_sensitivity": "8/10 = 80.0% [49.0%–94.3%]",
+    "noul_false_alarm": "0/22 = 0.0% [0.0%–14.9%]",
+    "noul_auc": 1,
+    "choice_sensitivity": "9/10 = 90.0% [59.6%–98.2%]",
+    "choice_false_alarm": "0/22 = 0.0% [0.0%–14.9%]",
+    "choice_auc": 1,
+    "either_sensitivity": "10/10 = 100.0% [72.2%–100.0%]",
+    "either_false_alarm": "0/22 = 0.0% [0.0%–14.9%]",
+    "llm_sensitivity": "10/10 = 100.0% [72.2%–100.0%]",
+    "llm_false_alarm": "1/22 = 4.5% [0.8%–21.8%]"
+   },
+   "disputed": {
+    "n_reframing": 4,
+    "n_detail_revisions": 0,
+    "noul_sensitivity": "4/4 = 100.0% [51.0%–100.0%]",
+    "noul_false_alarm": "n/a",
+    "noul_auc": null,
+    "choice_sensitivity": "4/4 = 100.0% [51.0%–100.0%]",
+    "choice_false_alarm": "n/a",
+    "choice_auc": null,
+    "either_sensitivity": "4/4 = 100.0% [51.0%–100.0%]",
+    "either_false_alarm": "n/a",
+    "llm_sensitivity": "4/4 = 100.0% [51.0%–100.0%]",
+    "llm_false_alarm": "n/a"
+   },
+   "all": {
+    "n_reframing": 14,
+    "n_detail_revisions": 22,
+    "noul_sensitivity": "12/14 = 85.7% [60.1%–96.0%]",
+    "noul_false_alarm": "0/22 = 0.0% [0.0%–14.9%]",
+    "noul_auc": 1,
+    "choice_sensitivity": "13/14 = 92.9% [68.5%–98.7%]",
+    "choice_false_alarm": "0/22 = 0.0% [0.0%–14.9%]",
+    "choice_auc": 1,
+    "either_sensitivity": "14/14 = 100.0% [78.5%–100.0%]",
+    "either_false_alarm": "0/22 = 0.0% [0.0%–14.9%]",
+    "llm_sensitivity": "14/14 = 100.0% [78.5%–100.0%]",
+    "llm_false_alarm": "1/22 = 4.5% [0.8%–21.8%]"
+   }
+  },
+  "dev": {
+   "undisputed": {
+    "n_reframing": 11,
+    "n_detail_revisions": 22,
+    "noul_sensitivity": "11/11 = 100.0% [74.1%–100.0%]",
+    "noul_false_alarm": "0/22 = 0.0% [0.0%–14.9%]",
+    "noul_auc": 1,
+    "choice_sensitivity": "11/11 = 100.0% [74.1%–100.0%]",
+    "choice_false_alarm": "0/22 = 0.0% [0.0%–14.9%]",
+    "choice_auc": 1,
+    "either_sensitivity": "11/11 = 100.0% [74.1%–100.0%]",
+    "either_false_alarm": "0/22 = 0.0% [0.0%–14.9%]",
+    "llm_sensitivity": "11/11 = 100.0% [74.1%–100.0%]",
+    "llm_false_alarm": "1/22 = 4.5% [0.8%–21.8%]"
+   },
+   "disputed": {
+    "n_reframing": 3,
+    "n_detail_revisions": 0,
+    "noul_sensitivity": "3/3 = 100.0% [43.8%–100.0%]",
+    "noul_false_alarm": "n/a",
+    "noul_auc": null,
+    "choice_sensitivity": "3/3 = 100.0% [43.8%–100.0%]",
+    "choice_false_alarm": "n/a",
+    "choice_auc": null,
+    "either_sensitivity": "3/3 = 100.0% [43.8%–100.0%]",
+    "either_false_alarm": "n/a",
+    "llm_sensitivity": "3/3 = 100.0% [43.8%–100.0%]",
+    "llm_false_alarm": "n/a"
+   },
+   "all": {
+    "n_reframing": 14,
+    "n_detail_revisions": 22,
+    "noul_sensitivity": "14/14 = 100.0% [78.5%–100.0%]",
+    "noul_false_alarm": "0/22 = 0.0% [0.0%–14.9%]",
+    "noul_auc": 1,
+    "choice_sensitivity": "14/14 = 100.0% [78.5%–100.0%]",
+    "choice_false_alarm": "0/22 = 0.0% [0.0%–14.9%]",
+    "choice_auc": 1,
+    "either_sensitivity": "14/14 = 100.0% [78.5%–100.0%]",
+    "either_false_alarm": "0/22 = 0.0% [0.0%–14.9%]",
+    "llm_sensitivity": "14/14 = 100.0% [78.5%–100.0%]",
+    "llm_false_alarm": "1/22 = 4.5% [0.8%–21.8%]"
+   }
+  }
+ },
+ "breakdown": {},
+ "consistency": {
+  "cases": 36,
+  "per_policy": {
+   "H0": {
+    "identical_3_fixed": 34,
+    "identical_all_6": 33,
+    "unstable": [
+     "Q057",
+     "Q080",
+     "Q095"
+    ]
+   },
+   "H4": {
+    "identical_3_fixed": 34,
+    "identical_all_6": 33,
+    "unstable": [
+     "Q057",
+     "Q080",
+     "Q095"
+    ]
+   },
+   "C4": {
+    "identical_3_fixed": 36,
+    "identical_all_6": 33,
+    "unstable": [
+     "Q068",
+     "Q092",
+     "Q101"
+    ]
+   }
+  },
+  "guard_drift": {
+   "max_redef_range_fixed_order": 0.03999999999999998,
+   "max_kind_reframing_range_fixed_order": 0.07
+  },
+  "persisted_bad": []
+ },
+ "ops": {
+  "jev": {
+   "requests": 396,
+   "ok": 396,
+   "api_errors": 0,
+   "retried": 0,
+   "models": [
+    "jev-1.13.0"
+   ],
+   "latency_ms": {
+    "p50": 270,
+    "p95": 465,
+    "max": 1119
+   },
+   "input_tokens": 454186,
+   "output_tokens": 67936,
+   "cost_usd": 0.019075812,
+   "schema_errors": 0
+  },
+  "openai": {
+   "requests": 192,
+   "ok": 192,
+   "api_errors": 0,
+   "retried": 0,
+   "models": [
+    "gpt-4.1-mini-2025-04-14"
+   ],
+   "latency_ms": {
+    "p50": 683,
+    "p95": 1222,
+    "max": 2528
+   },
+   "input_tokens": 38653,
+   "output_tokens": 1918,
+   "cost_usd": 0.018529999999999998
+  },
+  "ledger_spent_usd": 0.037605812000000016,
+  "budget_usd": 0.25
+ }
+}

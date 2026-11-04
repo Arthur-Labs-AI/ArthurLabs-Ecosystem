@@ -1,0 +1,2170 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "a97fa15c-1fc5-58b2-b141-2cdb10b18d4c")
+	(paper "A4")
+	(title_block
+		(title "MCU and Bluetooth Low Energy module")
+		(rev "A-architecture")
+		(company "A.R.T.H.U.R.")
+		(comment 1 "Architecture schematic; unresolved values are explicitly marked TBD")
+		(comment 2 "IC pin mappings verified against manufacturer datasheets listed in SCHEMATIC_ARCHITECTURE.md")
+	)
+	(lib_symbols
+		(symbol "ARTHUR:C_MCU"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "C_MCU"
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "C_MCU_0_1"
+				(rectangle
+					(start -2.54 -2.54)
+					(end 2.54 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "C_MCU_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "ARTHUR:MDBT50Q_1MV2"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -20.32 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "MDBT50Q_1MV2"
+				(at 0 20.32 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" "https://www.raytac.com/product/ins.php?index_id=89"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" "nRF52840 BLE module with integrated antenna"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "MDBT50Q_1MV2_0_1"
+				(rectangle
+					(start -7.62 -17.78)
+					(end 7.62 17.78)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "MDBT50Q_1MV2_1_1"
+				(pin passive line
+					(at -10.16 15.24 0)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -10.16 12.7 0)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -10.16 10.16 0)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "15"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -10.16 7.62 0)
+					(length 2.54)
+					(name "VDD"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "28"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -10.16 5.08 0)
+					(length 2.54)
+					(name "VDDH"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "30"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -10.16 2.54 0)
+					(length 2.54)
+					(name "DCCH"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "31"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -10.16 0 0)
+					(length 2.54)
+					(name "VBUS"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "32"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -10.16 -2.54 0)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "33"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -10.16 -5.08 0)
+					(length 2.54)
+					(name "D-"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "34"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -10.16 -7.62 0)
+					(length 2.54)
+					(name "D+"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "35"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -10.16 -10.16 0)
+					(length 2.54)
+					(name "P0.14"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "36"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -10.16 -12.7 0)
+					(length 2.54)
+					(name "P0.13"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "37"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at -10.16 -15.24 0)
+					(length 2.54)
+					(name "P0.16"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "38"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 15.24 180)
+					(length 2.54)
+					(name "P0.15"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "39"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 12.7 180)
+					(length 2.54)
+					(name "P0.18"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "40"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 10.16 180)
+					(length 2.54)
+					(name "P0.17"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "41"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 7.62 180)
+					(length 2.54)
+					(name "P0.19"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "42"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 5.08 180)
+					(length 2.54)
+					(name "P0.21"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "43"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 2.54 180)
+					(length 2.54)
+					(name "P0.20"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "44"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 0 180)
+					(length 2.54)
+					(name "P0.23"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "45"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 -2.54 180)
+					(length 2.54)
+					(name "P0.22"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "46"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 -5.08 180)
+					(length 2.54)
+					(name "P0.24"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "48"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 -7.62 180)
+					(length 2.54)
+					(name "P0.25"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "49"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 -10.16 180)
+					(length 2.54)
+					(name "SWDIO"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "51"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 -12.7 180)
+					(length 2.54)
+					(name "SWDCLK"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "53"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 -15.24 180)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "55"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+	)
+	(text "GPIO assignment is explicit and reviewable: P0.13 SCLK, P0.14 MOSI, P0.15 MISO, P0.16 CS, P0.17 DRDY, P0.19 START, P0.20 RESET, P0.21 PWDN."
+		(exclude_from_sim no)
+		(at 100 190 0)
+		(effects
+			(font
+				(size 1.1 1.1)
+			)
+		)
+		(uuid "0c78b9b0-d518-5be9-8fdf-ef30aff0a857")
+	)
+	(text "Freeze Rev A: P0.22 AFE_DISABLE_REQ reserved-unconnected (wired-OR review open, no copper); MCU control exits as MCU_SCLK/MOSI/CS_N/START/RESET_N/PWDN_N into ADC-sheet Ioff buffers; MISO/DRDY_N direct. MCU stays MDBT50Q-1MV2 (vs 1MEN: keep 1MV2)."
+		(exclude_from_sim no)
+		(at 100 200 0)
+		(effects
+			(font
+				(size 1.1 1.1)
+			)
+		)
+		(uuid "5a834c80-ee73-523c-99a6-90ac46b5507a")
+	)
+	(text "Raytac MDBT50Q-1MV2 (nRF52840). Integrated antenna avoids inventing an RF matching network."
+		(exclude_from_sim no)
+		(at 100 15 0)
+		(effects
+			(font
+				(size 1.1 1.1)
+			)
+		)
+		(uuid "8a67b56f-9099-5733-8e1f-8972ec9e9a30")
+	)
+	(no_connect
+		(at 100.33 82.55)
+		(uuid "2cb28244-0cbf-52c4-aaa2-b4a3709c534c")
+	)
+	(no_connect
+		(at 100.33 77.47)
+		(uuid "bc81b492-89b3-5313-89b5-7b2fed21e48d")
+	)
+	(no_connect
+		(at 80.01 72.39)
+		(uuid "d94dab75-9333-58dd-89c7-644a9ffc102a")
+	)
+	(global_label "MCU_SCLK"
+		(shape bidirectional)
+		(at 80.01 87.63 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "152d8388-59d8-503d-a1f8-da134afeba63")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.01 87.63 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_CS_N"
+		(shape bidirectional)
+		(at 80.01 90.17 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "18b044ea-0be4-562d-9d3f-01b2be695bb0")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.01 90.17 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_CS_N"
+		(shape bidirectional)
+		(at 42 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "1b61a4d5-a1f8-52f9-9fdb-178af2bef73e")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 42 157 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_RESET_N"
+		(shape bidirectional)
+		(at 100.33 62.23 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "22903ac7-710e-53ac-98c5-6118b52673e3")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.33 62.23 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_RESET_N_AFE"
+		(shape bidirectional)
+		(at 100.33 72.39 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "a1b2c3d4-1111-4222-8333-444455556666")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.33 72.39 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 80.01 59.69 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "22e00878-1efe-5de6-9e16-e3ec734caa15")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.01 59.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_START"
+		(shape bidirectional)
+		(at 100.33 67.31 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "34623349-a269-5600-bc49-c4aa25fcccff")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.33 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "SWDIO"
+		(shape bidirectional)
+		(at 100.33 85.09 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "4146b09e-52d8-5e00-8533-0ce624b4655a")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.33 85.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 80.01 64.77 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "420b6b78-aaa4-51a8-ad7c-002ec5aadaf9")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.01 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "AFE_DRDY_N"
+		(shape bidirectional)
+		(at 100.33 64.77 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "5df796f8-9ad7-5dcc-952e-e6305ade2c84")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.33 64.77 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "SWDCLK"
+		(shape bidirectional)
+		(at 15 169 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "5f510fa6-b19e-5f98-bce7-2dbfc607bfc4")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 15 169 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+
+	(global_label "AFE_DRDY_N"
+		(shape bidirectional)
+		(at 69 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "65022d3c-e88d-50e5-8056-d2162959f7f1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 69 157 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_D+"
+		(shape bidirectional)
+		(at 80.01 82.55 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "665be29d-89ac-59ab-a5a1-b5c4b11d7f20")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.01 82.55 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "CHG_N"
+		(shape bidirectional)
+		(at 100.33 74.93 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "6b2d22b6-0612-5243-af00-7100d57a1409")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.33 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_D-"
+		(shape bidirectional)
+		(at 80.01 80.01 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "7139e9b3-b322-58c8-bc48-d0bb6752da6d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.01 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_MOSI"
+		(shape bidirectional)
+		(at 177 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "72866153-c90c-5b5d-9ecb-8632f44755d1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 177 145 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "CHG_N"
+		(shape bidirectional)
+		(at 96 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "740c95c6-daa4-5c1e-83c9-1070e61f84b7")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 96 145 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "PGOOD_N"
+		(shape bidirectional)
+		(at 123 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "7e42d658-21b0-546e-b437-7c342dce0d92")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 123 145 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "3V3"
+		(shape bidirectional)
+		(at 139.7 74.93 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "8202db6c-2948-5b45-a5ab-d5a85c3af2ef")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 139.7 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 80.01 62.23 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "83fbf099-78bb-5be2-b951-6e8f93e1ebab")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.01 62.23 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_D-"
+		(shape bidirectional)
+		(at 69 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "846484cc-23e9-5711-a0e4-7146c132aea0")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 69 145 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "3V3"
+		(shape bidirectional)
+		(at 80.01 69.85 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "86d18dfd-5ad1-56ca-90d1-2ca0cc40f9b9")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.01 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "3V3"
+		(shape bidirectional)
+		(at 80.01 67.31 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "892c9fc9-8534-5311-b78b-01638c3ab557")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.01 67.31 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_VBUS"
+		(shape bidirectional)
+		(at 80.01 74.93 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "98ffee17-1812-5287-b85f-20462a32537c")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.01 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 96 169 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "9977004c-5c07-5b36-b2c4-43233257eaf0")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 96 169 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+
+	(global_label "GND"
+		(shape bidirectional)
+		(at 100.33 90.17 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "a7b1cf3a-ecec-5a6d-a852-85633a04b79a")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.33 90.17 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_START"
+		(shape bidirectional)
+		(at 96 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "a980c9e5-c4a5-50d0-95a9-54d25837be65")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 96 157 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "PGOOD_N"
+		(shape bidirectional)
+		(at 100.33 80.01 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "ab1e8a0e-c02e-5b0b-a39c-53f43bcd27b4")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.33 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "AFE_MISO"
+		(shape bidirectional)
+		(at 15 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "b278c022-a5ec-508b-94c6-297395b0fd7b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 15 157 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "SWDCLK"
+		(shape bidirectional)
+		(at 100.33 87.63 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "b545ed63-9b88-5601-92a1-5d48b9453fdf")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.33 87.63 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_D+"
+		(shape bidirectional)
+		(at 42 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "bee62b18-2c24-5b3b-b5c8-011f0209127d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 42 145 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "USB_VBUS"
+		(shape bidirectional)
+		(at 15 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "c3024aef-44d1-5f05-bee1-02e141985666")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 15 145 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "3V3"
+		(shape bidirectional)
+		(at 139.7 54.61 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "cf800f7b-784e-542c-b54a-ea3436382cb9")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 139.7 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 149.86 54.61 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "d54e6eaf-59fb-5498-934e-be0aa3aeb0a8")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 149.86 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "SWDIO"
+		(shape bidirectional)
+		(at 177 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "d9baeb92-768c-50ab-8c87-e5f2502b5911")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 177 157 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_SCLK"
+		(shape bidirectional)
+		(at 150 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "da26a81e-7f31-59f5-af07-4568eb6b28af")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 150 145 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_MOSI"
+		(shape bidirectional)
+		(at 80.01 85.09 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "daefafa3-2c36-551f-aefc-ad37d6260b99")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.01 85.09 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 149.86 74.93 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "dd5204eb-f18d-52de-8f77-e095718c034a")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 149.86 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "3V3"
+		(shape bidirectional)
+		(at 69 169 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "e536fbf6-8a55-5d16-adbe-c9c232a7f1e7")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 69 169 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_PWDN_N"
+		(shape bidirectional)
+		(at 100.33 69.85 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "ea6f6fc1-231c-5505-9373-787b060e8bd7")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.33 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "AFE_MISO"
+		(shape bidirectional)
+		(at 100.33 59.69 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "ec136631-7598-5072-8549-a0b1acbfda59")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 100.33 59.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 80.01 77.47 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "ef053d43-b515-57fb-84cb-d3815a55c161")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 80.01 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_RESET_N"
+		(shape bidirectional)
+		(at 42 169 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "f480642b-2218-5bc0-859b-6175670d1b2b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 42 169 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_PWDN_N"
+		(shape bidirectional)
+		(at 150 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "fd5a9f0e-21ad-5c94-a2a2-22dc75b52236")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 150 157 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(hierarchical_label "AFE_DRDY_N"
+		(shape bidirectional)
+		(at 69 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "2a3e3936-4d01-515e-938a-f4f0015fbe31")
+	)
+	(hierarchical_label "GND"
+		(shape bidirectional)
+		(at 96 169 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "2e2eb240-0601-5052-908b-e386824edfd0")
+	)
+	(hierarchical_label "MCU_CS_N"
+		(shape bidirectional)
+		(at 42 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "38a7207b-cbec-53e5-bc11-9b3bd7b77bf0")
+	)
+	(hierarchical_label "SWDIO"
+		(shape bidirectional)
+		(at 177 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "424ea6ec-ad3c-5161-b1a1-28e9383abd2a")
+	)
+	(hierarchical_label "MCU_RESET_N_AFE"
+		(shape bidirectional)
+		(at 123 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "55c37fad-145d-5bda-9e3d-248b2a44dadf")
+	)
+	(hierarchical_label "3V3"
+		(shape bidirectional)
+		(at 69 169 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "63efc64e-52ae-5d41-9e97-21d3f969d276")
+	)
+	(hierarchical_label "CHG_N"
+		(shape bidirectional)
+		(at 96 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "64d0c8c3-e983-5dbd-aab6-647527307315")
+	)
+	(hierarchical_label "USB_VBUS"
+		(shape bidirectional)
+		(at 15 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "847ac2e6-c8ce-5407-8449-44b7751e26fe")
+	)
+	(hierarchical_label "PGOOD_N"
+		(shape bidirectional)
+		(at 123 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "a1e2a9a9-fb1a-5630-969d-decda9c3daf0")
+	)
+	(hierarchical_label "SWDCLK"
+		(shape bidirectional)
+		(at 15 169 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "b29fff1c-58bc-5887-8032-92d7fc277591")
+	)
+	(hierarchical_label "USB_D+"
+		(shape bidirectional)
+		(at 42 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "bd84edcb-ad52-5ef6-be10-a40e200b676b")
+	)
+	(hierarchical_label "MCU_SCLK"
+		(shape bidirectional)
+		(at 150 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "c7cc6f9c-904f-5a7b-8a7b-8a193e43d583")
+	)
+	(hierarchical_label "MCU_MOSI"
+		(shape bidirectional)
+		(at 177 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "ccf8325a-2937-5a14-b35b-a6ccf8f5337b")
+	)
+	(hierarchical_label "AFE_MISO"
+		(shape bidirectional)
+		(at 15 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "d582bf81-be76-57f5-a82e-0769fff754ea")
+	)
+	(hierarchical_label "USB_D-"
+		(shape bidirectional)
+		(at 69 145 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "db2ff0c5-570e-5c6e-87a9-42a5c4e27d09")
+	)
+	(hierarchical_label "MCU_PWDN_N"
+		(shape bidirectional)
+		(at 150 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "dec04771-313d-5410-8736-6d30f844d5aa")
+	)
+	(hierarchical_label "MCU_START"
+		(shape bidirectional)
+		(at 96 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "e2127b1c-8c62-562b-a5df-c4e317b4d884")
+	)
+	(hierarchical_label "MCU_RESET_N"
+		(shape bidirectional)
+		(at 42 169 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "f240c2df-a650-57fe-9984-0fe07329deee")
+	)
+	(symbol
+		(lib_id "ARTHUR:C_MCU")
+		(at 144.78 74.93 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "108e9d2e-8bb9-579c-b16d-74b89725aa93")
+		(property "Reference" "C7002"
+			(at 144.78 62.23 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "TBD local high-frequency decoupling per module layout guide"
+			(at 144.78 87.63 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+			(at 144.78 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 144.78 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 144.78 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "6794cab5-b911-554f-b93d-02d7b59da9fd")
+		)
+		(pin "2"
+			(uuid "c4e60d8d-995a-5c1a-b14a-af64569b383f")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/25706f7c-04c2-5d7c-b661-977d4a398063"
+					(reference "C7002")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:C_MCU")
+		(at 144.78 54.61 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "756ab278-65cf-50e8-87cc-234aa466e893")
+		(property "Reference" "C7001"
+			(at 144.78 41.91 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "4.7 µF typical VDD decoupling (Nordic)"
+			(at 144.78 67.31 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+			(at 144.78 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 144.78 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 144.78 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "3d0b0e4b-d14a-55a3-bcab-9ea0e05f0883")
+		)
+		(pin "2"
+			(uuid "949e40df-1859-51cc-9155-6ebbaea1ed0e")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/25706f7c-04c2-5d7c-b661-977d4a398063"
+					(reference "C7001")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:MDBT50Q_1MV2")
+		(at 90.17 74.93 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "f214dd6a-162e-5fd3-ab65-3c62df118d58")
+		(property "Reference" "U7001"
+			(at 90.17 62.23 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "MDBT50Q-1MV2"
+			(at 90.17 87.63 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "RF_Module:Raytac_MDBT50Q"
+			(at 90.17 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" "https://www.raytac.com/product/ins.php?index_id=89"
+			(at 90.17 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" "nRF52840 BLE module with integrated antenna"
+			(at 90.17 74.93 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "a719d2a3-e8c9-5deb-8fcb-04162268a8d6")
+		)
+		(pin "2"
+			(uuid "7f363e3d-c91d-5f72-b1cd-2ab90a09b1fa")
+		)
+		(pin "15"
+			(uuid "fde93387-94d1-5da3-9b75-57c38e827c0b")
+		)
+		(pin "28"
+			(uuid "21af4b9d-e3d2-5bc6-b7ae-2646a42cc4d9")
+		)
+		(pin "30"
+			(uuid "c4828279-344f-5420-aa15-26b269a2d496")
+		)
+		(pin "31"
+			(uuid "edb46b17-6517-56f0-accd-2282982cd30b")
+		)
+		(pin "32"
+			(uuid "efc5f7e7-5628-5446-ade9-331a69694cb6")
+		)
+		(pin "33"
+			(uuid "7eba80dc-2079-5b56-823d-11493740a846")
+		)
+		(pin "34"
+			(uuid "98df0681-0254-5a38-bd71-7346327c9e57")
+		)
+		(pin "35"
+			(uuid "cd72e37d-b269-5d77-95ec-0e01acd3d57c")
+		)
+		(pin "36"
+			(uuid "3855d2cf-27df-5f4d-98e5-086fbe68a05c")
+		)
+		(pin "37"
+			(uuid "167d064f-615a-5215-bc1e-a684a8bc11e3")
+		)
+		(pin "38"
+			(uuid "2afea502-3fc5-5368-8f22-d9bc3fa519ef")
+		)
+		(pin "39"
+			(uuid "7d4280a5-686a-58cf-a10c-f4cd71035b8f")
+		)
+		(pin "40"
+			(uuid "f0f76861-3af9-53f8-b3c5-782b8dba4229")
+		)
+		(pin "41"
+			(uuid "61b1607e-75eb-5b6f-8dc7-3306772463ca")
+		)
+		(pin "42"
+			(uuid "b1b97c1c-2206-5a6c-aadb-ec4498066c5e")
+		)
+		(pin "43"
+			(uuid "ba585093-a9ca-5ee8-9eb7-462f3db9c5d1")
+		)
+		(pin "44"
+			(uuid "1f57b514-995a-5bd2-a0b9-f329e5979e22")
+		)
+		(pin "45"
+			(uuid "940127b6-dfec-5801-b325-9ae6b2fb49bb")
+		)
+		(pin "46"
+			(uuid "19f4975f-7f99-5c44-acdf-1f095fb3b9e2")
+		)
+		(pin "48"
+			(uuid "996311c8-423b-5822-8e89-7de0d53a3d0e")
+		)
+		(pin "49"
+			(uuid "40727bda-125c-5985-9283-14099c8184f1")
+		)
+		(pin "51"
+			(uuid "57ef8dfe-f3ab-5892-b0e3-99a620305b60")
+		)
+		(pin "53"
+			(uuid "f794d472-d180-5c85-aee0-fce1c6ab54be")
+		)
+		(pin "55"
+			(uuid "d54603d9-45d5-5d63-a0ac-6019246f45f5")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/25706f7c-04c2-5d7c-b661-977d4a398063"
+					(reference "U7001")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(text "MCU freeze: nRF52840 MDBT50Q-1MV2 kept; live LCSC/JLCPCB stock re-check is a BLOCKER at order."
+		(exclude_from_sim no)
+		(at 100 265 0)
+		(effects
+			(font
+				(size 1.1 1.1)
+			)
+		)
+		(uuid "mcu-freeze-note")
+	)
+
+	(global_label "MCU_RESET_N_AFE"
+		(shape bidirectional)
+		(at 123 157 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "d5279fb5-b972-404e-aaea-e5b04586ce10")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 123 157 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+
+)
+
+

@@ -1,0 +1,713 @@
+{
+ "counts": {
+  "tracks": 1518,
+  "vias": 201,
+  "pads": 364,
+  "holes": 202,
+  "zones": 20
+ },
+ "track_widths": {
+  "0.15": 24,
+  "0.2": 962,
+  "0.25": 81,
+  "0.3": 407,
+  "0.5": 44
+ },
+ "via_sizes": [
+  [
+   0.6,
+   0.3
+  ]
+ ],
+ "via_annular_ring_mm": [
+  0.15
+ ],
+ "pad_drills": [
+  1.4
+ ],
+ "netclass_summary": {
+  "SPI_FAST": 8,
+  "CTRL_SLOW": 9,
+  "ADC_CAP": 1,
+  "PWR_VBAT": 2,
+  "EMG_BUF": 24,
+  "EMG_ELECTRODE": 8,
+  "EMG_HIZ": 8,
+  "ANALOG_REF": 7,
+  "VBUS_SENSE": 1,
+  "PWR_DVDD": 2,
+  "PWR_AFE": 1,
+  "GND": 1,
+  "NC": 18
+ },
+ "class_aware_clearance_violations": [],
+ "class_aware_clearance_violation_count": 0,
+ "pairs_within_0.03_of_required": 8,
+ "rules_independent": {
+  "hiz_leakage_below_0.4_not_exempt": [],
+  "hiz_not_exempt_count": 0,
+  "hiz_exempt_count": 72,
+  "hiz_exempt_with_via": [],
+  "hiz_exempt_min": [
+   [
+    0.25,
+    "F.Cu",
+    "pad:U501.10",
+    "pad:U501.9"
+   ],
+   [
+    0.25,
+    "F.Cu",
+    "pad:U501.12",
+    "pad:U501.13"
+   ],
+   [
+    0.25,
+    "F.Cu",
+    "pad:U501.3",
+    "pad:U501.2"
+   ],
+   [
+    0.25,
+    "F.Cu",
+    "pad:U501.3",
+    "pad:U501.4"
+   ],
+   [
+    0.25,
+    "F.Cu",
+    "pad:U501.5",
+    "pad:U501.4"
+   ],
+   [
+    0.25,
+    "F.Cu",
+    "pad:U501.5",
+    "pad:U501.6"
+   ]
+  ],
+  "spi_to_hiz_below_2.0": [],
+  "spi_to_buf_below_1.0": []
+ },
+ "clearance": {
+  "F.Cu": {
+   "pairs_checked": 365,
+   "below_floor": 223,
+   "lowest": [
+    [
+     0.205,
+     "track:/ADC/X1_OUT",
+     "pad:C6009.1",
+     "/ADC/X1_OUT",
+     "/ADC/AFE_CAP"
+    ],
+    [
+     0.225,
+     "track:/Analog_Power_Interlock/VBAT_AFE",
+     "pad:R4001.1",
+     "/Analog_Power_Interlock/VBAT_AFE",
+     "VBAT"
+    ],
+    [
+     0.225,
+     "track:/Analog_Power_Interlock/VBUS_GATE",
+     "pad:Q3001.3",
+     "/Analog_Power_Interlock/VBUS_GATE",
+     "/Analog_Power_Interlock/AFE_EN"
+    ],
+    [
+     0.225,
+     "track:/SCLK",
+     "pad:U6001.15",
+     "/SCLK",
+     "/ADC/ADC_DOUT"
+    ],
+    [
+     0.225,
+     "track:/SCLK",
+     "pad:U6001.15",
+     "/SCLK",
+     "/ADC/ADC_DOUT"
+    ],
+    [
+     0.225,
+     "track:AFE_3V0",
+     "pad:C503.2",
+     "AFE_3V0",
+     "GND"
+    ],
+    [
+     0.225,
+     "track:GND",
+     "pad:X1.4",
+     "GND",
+     "DVDD_F"
+    ],
+    [
+     0.225,
+     "track:GND",
+     "pad:X1.4",
+     "GND",
+     "DVDD_F"
+    ],
+    [
+     0.225,
+     "track:GND",
+     "track:/XIAO_Brain_Interface/SCLK_MCU",
+     "GND",
+     "/XIAO_Brain_Interface/SCLK_MCU"
+    ],
+    [
+     0.225,
+     "track:GND",
+     "track:/XIAO_Brain_Interface/SCLK_MCU",
+     "GND",
+     "/XIAO_Brain_Interface/SCLK_MCU"
+    ],
+    [
+     0.225,
+     "track:GND",
+     "track:/XIAO_Brain_Interface/SCLK_MCU",
+     "GND",
+     "/XIAO_Brain_Interface/SCLK_MCU"
+    ],
+    [
+     0.225,
+     "track:GND",
+     "via:/XIAO_Brain_Interface/SCLK_MCU",
+     "GND",
+     "/XIAO_Brain_Interface/SCLK_MCU"
+    ],
+    [
+     0.225,
+     "via:/XIAO_Brain_Interface/MOSI_MCU",
+     "pad:R7102.2",
+     "/XIAO_Brain_Interface/MOSI_MCU",
+     "/MOSI"
+    ],
+    [
+     0.226,
+     "track:/SCLK",
+     "pad:U6001.15",
+     "/SCLK",
+     "/ADC/ADC_DOUT"
+    ],
+    [
+     0.226,
+     "track:GND",
+     "track:/XIAO_Brain_Interface/SCLK_MCU",
+     "GND",
+     "/XIAO_Brain_Interface/SCLK_MCU"
+    ],
+    [
+     0.227,
+     "via:AFE_3V0",
+     "pad:C203.2",
+     "AFE_3V0",
+     "GND"
+    ],
+    [
+     0.227,
+     "via:GND",
+     "pad:C4006.1",
+     "GND",
+     "AFE_3V0"
+    ],
+    [
+     0.238,
+     "track:AFE_3V0",
+     "pad:C501.2",
+     "AFE_3V0",
+     "GND"
+    ],
+    [
+     0.238,
+     "track:AFE_3V0",
+     "pad:C501.2",
+     "AFE_3V0",
+     "GND"
+    ],
+    [
+     0.238,
+     "track:AFE_3V0",
+     "pad:C503.2",
+     "AFE_3V0",
+     "GND"
+    ],
+    [
+     0.24,
+     "track:/Analog_Power_Interlock/VBAT_AFE",
+     "pad:R4001.1",
+     "/Analog_Power_Interlock/VBAT_AFE",
+     "VBAT"
+    ],
+    [
+     0.24,
+     "track:/Analog_Power_Interlock/VBAT_AFE",
+     "pad:R4001.1",
+     "/Analog_Power_Interlock/VBAT_AFE",
+     "VBAT"
+    ],
+    [
+     0.244,
+     "via:GND",
+     "pad:Q3001.1",
+     "GND",
+     "/Analog_Power_Interlock/VBUS_GATE"
+    ],
+    [
+     0.25,
+     "pad:U501.10",
+     "pad:U501.11",
+     "/CH2/HIZ_P",
+     "GND"
+    ],
+    [
+     0.25,
+     "pad:U501.11",
+     "pad:U501.12",
+     "GND",
+     "/CH2/HIZ_N"
+    ]
+   ]
+  },
+  "In2.Cu": {
+   "pairs_checked": 12,
+   "below_floor": 1,
+   "lowest": [
+    [
+     0.25,
+     "track:VBAT",
+     "via:GND",
+     "VBAT",
+     "GND"
+    ]
+   ]
+  },
+  "B.Cu": {
+   "pairs_checked": 34,
+   "below_floor": 12,
+   "lowest": [
+    [
+     0.3,
+     "track:/Analog_Power_Interlock/AFE_EN",
+     "via:GND",
+     "/Analog_Power_Interlock/AFE_EN",
+     "GND"
+    ],
+    [
+     0.3,
+     "track:/CH1/BUF_N",
+     "via:AFE_3V0",
+     "/CH1/BUF_N",
+     "AFE_3V0"
+    ],
+    [
+     0.3,
+     "track:/CH1_P",
+     "via:GND",
+     "/CH1_P",
+     "GND"
+    ],
+    [
+     0.3,
+     "track:/CH2_N",
+     "via:/CH1_N",
+     "/CH2_N",
+     "/CH1_N"
+    ],
+    [
+     0.3,
+     "track:/CH3_P",
+     "via:GND",
+     "/CH3_P",
+     "GND"
+    ],
+    [
+     0.3,
+     "track:/CH3_P",
+     "via:GND",
+     "/CH3_P",
+     "GND"
+    ],
+    [
+     0.3,
+     "track:/SCLK",
+     "via:/MISO",
+     "/SCLK",
+     "/MISO"
+    ],
+    [
+     0.3,
+     "track:AFE_3V0",
+     "via:/CH1/BUF_N",
+     "AFE_3V0",
+     "/CH1/BUF_N"
+    ],
+    [
+     0.3,
+     "track:AFE_3V0",
+     "via:/CH1/BUF_N",
+     "AFE_3V0",
+     "/CH1/BUF_N"
+    ],
+    [
+     0.3,
+     "track:AFE_3V0",
+     "via:/VCM",
+     "AFE_3V0",
+     "/VCM"
+    ],
+    [
+     0.3,
+     "track:AFE_3V0",
+     "via:GND",
+     "AFE_3V0",
+     "GND"
+    ],
+    [
+     0.3,
+     "track:AFE_3V0",
+     "via:GND",
+     "AFE_3V0",
+     "GND"
+    ]
+   ]
+  }
+ },
+ "hole_to_other_net_copper_below_0.25": [],
+ "hole_to_hole_below_0.5": [],
+ "copper_to_edge_lowest": [
+  [
+   0.5,
+   "pad",
+   "J101.1",
+   "F.Cu"
+  ],
+  [
+   0.5,
+   "pad",
+   "J101.2",
+   "F.Cu"
+  ],
+  [
+   0.5,
+   "pad",
+   "J201.1",
+   "F.Cu"
+  ],
+  [
+   0.5,
+   "pad",
+   "J201.2",
+   "F.Cu"
+  ],
+  [
+   0.5,
+   "pad",
+   "J301.1",
+   "F.Cu"
+  ],
+  [
+   0.5,
+   "pad",
+   "J301.2",
+   "F.Cu"
+  ],
+  [
+   0.5,
+   "pad",
+   "J401.1",
+   "F.Cu"
+  ],
+  [
+   0.5,
+   "pad",
+   "J401.2",
+   "F.Cu"
+  ],
+  [
+   0.5,
+   "pad",
+   "J5001.1",
+   "F.Cu"
+  ],
+  [
+   0.5,
+   "pad",
+   "J5001.2",
+   "F.Cu"
+  ],
+  [
+   0.55,
+   "via",
+   "GND",
+   "B.Cu"
+  ],
+  [
+   0.55,
+   "via",
+   "GND",
+   "F.Cu"
+  ]
+ ],
+ "planes": {
+  "In1.Cu": {
+   "zone": "In1 GND plane",
+   "fill_polygons": 1,
+   "signed_area_sum_mm2": 3057.1,
+   "abs_area_sum_mm2": 3057.1,
+   "rings": [
+    3934
+   ]
+  },
+  "In2.Cu": {
+   "zone": "In2 GND zones A/B",
+   "fill_polygons": 1,
+   "signed_area_sum_mm2": 2313.6,
+   "abs_area_sum_mm2": 2313.6,
+   "rings": [
+    3035
+   ]
+  }
+ },
+ "return_path": {
+  "samples": 6009,
+  "samples_on_own_via_excluded": 1176,
+  "over_in1_fill": 6001,
+  "pct": 99.87,
+  "uncovered_examples": [
+   [
+    44.63,
+    54.2,
+    "VBAT",
+    "F.Cu"
+   ],
+   [
+    44.27,
+    54.2,
+    "VBAT",
+    "F.Cu"
+   ],
+   [
+    43.9,
+    54.2,
+    "VBAT",
+    "F.Cu"
+   ],
+   [
+    44.63,
+    54.79,
+    "VBAT",
+    "F.Cu"
+   ],
+   [
+    44.63,
+    54.5,
+    "VBAT",
+    "F.Cu"
+   ],
+   [
+    44.63,
+    54.2,
+    "VBAT",
+    "F.Cu"
+   ],
+   [
+    43.55,
+    54.2,
+    "VBAT",
+    "F.Cu"
+   ],
+   [
+    43.9,
+    54.2,
+    "VBAT",
+    "F.Cu"
+   ]
+  ],
+  "nets_below_100pct": {
+   "VBAT": 94.0
+  }
+ },
+ "keepout_occupancy": [],
+ "keepouts": [
+  {
+   "name": "XIAO pads 15-22 underside",
+   "no_tracks": true,
+   "no_vias": true,
+   "layers": [
+    "F.Cu"
+   ]
+  },
+  {
+   "name": "XIAO USB shell oval S3 (GND)",
+   "no_tracks": true,
+   "no_vias": true,
+   "layers": [
+    "F.Cu"
+   ]
+  },
+  {
+   "name": "XIAO pad 25 GND window",
+   "no_tracks": true,
+   "no_vias": true,
+   "layers": [
+    "F.Cu"
+   ]
+  },
+  {
+   "name": "XIAO GND0 (BAT-) pad",
+   "no_tracks": true,
+   "no_vias": true,
+   "layers": [
+    "F.Cu"
+   ]
+  },
+  {
+   "name": "XIAO USB shell oval S2 (GND)",
+   "no_tracks": true,
+   "no_vias": true,
+   "layers": [
+    "F.Cu"
+   ]
+  },
+  {
+   "name": "XIAO USB shell oval S1 (GND)",
+   "no_tracks": true,
+   "no_vias": true,
+   "layers": [
+    "F.Cu"
+   ]
+  },
+  {
+   "name": "XIAO USB shell oval S4 (GND)",
+   "no_tracks": true,
+   "no_vias": true,
+   "layers": [
+    "F.Cu"
+   ]
+  },
+  {
+   "name": "HIZ_ESC_U503_L",
+   "no_tracks": false,
+   "no_vias": false,
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ]
+  },
+  {
+   "name": "XIAO no vias (above via field)",
+   "no_tracks": false,
+   "no_vias": true,
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ]
+  },
+  {
+   "name": "HIZ_ESC_U503_R",
+   "no_tracks": false,
+   "no_vias": false,
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ]
+  },
+  {
+   "name": "HIZ_ESC_U502_L",
+   "no_tracks": false,
+   "no_vias": false,
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ]
+  },
+  {
+   "name": "HIZ_ESC_U502_R",
+   "no_tracks": false,
+   "no_vias": false,
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ]
+  },
+  {
+   "name": "ZONE_A",
+   "no_tracks": false,
+   "no_vias": false,
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ]
+  },
+  {
+   "name": "XIAO no vias (below via field)",
+   "no_tracks": false,
+   "no_vias": true,
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ]
+  },
+  {
+   "name": "HIZ_ESC_U501_L",
+   "no_tracks": false,
+   "no_vias": false,
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ]
+  },
+  {
+   "name": "XIAO no vias (west of via field)",
+   "no_tracks": false,
+   "no_vias": true,
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ]
+  },
+  {
+   "name": "XIAO no vias (east of via field)",
+   "no_tracks": false,
+   "no_vias": true,
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ]
+  },
+  {
+   "name": "HIZ_ESC_U501_R",
+   "no_tracks": false,
+   "no_vias": false,
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ]
+  }
+ ]
+}

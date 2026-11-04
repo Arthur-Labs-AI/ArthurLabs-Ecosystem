@@ -1,0 +1,12 @@
+{
+  "$comment": "Machine-local SC-05 git catalog (ARTHUR_GIT_CONFIG points here). Copy to a git-ignored machine-local path and set ARTHUR_GIT_CONFIG to it. Uses the exact GitCapabilityConfig schema: repo entries bind repo_id -> { label, root_id (SC-04 scope), path (scope-relative, never absolute), allowed_modes }. No auto-discovery, no model-provided paths.",
+  "repositories": [
+    {
+      "id": "arthur",
+      "label": "A.R.T.H.U.R",
+      "root_id": "workspace",
+      "path": ".",
+      "allowed_modes": ["personal", "business"]
+    }
+  ]
+}

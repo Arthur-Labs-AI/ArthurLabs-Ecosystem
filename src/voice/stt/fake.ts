@@ -30,6 +30,10 @@ export class FakeSttProvider implements SttProvider {
   readonly startedUtterances: string[] = [];
   cancelCount = 0;
   framesConsumed = 0;
+  /** When true, frames delivered to transcribeStream are recorded (test-only). */
+  recordFrames = false;
+  /** Frames recorded while recordFrames is true (test-only, memory-only). */
+  readonly receivedFrames: PcmFrame[] = [];
 
   constructor(opts: { id?: string } = {}) {
     this.providerId = opts.id ?? "fake-stt";
@@ -67,6 +71,7 @@ export class FakeSttProvider implements SttProvider {
       void frame;
       frames += 1;
       this.framesConsumed += 1;
+      if (this.recordFrames) this.receivedFrames.push(frame);
       if (this.cancelled.has(options.utteranceId)) return;
     }
 
@@ -100,5 +105,10 @@ export class FakeSttProvider implements SttProvider {
   async cancel(utteranceId: string): Promise<void> {
     this.cancelCount += 1;
     this.cancelled.add(utteranceId);
+  }
+
+  /** Test helper: drop recorded frames (memory-only) between utterances. */
+  clearReceivedFrames(): void {
+    this.receivedFrames.length = 0;
   }
 }

@@ -1,0 +1,88 @@
+/* The knowledge graph: shape = kind, line geometry = relation. */
+.graph {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+.graph .node {
+  cursor: pointer;
+  transition: opacity var(--t-med) var(--ease);
+  outline: none;
+}
+.graph.mini .node {
+  cursor: default;
+}
+.graph .shape * {
+  fill: var(--ground);
+  stroke: var(--ink-2);
+  stroke-width: 1.5;
+  transition: stroke var(--t-fast), fill var(--t-fast);
+}
+.graph .shape path[fill="none"] {
+  fill: none;
+}
+.graph .shape[data-kind="idea"] * { stroke: var(--kind-idea); }
+.graph .shape[data-kind="task"] * { stroke: var(--kind-task); }
+.graph .shape[data-kind="decision"] * { stroke: var(--kind-decision); }
+.graph .shape[data-kind="question"] * { stroke: var(--kind-question); }
+.graph .shape[data-kind="note"] * { stroke: var(--kind-note); }
+.graph .node:hover .shape * {
+  stroke: var(--ink);
+}
+.graph .node.selected .shape *,
+.graph .node.selected .shape[data-kind] * {
+  stroke: var(--accent);
+  stroke-width: 2;
+  fill: var(--accent-soft);
+}
+.graph .node:focus-visible .shape * {
+  stroke: var(--accent);
+  stroke-width: 2.2;
+}
+.graph .node.dim,
+.graph .edge.dim {
+  opacity: 0.34;
+}
+.graph .edge {
+  transition: opacity var(--t-med) var(--ease);
+}
+.graph .edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  cursor: pointer;
+  outline: none;
+}
+.graph .edge-hit:focus-visible {
+  stroke: var(--accent);
+  stroke-opacity: 0.35;
+}
+.graph .node-label {
+  font: 500 14px var(--sans);
+  fill: var(--ink-2);
+  paint-order: stroke;
+  stroke: var(--ground);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.graph .node-label.selected {
+  fill: var(--ink);
+  font-weight: 550;
+}
+.graph.mini .node-label {
+  font-size: 11.5px;
+}
+.graph .edge-label text {
+  font: 500 11px var(--mono);
+}
+
+/* A node of another project: the same shape, a dashed outline, and a quiet "Project ↗" under the title. */
+.graph .node.external .shape * {
+  stroke-dasharray: 3 3;
+}
+.graph .node-label .node-project {
+  font: 500 12.5px var(--sans);
+  fill: var(--ink-3);
+}

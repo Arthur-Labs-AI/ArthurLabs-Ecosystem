@@ -1,0 +1,44 @@
+{
+ "AFE_3V0": {
+  "source_pad": "U4002.5",
+  "bound_mA": 13.8,
+  "max_R_mohm": 142.4,
+  "drop_mV": 1.965,
+  "basis": "ADS131M04 IAVDD max 4.0 mA (high-resolution, SBAS890D rev D, 6.5 Electrical Characteristics) + 12 x TLV9064 IQ max 0.80 mA (-40..125 C, SBOS839, VS = 5.5 V; at 3.0 V it is lower) + 0.2 mA bias/divider/leakage allowance"
+ },
+ "DVDD_F": {
+  "source_pad": "FB1.2",
+  "bound_mA": 11.4,
+  "max_R_mohm": 47.4,
+  "drop_mV": 0.54,
+  "basis": "X1 SX3M8.192M20F30TNN Icc <= 10 mA (15 pF, vendor sheet) + ADS131M04 IDVDD max 0.5 mA (SPI idle) + 0.5 mA SPI activity + 0.4 mA pull-ups (3.6 V / 10 k)"
+ },
+ "/XIAO_Brain_Interface/XIAO_3V3": {
+  "source_pad": "U1.12",
+  "bound_mA": 11.4,
+  "max_R_mohm": 7.2,
+  "drop_mV": 0.082,
+  "basis": "DVDD_F bound (the 3V3 pin feeds FB1 only on this board)"
+ },
+ "/Analog_Power_Interlock/VBAT_AFE": {
+  "source_pad": "C4007.1",
+  "bound_mA": 14.8,
+  "max_R_mohm": 16.7,
+  "drop_mV": 0.247,
+  "basis": "AFE_3V0 bound + TPS7A2030 ground current (<= 1 mA allowance)"
+ },
+ "VBAT": {
+  "source_pad": "J1.1",
+  "bound_mA": 500.0,
+  "max_R_mohm": 14.9,
+  "drop_mV": 7.45,
+  "basis": "system bound, not a datasheet value: XIAO ESP32-S3 radio TX peak ~355 mA + charger/board margin -> 0.5 A; measure"
+ },
+ "/XIAO_5V": {
+  "source_pad": "U1.14",
+  "bound_mA": 20.0,
+  "max_R_mohm": 56.6,
+  "drop_mV": 1.132,
+  "basis": "USB-presence sense / inhibit network only on this board (the charge current is inside the module); 20 mA allowance"
+ }
+}

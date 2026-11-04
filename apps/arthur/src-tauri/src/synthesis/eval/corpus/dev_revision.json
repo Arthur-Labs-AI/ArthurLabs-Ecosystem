@@ -1,0 +1,822 @@
+[
+ {
+  "id": "d01-s",
+  "lang": "en",
+  "change": "additive",
+  "base": "Arthur is a mobile application.",
+  "claim": "Arthur will also support desktop.",
+  "draft": {
+   "revised_body": "Arthur is a mobile application that will also support desktop.",
+   "retained": [
+    {
+     "text": "Arthur is a mobile application.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Arthur will also support desktop.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "d01-a",
+  "lang": "en",
+  "change": "additive",
+  "base": "Arthur is a mobile application.",
+  "claim": "Arthur will also support desktop.",
+  "draft": {
+   "revised_body": "Arthur is a mobile application that will also support desktop and a web version for teams.",
+   "retained": [
+    {
+     "text": "Arthur is a mobile application.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Arthur will also support desktop.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_new_fact"
+ },
+ {
+  "id": "d01-b",
+  "lang": "en",
+  "change": "additive",
+  "base": "Arthur is a mobile application.",
+  "claim": "Arthur will also support desktop.",
+  "draft": {
+   "revised_body": "Arthur is a mobile application that will support desktop from March 2027.",
+   "retained": [
+    {
+     "text": "Arthur is a mobile application.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Arthur will also support desktop.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_date_quantity_or_entity"
+ },
+ {
+  "id": "d01-c",
+  "lang": "en",
+  "change": "additive",
+  "base": "Arthur is a mobile application.",
+  "claim": "Arthur will also support desktop.",
+  "draft": {
+   "revised_body": "Arthur will also support desktop.",
+   "retained": [
+    {
+     "text": "Arthur is a mobile application.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Arthur will also support desktop.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "dropped_existing_fact"
+ },
+ {
+  "id": "d01-d",
+  "lang": "en",
+  "change": "additive",
+  "base": "Arthur is a mobile application.",
+  "claim": "Arthur will also support desktop.",
+  "draft": {
+   "revised_body": "Arthur is not a mobile application and will also support desktop.",
+   "retained": [
+    {
+     "text": "Arthur is a mobile application.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Arthur will also support desktop.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "negation_or_qualifier_changed"
+ },
+ {
+  "id": "d01-e",
+  "lang": "en",
+  "change": "additive",
+  "base": "Arthur is a mobile application.",
+  "claim": "Arthur will also support desktop.",
+  "draft": {
+   "revised_body": "Arthur is a mobile application and definitely supports desktop.",
+   "retained": [
+    {
+     "text": "Arthur is a mobile application.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Arthur will also support desktop.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "certainty_increased"
+ },
+ {
+  "id": "d02-s",
+  "lang": "bg",
+  "change": "additive",
+  "base": "Артър е мобилно приложение.",
+  "claim": "Артър ще поддържа и десктоп.",
+  "draft": {
+   "revised_body": "Артър е мобилно приложение, което ще поддържа и десктоп.",
+   "retained": [
+    {
+     "text": "Артър е мобилно приложение.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Артър ще поддържа и десктоп.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "d02-a",
+  "lang": "bg",
+  "change": "additive",
+  "base": "Артър е мобилно приложение.",
+  "claim": "Артър ще поддържа и десктоп.",
+  "draft": {
+   "revised_body": "Артър е мобилно приложение, което ще поддържа и десктоп и уеб версия за екипи.",
+   "retained": [
+    {
+     "text": "Артър е мобилно приложение.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Артър ще поддържа и десктоп.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_new_fact"
+ },
+ {
+  "id": "d02-b",
+  "lang": "bg",
+  "change": "additive",
+  "base": "Артър е мобилно приложение.",
+  "claim": "Артър ще поддържа и десктоп.",
+  "draft": {
+   "revised_body": "Артър ще поддържа и десктоп.",
+   "retained": [
+    {
+     "text": "Артър е мобилно приложение.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Артър ще поддържа и десктоп.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "dropped_existing_fact"
+ },
+ {
+  "id": "d02-c",
+  "lang": "bg",
+  "change": "additive",
+  "base": "Артър е мобилно приложение.",
+  "claim": "Артър ще поддържа и десктоп.",
+  "draft": {
+   "revised_body": "Артър не е мобилно приложение, което ще поддържа и десктоп.",
+   "retained": [
+    {
+     "text": "Артър е мобилно приложение.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Артър ще поддържа и десктоп.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "negation_or_qualifier_changed"
+ },
+ {
+  "id": "d03-s",
+  "lang": "en",
+  "change": "correction",
+  "base": "Arthur stores notes in the cloud.",
+  "claim": "Correction: notes are only stored locally.",
+  "draft": {
+   "revised_body": "Arthur stores notes locally.",
+   "retained": [
+    {
+     "text": "Arthur stores notes in the cloud.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Correction: notes are only stored locally.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "in the cloud",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "d03-a",
+  "lang": "en",
+  "change": "correction",
+  "base": "Arthur stores notes in the cloud.",
+  "claim": "Correction: notes are only stored locally.",
+  "draft": {
+   "revised_body": "Arthur stores notes in the cloud and locally.",
+   "retained": [
+    {
+     "text": "Arthur stores notes in the cloud.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Correction: notes are only stored locally.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "in the cloud",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "unsafe",
+  "unsafe_class": "wrong_correction_behaviour"
+ },
+ {
+  "id": "d03-b",
+  "lang": "en",
+  "change": "correction",
+  "base": "Arthur stores notes in the cloud.",
+  "claim": "Correction: notes are only stored locally.",
+  "draft": {
+   "revised_body": "Arthur stores notes locally, including audio and settings.",
+   "retained": [
+    {
+     "text": "Arthur stores notes in the cloud.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Correction: notes are only stored locally.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "in the cloud",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "unsafe",
+  "unsafe_class": "scope_expanded"
+ },
+ {
+  "id": "d03-c",
+  "lang": "en",
+  "change": "correction",
+  "base": "Arthur stores notes in the cloud.",
+  "claim": "Correction: notes are only stored locally.",
+  "draft": {
+   "revised_body": "Arthur stores notes locally and encrypts them with AES-256.",
+   "retained": [
+    {
+     "text": "Arthur stores notes in the cloud.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Correction: notes are only stored locally.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "in the cloud",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_date_quantity_or_entity"
+ },
+ {
+  "id": "d04-s",
+  "lang": "mixed",
+  "change": "additive",
+  "base": "Проектът Arthur използва SQLite за съхранение.",
+  "claim": "Също така използва SQLCipher за криптиране.",
+  "draft": {
+   "revised_body": "Проектът Arthur използва SQLite за съхранение и SQLCipher за криптиране.",
+   "retained": [
+    {
+     "text": "Проектът Arthur използва SQLite за съхранение.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Също така използва SQLCipher за криптиране.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "d04-a",
+  "lang": "mixed",
+  "change": "additive",
+  "base": "Проектът Arthur използва SQLite за съхранение.",
+  "claim": "Също така използва SQLCipher за криптиране.",
+  "draft": {
+   "revised_body": "Проектът Arthur използва SQLite за съхранение, SQLCipher за криптиране и Postgres за синхронизация.",
+   "retained": [
+    {
+     "text": "Проектът Arthur използва SQLite за съхранение.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Също така използва SQLCipher за криптиране.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_date_quantity_or_entity"
+ },
+ {
+  "id": "d04-b",
+  "lang": "mixed",
+  "change": "additive",
+  "base": "Проектът Arthur използва SQLite за съхранение.",
+  "claim": "Също така използва SQLCipher за криптиране.",
+  "draft": {
+   "revised_body": "Проектът Arthur използва SQLCipher за криптиране.",
+   "retained": [
+    {
+     "text": "Проектът Arthur използва SQLite за съхранение.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Също така използва SQLCipher за криптиране.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "dropped_existing_fact"
+ },
+ {
+  "id": "d05-s",
+  "lang": "unicode",
+  "change": "additive",
+  "base": "Idea 💡: weekly review of captures.",
+  "claim": "Make the review happen on Sundays ☀️.",
+  "draft": {
+   "revised_body": "Idea 💡: weekly review of captures, on Sundays ☀️.",
+   "retained": [
+    {
+     "text": "Idea 💡: weekly review of captures.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Make the review happen on Sundays ☀️.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "d05-a",
+  "lang": "unicode",
+  "change": "additive",
+  "base": "Idea 💡: weekly review of captures.",
+  "claim": "Make the review happen on Sundays ☀️.",
+  "draft": {
+   "revised_body": "Idea 💡: weekly review of captures, every Sunday at 18:00 ☀️.",
+   "retained": [
+    {
+     "text": "Idea 💡: weekly review of captures.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Make the review happen on Sundays ☀️.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_date_quantity_or_entity"
+ },
+ {
+  "id": "d05-b",
+  "lang": "unicode",
+  "change": "additive",
+  "base": "Idea 💡: weekly review of captures.",
+  "claim": "Make the review happen on Sundays ☀️.",
+  "draft": {
+   "revised_body": "Idea 💡: daily review of all captures, on Sundays ☀️.",
+   "retained": [
+    {
+     "text": "Idea 💡: weekly review of captures.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Make the review happen on Sundays ☀️.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "scope_expanded"
+ },
+ {
+  "id": "d06-s",
+  "lang": "en",
+  "change": "replacement",
+  "base": "The launch is planned for the spring.",
+  "claim": "Decision: the launch moves to autumn instead of spring.",
+  "draft": {
+   "revised_body": "The launch is planned for the autumn.",
+   "retained": [
+    {
+     "text": "The launch is planned for the spring.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Decision: the launch moves to autumn instead of spring.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "for the spring",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "d06-a",
+  "lang": "en",
+  "change": "replacement",
+  "base": "The launch is planned for the spring.",
+  "claim": "Decision: the launch moves to autumn instead of spring.",
+  "draft": {
+   "revised_body": "The launch is planned for the spring and autumn.",
+   "retained": [
+    {
+     "text": "The launch is planned for the spring.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Decision: the launch moves to autumn instead of spring.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "for the spring",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "unsafe",
+  "unsafe_class": "wrong_correction_behaviour"
+ },
+ {
+  "id": "d07-a",
+  "lang": "en",
+  "change": "additive",
+  "base": "The mobile app syncs with Google Calendar. The Hub syncs with Notion.",
+  "claim": "It should also sync with Outlook.",
+  "draft": {
+   "revised_body": "The mobile app syncs with Google Calendar and Outlook. The Hub syncs with Notion.",
+   "retained": [
+    {
+     "text": "The mobile app syncs with Google Calendar. The Hub syncs with Notion.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "It should also sync with Outlook.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "ambiguous_reference_guessed"
+ },
+ {
+  "id": "d07-b",
+  "lang": "en",
+  "change": "additive",
+  "base": "The mobile app syncs with Google Calendar. The Hub syncs with Notion.",
+  "claim": "It should also sync with Outlook.",
+  "draft": {
+   "revised_body": "The mobile app syncs with Google Calendar. The Hub syncs with Notion. Something should also sync with Outlook.",
+   "retained": [
+    {
+     "text": "The mobile app syncs with Google Calendar. The Hub syncs with Notion.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "It should also sync with Outlook.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "d08-s",
+  "lang": "bg",
+  "change": "correction",
+  "base": "Срещата е в понеделник.",
+  "claim": "Поправка: срещата е във вторник.",
+  "draft": {
+   "revised_body": "Срещата е във вторник.",
+   "retained": [
+    {
+     "text": "Срещата е в понеделник.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Поправка: срещата е във вторник.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "в понеделник",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "d08-a",
+  "lang": "bg",
+  "change": "correction",
+  "base": "Срещата е в понеделник.",
+  "claim": "Поправка: срещата е във вторник.",
+  "draft": {
+   "revised_body": "Срещата е в понеделник и във вторник.",
+   "retained": [
+    {
+     "text": "Срещата е в понеделник.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Поправка: срещата е във вторник.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "в понеделник",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "unsafe",
+  "unsafe_class": "wrong_correction_behaviour"
+ },
+ {
+  "id": "d08-b",
+  "lang": "bg",
+  "change": "correction",
+  "base": "Срещата е в понеделник.",
+  "claim": "Поправка: срещата е във вторник.",
+  "draft": {
+   "revised_body": "Срещата е във вторник в 10:00 ч.",
+   "retained": [
+    {
+     "text": "Срещата е в понеделник.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Поправка: срещата е във вторник.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": [
+    {
+     "text": "в понеделник",
+     "source": "base"
+    }
+   ]
+  },
+  "label": "unsafe",
+  "unsafe_class": "unsupported_date_quantity_or_entity"
+ },
+ {
+  "id": "d09-a",
+  "lang": "en",
+  "change": "additive",
+  "base": "Notes can be tagged.",
+  "claim": "Notes can also be pinned.",
+  "draft": {
+   "revised_body": "Notes can be tagged and pinned.",
+   "retained": [
+    {
+     "text": "Notes can be tagged.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Notes can also be pinned.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ },
+ {
+  "id": "d09-b",
+  "lang": "en",
+  "change": "additive",
+  "base": "Notes can be tagged.",
+  "claim": "Notes can also be pinned.",
+  "draft": {
+   "revised_body": "Notes can be tagged and pinned.",
+   "retained": [
+    {
+     "text": "Notes can be tagged.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "Pinned notes sync to every device",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "evidence_misattributed"
+ },
+ {
+  "id": "d10-a",
+  "lang": "en",
+  "change": "additive",
+  "base": "The beta runs on Android.",
+  "claim": "The beta also runs on tablets.",
+  "draft": {
+   "revised_body": "The beta runs on Android phones but never on tablets.",
+   "retained": [
+    {
+     "text": "The beta runs on Android.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "The beta also runs on tablets.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "unsafe",
+  "unsafe_class": "contradiction"
+ },
+ {
+  "id": "d10-s",
+  "lang": "en",
+  "change": "additive",
+  "base": "The beta runs on Android.",
+  "claim": "The beta also runs on tablets.",
+  "draft": {
+   "revised_body": "The beta runs on Android, including tablets.",
+   "retained": [
+    {
+     "text": "The beta runs on Android.",
+     "source": "base"
+    }
+   ],
+   "added": [
+    {
+     "text": "The beta also runs on tablets.",
+     "source": "new"
+    }
+   ],
+   "withdrawn": []
+  },
+  "label": "safe",
+  "unsafe_class": null
+ }
+]

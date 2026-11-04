@@ -1,0 +1,980 @@
+{
+  "pad_net_mismatches": [],
+  "BOM": {
+    "rows": 28,
+    "refs": 126,
+    "duplicates": [],
+    "field_mismatches": [],
+    "PCB_refs_absent_from_BOM": [
+      "TP1",
+      "TP2",
+      "TP3",
+      "TP4",
+      "TP5",
+      "TP6",
+      "TP7",
+      "TP8",
+      "U1"
+    ]
+  },
+  "CPL": {
+    "rows": 126,
+    "mismatches": [],
+    "ref_set_matches_BOM": true,
+    "correction_qualification": "Arithmetic verified; factory reel zero-angle UNVERIFIED"
+  },
+  "ECO": {
+    "general_equal": true,
+    "setup_equal": true,
+    "layers_equal": true,
+    "gr_line_equal": true,
+    "gr_arc_equal": true,
+    "zone_equal": false,
+    "net_equal": true,
+    "changed_poses": [
+      {
+        "ref": "R101",
+        "before": [
+          "at",
+          "37.4",
+          "10.1",
+          "-90"
+        ],
+        "after": [
+          "at",
+          "37.4",
+          "11.1",
+          "180"
+        ]
+      },
+      {
+        "ref": "R5002",
+        "before": [
+          "at",
+          "44.45",
+          "10.3",
+          "-90"
+        ],
+        "after": [
+          "at",
+          "44.45",
+          "12.2",
+          "90"
+        ]
+      },
+      {
+        "ref": "R202",
+        "before": [
+          "at",
+          "23.3",
+          "10.1",
+          "-90"
+        ],
+        "after": [
+          "at",
+          "23.3",
+          "11.1",
+          "180"
+        ]
+      },
+      {
+        "ref": "J101",
+        "before": [
+          "at",
+          "35.05",
+          "3.75",
+          "180"
+        ],
+        "after": [
+          "at",
+          "35.05",
+          "5.15",
+          "180"
+        ]
+      },
+      {
+        "ref": "R102",
+        "before": [
+          "at",
+          "32.7",
+          "10.1",
+          "-90"
+        ],
+        "after": [
+          "at",
+          "32.7",
+          "11.1",
+          "180"
+        ]
+      },
+      {
+        "ref": "J5001",
+        "before": [
+          "at",
+          "44.45",
+          "3.75",
+          "180"
+        ],
+        "after": [
+          "at",
+          "44.45",
+          "5.15",
+          "180"
+        ]
+      },
+      {
+        "ref": "R302",
+        "before": [
+          "at",
+          "13.9",
+          "10.1",
+          "-90"
+        ],
+        "after": [
+          "at",
+          "13.9",
+          "11.1",
+          "180"
+        ]
+      },
+      {
+        "ref": "J401",
+        "before": [
+          "at",
+          "6.85",
+          "3.75",
+          "180"
+        ],
+        "after": [
+          "at",
+          "6.85",
+          "5.15",
+          "180"
+        ]
+      },
+      {
+        "ref": "J201",
+        "before": [
+          "at",
+          "25.65",
+          "3.75",
+          "180"
+        ],
+        "after": [
+          "at",
+          "25.65",
+          "5.15",
+          "180"
+        ]
+      },
+      {
+        "ref": "R301",
+        "before": [
+          "at",
+          "18.6",
+          "10.1",
+          "-90"
+        ],
+        "after": [
+          "at",
+          "18.6",
+          "11.1",
+          "180"
+        ]
+      },
+      {
+        "ref": "R402",
+        "before": [
+          "at",
+          "4.5",
+          "10.1",
+          "-90"
+        ],
+        "after": [
+          "at",
+          "4.5",
+          "11.1",
+          "180"
+        ]
+      },
+      {
+        "ref": "J301",
+        "before": [
+          "at",
+          "16.25",
+          "3.75",
+          "180"
+        ],
+        "after": [
+          "at",
+          "16.25",
+          "5.15",
+          "180"
+        ]
+      },
+      {
+        "ref": "R201",
+        "before": [
+          "at",
+          "28",
+          "10.1",
+          "-90"
+        ],
+        "after": [
+          "at",
+          "28",
+          "11.1",
+          "180"
+        ]
+      },
+      {
+        "ref": "R401",
+        "before": [
+          "at",
+          "9.2",
+          "10.1",
+          "-90"
+        ],
+        "after": [
+          "at",
+          "9.2",
+          "11.1",
+          "180"
+        ]
+      }
+    ],
+    "footprint_refs_equal": true
+  },
+  "JST": {
+    "J401": {
+      "pose": [
+        "at",
+        "6.85",
+        "5.15",
+        "180"
+      ],
+      "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "pads": [
+        {
+          "at": [
+            "at",
+            "-1",
+            "-2.85",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1",
+            "3.5"
+          ],
+          "net": [
+            "net",
+            "/CH4/ELEC_P"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "1"
+        },
+        {
+          "at": [
+            "at",
+            "1",
+            "-2.85",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1",
+            "3.5"
+          ],
+          "net": [
+            "net",
+            "/CH4/ELEC_N"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "2"
+        },
+        {
+          "at": [
+            "at",
+            "-3.35",
+            "2.9",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1.5",
+            "3.4"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J401-PadMP)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "MP"
+        },
+        {
+          "at": [
+            "at",
+            "3.35",
+            "2.9",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1.5",
+            "3.4"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J401-PadMP)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "MP"
+        }
+      ]
+    },
+    "J301": {
+      "pose": [
+        "at",
+        "16.25",
+        "5.15",
+        "180"
+      ],
+      "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "pads": [
+        {
+          "at": [
+            "at",
+            "-1",
+            "-2.85",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1",
+            "3.5"
+          ],
+          "net": [
+            "net",
+            "/CH3/ELEC_P"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "1"
+        },
+        {
+          "at": [
+            "at",
+            "1",
+            "-2.85",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1",
+            "3.5"
+          ],
+          "net": [
+            "net",
+            "/CH3/ELEC_N"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "2"
+        },
+        {
+          "at": [
+            "at",
+            "-3.35",
+            "2.9",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1.5",
+            "3.4"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J301-PadMP)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "MP"
+        },
+        {
+          "at": [
+            "at",
+            "3.35",
+            "2.9",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1.5",
+            "3.4"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J301-PadMP)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "MP"
+        }
+      ]
+    },
+    "J201": {
+      "pose": [
+        "at",
+        "25.65",
+        "5.15",
+        "180"
+      ],
+      "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "pads": [
+        {
+          "at": [
+            "at",
+            "-1",
+            "-2.85",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1",
+            "3.5"
+          ],
+          "net": [
+            "net",
+            "/CH2/ELEC_P"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "1"
+        },
+        {
+          "at": [
+            "at",
+            "1",
+            "-2.85",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1",
+            "3.5"
+          ],
+          "net": [
+            "net",
+            "/CH2/ELEC_N"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "2"
+        },
+        {
+          "at": [
+            "at",
+            "-3.35",
+            "2.9",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1.5",
+            "3.4"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J201-PadMP)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "MP"
+        },
+        {
+          "at": [
+            "at",
+            "3.35",
+            "2.9",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1.5",
+            "3.4"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J201-PadMP)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "MP"
+        }
+      ]
+    },
+    "J101": {
+      "pose": [
+        "at",
+        "35.05",
+        "5.15",
+        "180"
+      ],
+      "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "pads": [
+        {
+          "at": [
+            "at",
+            "-1",
+            "-2.85",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1",
+            "3.5"
+          ],
+          "net": [
+            "net",
+            "/CH1/ELEC_P"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "1"
+        },
+        {
+          "at": [
+            "at",
+            "1",
+            "-2.85",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1",
+            "3.5"
+          ],
+          "net": [
+            "net",
+            "/CH1/ELEC_N"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "2"
+        },
+        {
+          "at": [
+            "at",
+            "-3.35",
+            "2.9",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1.5",
+            "3.4"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J101-PadMP)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "MP"
+        },
+        {
+          "at": [
+            "at",
+            "3.35",
+            "2.9",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1.5",
+            "3.4"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J101-PadMP)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "MP"
+        }
+      ]
+    },
+    "J5001": {
+      "pose": [
+        "at",
+        "44.45",
+        "5.15",
+        "180"
+      ],
+      "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "pads": [
+        {
+          "at": [
+            "at",
+            "-1",
+            "-2.85",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1",
+            "3.5"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J5001-Pad1)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "1"
+        },
+        {
+          "at": [
+            "at",
+            "1",
+            "-2.85",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1",
+            "3.5"
+          ],
+          "net": [
+            "net",
+            "/Reference_VCM/RLD_SAFE"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "2"
+        },
+        {
+          "at": [
+            "at",
+            "-3.35",
+            "2.9",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1.5",
+            "3.4"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J5001-PadMP)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "MP"
+        },
+        {
+          "at": [
+            "at",
+            "3.35",
+            "2.9",
+            "180"
+          ],
+          "size": [
+            "size",
+            "1.5",
+            "3.4"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J5001-PadMP)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "MP"
+        }
+      ]
+    },
+    "J1": {
+      "pose": [
+        "at",
+        "44.4",
+        "38.3",
+        "90"
+      ],
+      "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "pads": [
+        {
+          "at": [
+            "at",
+            "-1",
+            "-2.85",
+            "90"
+          ],
+          "size": [
+            "size",
+            "1",
+            "3.5"
+          ],
+          "net": [
+            "net",
+            "VBAT"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "1"
+        },
+        {
+          "at": [
+            "at",
+            "1",
+            "-2.85",
+            "90"
+          ],
+          "size": [
+            "size",
+            "1",
+            "3.5"
+          ],
+          "net": [
+            "net",
+            "GND"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "2"
+        },
+        {
+          "at": [
+            "at",
+            "-3.35",
+            "2.9",
+            "90"
+          ],
+          "size": [
+            "size",
+            "1.5",
+            "3.4"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J1-PadMP)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "MP"
+        },
+        {
+          "at": [
+            "at",
+            "3.35",
+            "2.9",
+            "90"
+          ],
+          "size": [
+            "size",
+            "1.5",
+            "3.4"
+          ],
+          "net": [
+            "net",
+            "unconnected-(J1-PadMP)"
+          ],
+          "layers": [
+            "layers",
+            "F.Cu",
+            "F.Mask",
+            "F.Paste"
+          ],
+          "number": "MP"
+        }
+      ]
+    }
+  },
+  "drill_coordinates": {
+    "count": 192,
+    "exact_match_to_source": true
+  },
+  "filter_model": {
+    "assumptions": "unity opamps, 2.2uF nominal, 100k bias per leg, 1k series, 1nF shunt +10nF differential; ADC 300k differential typical represented as150k half circuit (gain1 only), no digital filter or electrode source model",
+    "response": [
+      {
+        "Hz": 0.1,
+        "magnitude": 0.08231810895348177,
+        "dB": -21.690092298561915
+      },
+      {
+        "Hz": 0.5,
+        "magnitude": 0.3808532992348815,
+        "dB": -8.384845557442004
+      },
+      {
+        "Hz": 0.723,
+        "magnitude": 0.5105796994594098,
+        "dB": -5.838729132900351
+      },
+      {
+        "Hz": 1,
+        "magnitude": 0.632711967598935,
+        "dB": -3.975879017691548
+      },
+      {
+        "Hz": 1.2,
+        "magnitude": 0.6983946827102134,
+        "dB": -3.117981516588218
+      },
+      {
+        "Hz": 10,
+        "magnitude": 0.9771957172354669,
+        "dB": -0.20036890161589546
+      },
+      {
+        "Hz": 20,
+        "magnitude": 0.9823618158356541,
+        "dB": -0.15457053590992748
+      },
+      {
+        "Hz": 50,
+        "magnitude": 0.9838063575238416,
+        "dB": -0.1418075056577218
+      },
+      {
+        "Hz": 100,
+        "magnitude": 0.9839535289194173,
+        "dB": -0.14050824703268194
+      },
+      {
+        "Hz": 450,
+        "magnitude": 0.9824271104552791,
+        "dB": -0.1539932302740476
+      },
+      {
+        "Hz": 500,
+        "magnitude": 0.9820359266831098,
+        "dB": -0.157452474916415
+      },
+      {
+        "Hz": 1000,
+        "magnitude": 0.9759125825677645,
+        "dB": -0.21178165094374216
+      },
+      {
+        "Hz": 7500,
+        "magnitude": 0.70501718298265,
+        "dB": -3.0360059613462815
+      },
+      {
+        "Hz": 10000,
+        "magnitude": 0.6004560540163745,
+        "dB": -4.43037544204365
+      }
+    ],
+    "unloaded_HP_Hz": 0.7234315595086153,
+    "VCM_nominal_V": 1.5,
+    "VCM_divider_tolerance_V": [
+      1.4849999999999999,
+      1.5150000000000001
+    ],
+    "normal_contact_bias_10M_uA": 0.15,
+    "rail_fault_10k_3V_uA": 304.5,
+    "reference_100k_3V_uA": 30.45
+  }
+}

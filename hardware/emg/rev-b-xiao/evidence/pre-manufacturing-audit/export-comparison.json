@@ -1,0 +1,50 @@
+{
+  "ARTHUR_EMG_RevB-B_Cu.gbl": {
+    "equal_except_timestamp": true
+  },
+  "ARTHUR_EMG_RevB-B_Mask.gbs": {
+    "equal_except_timestamp": true
+  },
+  "ARTHUR_EMG_RevB-B_Silkscreen.gbo": {
+    "equal_except_timestamp": true
+  },
+  "ARTHUR_EMG_RevB-Edge_Cuts.gm1": {
+    "equal_except_timestamp": true
+  },
+  "ARTHUR_EMG_RevB-F_Cu.gtl": {
+    "equal_except_timestamp": true
+  },
+  "ARTHUR_EMG_RevB-F_Mask.gts": {
+    "equal_except_timestamp": true
+  },
+  "ARTHUR_EMG_RevB-F_Paste.gtp": {
+    "equal_except_timestamp": true
+  },
+  "ARTHUR_EMG_RevB-F_Silkscreen.gto": {
+    "equal_except_timestamp": true
+  },
+  "ARTHUR_EMG_RevB-In1_Cu.g1": {
+    "equal_except_timestamp": true
+  },
+  "ARTHUR_EMG_RevB-In2_Cu.g2": {
+    "equal_except_timestamp": true
+  },
+  "ARTHUR_EMG_RevB.drl": {
+    "equal_except_timestamp": false,
+    "diff": "--- \n\n+++ \n\n@@ -1,5 +1,5 @@\n\n M48\n-; DRILL file KiCad 10.0.6 date 2026-10-19T13:38:20\n+; DRILL file KiCad 10.0.6 date 2026-10-19T18:26:14\n ; FORMAT={-:-/ absolute / metric / decimal}\n ; #@! TF.GenerationSoftware,Kicad,Pcbnew,10.0.6\n ; #@! TF.FileFunction,MixedPlating,1,4",
+    "equal_excluding_drill_dated_header": false
+  },
+  "ARTHUR_EMG_RevB_BOM.csv": {
+    "equal_rows": true,
+    "rows": 28
+  },
+  "ARTHUR_EMG_RevB_CPL.csv": {
+    "equal_rows": true,
+    "rows": 126
+  },
+  "ARTHUR_EMG_RevB_CPL_raw_KiCad_rotation.csv": {
+    "equal_rows": true,
+    "rows": 126
+  },
+  "zip_member_sets_equal": true
+}

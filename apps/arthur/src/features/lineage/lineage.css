@@ -1,0 +1,90 @@
+/* Evolution: a structured, temporal rail. Rounded rectangles, right-angle joins, never circles. */
+.rail-scroll {
+  overflow-x: auto;
+  padding: 4px 0;
+}
+.lineage {
+  display: block;
+}
+.lineage .l-edge {
+  fill: none;
+  stroke: var(--ink-4);
+  stroke-width: 1.6;
+  transition: stroke var(--t-fast);
+}
+.lineage .l-edge.merge {
+  stroke: var(--ink-3);
+}
+.lineage .l-edge.selected {
+  stroke: var(--accent);
+}
+.lineage .l-node {
+  cursor: pointer;
+  outline: none;
+}
+.lineage .l-box {
+  fill: var(--ground);
+  stroke: var(--ink-3);
+  stroke-width: 1.4;
+  transition: stroke var(--t-fast), fill var(--t-fast);
+}
+.lineage .l-node:hover .l-box {
+  stroke: var(--ink);
+}
+.lineage .l-node.origin-distillation .l-box {
+  stroke: var(--pencil);
+}
+.lineage .l-mergebar {
+  stroke: var(--ink-2);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.lineage .l-node.current .l-box {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+.lineage .l-node.current .l-id {
+  fill: var(--accent-ink);
+}
+.lineage .l-node.current .l-mergebar {
+  stroke: var(--accent-ink);
+}
+.lineage .l-node.selected .l-box,
+.lineage .l-node.picked .l-box {
+  stroke: var(--ink);
+  stroke-width: 1.8;
+}
+.lineage .l-halo {
+  fill: none;
+  stroke: var(--accent);
+  stroke-opacity: 0.45;
+}
+.lineage .l-node:focus-visible .l-halo,
+.lineage .l-node:focus-visible .l-box {
+  stroke: var(--accent);
+  stroke-width: 2.2;
+}
+.lineage .l-id {
+  font: 650 14px var(--sans);
+  fill: var(--ink);
+}
+.lineage .l-tag {
+  font: 500 11px var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  fill: var(--ink-3);
+}
+.lineage .l-node.current .l-tag {
+  fill: var(--accent);
+}
+.lineage .l-cap {
+  font: 450 13px var(--sans);
+  fill: var(--ink-2);
+}
+.lineage .l-when {
+  font: 400 11px var(--mono);
+  fill: var(--ink-3);
+}
+.lineage-sketch {
+  display: block;
+}

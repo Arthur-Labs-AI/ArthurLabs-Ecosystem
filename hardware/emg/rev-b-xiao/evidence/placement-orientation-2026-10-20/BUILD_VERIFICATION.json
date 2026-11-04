@@ -1,0 +1,16 @@
+{
+  "source_files_unchanged": 27,
+  "CPL_rows": 126,
+  "only_changed_CPL_references": [
+    "J101",
+    "J201",
+    "J301",
+    "J401",
+    "J5001"
+  ],
+  "J1_unchanged": true,
+  "BOM_and_raw_CPL_byte_identical": true,
+  "Gerbers_geometry_identical": true,
+  "original_Gerber_zip_reused": true,
+  "assembly_preview_verified": false
+}

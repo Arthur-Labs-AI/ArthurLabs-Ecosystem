@@ -1,0 +1,3563 @@
+{
+ "frozen": {
+  "frozen_at": "2026-10-08T17:23:21.495Z",
+  "corpus_sha256": "7b86c37f3ed441690564f48e3e1dac0e194f559dd4a19272a3665c81a35ebecb",
+  "selection": "dev split, non-disputed events, one JEV run with random option order",
+  "objective": "min (false edges + wrongful removals + user-edge violations), then max strict true positives, then max correct stale removals, then most conservative thresholds",
+  "thresholds": {
+   "B": {
+    "pMin": 0.7,
+    "margin": 0.6
+   },
+   "C": {
+    "tau": 0.9,
+    "rev": 0.2,
+    "keep": 0.1
+   },
+   "D": {
+    "pMin": 0.7,
+    "margin": 0,
+    "nTau": 0.5,
+    "rev": 0.3,
+    "cancelTau": 0.3,
+    "goneTau": 0.3,
+    "mootTau": 0.3
+   }
+  },
+  "default_before_tuning": {
+   "B": {
+    "pMin": 0.5,
+    "margin": 0
+   },
+   "C": {
+    "tau": 0.8,
+    "rev": 0.3,
+    "keep": 0.5
+   },
+   "D": {
+    "pMin": 0.7,
+    "margin": 0.4,
+    "nTau": 0.8,
+    "rev": 0.3,
+    "cancelTau": 0.7,
+    "goneTau": 0.7,
+    "mootTau": 0.5
+   }
+  },
+  "dev_fit": {
+   "B": {
+    "dangerous": 4,
+    "strict_precision": {
+     "n": 29,
+     "d": 29,
+     "p": 1,
+     "ci": [
+      0.8830264055344442,
+      1.0000000000000002
+     ]
+    },
+    "strict_recall": {
+     "n": 29,
+     "d": 32,
+     "p": 0.90625,
+     "ci": [
+      0.7578150066422117,
+      0.9675990373736805
+     ]
+    },
+    "stale_removed": {
+     "n": 4,
+     "d": 5,
+     "p": 0.8,
+     "ci": [
+      0.37552826411853885,
+      0.9637768390302125
+     ]
+    },
+    "events": 65
+   },
+   "C": {
+    "dangerous": 1,
+    "strict_precision": {
+     "n": 8,
+     "d": 8,
+     "p": 1,
+     "ci": [
+      0.6755843804891231,
+      1
+     ]
+    },
+    "strict_recall": {
+     "n": 8,
+     "d": 32,
+     "p": 0.25,
+     "ci": [
+      0.13252243982621553,
+      0.42106891770246624
+     ]
+    },
+    "stale_removed": {
+     "n": 1,
+     "d": 5,
+     "p": 0.2,
+     "ci": [
+      0.036223160969787456,
+      0.6244717358814612
+     ]
+    },
+    "events": 65
+   },
+   "D": {
+    "dangerous": 2,
+    "strict_precision": {
+     "n": 26,
+     "d": 26,
+     "p": 1,
+     "ci": [
+      0.8712669561953783,
+      1.0000000000000002
+     ]
+    },
+    "strict_recall": {
+     "n": 26,
+     "d": 32,
+     "p": 0.8125,
+     "ci": [
+      0.6469050424507756,
+      0.9111057606383722
+     ]
+    },
+    "stale_removed": {
+     "n": 5,
+     "d": 5,
+     "p": 1,
+     "ci": [
+      0.565508505247919,
+      1.0000000000000002
+     ]
+    },
+    "events": 65
+   }
+  },
+  "baseline": {
+   "models": {
+    "stageA": {
+     "model": "gpt-4.1-mini",
+     "sampling": {
+      "temperature": 0
+     }
+    },
+    "stageB": {
+     "model": "gpt-5-mini",
+     "sampling": {
+      "reasoning_effort": "low"
+     }
+    }
+   },
+   "prompt_hashes": {
+    "stageA_focus": "f1c299cefcf80b7e",
+    "stageB": "ec98a027d754a857",
+    "rubric": "6b531cb0f60e1dad",
+    "sources": {
+     "prompt.rs": "6a05d8c6a63dc2b8",
+     "verify_prompt.rs": "14138ab501485620",
+     "semantics.rs": "7257e12aef87dffc"
+    }
+   },
+   "note": "production prompts/gates, not tuned"
+  }
+ },
+ "tables": {
+  "holdout/undisputed": {
+   "A": {
+    "events": 66,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 23,
+     "d": 23,
+     "p": 1,
+     "ci": [
+      0.8568788745827373,
+      1.0000000000000002
+     ]
+    },
+    "semantic_precision": {
+     "n": 23,
+     "d": 23,
+     "p": 1,
+     "ci": [
+      0.8568788745827373,
+      1.0000000000000002
+     ]
+    },
+    "strict_recall": {
+     "n": 23,
+     "d": 34,
+     "p": 0.6764705882352942,
+     "ci": [
+      0.5084258404811939,
+      0.8086854867354143
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 23,
+     "d": 34,
+     "p": 0.6764705882352942,
+     "ci": [
+      0.5084258404811939,
+      0.8086854867354143
+     ]
+    },
+    "direction_accuracy": {
+     "n": 11,
+     "d": 11,
+     "p": 1,
+     "ci": [
+      0.7411599827511859,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 66,
+     "p": 0,
+     "ci": [
+      0,
+      0.05500446725160935
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 32,
+     "d": 32,
+     "p": 1,
+     "ci": [
+      0.8928172849426365,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 32,
+     "p": 0,
+     "ci": [
+      0,
+      0.1071827150573635
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 5,
+     "d": 8,
+     "p": 0.625,
+     "ci": [
+      0.3057378545838018,
+      0.863158240538479
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 3,
+     "d": 8,
+     "p": 0.375,
+     "ci": [
+      0.13684175946152105,
+      0.6942621454161982
+     ]
+    },
+    "wrongful_removals": {
+     "n": 0,
+     "d": 7,
+     "p": 0,
+     "ci": [
+      0,
+      0.35433884297520657
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 0
+   },
+   "B": {
+    "events": 66,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 26,
+     "d": 29,
+     "p": 0.896551724137931,
+     "ci": [
+      0.7361455275293085,
+      0.9641857596186989
+     ]
+    },
+    "semantic_precision": {
+     "n": 26,
+     "d": 29,
+     "p": 0.896551724137931,
+     "ci": [
+      0.7361455275293085,
+      0.9641857596186989
+     ]
+    },
+    "strict_recall": {
+     "n": 26,
+     "d": 34,
+     "p": 0.7647058823529411,
+     "ci": [
+      0.6000353719173557,
+      0.8756316189075565
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 26,
+     "d": 34,
+     "p": 0.7647058823529411,
+     "ci": [
+      0.6000353719173557,
+      0.8756316189075565
+     ]
+    },
+    "direction_accuracy": {
+     "n": 15,
+     "d": 15,
+     "p": 1,
+     "ci": [
+      0.7961107336956521,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 3,
+     "d": 66,
+     "p": 0.045454545454545456,
+     "ci": [
+      0.015577991894810295,
+      0.12533516015210727
+     ]
+    },
+    "false_edges_total": 3,
+    "none_correct": {
+     "n": 31,
+     "d": 32,
+     "p": 0.96875,
+     "ci": [
+      0.8425539219962727,
+      0.9944622826374491
+     ]
+    },
+    "none_false_admission": {
+     "n": 1,
+     "d": 32,
+     "p": 0.03125,
+     "ci": [
+      0.005537717362550956,
+      0.15744607800372734
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 8,
+     "d": 8,
+     "p": 1,
+     "ci": [
+      0.6755843804891231,
+      1
+     ]
+    },
+    "wrongful_removals": {
+     "n": 5,
+     "d": 7,
+     "p": 0.7142857142857143,
+     "ci": [
+      0.35892909014821267,
+      0.9177828342909845
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 8
+   },
+   "C": {
+    "events": 66,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 12,
+     "d": 12,
+     "p": 1,
+     "ci": [
+      0.7574992425007574,
+      0.9999999999999998
+     ]
+    },
+    "semantic_precision": {
+     "n": 12,
+     "d": 12,
+     "p": 1,
+     "ci": [
+      0.7574992425007574,
+      0.9999999999999998
+     ]
+    },
+    "strict_recall": {
+     "n": 12,
+     "d": 34,
+     "p": 0.35294117647058826,
+     "ci": [
+      0.2148771489529607,
+      0.5208634116998658
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 12,
+     "d": 34,
+     "p": 0.35294117647058826,
+     "ci": [
+      0.2148771489529607,
+      0.5208634116998658
+     ]
+    },
+    "direction_accuracy": {
+     "n": 9,
+     "d": 9,
+     "p": 1,
+     "ci": [
+      0.7008472464490406,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 66,
+     "p": 0,
+     "ci": [
+      0,
+      0.05500446725160935
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 32,
+     "d": 32,
+     "p": 1,
+     "ci": [
+      0.8928172849426365,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 32,
+     "p": 0,
+     "ci": [
+      0,
+      0.1071827150573635
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 1,
+     "d": 8,
+     "p": 0.125,
+     "ci": [
+      0.02241690886329618,
+      0.4708948057698615
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 7,
+     "d": 8,
+     "p": 0.875,
+     "ci": [
+      0.5291051942301385,
+      0.9775830911367039
+     ]
+    },
+    "wrongful_removals": {
+     "n": 2,
+     "d": 7,
+     "p": 0.2857142857142857,
+     "ci": [
+      0.08221716570901552,
+      0.6410709098517873
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 2
+   },
+   "D": {
+    "events": 66,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 23,
+     "d": 25,
+     "p": 0.92,
+     "ci": [
+      0.7503348787704218,
+      0.9777800663089081
+     ]
+    },
+    "semantic_precision": {
+     "n": 23,
+     "d": 25,
+     "p": 0.92,
+     "ci": [
+      0.7503348787704218,
+      0.9777800663089081
+     ]
+    },
+    "strict_recall": {
+     "n": 23,
+     "d": 34,
+     "p": 0.6764705882352942,
+     "ci": [
+      0.5084258404811939,
+      0.8086854867354143
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 23,
+     "d": 34,
+     "p": 0.6764705882352942,
+     "ci": [
+      0.5084258404811939,
+      0.8086854867354143
+     ]
+    },
+    "direction_accuracy": {
+     "n": 14,
+     "d": 14,
+     "p": 1,
+     "ci": [
+      0.7846829880728186,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 2,
+     "d": 66,
+     "p": 0.030303030303030304,
+     "ci": [
+      0.008349735075946508,
+      0.10392718870586834
+     ]
+    },
+    "false_edges_total": 2,
+    "none_correct": {
+     "n": 31,
+     "d": 32,
+     "p": 0.96875,
+     "ci": [
+      0.8425539219962727,
+      0.9944622826374491
+     ]
+    },
+    "none_false_admission": {
+     "n": 1,
+     "d": 32,
+     "p": 0.03125,
+     "ci": [
+      0.005537717362550956,
+      0.15744607800372734
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 8,
+     "d": 8,
+     "p": 1,
+     "ci": [
+      0.6755843804891231,
+      1
+     ]
+    },
+    "wrongful_removals": {
+     "n": 1,
+     "d": 7,
+     "p": 0.14285714285714285,
+     "ci": [
+      0.02567895594897479,
+      0.5131345033190299
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 3
+   },
+   "B0": {
+    "events": 66,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 30,
+     "d": 39,
+     "p": 0.7692307692307693,
+     "ci": [
+      0.6166343954261705,
+      0.8735433757121625
+     ]
+    },
+    "semantic_precision": {
+     "n": 30,
+     "d": 39,
+     "p": 0.7692307692307693,
+     "ci": [
+      0.6166343954261705,
+      0.8735433757121625
+     ]
+    },
+    "strict_recall": {
+     "n": 30,
+     "d": 34,
+     "p": 0.8823529411764706,
+     "ci": [
+      0.7337882520370123,
+      0.9532862902656388
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 30,
+     "d": 34,
+     "p": 0.8823529411764706,
+     "ci": [
+      0.7337882520370123,
+      0.9532862902656388
+     ]
+    },
+    "direction_accuracy": {
+     "n": 17,
+     "d": 17,
+     "p": 1,
+     "ci": [
+      0.8156763396284354,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 9,
+     "d": 66,
+     "p": 0.13636363636363635,
+     "ci": [
+      0.07343237343346892,
+      0.23929814820406514
+     ]
+    },
+    "false_edges_total": 9,
+    "none_correct": {
+     "n": 27,
+     "d": 32,
+     "p": 0.84375,
+     "ci": [
+      0.6824550744643347,
+      0.9313568089337277
+     ]
+    },
+    "none_false_admission": {
+     "n": 5,
+     "d": 32,
+     "p": 0.15625,
+     "ci": [
+      0.06864319106627216,
+      0.31754492553566527
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 8,
+     "d": 8,
+     "p": 1,
+     "ci": [
+      0.6755843804891231,
+      1
+     ]
+    },
+    "wrongful_removals": {
+     "n": 5,
+     "d": 7,
+     "p": 0.7142857142857143,
+     "ci": [
+      0.35892909014821267,
+      0.9177828342909845
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 14
+   },
+   "C0": {
+    "events": 66,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 16,
+     "d": 19,
+     "p": 0.8421052631578947,
+     "ci": [
+      0.6243407235682331,
+      0.9447962896007217
+     ]
+    },
+    "semantic_precision": {
+     "n": 16,
+     "d": 19,
+     "p": 0.8421052631578947,
+     "ci": [
+      0.6243407235682331,
+      0.9447962896007217
+     ]
+    },
+    "strict_recall": {
+     "n": 16,
+     "d": 34,
+     "p": 0.47058823529411764,
+     "ci": [
+      0.31451251633111366,
+      0.6326355957994516
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 16,
+     "d": 34,
+     "p": 0.47058823529411764,
+     "ci": [
+      0.31451251633111366,
+      0.6326355957994516
+     ]
+    },
+    "direction_accuracy": {
+     "n": 11,
+     "d": 11,
+     "p": 1,
+     "ci": [
+      0.7411599827511859,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 3,
+     "d": 66,
+     "p": 0.045454545454545456,
+     "ci": [
+      0.015577991894810295,
+      0.12533516015210727
+     ]
+    },
+    "false_edges_total": 3,
+    "none_correct": {
+     "n": 30,
+     "d": 32,
+     "p": 0.9375,
+     "ci": [
+      0.7985253275199642,
+      0.9826897968048427
+     ]
+    },
+    "none_false_admission": {
+     "n": 2,
+     "d": 32,
+     "p": 0.0625,
+     "ci": [
+      0.01731020319515724,
+      0.20147467248003584
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 8,
+     "d": 8,
+     "p": 1,
+     "ci": [
+      0.6755843804891231,
+      1
+     ]
+    },
+    "wrongful_removals": {
+     "n": 6,
+     "d": 7,
+     "p": 0.8571428571428571,
+     "ci": [
+      0.4868654966809702,
+      0.9743210440510253
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 9
+   },
+   "D0": {
+    "events": 66,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 15,
+     "d": 16,
+     "p": 0.9375,
+     "ci": [
+      0.7167073163197013,
+      0.9888809426916687
+     ]
+    },
+    "semantic_precision": {
+     "n": 15,
+     "d": 16,
+     "p": 0.9375,
+     "ci": [
+      0.7167073163197013,
+      0.9888809426916687
+     ]
+    },
+    "strict_recall": {
+     "n": 15,
+     "d": 34,
+     "p": 0.4411764705882353,
+     "ci": [
+      0.2888324021529675,
+      0.6054638221081631
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 15,
+     "d": 34,
+     "p": 0.4411764705882353,
+     "ci": [
+      0.2888324021529675,
+      0.6054638221081631
+     ]
+    },
+    "direction_accuracy": {
+     "n": 10,
+     "d": 10,
+     "p": 1,
+     "ci": [
+      0.7224598312333834,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 1,
+     "d": 66,
+     "p": 0.015151515151515152,
+     "ci": [
+      0.00267957153445675,
+      0.08096112398225536
+     ]
+    },
+    "false_edges_total": 1,
+    "none_correct": {
+     "n": 31,
+     "d": 32,
+     "p": 0.96875,
+     "ci": [
+      0.8425539219962727,
+      0.9944622826374491
+     ]
+    },
+    "none_false_admission": {
+     "n": 1,
+     "d": 32,
+     "p": 0.03125,
+     "ci": [
+      0.005537717362550956,
+      0.15744607800372734
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 1,
+     "d": 8,
+     "p": 0.125,
+     "ci": [
+      0.02241690886329618,
+      0.4708948057698615
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 7,
+     "d": 8,
+     "p": 0.875,
+     "ci": [
+      0.5291051942301385,
+      0.9775830911367039
+     ]
+    },
+    "wrongful_removals": {
+     "n": 1,
+     "d": 7,
+     "p": 0.14285714285714285,
+     "ci": [
+      0.02567895594897479,
+      0.5131345033190299
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 2
+   }
+  },
+  "holdout/disputed": {
+   "A": {
+    "events": 9,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 0,
+     "d": 1,
+     "p": 0,
+     "ci": [
+      0,
+      0.7934567085261071
+     ]
+    },
+    "semantic_precision": {
+     "n": 1,
+     "d": 1,
+     "p": 1,
+     "ci": [
+      0.20654329147389294,
+      1
+     ]
+    },
+    "strict_recall": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 1,
+     "d": 8,
+     "p": 0.125,
+     "ci": [
+      0.02241690886329618,
+      0.4708948057698615
+     ]
+    },
+    "direction_accuracy": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 9,
+     "p": 0,
+     "ci": [
+      0,
+      0.2991527535509594
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 1,
+     "d": 1,
+     "p": 1,
+     "ci": [
+      0.20654329147389294,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 1,
+     "p": 0,
+     "ci": [
+      0,
+      0.7934567085261071
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "wrongful_removals": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 0
+   },
+   "B": {
+    "events": 9,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "semantic_precision": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "strict_recall": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "direction_accuracy": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 9,
+     "p": 0,
+     "ci": [
+      0,
+      0.2991527535509594
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 1,
+     "d": 1,
+     "p": 1,
+     "ci": [
+      0.20654329147389294,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 1,
+     "p": 0,
+     "ci": [
+      0,
+      0.7934567085261071
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "wrongful_removals": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 0
+   },
+   "C": {
+    "events": 9,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "semantic_precision": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "strict_recall": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "direction_accuracy": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 9,
+     "p": 0,
+     "ci": [
+      0,
+      0.2991527535509594
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 1,
+     "d": 1,
+     "p": 1,
+     "ci": [
+      0.20654329147389294,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 1,
+     "p": 0,
+     "ci": [
+      0,
+      0.7934567085261071
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "wrongful_removals": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 0
+   },
+   "D": {
+    "events": 9,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "semantic_precision": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "strict_recall": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "direction_accuracy": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 9,
+     "p": 0,
+     "ci": [
+      0,
+      0.2991527535509594
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 1,
+     "d": 1,
+     "p": 1,
+     "ci": [
+      0.20654329147389294,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 1,
+     "p": 0,
+     "ci": [
+      0,
+      0.7934567085261071
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "wrongful_removals": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 0
+   },
+   "B0": {
+    "events": 9,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 1,
+     "d": 1,
+     "p": 1,
+     "ci": [
+      0.20654329147389294,
+      1
+     ]
+    },
+    "semantic_precision": {
+     "n": 1,
+     "d": 1,
+     "p": 1,
+     "ci": [
+      0.20654329147389294,
+      1
+     ]
+    },
+    "strict_recall": {
+     "n": 1,
+     "d": 8,
+     "p": 0.125,
+     "ci": [
+      0.02241690886329618,
+      0.4708948057698615
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 1,
+     "d": 8,
+     "p": 0.125,
+     "ci": [
+      0.02241690886329618,
+      0.4708948057698615
+     ]
+    },
+    "direction_accuracy": {
+     "n": 1,
+     "d": 1,
+     "p": 1,
+     "ci": [
+      0.20654329147389294,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 9,
+     "p": 0,
+     "ci": [
+      0,
+      0.2991527535509594
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 1,
+     "d": 1,
+     "p": 1,
+     "ci": [
+      0.20654329147389294,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 1,
+     "p": 0,
+     "ci": [
+      0,
+      0.7934567085261071
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "wrongful_removals": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 0
+   },
+   "C0": {
+    "events": 9,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "semantic_precision": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "strict_recall": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "direction_accuracy": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 9,
+     "p": 0,
+     "ci": [
+      0,
+      0.2991527535509594
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 1,
+     "d": 1,
+     "p": 1,
+     "ci": [
+      0.20654329147389294,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 1,
+     "p": 0,
+     "ci": [
+      0,
+      0.7934567085261071
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "wrongful_removals": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 0
+   },
+   "D0": {
+    "events": 9,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "semantic_precision": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "strict_recall": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "direction_accuracy": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 9,
+     "p": 0,
+     "ci": [
+      0,
+      0.2991527535509594
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 1,
+     "d": 1,
+     "p": 1,
+     "ci": [
+      0.20654329147389294,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 1,
+     "p": 0,
+     "ci": [
+      0,
+      0.7934567085261071
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "wrongful_removals": {
+     "n": 0,
+     "d": 0,
+     "p": null,
+     "ci": [
+      null,
+      null
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 0
+   }
+  },
+  "holdout/all": {
+   "A": {
+    "events": 75,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 23,
+     "d": 24,
+     "p": 0.9583333333333334,
+     "ci": [
+      0.7975777375115778,
+      0.9926067346451949
+     ]
+    },
+    "semantic_precision": {
+     "n": 24,
+     "d": 24,
+     "p": 1,
+     "ci": [
+      0.8620194241710247,
+      1.0000000000000002
+     ]
+    },
+    "strict_recall": {
+     "n": 23,
+     "d": 42,
+     "p": 0.5476190476190477,
+     "ci": [
+      0.399488627471227,
+      0.6877683618136149
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 24,
+     "d": 42,
+     "p": 0.5714285714285714,
+     "ci": [
+      0.4220597791187447,
+      0.7088257048085178
+     ]
+    },
+    "direction_accuracy": {
+     "n": 11,
+     "d": 11,
+     "p": 1,
+     "ci": [
+      0.7411599827511859,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 75,
+     "p": 0,
+     "ci": [
+      0,
+      0.04872554590470005
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 33,
+     "d": 33,
+     "p": 1,
+     "ci": [
+      0.8957265699643882,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 33,
+     "p": 0,
+     "ci": [
+      0,
+      0.10427343003561192
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 5,
+     "d": 8,
+     "p": 0.625,
+     "ci": [
+      0.3057378545838018,
+      0.863158240538479
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 3,
+     "d": 8,
+     "p": 0.375,
+     "ci": [
+      0.13684175946152105,
+      0.6942621454161982
+     ]
+    },
+    "wrongful_removals": {
+     "n": 0,
+     "d": 7,
+     "p": 0,
+     "ci": [
+      0,
+      0.35433884297520657
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 0
+   },
+   "B": {
+    "events": 75,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 26,
+     "d": 29,
+     "p": 0.896551724137931,
+     "ci": [
+      0.7361455275293085,
+      0.9641857596186989
+     ]
+    },
+    "semantic_precision": {
+     "n": 26,
+     "d": 29,
+     "p": 0.896551724137931,
+     "ci": [
+      0.7361455275293085,
+      0.9641857596186989
+     ]
+    },
+    "strict_recall": {
+     "n": 26,
+     "d": 42,
+     "p": 0.6190476190476191,
+     "ci": [
+      0.46813768219996377,
+      0.7500047910121406
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 26,
+     "d": 42,
+     "p": 0.6190476190476191,
+     "ci": [
+      0.46813768219996377,
+      0.7500047910121406
+     ]
+    },
+    "direction_accuracy": {
+     "n": 15,
+     "d": 15,
+     "p": 1,
+     "ci": [
+      0.7961107336956521,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 3,
+     "d": 75,
+     "p": 0.04,
+     "ci": [
+      0.013695816001486484,
+      0.11113168623083756
+     ]
+    },
+    "false_edges_total": 3,
+    "none_correct": {
+     "n": 32,
+     "d": 33,
+     "p": 0.9696969696969697,
+     "ci": [
+      0.8468093832683193,
+      0.9946307279103483
+     ]
+    },
+    "none_false_admission": {
+     "n": 1,
+     "d": 33,
+     "p": 0.030303030303030304,
+     "ci": [
+      0.005369272089651719,
+      0.1531906167316807
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 8,
+     "d": 8,
+     "p": 1,
+     "ci": [
+      0.6755843804891231,
+      1
+     ]
+    },
+    "wrongful_removals": {
+     "n": 5,
+     "d": 7,
+     "p": 0.7142857142857143,
+     "ci": [
+      0.35892909014821267,
+      0.9177828342909845
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 8
+   },
+   "C": {
+    "events": 75,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 12,
+     "d": 12,
+     "p": 1,
+     "ci": [
+      0.7574992425007574,
+      0.9999999999999998
+     ]
+    },
+    "semantic_precision": {
+     "n": 12,
+     "d": 12,
+     "p": 1,
+     "ci": [
+      0.7574992425007574,
+      0.9999999999999998
+     ]
+    },
+    "strict_recall": {
+     "n": 12,
+     "d": 42,
+     "p": 0.2857142857142857,
+     "ci": [
+      0.1716685874457567,
+      0.43567496077245566
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 12,
+     "d": 42,
+     "p": 0.2857142857142857,
+     "ci": [
+      0.1716685874457567,
+      0.43567496077245566
+     ]
+    },
+    "direction_accuracy": {
+     "n": 9,
+     "d": 9,
+     "p": 1,
+     "ci": [
+      0.7008472464490406,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 75,
+     "p": 0,
+     "ci": [
+      0,
+      0.04872554590470005
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 33,
+     "d": 33,
+     "p": 1,
+     "ci": [
+      0.8957265699643882,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 33,
+     "p": 0,
+     "ci": [
+      0,
+      0.10427343003561192
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 1,
+     "d": 8,
+     "p": 0.125,
+     "ci": [
+      0.02241690886329618,
+      0.4708948057698615
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 7,
+     "d": 8,
+     "p": 0.875,
+     "ci": [
+      0.5291051942301385,
+      0.9775830911367039
+     ]
+    },
+    "wrongful_removals": {
+     "n": 2,
+     "d": 7,
+     "p": 0.2857142857142857,
+     "ci": [
+      0.08221716570901552,
+      0.6410709098517873
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 2
+   },
+   "D": {
+    "events": 75,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 23,
+     "d": 25,
+     "p": 0.92,
+     "ci": [
+      0.7503348787704218,
+      0.9777800663089081
+     ]
+    },
+    "semantic_precision": {
+     "n": 23,
+     "d": 25,
+     "p": 0.92,
+     "ci": [
+      0.7503348787704218,
+      0.9777800663089081
+     ]
+    },
+    "strict_recall": {
+     "n": 23,
+     "d": 42,
+     "p": 0.5476190476190477,
+     "ci": [
+      0.399488627471227,
+      0.6877683618136149
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 23,
+     "d": 42,
+     "p": 0.5476190476190477,
+     "ci": [
+      0.399488627471227,
+      0.6877683618136149
+     ]
+    },
+    "direction_accuracy": {
+     "n": 14,
+     "d": 14,
+     "p": 1,
+     "ci": [
+      0.7846829880728186,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 2,
+     "d": 75,
+     "p": 0.02666666666666667,
+     "ci": [
+      0.007343535023600551,
+      0.09211664843284884
+     ]
+    },
+    "false_edges_total": 2,
+    "none_correct": {
+     "n": 32,
+     "d": 33,
+     "p": 0.9696969696969697,
+     "ci": [
+      0.8468093832683193,
+      0.9946307279103483
+     ]
+    },
+    "none_false_admission": {
+     "n": 1,
+     "d": 33,
+     "p": 0.030303030303030304,
+     "ci": [
+      0.005369272089651719,
+      0.1531906167316807
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 8,
+     "d": 8,
+     "p": 1,
+     "ci": [
+      0.6755843804891231,
+      1
+     ]
+    },
+    "wrongful_removals": {
+     "n": 1,
+     "d": 7,
+     "p": 0.14285714285714285,
+     "ci": [
+      0.02567895594897479,
+      0.5131345033190299
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 3
+   },
+   "B0": {
+    "events": 75,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 31,
+     "d": 40,
+     "p": 0.775,
+     "ci": [
+      0.6249660359590695,
+      0.8768404674532148
+     ]
+    },
+    "semantic_precision": {
+     "n": 31,
+     "d": 40,
+     "p": 0.775,
+     "ci": [
+      0.6249660359590695,
+      0.8768404674532148
+     ]
+    },
+    "strict_recall": {
+     "n": 31,
+     "d": 42,
+     "p": 0.7380952380952381,
+     "ci": [
+      0.5893098001502446,
+      0.8469751462739642
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 31,
+     "d": 42,
+     "p": 0.7380952380952381,
+     "ci": [
+      0.5893098001502446,
+      0.8469751462739642
+     ]
+    },
+    "direction_accuracy": {
+     "n": 18,
+     "d": 18,
+     "p": 1,
+     "ci": [
+      0.8241154494176252,
+      1.0000000000000002
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 9,
+     "d": 75,
+     "p": 0.12,
+     "ci": [
+      0.06443298969072164,
+      0.2125984251968504
+     ]
+    },
+    "false_edges_total": 9,
+    "none_correct": {
+     "n": 28,
+     "d": 33,
+     "p": 0.8484848484848485,
+     "ci": [
+      0.6907978686153953,
+      0.9334964074203904
+     ]
+    },
+    "none_false_admission": {
+     "n": 5,
+     "d": 33,
+     "p": 0.15151515151515152,
+     "ci": [
+      0.06650359257960958,
+      0.3092021313846048
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 8,
+     "d": 8,
+     "p": 1,
+     "ci": [
+      0.6755843804891231,
+      1
+     ]
+    },
+    "wrongful_removals": {
+     "n": 5,
+     "d": 7,
+     "p": 0.7142857142857143,
+     "ci": [
+      0.35892909014821267,
+      0.9177828342909845
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 14
+   },
+   "C0": {
+    "events": 75,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 16,
+     "d": 19,
+     "p": 0.8421052631578947,
+     "ci": [
+      0.6243407235682331,
+      0.9447962896007217
+     ]
+    },
+    "semantic_precision": {
+     "n": 16,
+     "d": 19,
+     "p": 0.8421052631578947,
+     "ci": [
+      0.6243407235682331,
+      0.9447962896007217
+     ]
+    },
+    "strict_recall": {
+     "n": 16,
+     "d": 42,
+     "p": 0.38095238095238093,
+     "ci": [
+      0.24999520898785943,
+      0.5318623178000363
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 16,
+     "d": 42,
+     "p": 0.38095238095238093,
+     "ci": [
+      0.24999520898785943,
+      0.5318623178000363
+     ]
+    },
+    "direction_accuracy": {
+     "n": 11,
+     "d": 11,
+     "p": 1,
+     "ci": [
+      0.7411599827511859,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 3,
+     "d": 75,
+     "p": 0.04,
+     "ci": [
+      0.013695816001486484,
+      0.11113168623083756
+     ]
+    },
+    "false_edges_total": 3,
+    "none_correct": {
+     "n": 31,
+     "d": 33,
+     "p": 0.9393939393939394,
+     "ci": [
+      0.8039341828220182,
+      0.983219469570929
+     ]
+    },
+    "none_false_admission": {
+     "n": 2,
+     "d": 33,
+     "p": 0.06060606060606061,
+     "ci": [
+      0.016780530429070947,
+      0.19606581717798194
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 8,
+     "p": 0,
+     "ci": [
+      0,
+      0.3244156195108769
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 8,
+     "d": 8,
+     "p": 1,
+     "ci": [
+      0.6755843804891231,
+      1
+     ]
+    },
+    "wrongful_removals": {
+     "n": 6,
+     "d": 7,
+     "p": 0.8571428571428571,
+     "ci": [
+      0.4868654966809702,
+      0.9743210440510253
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 9
+   },
+   "D0": {
+    "events": 75,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 15,
+     "d": 16,
+     "p": 0.9375,
+     "ci": [
+      0.7167073163197013,
+      0.9888809426916687
+     ]
+    },
+    "semantic_precision": {
+     "n": 15,
+     "d": 16,
+     "p": 0.9375,
+     "ci": [
+      0.7167073163197013,
+      0.9888809426916687
+     ]
+    },
+    "strict_recall": {
+     "n": 15,
+     "d": 42,
+     "p": 0.35714285714285715,
+     "ci": [
+      0.22988992501626865,
+      0.5083391071292063
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 15,
+     "d": 42,
+     "p": 0.35714285714285715,
+     "ci": [
+      0.22988992501626865,
+      0.5083391071292063
+     ]
+    },
+    "direction_accuracy": {
+     "n": 10,
+     "d": 10,
+     "p": 1,
+     "ci": [
+      0.7224598312333834,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 1,
+     "d": 75,
+     "p": 0.013333333333333334,
+     "ci": [
+      0.0023574904331369155,
+      0.07173537424743781
+     ]
+    },
+    "false_edges_total": 1,
+    "none_correct": {
+     "n": 32,
+     "d": 33,
+     "p": 0.9696969696969697,
+     "ci": [
+      0.8468093832683193,
+      0.9946307279103483
+     ]
+    },
+    "none_false_admission": {
+     "n": 1,
+     "d": 33,
+     "p": 0.030303030303030304,
+     "ci": [
+      0.005369272089651719,
+      0.1531906167316807
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 1,
+     "d": 8,
+     "p": 0.125,
+     "ci": [
+      0.02241690886329618,
+      0.4708948057698615
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 7,
+     "d": 8,
+     "p": 0.875,
+     "ci": [
+      0.5291051942301385,
+      0.9775830911367039
+     ]
+    },
+    "wrongful_removals": {
+     "n": 1,
+     "d": 7,
+     "p": 0.14285714285714285,
+     "ci": [
+      0.02567895594897479,
+      0.5131345033190299
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 2
+   }
+  },
+  "dev/undisputed": {
+   "A": {
+    "events": 65,
+    "failed_runs": 1,
+    "strict_precision": {
+     "n": 18,
+     "d": 20,
+     "p": 0.9,
+     "ci": [
+      0.6989617935882066,
+      0.9721341060158467
+     ]
+    },
+    "semantic_precision": {
+     "n": 18,
+     "d": 20,
+     "p": 0.9,
+     "ci": [
+      0.6989617935882066,
+      0.9721341060158467
+     ]
+    },
+    "strict_recall": {
+     "n": 18,
+     "d": 32,
+     "p": 0.5625,
+     "ci": [
+      0.3932530203122613,
+      0.7183491403055682
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 18,
+     "d": 32,
+     "p": 0.5625,
+     "ci": [
+      0.3932530203122613,
+      0.7183491403055682
+     ]
+    },
+    "direction_accuracy": {
+     "n": 12,
+     "d": 12,
+     "p": 1,
+     "ci": [
+      0.7574992425007574,
+      0.9999999999999998
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 2,
+     "d": 65,
+     "p": 0.03076923076923077,
+     "ci": [
+      0.008478819400945354,
+      0.10542905025926008
+     ]
+    },
+    "false_edges_total": 2,
+    "none_correct": {
+     "n": 31,
+     "d": 33,
+     "p": 0.9393939393939394,
+     "ci": [
+      0.8039341828220182,
+      0.983219469570929
+     ]
+    },
+    "none_false_admission": {
+     "n": 2,
+     "d": 33,
+     "p": 0.06060606060606061,
+     "ci": [
+      0.016780530429070947,
+      0.19606581717798194
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 3,
+     "d": 5,
+     "p": 0.6,
+     "ci": [
+      0.23071993220883702,
+      0.8823817688407467
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 2,
+     "d": 5,
+     "p": 0.4,
+     "ci": [
+      0.11761823115925325,
+      0.769280067791163
+     ]
+    },
+    "wrongful_removals": {
+     "n": 2,
+     "d": 6,
+     "p": 0.3333333333333333,
+     "ci": [
+      0.09676933255921684,
+      0.7000116786584712
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 4
+   },
+   "B": {
+    "events": 65,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 29,
+     "d": 29,
+     "p": 1,
+     "ci": [
+      0.8830264055344442,
+      1.0000000000000002
+     ]
+    },
+    "semantic_precision": {
+     "n": 29,
+     "d": 29,
+     "p": 1,
+     "ci": [
+      0.8830264055344442,
+      1.0000000000000002
+     ]
+    },
+    "strict_recall": {
+     "n": 29,
+     "d": 32,
+     "p": 0.90625,
+     "ci": [
+      0.7578150066422117,
+      0.9675990373736805
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 29,
+     "d": 32,
+     "p": 0.90625,
+     "ci": [
+      0.7578150066422117,
+      0.9675990373736805
+     ]
+    },
+    "direction_accuracy": {
+     "n": 21,
+     "d": 21,
+     "p": 1,
+     "ci": [
+      0.8453561767357979,
+      0.9999999999999998
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 65,
+     "p": 0,
+     "ci": [
+      0,
+      0.055803467670710726
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 33,
+     "d": 33,
+     "p": 1,
+     "ci": [
+      0.8957265699643882,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 33,
+     "p": 0,
+     "ci": [
+      0,
+      0.10427343003561192
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 1,
+     "d": 5,
+     "p": 0.2,
+     "ci": [
+      0.036223160969787456,
+      0.6244717358814612
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 4,
+     "d": 5,
+     "p": 0.8,
+     "ci": [
+      0.37552826411853885,
+      0.9637768390302125
+     ]
+    },
+    "wrongful_removals": {
+     "n": 4,
+     "d": 6,
+     "p": 0.6666666666666666,
+     "ci": [
+      0.2999883213415286,
+      0.903230667440783
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 4
+   },
+   "C": {
+    "events": 65,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 8,
+     "d": 8,
+     "p": 1,
+     "ci": [
+      0.6755843804891231,
+      1
+     ]
+    },
+    "semantic_precision": {
+     "n": 8,
+     "d": 8,
+     "p": 1,
+     "ci": [
+      0.6755843804891231,
+      1
+     ]
+    },
+    "strict_recall": {
+     "n": 8,
+     "d": 32,
+     "p": 0.25,
+     "ci": [
+      0.13252243982621553,
+      0.42106891770246624
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 8,
+     "d": 32,
+     "p": 0.25,
+     "ci": [
+      0.13252243982621553,
+      0.42106891770246624
+     ]
+    },
+    "direction_accuracy": {
+     "n": 6,
+     "d": 6,
+     "p": 1,
+     "ci": [
+      0.6096569663469354,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 65,
+     "p": 0,
+     "ci": [
+      0,
+      0.055803467670710726
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 33,
+     "d": 33,
+     "p": 1,
+     "ci": [
+      0.8957265699643882,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 33,
+     "p": 0,
+     "ci": [
+      0,
+      0.10427343003561192
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 4,
+     "d": 5,
+     "p": 0.8,
+     "ci": [
+      0.37552826411853885,
+      0.9637768390302125
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 1,
+     "d": 5,
+     "p": 0.2,
+     "ci": [
+      0.036223160969787456,
+      0.6244717358814612
+     ]
+    },
+    "wrongful_removals": {
+     "n": 1,
+     "d": 6,
+     "p": 0.16666666666666666,
+     "ci": [
+      0.030052585871730285,
+      0.563509436563646
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 1
+   },
+   "D": {
+    "events": 65,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 26,
+     "d": 26,
+     "p": 1,
+     "ci": [
+      0.8712669561953783,
+      1.0000000000000002
+     ]
+    },
+    "semantic_precision": {
+     "n": 26,
+     "d": 26,
+     "p": 1,
+     "ci": [
+      0.8712669561953783,
+      1.0000000000000002
+     ]
+    },
+    "strict_recall": {
+     "n": 26,
+     "d": 32,
+     "p": 0.8125,
+     "ci": [
+      0.6469050424507756,
+      0.9111057606383722
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 26,
+     "d": 32,
+     "p": 0.8125,
+     "ci": [
+      0.6469050424507756,
+      0.9111057606383722
+     ]
+    },
+    "direction_accuracy": {
+     "n": 19,
+     "d": 19,
+     "p": 1,
+     "ci": [
+      0.8318156346315495,
+      1.0000000000000002
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 65,
+     "p": 0,
+     "ci": [
+      0,
+      0.055803467670710726
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 33,
+     "d": 33,
+     "p": 1,
+     "ci": [
+      0.8957265699643882,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 33,
+     "p": 0,
+     "ci": [
+      0,
+      0.10427343003561192
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 5,
+     "p": 0,
+     "ci": [
+      0,
+      0.43449149475208104
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 5,
+     "d": 5,
+     "p": 1,
+     "ci": [
+      0.565508505247919,
+      1.0000000000000002
+     ]
+    },
+    "wrongful_removals": {
+     "n": 2,
+     "d": 6,
+     "p": 0.3333333333333333,
+     "ci": [
+      0.09676933255921684,
+      0.7000116786584712
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 2
+   },
+   "B0": {
+    "events": 65,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 31,
+     "d": 40,
+     "p": 0.775,
+     "ci": [
+      0.6249660359590695,
+      0.8768404674532148
+     ]
+    },
+    "semantic_precision": {
+     "n": 31,
+     "d": 40,
+     "p": 0.775,
+     "ci": [
+      0.6249660359590695,
+      0.8768404674532148
+     ]
+    },
+    "strict_recall": {
+     "n": 31,
+     "d": 32,
+     "p": 0.96875,
+     "ci": [
+      0.8425539219962727,
+      0.9944622826374491
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 31,
+     "d": 32,
+     "p": 0.96875,
+     "ci": [
+      0.8425539219962727,
+      0.9944622826374491
+     ]
+    },
+    "direction_accuracy": {
+     "n": 22,
+     "d": 22,
+     "p": 1,
+     "ci": [
+      0.8513404742740388,
+      1.0000000000000002
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 9,
+     "d": 65,
+     "p": 0.13846153846153847,
+     "ci": [
+      0.07459006187684232,
+      0.24268321474659463
+     ]
+    },
+    "false_edges_total": 9,
+    "none_correct": {
+     "n": 28,
+     "d": 33,
+     "p": 0.8484848484848485,
+     "ci": [
+      0.6907978686153953,
+      0.9334964074203904
+     ]
+    },
+    "none_false_admission": {
+     "n": 5,
+     "d": 33,
+     "p": 0.15151515151515152,
+     "ci": [
+      0.06650359257960958,
+      0.3092021313846048
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 1,
+     "d": 5,
+     "p": 0.2,
+     "ci": [
+      0.036223160969787456,
+      0.6244717358814612
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 4,
+     "d": 5,
+     "p": 0.8,
+     "ci": [
+      0.37552826411853885,
+      0.9637768390302125
+     ]
+    },
+    "wrongful_removals": {
+     "n": 4,
+     "d": 6,
+     "p": 0.6666666666666666,
+     "ci": [
+      0.2999883213415286,
+      0.903230667440783
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 13
+   },
+   "C0": {
+    "events": 65,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 14,
+     "d": 16,
+     "p": 0.875,
+     "ci": [
+      0.6397666856325172,
+      0.9650232506629429
+     ]
+    },
+    "semantic_precision": {
+     "n": 14,
+     "d": 16,
+     "p": 0.875,
+     "ci": [
+      0.6397666856325172,
+      0.9650232506629429
+     ]
+    },
+    "strict_recall": {
+     "n": 14,
+     "d": 32,
+     "p": 0.4375,
+     "ci": [
+      0.28165085969443177,
+      0.6067469796877386
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 14,
+     "d": 32,
+     "p": 0.4375,
+     "ci": [
+      0.28165085969443177,
+      0.6067469796877386
+     ]
+    },
+    "direction_accuracy": {
+     "n": 12,
+     "d": 12,
+     "p": 1,
+     "ci": [
+      0.7574992425007574,
+      0.9999999999999998
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 2,
+     "d": 65,
+     "p": 0.03076923076923077,
+     "ci": [
+      0.008478819400945354,
+      0.10542905025926008
+     ]
+    },
+    "false_edges_total": 2,
+    "none_correct": {
+     "n": 31,
+     "d": 33,
+     "p": 0.9393939393939394,
+     "ci": [
+      0.8039341828220182,
+      0.983219469570929
+     ]
+    },
+    "none_false_admission": {
+     "n": 2,
+     "d": 33,
+     "p": 0.06060606060606061,
+     "ci": [
+      0.016780530429070947,
+      0.19606581717798194
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 5,
+     "p": 0,
+     "ci": [
+      0,
+      0.43449149475208104
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 5,
+     "d": 5,
+     "p": 1,
+     "ci": [
+      0.565508505247919,
+      1.0000000000000002
+     ]
+    },
+    "wrongful_removals": {
+     "n": 3,
+     "d": 6,
+     "p": 0.5,
+     "ci": [
+      0.1876128068994087,
+      0.8123871931005913
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 5
+   },
+   "D0": {
+    "events": 65,
+    "failed_runs": 0,
+    "strict_precision": {
+     "n": 11,
+     "d": 11,
+     "p": 1,
+     "ci": [
+      0.7411599827511859,
+      1
+     ]
+    },
+    "semantic_precision": {
+     "n": 11,
+     "d": 11,
+     "p": 1,
+     "ci": [
+      0.7411599827511859,
+      1
+     ]
+    },
+    "strict_recall": {
+     "n": 11,
+     "d": 32,
+     "p": 0.34375,
+     "ci": [
+      0.2041023335432855,
+      0.5168922649121406
+     ]
+    },
+    "semantic_recall_events": {
+     "n": 11,
+     "d": 32,
+     "p": 0.34375,
+     "ci": [
+      0.2041023335432855,
+      0.5168922649121406
+     ]
+    },
+    "direction_accuracy": {
+     "n": 9,
+     "d": 9,
+     "p": 1,
+     "ci": [
+      0.7008472464490406,
+      1
+     ]
+    },
+    "reversed_edges_admitted": 0,
+    "false_edge_admission_events": {
+     "n": 0,
+     "d": 65,
+     "p": 0,
+     "ci": [
+      0,
+      0.055803467670710726
+     ]
+    },
+    "false_edges_total": 0,
+    "none_correct": {
+     "n": 33,
+     "d": 33,
+     "p": 1,
+     "ci": [
+      0.8957265699643882,
+      1
+     ]
+    },
+    "none_false_admission": {
+     "n": 0,
+     "d": 33,
+     "p": 0,
+     "ci": [
+      0,
+      0.10427343003561192
+     ]
+    },
+    "stale_retention_unsafe": {
+     "n": 0,
+     "d": 5,
+     "p": 0,
+     "ci": [
+      0,
+      0.43449149475208104
+     ]
+    },
+    "stale_removed_correct": {
+     "n": 5,
+     "d": 5,
+     "p": 1,
+     "ci": [
+      0.565508505247919,
+      1.0000000000000002
+     ]
+    },
+    "wrongful_removals": {
+     "n": 2,
+     "d": 6,
+     "p": 0.3333333333333333,
+     "ci": [
+      0.09676933255921684,
+      0.7000116786584712
+     ]
+    },
+    "user_edge_violations": 0,
+    "dangerous_total": 2
+   }
+  }
+ },
+ "failures": [
+  {
+   "id": "G012",
+   "cfg": "B",
+   "type": "false_edge"
+  },
+  {
+   "id": "G026",
+   "cfg": "B",
+   "type": "false_edge"
+  },
+  {
+   "id": "G120",
+   "cfg": "B",
+   "type": "wrongful_removal"
+  },
+  {
+   "id": "G121",
+   "cfg": "B",
+   "type": "wrongful_removal"
+  },
+  {
+   "id": "G122",
+   "cfg": "B",
+   "type": "wrongful_removal"
+  },
+  {
+   "id": "G123",
+   "cfg": "B",
+   "type": "wrongful_removal"
+  },
+  {
+   "id": "G125",
+   "cfg": "B",
+   "type": "wrongful_removal"
+  },
+  {
+   "id": "G127",
+   "cfg": "B",
+   "type": "false_edge"
+  },
+  {
+   "id": "G121",
+   "cfg": "C",
+   "type": "wrongful_removal"
+  },
+  {
+   "id": "G129",
+   "cfg": "C",
+   "type": "wrongful_removal"
+  },
+  {
+   "id": "G012",
+   "cfg": "D",
+   "type": "false_edge"
+  },
+  {
+   "id": "G127",
+   "cfg": "D",
+   "type": "false_edge"
+  },
+  {
+   "id": "G129",
+   "cfg": "D",
+   "type": "wrongful_removal"
+  }
+ ],
+ "per_kind": {
+  "A": {
+   "related_to": {
+    "g": 0,
+    "tp": 0,
+    "p": 0,
+    "ptp": 0
+   },
+   "extends": {
+    "g": 6,
+    "tp": 5,
+    "p": 5,
+    "ptp": 5
+   },
+   "depends_on": {
+    "g": 6,
+    "tp": 3,
+    "p": 3,
+    "ptp": 3
+   },
+   "contradicts": {
+    "g": 7,
+    "tp": 7,
+    "p": 7,
+    "ptp": 7
+   },
+   "derived_from": {
+    "g": 4,
+    "tp": 0,
+    "p": 0,
+    "ptp": 0
+   },
+   "duplicates": {
+    "g": 6,
+    "tp": 5,
+    "p": 5,
+    "ptp": 5
+   },
+   "supersedes": {
+    "g": 5,
+    "tp": 3,
+    "p": 3,
+    "ptp": 3
+   }
+  },
+  "B": {
+   "related_to": {
+    "g": 0,
+    "tp": 0,
+    "p": 0,
+    "ptp": 0
+   },
+   "extends": {
+    "g": 6,
+    "tp": 5,
+    "p": 7,
+    "ptp": 5
+   },
+   "depends_on": {
+    "g": 6,
+    "tp": 4,
+    "p": 4,
+    "ptp": 4
+   },
+   "contradicts": {
+    "g": 7,
+    "tp": 6,
+    "p": 6,
+    "ptp": 6
+   },
+   "derived_from": {
+    "g": 4,
+    "tp": 1,
+    "p": 2,
+    "ptp": 1
+   },
+   "duplicates": {
+    "g": 6,
+    "tp": 5,
+    "p": 5,
+    "ptp": 5
+   },
+   "supersedes": {
+    "g": 5,
+    "tp": 5,
+    "p": 5,
+    "ptp": 5
+   }
+  },
+  "C": {
+   "related_to": {
+    "g": 0,
+    "tp": 0,
+    "p": 0,
+    "ptp": 0
+   },
+   "extends": {
+    "g": 6,
+    "tp": 4,
+    "p": 4,
+    "ptp": 4
+   },
+   "depends_on": {
+    "g": 6,
+    "tp": 0,
+    "p": 0,
+    "ptp": 0
+   },
+   "contradicts": {
+    "g": 7,
+    "tp": 0,
+    "p": 0,
+    "ptp": 0
+   },
+   "derived_from": {
+    "g": 4,
+    "tp": 0,
+    "p": 0,
+    "ptp": 0
+   },
+   "duplicates": {
+    "g": 6,
+    "tp": 3,
+    "p": 3,
+    "ptp": 3
+   },
+   "supersedes": {
+    "g": 5,
+    "tp": 5,
+    "p": 5,
+    "ptp": 5
+   }
+  },
+  "D": {
+   "related_to": {
+    "g": 0,
+    "tp": 0,
+    "p": 0,
+    "ptp": 0
+   },
+   "extends": {
+    "g": 6,
+    "tp": 5,
+    "p": 7,
+    "ptp": 5
+   },
+   "depends_on": {
+    "g": 6,
+    "tp": 3,
+    "p": 3,
+    "ptp": 3
+   },
+   "contradicts": {
+    "g": 7,
+    "tp": 4,
+    "p": 4,
+    "ptp": 4
+   },
+   "derived_from": {
+    "g": 4,
+    "tp": 1,
+    "p": 1,
+    "ptp": 1
+   },
+   "duplicates": {
+    "g": 6,
+    "tp": 5,
+    "p": 5,
+    "ptp": 5
+   },
+   "supersedes": {
+    "g": 5,
+    "tp": 5,
+    "p": 5,
+    "ptp": 5
+   }
+  }
+ },
+ "stability": {
+  "A": {
+   "events": 44,
+   "identical": 34,
+   "unstable": [
+    "G018",
+    "G032",
+    "G033",
+    "G099",
+    "G103",
+    "G110",
+    "G128",
+    "G130",
+    "G139",
+    "G142"
+   ]
+  },
+  "B": {
+   "events": 44,
+   "identical": 34,
+   "unstable": [
+    "G009",
+    "G033",
+    "G037",
+    "G038",
+    "G090",
+    "G099",
+    "G108",
+    "G110",
+    "G137",
+    "G142"
+   ]
+  },
+  "C": {
+   "events": 44,
+   "identical": 44,
+   "unstable": []
+  },
+  "D": {
+   "events": 44,
+   "identical": 41,
+   "unstable": [
+    "G037",
+    "G090",
+    "G130"
+   ]
+  },
+  "persisting_dangerous": {
+   "A": {
+    "G103": 1,
+    "G128": 1,
+    "G130": 1
+   },
+   "B": {
+    "G115": 3,
+    "G120": 3,
+    "G123": 3,
+    "G125": 3,
+    "G127": 3,
+    "G137": 1,
+    "G108": 1
+   },
+   "C": {
+    "G129": 3
+   },
+   "D": {
+    "G127": 3,
+    "G129": 3,
+    "G130": 1
+   }
+  },
+  "choice_argmax_flips_across_orders": "6/86 pairs",
+  "baseline_failed_runs": 2
+ },
+ "ops": {
+  "baseline": {
+   "events_run": 282,
+   "failed_runs": [
+    {
+     "id": "G109",
+     "error": "stage B contract failures exhausted"
+    },
+    {
+     "id": "G110",
+     "error": "stage B contract failures exhausted"
+    },
+    {
+     "id": "G139",
+     "error": "stage B contract failures exhausted"
+    }
+   ],
+   "provider_requests": 716,
+   "requests_per_event_mean": 2.5390070921985815,
+   "retried_transport": 0,
+   "per_model": {
+    "gpt-4.1-mini": {
+     "requests": 282,
+     "prompt": 737386,
+     "completion": 15600,
+     "reasoning": 0
+    },
+    "gpt-5-mini": {
+     "requests": 434,
+     "prompt": 1240156,
+     "completion": 183009,
+     "reasoning": 134400
+    }
+   },
+   "per_call_latency_ms": {
+    "p50": 2789,
+    "p95": 6966,
+    "max": 12846
+   },
+   "per_event_wall_ms_sequential": {
+    "p50": 8160,
+    "p95": 16583,
+    "max": 24975
+   },
+   "cost_usd": 0.9959714,
+   "cost_per_event_usd": 0.0035318134751773046
+  },
+  "jev": {
+   "requests": 1090,
+   "ok": 1090,
+   "api_errors": 0,
+   "retried": 0,
+   "models": [
+    "jev-1.13.0"
+   ],
+   "per_request_latency_ms": {
+    "p50": 299,
+    "p95": 545,
+    "max": 1006
+   },
+   "input_tokens": 6631196,
+   "output_tokens": 487384,
+   "cost_usd": 0.278510232,
+   "requests_per_event_mean": 3.8652482269503547
+  },
+  "ledger_spent_usd": 1.275512432,
+  "budget_usd": 5
+ }
+}

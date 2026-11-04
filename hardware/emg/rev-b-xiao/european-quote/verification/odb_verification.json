@@ -1,0 +1,150 @@
+{
+ "rotation_identical_count": 61,
+ "checks": [
+  {
+   "check": "ODB++ job: units MM, version 8.1, source KiCad 10.0.6",
+   "result": "PASS",
+   "detail": "JOB_NAME=job UNITS=MM ODB_VERSION_MAJOR=8 ODB_VERSION_MINOR=1 ODB_SOURCE=KiCad EDA CREATION_DATE=20261013.221116 SAVE_DATE=20261013.221116 SAVE_APP=KiCad EDA 10"
+  },
+  {
+   "check": "zip is a single ODB++ job tree (matrix, steps/pcb, misc, symbols)",
+   "result": "PASS",
+   "detail": ""
+  },
+  {
+   "check": "four copper (SIGNAL) layers: F.CU, IN1.CU, IN2.CU, B.CU",
+   "result": "PASS",
+   "detail": "['F.CU', 'IN1.CU', 'IN2.CU', 'B.CU']"
+  },
+  {
+   "check": "three dielectric layers",
+   "result": "PASS",
+   "detail": ""
+  },
+  {
+   "check": "top and bottom solder-mask layers present",
+   "result": "PASS",
+   "detail": "['F.MASK', 'B.MASK']"
+  },
+  {
+   "check": "no drill layer other than the plated through-hole layer; no NPTH layer",
+   "result": "PASS",
+   "detail": "['DRILL_PLATED_F.CU-B.CU']"
+  },
+  {
+   "check": "profile: 51.30 \u00d7 64.95 mm, origin 0,0 (y down = negative)",
+   "result": "PASS",
+   "detail": "(51.3, 64.95, 0.0, -64.95)"
+  },
+  {
+   "check": "drill: 201 holes of \u00d80.30 mm (vias) and exactly 1 plated hole of \u00d81.90 mm",
+   "result": "PASS",
+   "detail": "(201, 1, 202)"
+  },
+  {
+   "check": "\u00d81.90 mm hole at X 44.635 / Y \u221254.790 (KiCad 44.635 / 54.790) and typed PLATED in the tool list",
+   "result": "PASS",
+   "detail": "[(44.635, -54.79, 'r1900.0')]"
+  },
+  {
+   "check": "all 201 via positions equal the audited Excellon drill positions",
+   "result": "PASS",
+   "detail": ""
+  },
+  {
+   "check": "f.cu: flashes at the BAT+ hole = [2.3]",
+   "result": "PASS",
+   "detail": "[2.3]"
+  },
+  {
+   "check": "in1.cu: flashes at the BAT+ hole = [2.3]",
+   "result": "PASS",
+   "detail": "[2.3]"
+  },
+  {
+   "check": "in2.cu: flashes at the BAT+ hole = [2.3]",
+   "result": "PASS",
+   "detail": "[2.3]"
+  },
+  {
+   "check": "b.cu: flashes at the BAT+ hole = [2.3, 3.0]",
+   "result": "PASS",
+   "detail": "[2.3, 3.0]"
+  },
+  {
+   "check": "f.mask: flashes at the BAT+ hole = [1.95]",
+   "result": "PASS",
+   "detail": "[1.95]"
+  },
+  {
+   "check": "b.mask: flashes at the BAT+ hole = [1.95, 3.0]",
+   "result": "PASS",
+   "detail": "[1.95, 3.0]"
+  },
+  {
+   "check": "no solder-paste aperture at the BAT+ hole",
+   "result": "PASS",
+   "detail": ""
+  },
+  {
+   "check": "mask layers: flashes only (no surfaces/lines) \u2192 no feature can cover the hole",
+   "result": "PASS",
+   "detail": ""
+  },
+  {
+   "check": "201 vias: \u00d80.60 pad on F.Cu and on B.Cu at every drill position",
+   "result": "PASS",
+   "detail": "(201, 201)"
+  },
+  {
+   "check": "via mask apertures: none (all 201 tented): no \u00d80.60/\u00d80.30 flash in F.Mask/B.Mask at any via",
+   "result": "PASS",
+   "detail": ""
+  },
+  {
+   "check": "top component layer: 126 SMD (mount type 1) + U1",
+   "result": "PASS",
+   "detail": "(126, 127)"
+  },
+  {
+   "check": "U1 marked THMT (mount type 2) and NO_POP (do-not-populate)",
+   "result": "PASS",
+   "detail": ";0=2,1"
+  },
+  {
+   "check": "no bottom-side SMT: bottom component layer holds only TP1\u2013TP8 with mount type 0 (other), none SMD, none populated by CPL",
+   "result": "PASS",
+   "detail": "{'TP4': ';0=0', 'TP5': ';0=0', 'TP3': ';0=0', 'TP8': ';0=0', 'TP7': ';0=0', 'TP6': ';0=0', 'TP2': ';0=0', 'TP1': ';0=0'}"
+  },
+  {
+   "check": "ODB SMD component set = release CPL designators (126)",
+   "result": "PASS",
+   "detail": ""
+  },
+  {
+   "check": "ODB component (x, y) = CPL; ODB rotation = 360 \u2212 KiCad rotation (ODB++ is clockwise-positive) for all 126",
+   "result": "PASS",
+   "detail": "[]"
+  },
+  {
+   "check": "every SMD component carries MPN + LCSC properties equal to the release BOM",
+   "result": "PASS",
+   "detail": "[]"
+  },
+  {
+   "check": "U1 carries MPN 'Seeed PN 202003751\u2026', Manufacturer 'Seeed Studio' and is not in the release BOM",
+   "result": "PASS",
+   "detail": ""
+  },
+  {
+   "check": "TP1\u2013TP8 are not in the release BOM/CPL",
+   "result": "PASS",
+   "detail": ""
+  },
+  {
+   "check": "netlist: 90 nets; the \u00d81.90 hole location belongs to net VBAT only",
+   "result": "PASS",
+   "detail": "(90, [(7, 1.9, 44.635, -54.79), (7, 0.0, 44.635, -54.79)], 7)"
+  }
+ ]
+}

@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Marginalia Mobile · single screen</title>
+<link rel="stylesheet" href="../exploration/arthur.css"><link rel="stylesheet" href="mobile.css">
+<style>html,body{margin:0;height:100%;overflow:hidden;background:var(--ground)} #p{position:absolute;left:0;top:0}</style></head>
+<body><div id="p"></div>
+<script src="../exploration/arthur-ui.js"></script><script src="demo-data.js"></script><script src="mobile-ui.js"></script>
+<script>
+const q=new URLSearchParams(location.search), w=+q.get("w")||innerWidth, h=+q.get("h")||innerHeight;
+if(q.get("theme")==="light")document.documentElement.dataset.theme="light";
+window.phone=Mobile.mount(document.getElementById("p"),{w,h,preset:q.get("s")||"home",nav:q.get("nav")||"gesture",cap:q.get("cap")||"c",outcome:q.get("o")||undefined,freeze:q.get("live")!=="1"});
+
+// design-test hook: &click=sel1;sel2 clicks in order, &js=code runs afterwards (used to verify interactions headlessly)
+(async()=>{const c=q.get("click");if(c)for(const sel of c.split(";")){if(sel[0]==="~"){await new Promise(r=>setTimeout(r,+sel.slice(1)));continue}await new Promise(r=>setTimeout(r,60));const n=document.querySelector(sel);if(!n){console.log("MISSING "+sel);continue}n.click?n.click():n.dispatchEvent(new MouseEvent("click",{bubbles:true}))}
+const js=q.get("js");if(js){await new Promise(r=>setTimeout(r,80));try{console.log("JS "+JSON.stringify(eval(js)))}catch(e){console.log("JSERR "+e)}}})();
+</script></body></html>

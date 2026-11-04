@@ -1,0 +1,2 @@
+111e1cd3d0c9fae12b53f5f816aea8a5ce2c7e3a4bf09cca314970c2bca30698  kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb
+510594ced920387443fb03c3491d962eeab8c7d05f788d900fd9acebf3fccb23  kicad/ARTHUR_EMG_RevB/fp-libs/ARTHUR.pretty/XIAO_ESP32S3_HANDSOLDER.kicad_mod

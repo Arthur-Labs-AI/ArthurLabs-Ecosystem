@@ -1,0 +1,447 @@
+[
+ {
+  "spec": "2.2uF 16V X7R 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C101",
+   "C102",
+   "C201",
+   "C202",
+   "C301",
+   "C302",
+   "C401",
+   "C402"
+  ]
+ },
+ {
+  "spec": "100pF 50V C0G 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C103",
+   "C104",
+   "C203",
+   "C204",
+   "C303",
+   "C304",
+   "C403",
+   "C404"
+  ]
+ },
+ {
+  "spec": "10nF 50V C0G 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic or Extended (10 nF C0G - confirm)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C105",
+   "C205",
+   "C305",
+   "C405"
+  ]
+ },
+ {
+  "spec": "1.0nF 50V C0G 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C106",
+   "C107",
+   "C206",
+   "C207",
+   "C306",
+   "C307",
+   "C406",
+   "C407"
+  ]
+ },
+ {
+  "spec": "22uF 10V X5R 0805 MLCC",
+  "footprint": "C_0805_2012Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C4007"
+  ]
+ },
+ {
+  "spec": "1uF 16V X7R 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C5001",
+   "C6007",
+   "C6008",
+   "C4005",
+   "C4006"
+  ]
+ },
+ {
+  "spec": "100nF 16V X7R 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C501",
+   "C502",
+   "C503",
+   "C5002",
+   "C6010",
+   "C7102",
+   "C7103"
+  ]
+ },
+ {
+  "spec": "220nF 16V X7R 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C6009"
+  ]
+ },
+ {
+  "spec": "10uF 10V X5R 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C7101"
+  ]
+ },
+ {
+  "spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+  "footprint": "SOT-23",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "mfr": "Nexperia",
+  "refs": [
+   "D101",
+   "D102",
+   "D103",
+   "D104",
+   "D201",
+   "D202",
+   "D203",
+   "D204",
+   "D301",
+   "D302",
+   "D303",
+   "D304",
+   "D401",
+   "D402",
+   "D403",
+   "D404"
+  ]
+ },
+ {
+  "spec": "Ferrite bead 600 ohm @ 100 MHz, 0603, >= 200 mA, DCR <= 0.5 ohm",
+  "footprint": "L_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "FB1"
+  ]
+ },
+ {
+  "spec": "JST PH 2.0 mm 2-pin side-entry SMD, 2 A / 100 V AC/DC (AWG24), mates PHR-2 + SPH-002T-P0.5S. Pin 1 = BAT+, pin 2 = BAT- by this design; PH is not a polarity standard: verify cell lead polarity before first connection",
+  "footprint": "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+  "mpn": "S2B-PH-SM4-TB(LF)(SN)",
+  "lcsc": "C295747",
+  "jlc_class": "Extended (JLC library type expand); Economic + Standard PCBA; MSL 1",
+  "mfr": "JST",
+  "refs": [
+   "J1"
+  ]
+ },
+ {
+  "spec": "JST PH 2.0 mm 2-pin vertical SMD, 2 retention pads",
+  "footprint": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+  "mpn": "B2B-PH-SM4-TB(LF)(SN)",
+  "lcsc": "C160352",
+  "jlc_class": "Extended (expected)",
+  "mfr": "JST",
+  "refs": [
+   "J101",
+   "J201",
+   "J301",
+   "J401",
+   "J5001"
+  ]
+ },
+ {
+  "spec": "60 V N-MOSFET SOT-23, VGS(th) >= 0.8 V",
+  "footprint": "SOT-23",
+  "mpn": "2N7002",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic, e.g. Nexperia/CJ)",
+  "refs": [
+   "Q3001"
+  ]
+ },
+ {
+  "spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R101",
+   "R102",
+   "R201",
+   "R202",
+   "R301",
+   "R302",
+   "R401",
+   "R402",
+   "R5005",
+   "R3006",
+   "R3007",
+   "R7104"
+  ]
+ },
+ {
+  "spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R103",
+   "R104",
+   "R203",
+   "R204",
+   "R303",
+   "R304",
+   "R403",
+   "R404",
+   "R5003",
+   "R5004",
+   "R3004",
+   "R3008",
+   "R7103",
+   "R7105"
+  ]
+ },
+ {
+  "spec": "10M \u00b15% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R105",
+   "R106",
+   "R205",
+   "R206",
+   "R305",
+   "R306",
+   "R405",
+   "R406"
+  ]
+ },
+ {
+  "spec": "1.0k \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R107",
+   "R108",
+   "R207",
+   "R208",
+   "R307",
+   "R308",
+   "R407",
+   "R408"
+  ]
+ },
+ {
+  "spec": "4.7k \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R3009"
+  ]
+ },
+ {
+  "spec": "4.7 \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R4001"
+  ]
+ },
+ {
+  "spec": "100k \u00b11% 0805 thick film, >=1/10 W, 0805 for creepage",
+  "footprint": "R_0805_2012Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R5002"
+  ]
+ },
+ {
+  "spec": "33 \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R6001",
+   "R6002",
+   "R7101",
+   "R7102"
+  ]
+ },
+ {
+  "spec": "100 \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R6003"
+  ]
+ },
+ {
+  "spec": "150k \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R7106"
+  ]
+ },
+ {
+  "spec": "1M \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R7107",
+   "R7108"
+  ]
+ },
+ {
+  "spec": "Bare B.Cu pad, no via-in-pad, not assembled (size provisional, final at RB-02)",
+  "footprint": "TestPoint_Pad_D1.5mm",
+  "mpn": "N/A (bare copper pad)",
+  "lcsc": null,
+  "jlc_class": "N/A (not assembled)",
+  "mfr": "N/A (PCB feature)",
+  "refs": [
+   "TP4",
+   "TP5",
+   "TP7",
+   "TP1",
+   "TP2",
+   "TP6",
+   "TP3",
+   "TP8"
+  ]
+ },
+ {
+  "spec": "ESP32-S3 module, 21.0 x 17.8 mm, castellated. Headers NOT fitted",
+  "footprint": "XIAO_ESP32S3_HANDSOLDER",
+  "mpn": "Seeed PN 202003751 (XIAO ESP32S3 plain, v1.4, unsoldered-header version)",
+  "lcsc": null,
+  "jlc_class": "N/A - DNP at JLC (bought retail, hand-soldered)",
+  "mfr": "Seeed Studio",
+  "refs": [
+   "U1"
+  ]
+ },
+ {
+  "spec": "3.0 V 300 mA LDO, active discharge, SOT-23-5",
+  "footprint": "SOT-23-5",
+  "mpn": "TPS7A2030PDBVR",
+  "lcsc": null,
+  "jlc_class": "Extended (expected)",
+  "mfr": "Texas Instruments",
+  "refs": [
+   "U4002"
+  ]
+ },
+ {
+  "spec": "Quad RRIO op-amp TSSOP-14",
+  "footprint": "TSSOP-14_4.4x5mm_P0.65mm",
+  "mpn": "TLV9064IPWR",
+  "lcsc": null,
+  "jlc_class": "Extended (expected)",
+  "mfr": "Texas Instruments",
+  "refs": [
+   "U501",
+   "U502",
+   "U503"
+  ]
+ },
+ {
+  "spec": "4-ch 24-bit simultaneous delta-sigma ADC, TSSOP-20",
+  "footprint": "TSSOP-20_4.4x6.5mm_P0.65mm",
+  "mpn": "ADS131M04IPWR",
+  "lcsc": null,
+  "jlc_class": "Extended (expected)",
+  "mfr": "Texas Instruments",
+  "refs": [
+   "U6001"
+  ]
+ },
+ {
+  "spec": "8.192 MHz CMOS XO, 1.62-3.63 V, +/-20 ppm @25C, +/-30 ppm -40..85C, 45-55 % duty, Icc <= 10 mA (15 pF), tstart <= 5 ms, SMD3225-4P",
+  "footprint": "OSC_SCTF_SX3M_SMD3225-4P",
+  "mpn": "SX3M8.192M20F30TNN",
+  "lcsc": "C2901557",
+  "jlc_class": "Extended (JLC library type expand); Economic + Standard PCBA; MSL 1",
+  "mfr": "SCTF (Shenzhen SCTF Elec)",
+  "refs": [
+   "X1"
+  ]
+ }
+]

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arthur — three directions</title>
+<link rel="stylesheet" href="arthur.css">
+<style>
+  html,body{ height:auto; overflow:auto; background:#0f1110; }
+  .wrap{ max-width:1400px; margin:0 auto; padding:36px 32px 90px; }
+  .wrap > h1{ font:430 34px/1.1 var(--serif); margin:0 0 6px; letter-spacing:-.015em; }
+  .wrap > p{ margin:0 0 28px; color:var(--ink-3); max-width:80ch; }
+  .tabs{ display:flex; gap:0; border-bottom:1px solid var(--line-soft); margin-bottom:22px; }
+  .tabs button{ padding:12px 22px 12px 0; margin-right:22px; color:var(--ink-3); text-align:left; position:relative; }
+  .tabs button b{ display:block; font:450 19px/1.2 var(--serif); color:inherit; }
+  .tabs button small{ color:var(--ink-4); }
+  .tabs button[aria-selected="true"]{ color:var(--ink); } .tabs button[aria-selected="true"] small{ color:var(--ink-3); }
+  .tabs button[aria-selected="true"]::after{ content:""; position:absolute; left:0; right:22px; bottom:-1px; height:2px; background:var(--ink); }
+  .dir{ display:none; } .dir.on{ display:block; }
+  .frame{ width:1280px; height:780px; border:1px solid var(--line); border-radius:10px; overflow:hidden; position:relative; transform-origin:top left; }
+  .scaler{ width:100%; overflow:hidden; }
+  .verdict{ display:grid; grid-template-columns:1.1fr 1fr 1fr 1fr; gap:36px; margin-top:26px; }
+  .verdict h3{ margin:0 0 8px; font:500 13px var(--sans); }
+  .verdict p,.verdict li{ color:var(--ink-2); font-size:13.5px; margin:0 0 7px; }
+  .verdict ul{ margin:0; padding-left:17px; }
+  .verdict .big{ font:430 22px/1.25 var(--serif); color:var(--ink); }
+  .score{ display:grid; grid-template-columns:1fr auto; gap:6px 10px; font-size:13px; color:var(--ink-2); align-items:center; }
+  .dots{ display:flex; gap:3px; } .dots i{ width:9px; height:9px; border-radius:50%; border:1px solid var(--ink-3); } .dots i.f{ background:var(--ink); border-color:var(--ink); }
+  .win{ color:var(--accent); }
+
+  /* ---------- A: Ledger ---------- */
+  .fa{ --g:#14161a; --s:#0f1114; --l:#262a31; --i:#e4e6ea; --i2:#9aa0aa; --i3:#667; --ac:#e0a458; background:var(--g); color:var(--i); font:13px/1.4 "Hanken Grotesk",system-ui,sans-serif; display:grid; grid-template-columns:200px 1fr 300px; grid-template-rows:44px 1fr; }
+  .fa .bar{ grid-column:1/4; border-bottom:1px solid var(--l); display:flex; align-items:center; gap:14px; padding:0 16px; }
+  .fa .cmd{ margin:0 auto; width:460px; height:28px; border:1px solid var(--l); border-radius:6px; display:flex; align-items:center; padding:0 10px; color:var(--i3); background:var(--s); }
+  .fa .cmd kbd{ margin-left:auto; color:var(--i3); border-color:var(--l); }
+  .fa .side{ background:var(--s); border-right:1px solid var(--l); padding:12px 8px; display:flex; flex-direction:column; gap:2px; color:var(--i2); }
+  .fa .side a{ padding:6px 10px; border-radius:5px; } .fa .side a.on{ background:#1d2026; color:var(--i); }
+  .fa .side small{ padding:12px 10px 4px; color:var(--i3); font-size:11px; }
+  .fa table{ width:100%; border-collapse:collapse; } .fa th{ text-align:left; font-weight:500; color:var(--i3); padding:8px 10px; border-bottom:1px solid var(--l); font-size:12px; position:sticky; top:0; background:var(--g); }
+  .fa td{ padding:0 10px; height:34px; border-bottom:1px solid #1b1e23; color:var(--i2); white-space:nowrap; } .fa td:first-child{ color:var(--i); }
+  .fa tr.sel td{ background:#1d2026; }
+  .fa .pill{ font-size:11.5px; padding:2px 7px; border-radius:4px; background:#20242b; color:var(--i2); }
+  .fa .props{ border-left:1px solid var(--l); padding:16px; } .fa .props h4{ margin:0 0 14px; font:500 15px/1.3 "Hanken Grotesk"; color:var(--i); }
+  .fa .props dl{ display:grid; grid-template-columns:90px 1fr; gap:9px 8px; margin:0; color:var(--i2); } .fa .props dt{ color:var(--i3); } .fa .props dd{ margin:0; }
+  .fa .tabsb{ display:flex; gap:16px; padding:10px 14px 0; border-bottom:1px solid var(--l); color:var(--i3); } .fa .tabsb span{ padding-bottom:9px; } .fa .tabsb .on{ color:var(--i); border-bottom:2px solid var(--ac); }
+  /* ---------- B: Atlas ---------- */
+  .fb{ background:radial-gradient(900px 560px at 50% 45%, #14233a 0%, #0a0f1a 70%); color:#dbe6ff; font:13px/1.4 "Hanken Grotesk",system-ui,sans-serif; --ground:#0a0f1a; --ink:#dbe6ff; --ink-2:#9db3dc; --ink-3:#6a7fa8; --ink-4:#3b4a6a; --accent:#6ea8ff; --accent-soft:rgba(110,168,255,.18); --line:#25324f; --line-soft:#1b2640; --overlay:rgba(16,26,48,.7); }
+  .fb .nav2{ position:absolute; left:18px; top:18px; display:flex; gap:4px; padding:4px; border:1px solid rgba(110,168,255,.25); border-radius:20px; background:rgba(16,26,48,.7); backdrop-filter:blur(8px); }
+  .fb .nav2 span{ padding:5px 12px; border-radius:16px; color:#9db3dc; } .fb .nav2 .on{ background:rgba(110,168,255,.2); color:#fff; box-shadow:0 0 14px rgba(110,168,255,.35); }
+  .fb .glass{ position:absolute; border:1px solid rgba(110,168,255,.25); border-radius:16px; background:linear-gradient(160deg,rgba(40,70,130,.35),rgba(16,26,48,.6)); backdrop-filter:blur(10px); }
+  .fb svg.m{ position:absolute; inset:0; width:100%; height:100%; }
+  .fb .g-node .shape *{ fill:#0a0f1a; stroke:#7fb0ff; filter:drop-shadow(0 0 5px rgba(110,168,255,.7)); }
+  .fb .g-label{ fill:#c8d8ff; font-family:"Hanken Grotesk"; font-size:13px; stroke:#0a0f1a; }
+  /* ---------- C ---------- */
+  .fc iframe{ border:0; width:1440px; height:900px; transform:scale(.8889); transform-origin:0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Three directions, one product</h1>
+  <p>Same content in each: Arthur mobile app experience, its source, its connections, its revisions. They differ in what they believe Arthur <i>is</i>: a tracker, a map, or a notebook.</p>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-d="a"><b>A · Ledger</b><small>Arthur is a fast tracker for thoughts</small></button>
+    <button role="tab" aria-selected="false" data-d="b"><b>B · Atlas</b><small>Arthur is a map you move through</small></button>
+    <button role="tab" aria-selected="false" data-d="c"><b>C · Marginalia</b><small>Arthur is a notebook with a memory</small></button>
+  </div>
+
+  <section class="dir on" id="d-a">
+    <div class="scaler"><div class="frame fa" id="fa">
+      <div class="bar"><b style="font-size:15px">Arthur</b><div class="cmd">Search, capture or run a command<kbd>⌘K</kbd></div><span style="color:var(--i3)">Ready</span></div>
+      <div class="side"><a>Inbox</a><a class="on">All ideas</a><a>Tasks</a><a>Decisions</a><small>Views</small><a>Connected</a><a>Recently revised</a><a>Contradictions</a><small>Tools</small><a>Graph</a><a>History</a><a>Settings</a></div>
+      <div style="overflow:hidden"><div class="tabsb"><span class="on">Ideas</span><span>Tasks</span><span>Decisions</span><span>Questions</span></div>
+        <table><thead><tr><th>Title</th><th>Kind</th><th>Source</th><th>Links</th><th>Revs</th><th>Updated</th></tr></thead><tbody id="a-rows"></tbody></table></div>
+      <div class="props"><h4>Arthur mobile app experience</h4><dl><dt>Kind</dt><dd><span class="pill">Idea</span></dd><dt>Source</dt><dd>Voice · Fri 14:32</dd><dt>Links</dt><dd>5 (2 yours)</dd><dt>Revision</dt><dd>R5 current</dd><dt>Updated</dt><dd>18 min ago</dd></dl>
+        <p style="color:var(--i2);margin-top:18px;line-height:1.55">The mobile app should be voice-first and require almost no navigation from the user…</p><p style="color:var(--i3);margin-top:18px">Graph and History open in their own views.</p></div>
+    </div></div>
+    <div class="verdict"><div><h3>The bet</h3><p class="big">Speed and density. A command palette and a table. Everything is a row, a property or a keystroke.</p></div>
+      <div><h3>Strengths</h3><ul><li>Fastest to scan hundreds of ideas</li><li>Easiest to build: tables are cheap, shadcn-native</li><li>Mobile maps to a simple list</li></ul></div>
+      <div><h3>Risks</h3><ul><li><b>It is the generic option.</b> A tracker skin on a thinking tool looks like Linear with different data.</li><li>Graph and lineage are demoted to “views”, but they are Arthur's thesis</li><li>Provenance becomes a column, not a feeling</li></ul></div>
+      <div><h3>Fit for Arthur</h3><div class="score"><span>Distinctive</span><span class="dots"><i class="f"></i><i></i><i></i><i></i><i></i></span><span>Shows the 3 concepts</span><span class="dots"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span><span>Feels like thinking</span><span class="dots"><i class="f"></i><i></i><i></i><i></i><i></i></span><span>Build cost (low = good)</span><span class="dots"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span><span>Mobile-ready</span><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span></div></div></div>
+  </section>
+
+  <section class="dir" id="d-b">
+    <div class="scaler"><div class="frame fb" id="fb">
+      <svg class="m" id="b-map"></svg>
+      <div class="nav2"><span class="on">Map</span><span>Ideas</span><span>Time</span><span>Settings</span></div>
+      <div class="glass" style="right:18px;top:18px;width:300px;padding:18px"><div style="color:#6a7fa8;font-size:12px">Idea · R5</div><h4 style="margin:6px 0 8px;font:600 18px/1.2 'Hanken Grotesk'">Arthur mobile app experience</h4><p style="margin:0;color:#9db3dc">The mobile app should be voice-first and require almost no navigation…</p><div style="display:flex;gap:14px;margin-top:14px;color:#6ea8ff"><span>◉ Voice</span><span>⌁ 5</span><span>⑂ 5</span></div></div>
+      <div class="glass" style="left:50%;bottom:78px;transform:translateX(-50%);width:560px;padding:14px 20px;border-radius:26px;color:#6a7fa8">✦ What's on your mind?  <span style="float:right;color:#6ea8ff">🎙</span></div>
+      <div class="glass" style="left:50%;bottom:18px;transform:translateX(-50%);width:560px;padding:8px 20px;border-radius:20px;display:flex;align-items:center;gap:14px;color:#9db3dc">Time <div style="flex:1;height:2px;background:linear-gradient(90deg,#6ea8ff 60%,#25324f 60%);position:relative"><i style="position:absolute;left:60%;top:-5px;width:12px;height:12px;border-radius:50%;background:#6ea8ff;box-shadow:0 0 12px #6ea8ff"></i></div> R3 of R5</div>
+    </div></div>
+    <div class="verdict"><div><h3>The bet</h3><p class="big">The graph is the home screen. Every other view is a lens on the same map. Time is a scrubber, not a screen.</p></div>
+      <div><h3>Strengths</h3><ul><li>Most memorable demo; the competition screenshot</li><li>Connections and Evolution feel native, not bolted on</li><li>Honest to the “connected thinking” promise</li></ul></div>
+      <div><h3>Risks</h3><ul><li><b>Collapses at scale.</b> 12 nodes are lovely; 400 are hairballs.</li><li>Text-heavy work (tasks, notes) is awkward on a canvas</li><li>It lands in the neon-HUD territory we were asked to avoid: glow, blur, glass</li><li>Hardest to adapt to mobile; needs a different app</li></ul></div>
+      <div><h3>Fit for Arthur</h3><div class="score"><span>Distinctive</span><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></span><span>Shows the 3 concepts</span><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span><span>Feels like thinking</span><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></span><span>Build cost (low = good)</span><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span><span>Mobile-ready</span><span class="dots"><i class="f"></i><i></i><i></i><i></i><i></i></span></div></div></div>
+  </section>
+
+  <section class="dir" id="d-c">
+    <div class="scaler"><div class="frame fc" id="fc"><iframe src="screens.html?s=ideas" title="Marginalia Ideas screen"></iframe></div></div>
+    <div class="verdict"><div><h3>The bet</h3><p class="big">A thought is a page with a margin. Source, connections and revisions are annotations in that margin, everywhere. The graph and the lineage are what you get when you zoom out.</p></div>
+      <div><h3>Strengths</h3><ul><li>Makes the three concepts <i>part of every thought</i>, as asked</li><li>Reads as a notebook, not a dashboard; serif is the cue that it is your content</li><li>Scales: rows, hairlines and one inspector survive 5,000 ideas</li><li>Mobile: margin collapses under the thought, inspector becomes a sheet</li></ul></div>
+      <div><h3>Risks</h3><ul><li>Quieter than Atlas in a 30-second demo, so Connections must carry the wow</li><li>Serif in a dark app is uncommon; must be kept disciplined</li><li>Needs custom glyphs and relation art, not stock Lucide</li></ul></div>
+      <div><h3>Fit for Arthur</h3><div class="score"><span>Distinctive</span><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span><span>Shows the 3 concepts</span><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span><span>Feels like thinking</span><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span><span>Build cost (low = good)</span><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></span><span>Mobile-ready</span><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span></div></div></div>
+  </section>
+</div>
+<script src="arthur-ui.js"></script>
+<script>
+const A = Arthur, $ = (s) => document.querySelector(s);
+$("#a-rows").innerHTML = A.objects.map((o, i) => `<tr class="${i === 0 ? "sel" : ""}"><td>${o.title}</td><td><span class="pill">${o.kind}</span></td><td>${A.srcName(o.src)}</td><td>${A.deg(o.id)}</td><td>r${o.rev}</td><td>${o.ago}</td></tr>`).join("");
+const st = document.createElement("style"); st.textContent = A.graphCss; document.head.appendChild(st);
+const pos = {}; Object.keys(A.pos).forEach((k) => (pos[k] = [A.pos[k][0] * 1.25 - 40, A.pos[k][1] * 1.2 - 30]));
+A.renderGraph($("#b-map"), { pos, bounds: [1280, 780], selected: { type: "node", id: "o1" } });
+document.querySelectorAll(".tabs button").forEach((b) => (b.onclick = () => { document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-selected", x === b)); document.querySelectorAll(".dir").forEach((d) => d.classList.toggle("on", d.id === "d-" + b.dataset.d)); fit(); }));
+function fit() { const w = Math.min(1336, document.querySelector(".wrap").clientWidth - 64); const k = Math.min(1, w / 1280); document.querySelectorAll(".dir.on .frame").forEach((f) => { f.style.transform = `scale(${k})`; f.parentElement.style.height = 780 * k + "px"; }); }
+addEventListener("resize", fit); fit();
+const q = new URLSearchParams(location.search).get("d"); if (q) document.querySelector(`[data-d="${q}"]`).click();
+</script>
+</body>
+</html>

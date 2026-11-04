@@ -1,0 +1,1010 @@
+[
+  {
+    "ref": "C101",
+    "x": 38.95,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C102",
+    "x": 34.25,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C103",
+    "x": 38.6,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C104",
+    "x": 33.9,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C105",
+    "x": 7.1,
+    "y": 42.75,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C106",
+    "x": 12.6,
+    "y": 47.35,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C107",
+    "x": 12.6,
+    "y": 48.85,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C201",
+    "x": 29.55,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C202",
+    "x": 24.85,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C203",
+    "x": 29.2,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C204",
+    "x": 24.5,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C205",
+    "x": 10.9,
+    "y": 42.75,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C206",
+    "x": 12.6,
+    "y": 51.85,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C207",
+    "x": 12.6,
+    "y": 50.35,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C301",
+    "x": 20.15,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C302",
+    "x": 15.45,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C303",
+    "x": 19.8,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C304",
+    "x": 15.1,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C305",
+    "x": 7.1,
+    "y": 61.15,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C306",
+    "x": 12.6,
+    "y": 53.35,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C307",
+    "x": 12.6,
+    "y": 54.85,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C401",
+    "x": 10.75,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C402",
+    "x": 6.05,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C403",
+    "x": 10.4,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C404",
+    "x": 5.7,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C405",
+    "x": 10.9,
+    "y": 61.15,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C406",
+    "x": 12.6,
+    "y": 57.85,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C407",
+    "x": 12.6,
+    "y": 56.35,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C501",
+    "x": 35.55,
+    "y": 22.6,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C502",
+    "x": 16.75,
+    "y": 22.6,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C503",
+    "x": 46.65,
+    "y": 22.6,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C4005",
+    "x": 18.8,
+    "y": 37.55,
+    "kicad_rotation": 90.0,
+    "correction": 0,
+    "factory_rotation": 90.0
+  },
+  {
+    "ref": "C4006",
+    "x": 25.7,
+    "y": 37.55,
+    "kicad_rotation": 90.0,
+    "correction": 0,
+    "factory_rotation": 90.0
+  },
+  {
+    "ref": "C4007",
+    "x": 33.9,
+    "y": 38.55,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C5001",
+    "x": 43.25,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C5002",
+    "x": 41.65,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "C6007",
+    "x": 15.9,
+    "y": 46.25,
+    "kicad_rotation": 90.0,
+    "correction": 0,
+    "factory_rotation": 90.0
+  },
+  {
+    "ref": "C6008",
+    "x": 20.7,
+    "y": 46.85,
+    "kicad_rotation": 90.0,
+    "correction": 0,
+    "factory_rotation": 90.0
+  },
+  {
+    "ref": "C6009",
+    "x": 23.72,
+    "y": 49.4,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C6010",
+    "x": 24.2,
+    "y": 44.65,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C7101",
+    "x": 27.0,
+    "y": 58.5,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C7102",
+    "x": 27.0,
+    "y": 60.05,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "C7103",
+    "x": 36.6,
+    "y": 36.2,
+    "kicad_rotation": 90.0,
+    "correction": 0,
+    "factory_rotation": 90.0
+  },
+  {
+    "ref": "D101",
+    "x": 37.4,
+    "y": 14.0,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "D102",
+    "x": 32.7,
+    "y": 14.0,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "D103",
+    "x": 9.1,
+    "y": 46.15,
+    "kicad_rotation": 0,
+    "correction": 180,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "D104",
+    "x": 5.2,
+    "y": 46.15,
+    "kicad_rotation": 0,
+    "correction": 180,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "D201",
+    "x": 28.0,
+    "y": 14.0,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "D202",
+    "x": 23.3,
+    "y": 14.0,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "D203",
+    "x": 5.2,
+    "y": 49.75,
+    "kicad_rotation": 0,
+    "correction": 180,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "D204",
+    "x": 9.1,
+    "y": 49.75,
+    "kicad_rotation": 0,
+    "correction": 180,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "D301",
+    "x": 18.6,
+    "y": 14.0,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "D302",
+    "x": 13.9,
+    "y": 14.0,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "D303",
+    "x": 9.1,
+    "y": 53.35,
+    "kicad_rotation": 0,
+    "correction": 180,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "D304",
+    "x": 5.2,
+    "y": 53.35,
+    "kicad_rotation": 0,
+    "correction": 180,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "D401",
+    "x": 9.2,
+    "y": 14.0,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "D402",
+    "x": 4.5,
+    "y": 14.0,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "D403",
+    "x": 5.2,
+    "y": 56.95,
+    "kicad_rotation": 0,
+    "correction": 180,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "D404",
+    "x": 9.1,
+    "y": 56.95,
+    "kicad_rotation": 0,
+    "correction": 180,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "FB1",
+    "x": 27.0,
+    "y": 56.95,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "J1",
+    "x": 44.4,
+    "y": 38.3,
+    "kicad_rotation": 90.0,
+    "correction": 180,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "J101",
+    "x": 35.05,
+    "y": 5.15,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "J201",
+    "x": 25.65,
+    "y": 5.15,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "J301",
+    "x": 16.25,
+    "y": 5.15,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "J401",
+    "x": 6.85,
+    "y": 5.15,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "J5001",
+    "x": 44.45,
+    "y": 5.15,
+    "kicad_rotation": 180.0,
+    "correction": 180,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "Q3001",
+    "x": 28.8,
+    "y": 37.75,
+    "kicad_rotation": 0,
+    "correction": 180,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "R101",
+    "x": 37.4,
+    "y": 11.1,
+    "kicad_rotation": 180.0,
+    "correction": 0,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "R102",
+    "x": 32.7,
+    "y": 11.1,
+    "kicad_rotation": 180.0,
+    "correction": 0,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "R103",
+    "x": 37.4,
+    "y": 31.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R104",
+    "x": 32.7,
+    "y": 31.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R105",
+    "x": 36.2,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R106",
+    "x": 31.5,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R107",
+    "x": 35.85,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R108",
+    "x": 31.15,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R201",
+    "x": 28.0,
+    "y": 11.1,
+    "kicad_rotation": 180.0,
+    "correction": 0,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "R202",
+    "x": 23.3,
+    "y": 11.1,
+    "kicad_rotation": 180.0,
+    "correction": 0,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "R203",
+    "x": 28.0,
+    "y": 31.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R204",
+    "x": 23.3,
+    "y": 31.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R205",
+    "x": 26.8,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R206",
+    "x": 22.1,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R207",
+    "x": 26.45,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R208",
+    "x": 21.75,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R301",
+    "x": 18.6,
+    "y": 11.1,
+    "kicad_rotation": 180.0,
+    "correction": 0,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "R302",
+    "x": 13.9,
+    "y": 11.1,
+    "kicad_rotation": 180.0,
+    "correction": 0,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "R303",
+    "x": 18.6,
+    "y": 31.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R304",
+    "x": 13.9,
+    "y": 31.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R305",
+    "x": 17.4,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R306",
+    "x": 13.0,
+    "y": 17.6,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R307",
+    "x": 17.05,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R308",
+    "x": 12.35,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R401",
+    "x": 9.2,
+    "y": 11.1,
+    "kicad_rotation": 180.0,
+    "correction": 0,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "R402",
+    "x": 4.5,
+    "y": 11.1,
+    "kicad_rotation": 180.0,
+    "correction": 0,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "R403",
+    "x": 9.2,
+    "y": 31.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R404",
+    "x": 4.5,
+    "y": 31.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R405",
+    "x": 8.0,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R406",
+    "x": 3.3,
+    "y": 18.0,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R407",
+    "x": 7.65,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R408",
+    "x": 2.95,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R3004",
+    "x": 24.5,
+    "y": 41.55,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R3006",
+    "x": 27.7,
+    "y": 41.55,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R3007",
+    "x": 18.1,
+    "y": 41.55,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R3008",
+    "x": 21.3,
+    "y": 41.55,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R3009",
+    "x": 27.0,
+    "y": 61.99,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R4001",
+    "x": 33.9,
+    "y": 35.75,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R5002",
+    "x": 44.45,
+    "y": 12.2,
+    "kicad_rotation": 90.0,
+    "correction": 0,
+    "factory_rotation": 90.0
+  },
+  {
+    "ref": "R5003",
+    "x": 48.05,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R5004",
+    "x": 46.45,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R5005",
+    "x": 44.85,
+    "y": 28.8,
+    "kicad_rotation": -90.0,
+    "correction": 0,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "R6001",
+    "x": 23.9,
+    "y": 50.95,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R6002",
+    "x": 23.9,
+    "y": 52.5,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R6003",
+    "x": 23.9,
+    "y": 54.05,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R7101",
+    "x": 27.0,
+    "y": 49.5,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R7102",
+    "x": 26.9,
+    "y": 54.45,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R7103",
+    "x": 23.9,
+    "y": 55.6,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R7104",
+    "x": 23.9,
+    "y": 57.15,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R7105",
+    "x": 23.9,
+    "y": 59.55,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R7106",
+    "x": 23.9,
+    "y": 61.15,
+    "kicad_rotation": 0,
+    "correction": 0,
+    "factory_rotation": 0.0
+  },
+  {
+    "ref": "R7107",
+    "x": 36.6,
+    "y": 39.5,
+    "kicad_rotation": 90.0,
+    "correction": 0,
+    "factory_rotation": 90.0
+  },
+  {
+    "ref": "R7108",
+    "x": 34.8,
+    "y": 41.3,
+    "kicad_rotation": 90.0,
+    "correction": 0,
+    "factory_rotation": 90.0
+  },
+  {
+    "ref": "U501",
+    "x": 30.35,
+    "y": 22.6,
+    "kicad_rotation": 180.0,
+    "correction": 270,
+    "factory_rotation": 90.0
+  },
+  {
+    "ref": "U502",
+    "x": 11.55,
+    "y": 22.6,
+    "kicad_rotation": 180.0,
+    "correction": 270,
+    "factory_rotation": 90.0
+  },
+  {
+    "ref": "U503",
+    "x": 41.45,
+    "y": 22.6,
+    "kicad_rotation": 180.0,
+    "correction": 270,
+    "factory_rotation": 90.0
+  },
+  {
+    "ref": "U4002",
+    "x": 22.5,
+    "y": 37.55,
+    "kicad_rotation": 0,
+    "correction": 180,
+    "factory_rotation": 180.0
+  },
+  {
+    "ref": "U6001",
+    "x": 18.3,
+    "y": 51.95,
+    "kicad_rotation": 0,
+    "correction": 270,
+    "factory_rotation": 270.0
+  },
+  {
+    "ref": "X1",
+    "x": 24.2,
+    "y": 47.05,
+    "kicad_rotation": 180.0,
+    "correction": 0,
+    "factory_rotation": 180.0
+  }
+]

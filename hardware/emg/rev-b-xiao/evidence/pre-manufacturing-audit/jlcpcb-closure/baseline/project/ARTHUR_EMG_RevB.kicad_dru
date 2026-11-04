@@ -1,0 +1,50 @@
+(version 1)
+# ARTHUR EMG Rev B custom rules (REVB_MANUFACTURING_CONSTRAINTS.md section 3.1), RB-02.
+(rule "hiz_outer_only_in2"
+	(layer "In2.Cu")
+	(condition "A.NetClass == 'EMG_HIZ' || A.NetClass == 'EMG_ELECTRODE'")
+	(constraint disallow track)
+	(severity error))
+(rule "hiz_outer_only_in1"
+	(layer "In1.Cu")
+	(condition "A.NetClass == 'EMG_HIZ' || A.NetClass == 'EMG_ELECTRODE'")
+	(constraint disallow track)
+	(severity error))
+(rule "hiz_no_vias"
+	(constraint disallow via)
+	(condition "A.NetClass == 'EMG_HIZ' || A.NetClass == 'EMG_ELECTRODE' || A.NetClass == 'ADC_CAP'")
+	(severity error))
+# order matters in KiCad custom rules (the LAST matching rule wins): the generic 0.4 mm leakage rule comes first,
+# the stricter SPI separations after it.
+# RB-03R: hi-Z leakage rules.  The 0.4 mm separation between the hi-Z node and foreign copper is enforced EVERYWHERE except in the
+# physically unavoidable corner of the TLV9064 TSSOP-14 pin columns (0.65 mm pitch, 0.25 mm pad gap).  Exemptions are limited to
+#  (E1) track vs track, both tracks fully enclosed by the SAME pin-column area HIZ_ESC_<IC>_<L|R> (rb03r_escape_areas.py),
+#  (E2) a hi-Z track/via vs a pad of U501/U502/U503 (the neighbouring pins of the same package),
+#  (E3) a hi-Z pad of U501/U502/U503 vs a foreign track fully enclosed by that IC's pin-column area.
+# A hi-Z track vs a foreign pad of any other component, or any foreign item outside the pin-column areas, is NOT exempt.
+(rule "hiz_leakage"
+	(constraint clearance (min 0.4mm))
+	(condition "A.NetClass == 'EMG_HIZ' && B.NetClass != 'GND' && B.NetClass != 'EMG_HIZ' && A.Type != 'Pad' && B.Type != 'Pad' && (A.Type == 'Track' || B.Type == 'Track' || A.Type == 'Via' || B.Type == 'Via' || A.Type == 'Zone' || B.Type == 'Zone') && !(A.Type == 'Track' && B.Type == 'Track' && ((A.enclosedByArea('HIZ_ESC_U501_L') && B.enclosedByArea('HIZ_ESC_U501_L')) || (A.enclosedByArea('HIZ_ESC_U501_R') && B.enclosedByArea('HIZ_ESC_U501_R')) || (A.enclosedByArea('HIZ_ESC_U502_L') && B.enclosedByArea('HIZ_ESC_U502_L')) || (A.enclosedByArea('HIZ_ESC_U502_R') && B.enclosedByArea('HIZ_ESC_U502_R')) || (A.enclosedByArea('HIZ_ESC_U503_L') && B.enclosedByArea('HIZ_ESC_U503_L')) || (A.enclosedByArea('HIZ_ESC_U503_R') && B.enclosedByArea('HIZ_ESC_U503_R'))))"))
+(rule "hiz_track_to_foreign_pad"
+	(constraint clearance (min 0.4mm))
+	(condition "A.NetClass == 'EMG_HIZ' && (A.Type == 'Track' || A.Type == 'Via') && B.Type == 'Pad' && B.NetClass != 'GND' && B.NetClass != 'EMG_HIZ' && !(B.memberOfFootprint('U501') || B.memberOfFootprint('U502') || B.memberOfFootprint('U503'))"))
+(rule "hiz_pad_to_foreign_track"
+	(constraint clearance (min 0.4mm))
+	(condition "A.NetClass == 'EMG_HIZ' && A.Type == 'Pad' && (B.Type == 'Track' || B.Type == 'Via') && B.NetClass != 'GND' && B.NetClass != 'EMG_HIZ' && !((A.memberOfFootprint('U501') && B.Type == 'Track' && B.enclosedByArea('HIZ_ESC_U501_L')) || (A.memberOfFootprint('U501') && B.Type == 'Track' && B.enclosedByArea('HIZ_ESC_U501_R')) || (A.memberOfFootprint('U502') && B.Type == 'Track' && B.enclosedByArea('HIZ_ESC_U502_L')) || (A.memberOfFootprint('U502') && B.Type == 'Track' && B.enclosedByArea('HIZ_ESC_U502_R')) || (A.memberOfFootprint('U503') && B.Type == 'Track' && B.enclosedByArea('HIZ_ESC_U503_L')) || (A.memberOfFootprint('U503') && B.Type == 'Track' && B.enclosedByArea('HIZ_ESC_U503_R')))"))
+(rule "spi_to_hiz"
+	(constraint clearance (min 2.0mm))
+	(condition "A.NetClass == 'SPI_FAST' && B.NetClass == 'EMG_HIZ'"))
+(rule "spi_to_buf"
+	(constraint clearance (min 1.0mm))
+	(condition "A.NetClass == 'SPI_FAST' && B.NetClass == 'EMG_BUF'"))
+(rule "zone_a_no_digital"
+	(constraint disallow track via)
+	(condition "(A.NetClass == 'SPI_FAST' || A.NetClass == 'CTRL_SLOW') && A.insideArea('ZONE_A')")
+	(severity error))
+# RB-03R: the RB-02 version used hole_clearance, which KiCad skips for items of the SAME net, so it never caught a via inside its own
+# pad.  physical_hole_clearance is evaluated regardless of net: via hole edge >= 0.10 mm from any SMD pad copper (centre >= 0.25 mm);
+# a via centred in a pad measures 0.00 mm.
+(rule "no_via_in_smd_pad"
+	(constraint physical_hole_clearance (min 0.10mm))
+	(condition "A.Type == 'Via' && B.Type == 'Pad' && B.Pad_Type == 'SMD'")
+	(severity error))

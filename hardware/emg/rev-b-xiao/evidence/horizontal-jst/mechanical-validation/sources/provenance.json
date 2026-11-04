@@ -1,0 +1,68 @@
+{
+  "catalog_current": {
+    "url": "https://www.jst.com/wp-content/uploads/2025/06/ePH.pdf",
+    "local": "../../JST_PH_datasheet.pdf",
+    "pages": {
+      "SMT_land_and_mated_reference": 2,
+      "PHR_2": 3,
+      "S2B_PH_SM4_TB": 4
+    },
+    "authority": "manufacturer catalog; nominal/reference dimensions, not controlled tolerance drawing"
+  },
+  "catalog_older": {
+    "url": "https://www.jst.com/wp-content/uploads/2021/08/ePH-new.pdf",
+    "local": "JST_PH_2021_catalog.pdf",
+    "pages": {
+      "SMT_header_detail": 3
+    },
+    "authority": "manufacturer catalog; additionally labels 1.6 reinforcement extension and 2.6 reference tail"
+  },
+  "manufacturer_CAD_request": {
+    "url": "https://www.jst-mfg.com/product/index.php?doc=2&filename=S2B-PH-SM4-TB.zip&series=199&type=10",
+    "access": "JST states email delivery since April 2025, requires personal/company data, model simplified and not shape guarantee; request not submitted"
+  },
+  "manufacturer_handling_manual_request": {
+    "url": "https://www.jst-mfg.com/product/index.php?doc=11&filename=CHM-1-105.pdf%7CCHM-1-2201.pdf&series=199&type=10",
+    "access": "same email form; not submitted"
+  },
+  "design_history": {
+    "file": "hardware/emg/REVB_RB02H_COMPACT_FORM_FACTOR_SIGNOFF.md",
+    "section": "2 Wearable ergonomics",
+    "authority": "project concept only; north along arm, east/west strap lugs, no final CAD"
+  },
+  "outline_growth_history": {
+    "file": "hardware/emg/REVB_RB03R_VIA_ELIMINATION.md",
+    "lines": [
+      125,
+      146,
+      147
+    ],
+    "authority": "project routing history; lower block +2.5 mm for routing, outline 62.45 -> 64.95"
+  },
+  "enclosure_scope": {
+    "authority": "User clarification in this chat, 2026-10-19",
+    "facts": [
+      "61 x 52 mm superseded PCB target, not enclosure size",
+      "preserve 51.30 x 64.95 mm outline",
+      "no final enclosure CAD/spec available",
+      "inner electrode strap and outer tightening strap concept",
+      "final integration separate task"
+    ]
+  },
+  "harness_candidate": {
+    "url": "https://www.adafruit.com/product/261",
+    "authority": "Adafruit product page, primary supplier specification",
+    "facts": [
+      "100 mm lead length",
+      "genuine JST PH housing claimed",
+      "wire marked AWM 1007, 26AWG"
+    ],
+    "unknown": [
+      "actual OD and insulation tolerances",
+      "minimum static/dynamic bend radii",
+      "contact MPN and crimp qualification",
+      "final electrode harness build and splices"
+    ],
+    "context": "Earlier user shortlist in chat \u0414\u0435\u0431\u0435\u043b\u0438\u043d\u0430 \u043d\u0430 \u043a\u0430\u0431\u0435\u043b\u0430; not a new approved harness BOM"
+  }
+}

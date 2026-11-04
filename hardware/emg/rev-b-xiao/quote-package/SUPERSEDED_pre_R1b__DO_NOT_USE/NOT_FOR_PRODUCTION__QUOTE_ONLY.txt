@@ -1,0 +1,6 @@
+QUOTE ONLY - NOT FOR PRODUCTION / NOT A MANUFACTURING RELEASE
+
+This folder (RB-05) is a QUOTATION and preliminary-DFM package for the Rev B board as of 2026-10-11.
+It is superseded for any production purpose by the RB-04E decision on the BAT+ post hole (U1 pad 23: drill 1.40 mm in these Gerbers;
+the verified replacement uses 1.90 mm).  Do NOT order PCBs from these files.  Regenerate with tools/rb05_package.py after the hole change is
+installed and approved, then re-verify with tools/rb05_verify.py.  See hardware/emg/REVB_RB04E_XIAO_MOUNTING_FINAL.md section 6.

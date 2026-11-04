@@ -178,7 +178,9 @@ test("approval flow binds and executes canonical harness.create_job", async () =
     assert.ok((outcome.result_summary ?? "").includes("job created"));
     assert.equal(harness.createJobCalls.length, 1);
     assert.equal(harness.createJobCalls[0]?.token.tool_name, "harness.create_job");
-    assert.deepEqual(harness.createJobCalls[0]?.spec, { kind: "deploy", payload: undefined });
+    // TASK-0010: structured tool output is JSON-safe - an absent payload is
+    // omitted entirely instead of being carried as an explicit undefined key.
+    assert.deepEqual(harness.createJobCalls[0]?.spec, { kind: "deploy" });
     assert.ok(!JSON.stringify(harness.createJobCalls[0]?.token).includes("harness__create_job"));
   } finally {
     app.close();
@@ -223,12 +225,42 @@ test("internal ModelRequest keeps canonical names; only the wire carries aliases
     await app.conversation.handleTurn(validTurn());
 
     // Internal boundary: canonical names are preserved in the ModelRequest.
+    // SC-04 registers the 10 local tools alongside the legacy builtins.
     const internalNames = (provider.requests[0]?.toolSchemas ?? []).map((s) => s.name);
-    assert.deepEqual(internalNames.sort(), ["harness.status", "system.echo"]);
+    assert.deepEqual(internalNames.sort(), [
+      "app.launch",
+      "app.list",
+      "browser.open_url",
+      "filesystem.list",
+      "filesystem.read_text",
+      "filesystem.roots",
+      "filesystem.search",
+      "filesystem.stat",
+      "harness.status",
+      "system.echo",
+      "system.status",
+      "system.storage",
+    ]);
 
     // Wire boundary: only aliases, no dots.
     const wireTools = (JSON.parse(wireBody) as { tools: Array<{ function: { name: string } }> }).tools;
-    assert.deepEqual(wireTools.map((t) => t.function.name).sort(), ["harness__status", "system__echo"]);
+    assert.deepEqual(
+      wireTools.map((t) => t.function.name).sort(),
+      [
+        "app__launch",
+        "app__list",
+        "browser__open_url",
+        "filesystem__list",
+        "filesystem__read_text",
+        "filesystem__roots",
+        "filesystem__search",
+        "filesystem__stat",
+        "harness__status",
+        "system__echo",
+        "system__status",
+        "system__storage",
+      ],
+    );
     assert.ok(!wireBody.includes("system.echo"));
     assert.ok(!wireBody.includes("harness.status"));
   } finally {

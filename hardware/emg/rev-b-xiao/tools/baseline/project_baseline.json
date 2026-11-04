@@ -1,0 +1,434 @@
+{
+ "classes": {
+  "Default": {
+   "track_width": 0.2,
+   "clearance": 0.2,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  },
+  "EMG_ELECTRODE": {
+   "track_width": 0.25,
+   "clearance": 0.3,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  },
+  "EMG_HIZ": {
+   "track_width": 0.2,
+   "clearance": 0.2,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  },
+  "EMG_BUF": {
+   "track_width": 0.2,
+   "clearance": 0.2,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  },
+  "ANALOG_REF": {
+   "track_width": 0.2,
+   "clearance": 0.25,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  },
+  "ADC_CAP": {
+   "track_width": 0.25,
+   "clearance": 0.2,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  },
+  "PWR_AFE": {
+   "track_width": 0.3,
+   "clearance": 0.2,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  },
+  "PWR_VBAT": {
+   "track_width": 0.5,
+   "clearance": 0.2,
+   "via_diameter": 0.8,
+   "via_drill": 0.4
+  },
+  "PWR_DVDD": {
+   "track_width": 0.3,
+   "clearance": 0.2,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  },
+  "SPI_FAST": {
+   "track_width": 0.2,
+   "clearance": 0.2,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  },
+  "CTRL_SLOW": {
+   "track_width": 0.2,
+   "clearance": 0.2,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  },
+  "VBUS_SENSE": {
+   "track_width": 0.25,
+   "clearance": 0.3,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  },
+  "GND": {
+   "track_width": 0.3,
+   "clearance": 0.2,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  },
+  "NC": {
+   "track_width": 0.2,
+   "clearance": 0.2,
+   "via_diameter": 0.6,
+   "via_drill": 0.3
+  }
+ },
+ "patterns": [
+  [
+   "EMG_ELECTRODE",
+   "/CH?/ELEC_*"
+  ],
+  [
+   "EMG_HIZ",
+   "/CH?/HIZ_*"
+  ],
+  [
+   "EMG_BUF",
+   "/CH?/BUF_*"
+  ],
+  [
+   "EMG_BUF",
+   "/CH?/ACN_*"
+  ],
+  [
+   "EMG_BUF",
+   "/CH?_P"
+  ],
+  [
+   "EMG_BUF",
+   "/CH?_N"
+  ],
+  [
+   "ANALOG_REF",
+   "/VCM"
+  ],
+  [
+   "ANALOG_REF",
+   "/Reference_VCM/*"
+  ],
+  [
+   "ADC_CAP",
+   "/ADC/AFE_CAP"
+  ],
+  [
+   "PWR_AFE",
+   "AFE_3V0"
+  ],
+  [
+   "PWR_VBAT",
+   "VBAT"
+  ],
+  [
+   "PWR_VBAT",
+   "/Analog_Power_Interlock/VBAT_AFE"
+  ],
+  [
+   "PWR_DVDD",
+   "DVDD_F"
+  ],
+  [
+   "PWR_DVDD",
+   "/XIAO_Brain_Interface/XIAO_3V3"
+  ],
+  [
+   "SPI_FAST",
+   "/SCLK"
+  ],
+  [
+   "SPI_FAST",
+   "/MOSI"
+  ],
+  [
+   "SPI_FAST",
+   "/MISO"
+  ],
+  [
+   "SPI_FAST",
+   "/ADC/ADC_CLKIN"
+  ],
+  [
+   "SPI_FAST",
+   "/ADC/ADC_DOUT"
+  ],
+  [
+   "SPI_FAST",
+   "/ADC/X1_OUT"
+  ],
+  [
+   "SPI_FAST",
+   "/XIAO_Brain_Interface/SCLK_MCU"
+  ],
+  [
+   "SPI_FAST",
+   "/XIAO_Brain_Interface/MOSI_MCU"
+  ],
+  [
+   "CTRL_SLOW",
+   "/CS_N"
+  ],
+  [
+   "CTRL_SLOW",
+   "/DRDY_N"
+  ],
+  [
+   "CTRL_SLOW",
+   "/SYNC_RESET_N"
+  ],
+  [
+   "CTRL_SLOW",
+   "/AFE_EN_REQ"
+  ],
+  [
+   "CTRL_SLOW",
+   "/Analog_Power_Interlock/AFE_EN"
+  ],
+  [
+   "CTRL_SLOW",
+   "/Analog_Power_Interlock/VBUS_GATE"
+  ],
+  [
+   "CTRL_SLOW",
+   "/XIAO_Brain_Interface/USB_PRESENT"
+  ],
+  [
+   "CTRL_SLOW",
+   "/XIAO_Brain_Interface/VBAT_SENSE"
+  ],
+  [
+   "CTRL_SLOW",
+   "/ADC/ADC_DRDY_N"
+  ],
+  [
+   "VBUS_SENSE",
+   "/XIAO_5V"
+  ],
+  [
+   "GND",
+   "GND"
+  ],
+  [
+   "NC",
+   "unconnected-*"
+  ]
+ ],
+ "net_class": {
+  "/ADC/ADC_CLKIN": "SPI_FAST",
+  "/ADC/ADC_DOUT": "SPI_FAST",
+  "/ADC/ADC_DRDY_N": "CTRL_SLOW",
+  "/ADC/AFE_CAP": "ADC_CAP",
+  "/ADC/X1_OUT": "SPI_FAST",
+  "/AFE_EN_REQ": "CTRL_SLOW",
+  "/Analog_Power_Interlock/AFE_EN": "CTRL_SLOW",
+  "/Analog_Power_Interlock/VBAT_AFE": "PWR_VBAT",
+  "/Analog_Power_Interlock/VBUS_GATE": "CTRL_SLOW",
+  "/CH1/ACN_N": "EMG_BUF",
+  "/CH1/ACN_P": "EMG_BUF",
+  "/CH1/BUF_N": "EMG_BUF",
+  "/CH1/BUF_P": "EMG_BUF",
+  "/CH1/ELEC_N": "EMG_ELECTRODE",
+  "/CH1/ELEC_P": "EMG_ELECTRODE",
+  "/CH1/HIZ_N": "EMG_HIZ",
+  "/CH1/HIZ_P": "EMG_HIZ",
+  "/CH1_N": "EMG_BUF",
+  "/CH1_P": "EMG_BUF",
+  "/CH2/ACN_N": "EMG_BUF",
+  "/CH2/ACN_P": "EMG_BUF",
+  "/CH2/BUF_N": "EMG_BUF",
+  "/CH2/BUF_P": "EMG_BUF",
+  "/CH2/ELEC_N": "EMG_ELECTRODE",
+  "/CH2/ELEC_P": "EMG_ELECTRODE",
+  "/CH2/HIZ_N": "EMG_HIZ",
+  "/CH2/HIZ_P": "EMG_HIZ",
+  "/CH2_N": "EMG_BUF",
+  "/CH2_P": "EMG_BUF",
+  "/CH3/ACN_N": "EMG_BUF",
+  "/CH3/ACN_P": "EMG_BUF",
+  "/CH3/BUF_N": "EMG_BUF",
+  "/CH3/BUF_P": "EMG_BUF",
+  "/CH3/ELEC_N": "EMG_ELECTRODE",
+  "/CH3/ELEC_P": "EMG_ELECTRODE",
+  "/CH3/HIZ_N": "EMG_HIZ",
+  "/CH3/HIZ_P": "EMG_HIZ",
+  "/CH3_N": "EMG_BUF",
+  "/CH3_P": "EMG_BUF",
+  "/CH4/ACN_N": "EMG_BUF",
+  "/CH4/ACN_P": "EMG_BUF",
+  "/CH4/BUF_N": "EMG_BUF",
+  "/CH4/BUF_P": "EMG_BUF",
+  "/CH4/ELEC_N": "EMG_ELECTRODE",
+  "/CH4/ELEC_P": "EMG_ELECTRODE",
+  "/CH4/HIZ_N": "EMG_HIZ",
+  "/CH4/HIZ_P": "EMG_HIZ",
+  "/CH4_N": "EMG_BUF",
+  "/CH4_P": "EMG_BUF",
+  "/CS_N": "CTRL_SLOW",
+  "/DRDY_N": "CTRL_SLOW",
+  "/MISO": "SPI_FAST",
+  "/MOSI": "SPI_FAST",
+  "/Reference_VCM/RLD_SAFE": "ANALOG_REF",
+  "/Reference_VCM/U503B_OUT": "ANALOG_REF",
+  "/Reference_VCM/U503C_OUT": "ANALOG_REF",
+  "/Reference_VCM/U503D_OUT": "ANALOG_REF",
+  "/Reference_VCM/VCM_BUF_IN": "ANALOG_REF",
+  "/Reference_VCM/VCM_DIV": "ANALOG_REF",
+  "/SCLK": "SPI_FAST",
+  "/SYNC_RESET_N": "CTRL_SLOW",
+  "/VCM": "ANALOG_REF",
+  "/XIAO_5V": "VBUS_SENSE",
+  "/XIAO_Brain_Interface/MOSI_MCU": "SPI_FAST",
+  "/XIAO_Brain_Interface/SCLK_MCU": "SPI_FAST",
+  "/XIAO_Brain_Interface/USB_PRESENT": "CTRL_SLOW",
+  "/XIAO_Brain_Interface/VBAT_SENSE": "CTRL_SLOW",
+  "/XIAO_Brain_Interface/XIAO_3V3": "PWR_DVDD",
+  "AFE_3V0": "PWR_AFE",
+  "DVDD_F": "PWR_DVDD",
+  "GND": "GND",
+  "VBAT": "PWR_VBAT",
+  "unconnected-(D103-K2-Pad2)": "NC",
+  "unconnected-(D104-K2-Pad2)": "NC",
+  "unconnected-(D203-K2-Pad2)": "NC",
+  "unconnected-(D204-K2-Pad2)": "NC",
+  "unconnected-(D303-K2-Pad2)": "NC",
+  "unconnected-(D304-K2-Pad2)": "NC",
+  "unconnected-(D403-K2-Pad2)": "NC",
+  "unconnected-(D404-K2-Pad2)": "NC",
+  "unconnected-(J1-PadMP)": "NC",
+  "unconnected-(J101-PadMP)": "NC",
+  "unconnected-(J201-PadMP)": "NC",
+  "unconnected-(J301-PadMP)": "NC",
+  "unconnected-(J401-PadMP)": "NC",
+  "unconnected-(J5001-Pad1)": "NC",
+  "unconnected-(J5001-PadMP)": "NC",
+  "unconnected-(U1-D4{slash}GPIO5{slash}SDA-Pad5)": "NC",
+  "unconnected-(U1-D5{slash}GPIO6{slash}SCL-Pad6)": "NC",
+  "unconnected-(U4002-NC-Pad4)": "NC"
+ },
+ "dru_sha256": "21c0e80350f66cac29bd8dca1b4f562997b66288776b39d838a0c812d51ea1c0",
+ "rules": [
+  "hiz_outer_only_in2",
+  "hiz_outer_only_in1",
+  "hiz_no_vias",
+  "hiz_leakage",
+  "hiz_track_to_foreign_pad",
+  "hiz_pad_to_foreign_track",
+  "spi_to_hiz",
+  "spi_to_buf",
+  "zone_a_no_digital",
+  "no_via_in_smd_pad"
+ ],
+ "critical_rules": [
+  "hiz_outer_only_in2",
+  "hiz_outer_only_in1",
+  "hiz_no_vias",
+  "hiz_leakage",
+  "hiz_track_to_foreign_pad",
+  "hiz_pad_to_foreign_track",
+  "spi_to_hiz",
+  "spi_to_buf",
+  "zone_a_no_digital",
+  "no_via_in_smd_pad"
+ ],
+ "design_rules": {
+  "min_clearance": 0.15,
+  "min_track_width": 0.15,
+  "min_via_diameter": 0.5,
+  "min_through_hole_diameter": 0.3,
+  "min_copper_edge_clearance": 0.5,
+  "min_connection": 0.15,
+  "min_via_annular_width": 0.15,
+  "min_hole_clearance": 0.25,
+  "min_hole_to_hole": 0.5,
+  "solder_mask_to_copper_clearance": 0.0
+ },
+ "pcb_setup": {
+  "stackup": [
+   [
+    "F.SilkS",
+    null,
+    null
+   ],
+   [
+    "F.Paste",
+    null,
+    null
+   ],
+   [
+    "F.Mask",
+    0.01,
+    "Solder Mask"
+   ],
+   [
+    "F.Cu",
+    0.035,
+    null
+   ],
+   [
+    "dielectric 1",
+    0.2104,
+    "7628"
+   ],
+   [
+    "In1.Cu",
+    0.0152,
+    null
+   ],
+   [
+    "dielectric 2",
+    1.065,
+    "FR4"
+   ],
+   [
+    "In2.Cu",
+    0.0152,
+    null
+   ],
+   [
+    "dielectric 3",
+    0.2104,
+    "7628"
+   ],
+   [
+    "B.Cu",
+    0.035,
+    null
+   ],
+   [
+    "B.Mask",
+    0.01,
+    "Solder Mask"
+   ],
+   [
+    "B.Paste",
+    null,
+    null
+   ],
+   [
+    "B.SilkS",
+    null,
+    null
+   ]
+  ],
+  "tenting": "['tenting', ['front', 'yes'], ['back', 'yes']]",
+  "pad_to_mask_clearance": "['pad_to_mask_clearance', '0']",
+  "copper_finish": "['copper_finish', 'HASL(with lead)']",
+  "copper_layers": 4,
+  "outline_bbox": [
+   0.0,
+   0.0,
+   51.3,
+   64.95
+  ]
+ }
+}

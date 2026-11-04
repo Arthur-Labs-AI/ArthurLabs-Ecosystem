@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "checks": {
+    "source_hashes": true,
+    "packet_hashes": true,
+    "report_hashes": true,
+    "evidence_hashes": true,
+    "local_links": true,
+    "bundle_hashes": true,
+    "bundle_no_baseline_or_old_package": true,
+    "native_DRC_expected": true,
+    "ERC_zero": true,
+    "scope_invariants": true,
+    "review_gate_not_production_or_human_approval": true
+  },
+  "scope": "Digitalreviewcandidateonly; factory/physical/safety gates remainunverified"
+}

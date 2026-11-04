@@ -8,17 +8,51 @@
 
 import type { ReasoningProfile } from "../models/contracts";
 
+/** STT/TTS/VAD provider ids (unchanged by True Wake Word v1). */
 export type VoiceProviderId = "local" | "fake";
+
+/**
+ * Wake-specific provider ids (TASK-0009 True Wake Word v1). Kept separate so
+ * the shared VoiceProviderId of VAD/STT/TTS stays unpolluted: "local" keeps
+ * its documented energy-burst meaning there and in existing tests, while
+ * "sherpa" selects the streaming keyword spotter for wake only.
+ */
+export type WakeProviderId = "local" | "sherpa" | "fake";
+
+export type SttVoicePolicy = "cloud_preferred" | "local_only";
+export type TtsVoicePolicy = "cloud_preferred" | "local_only";
 
 export interface VoiceSettings {
   voiceEnabled: boolean;
   wakeEnabled: boolean;
+  /** HR-02 deterministic voice routing policies (default cloud_preferred). */
+  sttPolicy: SttVoicePolicy;
+  ttsPolicy: TtsVoicePolicy;
+  /** HR-02 cloud voice models (centralized, never hardcoded at call sites). */
+  cloudSttModel: string;
+  cloudTtsModel: string;
+  cloudTtsVoice: string;
+  /** HR-02 local STT selection (default parakeet) + model id. */
+  localSttProvider: string;
+  localSttModel: string;
+  /** HR-02.5E2 managed local-model root (explicit path; empty = D2 default). */
+  localModelRoot: string;
+  /** HR-02.5E2 persisted model-state file (empty = D2 default). */
+  localModelStatePath: string;
   wakeWord: string;
-  wakeProvider: VoiceProviderId;
+  /** Wake provider only: "local" energy fallback | "sherpa" true KWS | "fake". */
+  wakeProvider: WakeProviderId;
   vadProvider: VoiceProviderId;
   sttProvider: VoiceProviderId;
   ttsProvider: VoiceProviderId;
   sttLanguage: string;
+  /**
+   * Optional domain-vocabulary initial prompt for local STT engines
+   * (STT Quality v2, TASK-0008), e.g. "ARTHUR, Nexus, AutoPulse". Empty =
+   * disabled. Bounded by STT_INITIAL_PROMPT_MAX_CHARS; the value is passed
+   * to the engine as data (never logged, never a command line fragment).
+   */
+  sttInitialPrompt: string;
   sttModelPath: string;
   ttsModelPath: string;
   ttsVoice: string;
@@ -27,6 +61,14 @@ export interface VoiceSettings {
   vadEndSilenceMs: number;
   noSpeechTimeoutMs: number;
   maxUtteranceMs: number;
+  /**
+   * Sustained user speech required before barge-in cancels playback or
+   * generation (TASK-0007). A single loud frame or speaker echo must not
+   * cancel ARTHUR mid-speech; ~120-200 ms feels responsive while filtering
+   * transients. Energy-VAD still cannot distinguish speaker echo from user
+   * speech (no AEC yet) - see controller barge-in monitoring.
+   */
+  bargeInMinSpeechMs: number;
   ttsMaxQueueChunks: number;
   rawAudioRetention: boolean;
   /** Internal PCM format. */
@@ -41,17 +83,46 @@ export interface VoiceSettings {
   audioPlaybackCommand: string;
   sttEngineCommand: string;
   ttsEngineCommand: string;
+  // ---- True Wake Word v1 (sherpa-onnx streaming KWS, TASK-0009) ----
+  /**
+   * Machine-local sherpa KWS model directory (git-ignored under models/).
+   * Must contain the zipformer transducer ONNX files (int8 preferred),
+   * tokens.txt and a generated keywords file.
+   */
+  wakeModelDir: string;
+  /**
+   * Generated (text2token-encoded) keyword file. Empty = the deterministic
+   * default "<wakeModelDir>/keywords_arthur.txt" produced by
+   * tools/voice/setup_sherpa_wake.ps1.
+   */
+  wakeKeywordsFile: string;
+  /** sherpa keywordsScore: bonus applied to keyword path hypotheses. */
+  wakeKeywordsScore: number;
+  /** sherpa keywordsThreshold: probability mass required to emit. */
+  wakeKeywordsThreshold: number;
+  /** sherpa ONNX runtime threads for the (tiny) KWS model. */
+  wakeNumThreads: number;
 }
 
 export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   voiceEnabled: false,
   wakeEnabled: true,
+  sttPolicy: "cloud_preferred",
+  ttsPolicy: "cloud_preferred",
+  cloudSttModel: "gpt-4o-transcribe",
+  cloudTtsModel: "gpt-4o-mini-tts",
+  cloudTtsVoice: "alloy",
+  localSttProvider: "",
+  localSttModel: "nvidia/parakeet-tdt-0.6b-v3",
+  localModelRoot: "",
+  localModelStatePath: "",
   wakeWord: "arthur",
   wakeProvider: "local",
   vadProvider: "local",
   sttProvider: "local",
   ttsProvider: "local",
   sttLanguage: "auto",
+  sttInitialPrompt: "",
   sttModelPath: "",
   ttsModelPath: "",
   ttsVoice: "arthur",
@@ -60,6 +131,7 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   vadEndSilenceMs: 700,
   noSpeechTimeoutMs: 6000,
   maxUtteranceMs: 30000,
+  bargeInMinSpeechMs: 150,
   ttsMaxQueueChunks: 8,
   rawAudioRetention: false,
   sampleRateHz: 16000,
@@ -70,6 +142,11 @@ export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   audioPlaybackCommand: "",
   sttEngineCommand: "",
   ttsEngineCommand: "",
+  wakeModelDir: "models/wake/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01",
+  wakeKeywordsFile: "",
+  wakeKeywordsScore: 1,
+  wakeKeywordsThreshold: 0.25,
+  wakeNumThreads: 1,
 };
 
 export interface VoiceSettingsOverrides {
@@ -81,7 +158,17 @@ export interface VoiceSettingsOverrides {
   vadProvider?: string;
   sttProvider?: string;
   ttsProvider?: string;
+  sttPolicy?: string;
+  ttsPolicy?: string;
+  cloudSttModel?: string;
+  cloudTtsModel?: string;
+  cloudTtsVoice?: string;
+  localSttProvider?: string;
+  localSttModel?: string;
+  localModelRoot?: string;
+  localModelStatePath?: string;
   sttLanguage?: string;
+  sttInitialPrompt?: string;
   sttModelPath?: string;
   ttsModelPath?: string;
   ttsVoice?: string;
@@ -90,6 +177,7 @@ export interface VoiceSettingsOverrides {
   vadEndSilenceMs?: number;
   noSpeechTimeoutMs?: number;
   maxUtteranceMs?: number;
+  bargeInMinSpeechMs?: number;
   ttsMaxQueueChunks?: number;
   rawAudioRetention?: boolean;
   maxTranscriptChars?: number;
@@ -98,7 +186,15 @@ export interface VoiceSettingsOverrides {
   audioPlaybackCommand?: string;
   sttEngineCommand?: string;
   ttsEngineCommand?: string;
+  wakeModelDir?: string;
+  wakeKeywordsFile?: string;
+  wakeKeywordsScore?: number;
+  wakeKeywordsThreshold?: number;
+  wakeNumThreads?: number;
 }
+
+/** Hard bound for the STT initial prompt (mirrored by the engine wrapper). */
+export const STT_INITIAL_PROMPT_MAX_CHARS = 2048;
 
 function envStr(key: string, fallback: string): string {
   const v = process.env[key];
@@ -110,6 +206,13 @@ function envInt(key: string, fallback: number): number {
   const raw = envStr(key, String(fallback));
   const n = Number.parseInt(raw, 10);
   if (Number.isNaN(n)) return fallback;
+  return n;
+}
+
+function envFloat(key: string, fallback: number): number {
+  const raw = envStr(key, String(fallback));
+  const n = Number.parseFloat(raw);
+  if (Number.isNaN(n) || !Number.isFinite(n)) return fallback;
   return n;
 }
 
@@ -140,6 +243,11 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
     if (over !== undefined) return Number(over);
     return envInt(envKey, fallback);
   };
+  const pickFloat = (envKey: string, fallback: number, overKey: keyof VoiceSettingsOverrides): number => {
+    const over = source[overKey];
+    if (over !== undefined) return Number(over);
+    return envFloat(envKey, fallback);
+  };
   const pickBool = (envKey: string, fallback: boolean, overKey: keyof VoiceSettingsOverrides): boolean => {
     const over = source[overKey];
     if (over !== undefined) return Boolean(over);
@@ -154,7 +262,17 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
     vadProvider: pick("ARTHUR_VAD_PROVIDER", DEFAULT_VOICE_SETTINGS.vadProvider, "vadProvider"),
     sttProvider: pick("ARTHUR_STT_PROVIDER", DEFAULT_VOICE_SETTINGS.sttProvider, "sttProvider"),
     ttsProvider: pick("ARTHUR_TTS_PROVIDER", DEFAULT_VOICE_SETTINGS.ttsProvider, "ttsProvider"),
+    sttPolicy: pick("ARTHUR_STT_POLICY", DEFAULT_VOICE_SETTINGS.sttPolicy, "sttPolicy") as VoiceSettings["sttPolicy"],
+    ttsPolicy: pick("ARTHUR_TTS_POLICY", DEFAULT_VOICE_SETTINGS.ttsPolicy, "ttsPolicy") as VoiceSettings["ttsPolicy"],
+    cloudSttModel: pick("ARTHUR_CLOUD_STT_MODEL", DEFAULT_VOICE_SETTINGS.cloudSttModel, "cloudSttModel"),
+    cloudTtsModel: pick("ARTHUR_CLOUD_TTS_MODEL", DEFAULT_VOICE_SETTINGS.cloudTtsModel, "cloudTtsModel"),
+    cloudTtsVoice: pick("ARTHUR_CLOUD_TTS_VOICE", DEFAULT_VOICE_SETTINGS.cloudTtsVoice, "cloudTtsVoice"),
+    localSttProvider: pick("ARTHUR_LOCAL_STT_PROVIDER", DEFAULT_VOICE_SETTINGS.localSttProvider, "localSttProvider"),
+    localSttModel: pick("ARTHUR_LOCAL_STT_MODEL", DEFAULT_VOICE_SETTINGS.localSttModel, "localSttModel"),
+    localModelRoot: pick("ARTHUR_LOCAL_MODEL_ROOT", DEFAULT_VOICE_SETTINGS.localModelRoot, "localModelRoot"),
+    localModelStatePath: pick("ARTHUR_LOCAL_MODEL_STATE", DEFAULT_VOICE_SETTINGS.localModelStatePath, "localModelStatePath"),
     sttLanguage: pick("ARTHUR_STT_LANGUAGE", DEFAULT_VOICE_SETTINGS.sttLanguage, "sttLanguage"),
+    sttInitialPrompt: pick("ARTHUR_STT_INITIAL_PROMPT", DEFAULT_VOICE_SETTINGS.sttInitialPrompt, "sttInitialPrompt"),
     sttModelPath: pick("ARTHUR_STT_MODEL_PATH", DEFAULT_VOICE_SETTINGS.sttModelPath, "sttModelPath"),
     ttsModelPath: pick("ARTHUR_TTS_MODEL_PATH", DEFAULT_VOICE_SETTINGS.ttsModelPath, "ttsModelPath"),
     ttsVoice: pick("ARTHUR_TTS_VOICE", DEFAULT_VOICE_SETTINGS.ttsVoice, "ttsVoice"),
@@ -163,6 +281,7 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
     vadEndSilenceMs: pickInt("ARTHUR_VAD_END_SILENCE_MS", DEFAULT_VOICE_SETTINGS.vadEndSilenceMs, "vadEndSilenceMs"),
     noSpeechTimeoutMs: pickInt("ARTHUR_VOICE_NO_SPEECH_TIMEOUT_MS", DEFAULT_VOICE_SETTINGS.noSpeechTimeoutMs, "noSpeechTimeoutMs"),
     maxUtteranceMs: pickInt("ARTHUR_VOICE_MAX_UTTERANCE_MS", DEFAULT_VOICE_SETTINGS.maxUtteranceMs, "maxUtteranceMs"),
+    bargeInMinSpeechMs: pickInt("ARTHUR_VOICE_BARGE_IN_MIN_SPEECH_MS", DEFAULT_VOICE_SETTINGS.bargeInMinSpeechMs, "bargeInMinSpeechMs"),
     ttsMaxQueueChunks: pickInt("ARTHUR_TTS_MAX_QUEUE_CHUNKS", DEFAULT_VOICE_SETTINGS.ttsMaxQueueChunks, "ttsMaxQueueChunks"),
     rawAudioRetention: pickBool("ARTHUR_RAW_AUDIO_RETENTION", DEFAULT_VOICE_SETTINGS.rawAudioRetention, "rawAudioRetention"),
     sampleRateHz: DEFAULT_VOICE_SETTINGS.sampleRateHz,
@@ -173,6 +292,11 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
     audioPlaybackCommand: pick("ARTHUR_AUDIO_PLAYBACK_COMMAND", DEFAULT_VOICE_SETTINGS.audioPlaybackCommand, "audioPlaybackCommand"),
     sttEngineCommand: pick("ARTHUR_STT_ENGINE_COMMAND", DEFAULT_VOICE_SETTINGS.sttEngineCommand, "sttEngineCommand"),
     ttsEngineCommand: pick("ARTHUR_TTS_ENGINE_COMMAND", DEFAULT_VOICE_SETTINGS.ttsEngineCommand, "ttsEngineCommand"),
+    wakeModelDir: pick("ARTHUR_WAKE_MODEL_DIR", DEFAULT_VOICE_SETTINGS.wakeModelDir, "wakeModelDir"),
+    wakeKeywordsFile: pick("ARTHUR_WAKE_KEYWORDS_FILE", DEFAULT_VOICE_SETTINGS.wakeKeywordsFile, "wakeKeywordsFile"),
+    wakeKeywordsScore: pickFloat("ARTHUR_WAKE_KEYWORDS_SCORE", DEFAULT_VOICE_SETTINGS.wakeKeywordsScore, "wakeKeywordsScore"),
+    wakeKeywordsThreshold: pickFloat("ARTHUR_WAKE_KEYWORDS_THRESHOLD", DEFAULT_VOICE_SETTINGS.wakeKeywordsThreshold, "wakeKeywordsThreshold"),
+    wakeNumThreads: pickInt("ARTHUR_WAKE_NUM_THREADS", DEFAULT_VOICE_SETTINGS.wakeNumThreads, "wakeNumThreads"),
   };
 }
 
@@ -180,8 +304,9 @@ export function loadVoiceSettings(overrides: VoiceSettingsOverrides = {}): Voice
 export function validateVoiceSettings(settings: VoiceSettings): string[] {
   const problems: string[] = [];
   const providers = ["local", "fake"];
-  if (!providers.includes(settings.wakeProvider)) {
-    problems.push(`ARTHUR_WAKE_PROVIDER must be one of ${providers.join(", ")} (got "${settings.wakeProvider}")`);
+  const wakeProviders = ["local", "sherpa", "fake"];
+  if (!wakeProviders.includes(settings.wakeProvider)) {
+    problems.push(`ARTHUR_WAKE_PROVIDER must be one of ${wakeProviders.join(", ")} (got "${settings.wakeProvider}")`);
   }
   if (!providers.includes(settings.vadProvider)) {
     problems.push(`ARTHUR_VAD_PROVIDER must be one of ${providers.join(", ")} (got "${settings.vadProvider}")`);
@@ -191,6 +316,25 @@ export function validateVoiceSettings(settings: VoiceSettings): string[] {
   }
   if (!providers.includes(settings.ttsProvider)) {
     problems.push(`ARTHUR_TTS_PROVIDER must be one of ${providers.join(", ")} (got "${settings.ttsProvider}")`);
+  }
+  // HR-02 routing policies fail closed on invalid enum values.
+  if (settings.sttPolicy !== "cloud_preferred" && settings.sttPolicy !== "local_only") {
+    problems.push(`ARTHUR_STT_POLICY must be one of cloud_preferred, local_only (got "${settings.sttPolicy}")`);
+  }
+  if (settings.ttsPolicy !== "cloud_preferred" && settings.ttsPolicy !== "local_only") {
+    problems.push(`ARTHUR_TTS_POLICY must be one of cloud_preferred, local_only (got "${settings.ttsPolicy}")`);
+  }
+  if (!settings.cloudSttModel || settings.cloudSttModel.trim() === "") {
+    problems.push("ARTHUR_CLOUD_STT_MODEL must be a non-empty model id");
+  }
+  if (!settings.cloudTtsModel || settings.cloudTtsModel.trim() === "") {
+    problems.push("ARTHUR_CLOUD_TTS_MODEL must be a non-empty model id");
+  }
+  if (!settings.cloudTtsVoice || settings.cloudTtsVoice.trim() === "") {
+    problems.push("ARTHUR_CLOUD_TTS_VOICE must be a non-empty voice");
+  }
+  if (!settings.localSttModel || settings.localSttModel.trim() === "") {
+    problems.push("ARTHUR_LOCAL_STT_MODEL must be a non-empty model id");
   }
   if (settings.sampleRateHz < 8000 || settings.sampleRateHz > 48000) {
     problems.push("ARTHUR_VOICE_SAMPLE_RATE must be within 8000..48000");
@@ -207,11 +351,35 @@ export function validateVoiceSettings(settings: VoiceSettings): string[] {
   if (settings.maxUtteranceMs < 1000 || settings.maxUtteranceMs > 300000) {
     problems.push("ARTHUR_VOICE_MAX_UTTERANCE_MS must be within 1000..300000");
   }
+  if (settings.bargeInMinSpeechMs < 40 || settings.bargeInMinSpeechMs > 1000) {
+    problems.push("ARTHUR_VOICE_BARGE_IN_MIN_SPEECH_MS must be within 40..1000");
+  }
   if (settings.ttsMaxQueueChunks < 1 || settings.ttsMaxQueueChunks > 256) {
     problems.push("ARTHUR_TTS_MAX_QUEUE_CHUNKS must be within 1..256");
   }
   if (settings.maxTranscriptChars < 100 || settings.maxTranscriptChars > 100000) {
     problems.push("ARTHUR_VOICE_MAX_TRANSCRIPT_CHARS must be within 100..100000");
+  }
+  if (settings.sttInitialPrompt.length > STT_INITIAL_PROMPT_MAX_CHARS) {
+    problems.push(
+      `ARTHUR_STT_INITIAL_PROMPT must be at most ${STT_INITIAL_PROMPT_MAX_CHARS} characters (got ${settings.sttInitialPrompt.length})`,
+    );
+  }
+  // True Wake Word v1 (sherpa KWS) tuning bounds: finite and sensible only.
+  // File existence is validated by the provider so text mode never crashes.
+  if (settings.wakeProvider === "sherpa") {
+    if (!Number.isFinite(settings.wakeKeywordsScore) || settings.wakeKeywordsScore < 0.1 || settings.wakeKeywordsScore > 5) {
+      problems.push("ARTHUR_WAKE_KEYWORDS_SCORE must be within 0.1..5");
+    }
+    if (!Number.isFinite(settings.wakeKeywordsThreshold) || settings.wakeKeywordsThreshold <= 0 || settings.wakeKeywordsThreshold > 1) {
+      problems.push("ARTHUR_WAKE_KEYWORDS_THRESHOLD must be within (0..1]");
+    }
+    if (!Number.isInteger(settings.wakeNumThreads) || settings.wakeNumThreads < 1 || settings.wakeNumThreads > 8) {
+      problems.push("ARTHUR_WAKE_NUM_THREADS must be an integer within 1..8");
+    }
+    if (settings.wakeWord.trim() === "") {
+      problems.push("ARTHUR_WAKE_WORD must not be empty when ARTHUR_WAKE_PROVIDER=sherpa");
+    }
   }
   return problems;
 }

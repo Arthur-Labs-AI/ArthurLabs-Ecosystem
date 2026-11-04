@@ -187,16 +187,58 @@ async function handleRequest(app: App, req: IncomingMessage, res: ServerResponse
       return;
     }
 
-    // POST /v1/approvals/{id}/approve
+    // GET /v1/approvals/{id}/challenge - server-generated WYSIWYS challenge (SC-02 section 20).
+    if (method === "GET" && path.length === 4 && path[0] === "v1" && path[1] === "approvals" && path[3] === "challenge") {
+      const challenge = app.conversation.getApprovalChallenge(parseRouteIdentifier(path[2] as string, "approval"));
+      sendJson(res, 200, challenge);
+      return;
+    }
+
+    // POST /v1/approvals/{id}/approve - optional { session_id } body enables
+    // session-context verification (SC-02 section 23: accidental cross-session
+    // approval guard; session_id is context binding, not authentication).
     if (method === "POST" && path.length === 4 && path[0] === "v1" && path[1] === "approvals" && path[3] === "approve") {
-      const result = await app.conversation.approve(parseRouteIdentifier(path[2] as string, "approval"));
+      const id = parseRouteIdentifier(path[2] as string, "approval");
+      const body = (await readJsonBody(req)) as { session_id?: unknown; decision_channel?: unknown } | undefined;
+      const channel = typeof body?.decision_channel === "string" && ["cli", "voice", "web", "desktop", "mobile", "api"].includes(body.decision_channel) ? (body.decision_channel as string) : undefined;
+      if (typeof body?.session_id === "string") {
+        const approval = app.store.getApproval(id);
+        if (approval && approval.session_id !== body.session_id) {
+          sendError(app, res, new ArthurError("APPROVAL_INVALID", "Approval does not belong to this session"));
+          return;
+        }
+      }
+      const result = await app.conversation.approve(id, channel);
       sendJson(res, 200, result);
+      return;
+    }
+
+    // GET /v1/executions/{id} - safe execution status (SC-03 section 71).
+    if (method === "GET" && path.length === 3 && path[0] === "v1" && path[1] === "executions") {
+      const view = app.conversation.getExecution(parseRouteIdentifier(path[2] as string, "execution"));
+      sendJson(res, 200, view);
+      return;
+    }
+
+    // POST /v1/executions/{id}/cancel - durable cancel (SC-03 section 70).
+    if (method === "POST" && path.length === 4 && path[0] === "v1" && path[1] === "executions" && path[3] === "cancel") {
+      const view = app.conversation.cancelExecution(parseRouteIdentifier(path[2] as string, "execution"));
+      sendJson(res, 200, view);
       return;
     }
 
     // POST /v1/approvals/{id}/reject
     if (method === "POST" && path.length === 4 && path[0] === "v1" && path[1] === "approvals" && path[3] === "reject") {
-      const result = await app.conversation.reject(parseRouteIdentifier(path[2] as string, "approval"));
+      const id = parseRouteIdentifier(path[2] as string, "approval");
+      const body = (await readJsonBody(req)) as { session_id?: unknown } | undefined;
+      if (typeof body?.session_id === "string") {
+        const approval = app.store.getApproval(id);
+        if (approval && approval.session_id !== body.session_id) {
+          sendError(app, res, new ArthurError("APPROVAL_INVALID", "Approval does not belong to this session"));
+          return;
+        }
+      }
+      const result = await app.conversation.reject(id);
       sendJson(res, 200, result);
       return;
     }

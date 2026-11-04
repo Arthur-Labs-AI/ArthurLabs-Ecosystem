@@ -1,0 +1,21 @@
+{
+  "source": "User-provided private JLCPCB preview screenshots",
+  "local_date": "2026-10-20 Europe/Sofia",
+  "files": [
+    {
+      "file": "user-3d-preview.png",
+      "source_attachment": "codex-clipboard-291e7a56-1f4e-4ad8-b509-473d037e13e1.png",
+      "sha256": "d3aacc77831848d26d2fdc00c6217e552c5a3fd6a8cbfe6474985b78ef5f50be"
+    },
+    {
+      "file": "user-top-preview.png",
+      "source_attachment": "codex-clipboard-d615127b-adb7-46c5-b58b-4243d8672cac.png",
+      "sha256": "b9f0948f7572d1d9497ece7db9a9826bfa2198ca64157f74cee40a64f4a3bfe9"
+    }
+  ],
+  "CPL_filename": "User confirms these show the old files (pre-correction / RC1); exact upload filename/hash not visible",
+  "displayed_component_rotations": "Not shown; old local CPL contains north headers 0 degrees and J1 270 degrees",
+  "manual_overrides": "UNKNOWN",
+  "orientation_approved": false,
+  "user_clarification": "the old ones"
+}

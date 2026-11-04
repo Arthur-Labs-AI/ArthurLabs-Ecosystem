@@ -1,0 +1,251 @@
+{
+  "checks": {
+    "same_footprint_census": true,
+    "J1_unchanged": true,
+    "other_components_unchanged": true,
+    "all_pad_nets_unchanged": true,
+    "title_and_nonrelease_warning_preserved": true,
+    "stackup_and_setup_unchanged": true,
+    "outline_unchanged": true,
+    "layers_unchanged": true,
+    "resistor_values_and_properties_unchanged": true,
+    "zone_definitions_unchanged": true,
+    "J101_signal_mapping": true,
+    "J101_retention_isolated": true,
+    "J101_target_part": true,
+    "J101_north_entry": true,
+    "J201_signal_mapping": true,
+    "J201_retention_isolated": true,
+    "J201_target_part": true,
+    "J201_north_entry": true,
+    "J301_signal_mapping": true,
+    "J301_retention_isolated": true,
+    "J301_target_part": true,
+    "J301_north_entry": true,
+    "J401_signal_mapping": true,
+    "J401_retention_isolated": true,
+    "J401_target_part": true,
+    "J401_north_entry": true,
+    "J5001_signal_mapping": true,
+    "J5001_retention_isolated": true,
+    "J5001_target_part": true,
+    "J5001_north_entry": true,
+    "unrelated_segments_unchanged": true,
+    "unrelated_vias_unchanged": true
+  },
+  "connectors": [
+    {
+      "ref": "J101",
+      "old_footprint": "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+      "new_footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "old_at": [
+        "35.05",
+        "3.75",
+        "180"
+      ],
+      "new_at": [
+        "35.05",
+        "5.15",
+        "180"
+      ],
+      "pad_nets": [
+        [
+          "1",
+          "/CH1/ELEC_P"
+        ],
+        [
+          "2",
+          "/CH1/ELEC_N"
+        ],
+        [
+          "MP",
+          "unconnected-(J101-PadMP)"
+        ],
+        [
+          "MP",
+          "unconnected-(J101-PadMP)"
+        ]
+      ]
+    },
+    {
+      "ref": "J201",
+      "old_footprint": "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+      "new_footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "old_at": [
+        "25.65",
+        "3.75",
+        "180"
+      ],
+      "new_at": [
+        "25.65",
+        "5.15",
+        "180"
+      ],
+      "pad_nets": [
+        [
+          "1",
+          "/CH2/ELEC_P"
+        ],
+        [
+          "2",
+          "/CH2/ELEC_N"
+        ],
+        [
+          "MP",
+          "unconnected-(J201-PadMP)"
+        ],
+        [
+          "MP",
+          "unconnected-(J201-PadMP)"
+        ]
+      ]
+    },
+    {
+      "ref": "J301",
+      "old_footprint": "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+      "new_footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "old_at": [
+        "16.25",
+        "3.75",
+        "180"
+      ],
+      "new_at": [
+        "16.25",
+        "5.15",
+        "180"
+      ],
+      "pad_nets": [
+        [
+          "1",
+          "/CH3/ELEC_P"
+        ],
+        [
+          "2",
+          "/CH3/ELEC_N"
+        ],
+        [
+          "MP",
+          "unconnected-(J301-PadMP)"
+        ],
+        [
+          "MP",
+          "unconnected-(J301-PadMP)"
+        ]
+      ]
+    },
+    {
+      "ref": "J401",
+      "old_footprint": "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+      "new_footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "old_at": [
+        "6.85",
+        "3.75",
+        "180"
+      ],
+      "new_at": [
+        "6.85",
+        "5.15",
+        "180"
+      ],
+      "pad_nets": [
+        [
+          "1",
+          "/CH4/ELEC_P"
+        ],
+        [
+          "2",
+          "/CH4/ELEC_N"
+        ],
+        [
+          "MP",
+          "unconnected-(J401-PadMP)"
+        ],
+        [
+          "MP",
+          "unconnected-(J401-PadMP)"
+        ]
+      ]
+    },
+    {
+      "ref": "J5001",
+      "old_footprint": "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+      "new_footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "old_at": [
+        "44.45",
+        "3.75",
+        "180"
+      ],
+      "new_at": [
+        "44.45",
+        "5.15",
+        "180"
+      ],
+      "pad_nets": [
+        [
+          "1",
+          "unconnected-(J5001-Pad1)"
+        ],
+        [
+          "2",
+          "/Reference_VCM/RLD_SAFE"
+        ],
+        [
+          "MP",
+          "unconnected-(J5001-PadMP)"
+        ],
+        [
+          "MP",
+          "unconnected-(J5001-PadMP)"
+        ]
+      ]
+    }
+  ],
+  "old_lengths_mm": {
+    "/CH1/ELEC_N": 7.375,
+    "/CH1/ELEC_P": 7.375,
+    "/CH1/HIZ_N": 15.725,
+    "/CH1/HIZ_P": 18.3,
+    "/CH2/ELEC_N": 7.375,
+    "/CH2/ELEC_P": 7.375,
+    "/CH2/HIZ_N": 19.85,
+    "/CH2/HIZ_P": 15.65,
+    "/CH3/ELEC_N": 7.375,
+    "/CH3/ELEC_P": 7.375,
+    "/CH3/HIZ_N": 16.525,
+    "/CH3/HIZ_P": 18.45,
+    "/CH4/ELEC_N": 7.375,
+    "/CH4/ELEC_P": 7.375,
+    "/CH4/HIZ_N": 19.85,
+    "/CH4/HIZ_P": 15.65
+  },
+  "new_lengths_mm": {
+    "/CH1/ELEC_N": 3.317462,
+    "/CH1/ELEC_P": 4.000914,
+    "/CH1/HIZ_N": 15.575,
+    "/CH1/HIZ_P": 18.15,
+    "/CH2/ELEC_N": 3.317462,
+    "/CH2/ELEC_P": 4.000914,
+    "/CH2/HIZ_N": 19.7,
+    "/CH2/HIZ_P": 15.5,
+    "/CH3/ELEC_N": 3.317462,
+    "/CH3/ELEC_P": 4.000914,
+    "/CH3/HIZ_N": 16.375,
+    "/CH3/HIZ_P": 18.3,
+    "/CH4/ELEC_N": 3.317462,
+    "/CH4/ELEC_P": 4.000914,
+    "/CH4/HIZ_N": 19.7,
+    "/CH4/HIZ_P": 15.5
+  },
+  "track_counts": [
+    1518,
+    1455
+  ],
+  "via_counts": [
+    201,
+    191
+  ],
+  "notes": [
+    "Schematic parity and physical connectivity are checked by KiCad CLI separately.",
+    "Mechanical body/courtyard and mating corridor figures are nominal; enclosure and qualified vendor 3D models absent."
+  ]
+}

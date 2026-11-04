@@ -21,7 +21,19 @@ export type StreamingTurnEvent =
       trace_id: string;
       mode: ArthurMode;
     }
-  | { type: "text_delta"; text: string }
+  | {
+      type: "text_delta";
+      text: string;
+      /**
+       * SC-06 §13 voice/TTS gate (TASK-0024 Bug 1): true while the producing
+       * round can still become a tool round — the text is provisional
+       * observability only and MUST NOT reach TTS. False only when the round
+       * is classified final (tool-disabled request streaming, or the final
+       * round's settled text). Streaming UI may display either; TTS gates
+       * on this flag.
+       */
+      provisional: boolean;
+    }
   | { type: "tool_call"; call: ProposedToolCall }
   | {
       type: "approval_required";

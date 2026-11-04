@@ -1,0 +1,4021 @@
+{
+ "corpus_version": "identity-p1a-1",
+ "note": "Labels, targets, rationales and disputed flags fixed before any model output. Phase 0 canary cases are not reused.",
+ "cases": [
+  {
+   "id": "P001",
+   "category": "CONT",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "The onboarding checklist should cover account setup."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "The onboarding checklist should cover account setup, notification permissions and a sample project."
+   },
+   "rationale": "Refines the same checklist's contents.",
+   "split": "holdout"
+  },
+  {
+   "id": "P002",
+   "category": "CONT",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Add an export button to the report page."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "The export button on the report page should offer CSV and PDF."
+   },
+   "rationale": "Specifies formats of the same button.",
+   "split": "dev"
+  },
+  {
+   "id": "P003",
+   "category": "CONT",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Habits",
+     "text": "Meditate every morning."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "The morning meditation should be ten minutes, right after waking up."
+   },
+   "rationale": "Adds detail to the same habit.",
+   "split": "dev"
+  },
+  {
+   "id": "P004",
+   "category": "CONT",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "We need a retry mechanism for failed uploads."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "The upload retry should back off exponentially and stop after five attempts."
+   },
+   "rationale": "Details the same retry mechanism.",
+   "split": "dev"
+  },
+  {
+   "id": "P005",
+   "category": "CONT",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "The landing page needs a short demo video."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "The demo video on the landing page should be under sixty seconds and autoplay muted."
+   },
+   "rationale": "Refines the same video.",
+   "split": "holdout"
+  },
+  {
+   "id": "P006",
+   "category": "CONT",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Search should support filters."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Search filters should include date range, author and tag."
+   },
+   "rationale": "Enumerates the same filters.",
+   "split": "dev"
+  },
+  {
+   "id": "P007",
+   "category": "CONT",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Plan a birthday dinner for Anna."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "The birthday dinner for Anna should be at the Italian place, Saturday at 7."
+   },
+   "rationale": "Fills in the same plan.",
+   "split": "holdout"
+  },
+  {
+   "id": "P008",
+   "category": "CONT",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Трябва да има известия при нов коментар."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Известията при нов коментар да идват и по имейл, и в приложението."
+   },
+   "rationale": "Допълва същите известия.",
+   "split": "dev"
+  },
+  {
+   "id": "P009",
+   "category": "CONT",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Искам да започна да бягам редовно."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Бягането да е три пъти седмично, сутрин, около 5 километра."
+   },
+   "rationale": "Конкретизира същата цел.",
+   "split": "holdout"
+  },
+  {
+   "id": "P010",
+   "category": "CONT",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Кестрел",
+     "text": "Страницата за цени трябва да е по-ясна."
+    }
+   ],
+   "new_capture": {
+    "project": "Кестрел",
+    "text": "На страницата за цени да добавим сравнителна таблица на трите плана."
+   },
+   "rationale": "Конкретизира същата подобрение на страницата.",
+   "split": "dev"
+  },
+  {
+   "id": "P011",
+   "category": "CONT",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Нужен е архив на старите проекти."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Архивът на старите проекти да се чисти автоматично след две години."
+   },
+   "rationale": "Допълва същия архив.",
+   "split": "holdout"
+  },
+  {
+   "id": "P012",
+   "category": "CONT",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Dashboard-ът трябва да показва ключови метрики."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Метриките в dashboard-а да включват active users, churn и revenue."
+   },
+   "rationale": "Конкретизира същите метрики.",
+   "split": "holdout"
+  },
+  {
+   "id": "P013",
+   "category": "CONT",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Login screen трябва да поддържа social login."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Social login-ът да е с Google и Apple, без Facebook."
+   },
+   "rationale": "Уточнява същия social login.",
+   "split": "holdout"
+  },
+  {
+   "id": "P014",
+   "category": "CONT",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Newsletter-ът ще излиза всяка седмица."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Newsletter-ът да излиза в четвъртък сутрин и да има една основна story."
+   },
+   "rationale": "Допълва същия newsletter.",
+   "split": "dev"
+  },
+  {
+   "id": "P015",
+   "category": "CORR",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "The API rate limit is 100 requests per minute."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Correction: the API rate limit is 600 requests per minute, not 100."
+   },
+   "rationale": "Corrects the same limit.",
+   "split": "dev"
+  },
+  {
+   "id": "P016",
+   "category": "CORR",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "The dentist appointment is on the 12th."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Sorry, the dentist appointment is actually on the 21st."
+   },
+   "rationale": "Corrects the same date.",
+   "split": "dev"
+  },
+  {
+   "id": "P017",
+   "category": "CORR",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "The primary button colour should be red."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "I was wrong about the primary button: it should be blue, red signals danger."
+   },
+   "rationale": "Corrects the same colour decision.",
+   "split": "holdout"
+  },
+  {
+   "id": "P018",
+   "category": "CORR",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "The launch webinar is for enterprise customers."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "The launch webinar is meant for small teams, not enterprise customers."
+   },
+   "rationale": "Corrects the target audience.",
+   "split": "dev"
+  },
+  {
+   "id": "P019",
+   "category": "CORR",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Habits",
+     "text": "Go to bed at 11 pm."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "Make that 10:30 pm for bedtime, 11 is too late."
+   },
+   "rationale": "Corrects the same bedtime.",
+   "split": "dev"
+  },
+  {
+   "id": "P020",
+   "category": "CORR",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Sessions expire after 24 hours."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Session expiry should be 8 hours, the 24 hour figure was a mistake."
+   },
+   "rationale": "Corrects the same expiry.",
+   "split": "holdout"
+  },
+  {
+   "id": "P021",
+   "category": "CORR",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "The import tool accepts only JSON files."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Actually the import tool also accepts CSV, so not only JSON."
+   },
+   "rationale": "Corrects the same capability.",
+   "split": "holdout"
+  },
+  {
+   "id": "P022",
+   "category": "CORR",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Демото е планирано за вторник."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Поправка: демото е в сряда, не във вторник."
+   },
+   "rationale": "Поправя същата дата.",
+   "split": "dev"
+  },
+  {
+   "id": "P023",
+   "category": "CORR",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Наемът е 800 евро на месец."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Грешка от моя страна, наемът е 850 евро, не 800."
+   },
+   "rationale": "Поправя същата сума.",
+   "split": "dev"
+  },
+  {
+   "id": "P024",
+   "category": "CORR",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Кестрел",
+     "text": "Основната аудитория са студенти."
+    }
+   ],
+   "new_capture": {
+    "project": "Кестрел",
+    "text": "Всъщност основната аудитория са младите специалисти, не студентите."
+   },
+   "rationale": "Поправя същата аудитория.",
+   "split": "holdout"
+  },
+  {
+   "id": "P025",
+   "category": "CORR",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Базата данни е хостната в Германия."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Не е вярно, че базата е в Германия, хостната е в Ирландия."
+   },
+   "rationale": "Поправя същия факт.",
+   "split": "holdout"
+  },
+  {
+   "id": "P026",
+   "category": "CORR",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Pricing-ът започва от 19 евро на месец."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Поправка за pricing-а: стартира от 29 евро на месец, не от 19."
+   },
+   "rationale": "Поправя същата цена.",
+   "split": "holdout"
+  },
+  {
+   "id": "P027",
+   "category": "CORR",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Backup-ът се прави всяка нощ в 3:00."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Backup-ът не е в 3:00, а в 1:00 сутринта заради timezone-а."
+   },
+   "rationale": "Поправя същия час.",
+   "split": "dev"
+  },
+  {
+   "id": "P028",
+   "category": "CORR",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Landing page-ът е на WordPress."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Landing page-ът всъщност е на Webflow, не на WordPress."
+   },
+   "rationale": "Поправя същата платформа.",
+   "split": "holdout"
+  },
+  {
+   "id": "P029",
+   "category": "REPL",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "We will deploy the backend on virtual machines."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "New decision: the backend moves to containers on Kubernetes instead of virtual machines."
+   },
+   "rationale": "Replaces the same architectural decision.",
+   "split": "holdout"
+  },
+  {
+   "id": "P030",
+   "category": "REPL",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Use REST for the public API."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "We are switching the public API from REST to GraphQL."
+   },
+   "rationale": "Replaces the API style.",
+   "split": "dev"
+  },
+  {
+   "id": "P031",
+   "category": "REPL",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Hire an agency for the website redesign."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Scrap the agency plan; the redesign will be done in-house."
+   },
+   "rationale": "Replaces the sourcing decision.",
+   "split": "dev"
+  },
+  {
+   "id": "P032",
+   "category": "REPL",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Authentication will use session cookies."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "We decided to replace session cookies with short-lived JWT tokens."
+   },
+   "rationale": "Replaces the auth mechanism.",
+   "split": "dev"
+  },
+  {
+   "id": "P033",
+   "category": "REPL",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Spend the holiday in Greece."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "We changed our mind, the holiday will be in Portugal instead of Greece."
+   },
+   "rationale": "Replaces the holiday destination.",
+   "split": "dev"
+  },
+  {
+   "id": "P034",
+   "category": "REPL",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Use PostgreSQL as the primary database."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "We are moving from PostgreSQL to SQLite for the primary store to simplify deployment."
+   },
+   "rationale": "Replaces the database choice.",
+   "split": "holdout"
+  },
+  {
+   "id": "P035",
+   "category": "REPL",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Habits",
+     "text": "Do the weekly review on Fridays."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "Weekly review moves from Friday to Sunday evening from now on."
+   },
+   "rationale": "Replaces the schedule.",
+   "split": "dev"
+  },
+  {
+   "id": "P036",
+   "category": "REPL",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Ще пишем мобилното приложение на React Native."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Решихме да се откажем от React Native и да го направим на Flutter."
+   },
+   "rationale": "Заменя същото техническо решение.",
+   "split": "holdout"
+  },
+  {
+   "id": "P037",
+   "category": "REPL",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Кестрел",
+     "text": "Плащанията ще минават през PayPal."
+    }
+   ],
+   "new_capture": {
+    "project": "Кестрел",
+    "text": "Вместо PayPal ще ползваме Stripe за всички плащания."
+   },
+   "rationale": "Заменя същия платежен доставчик.",
+   "split": "dev"
+  },
+  {
+   "id": "P038",
+   "category": "REPL",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Ще купя нов лаптоп от Dell."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Промених решението си за лаптопа, ще взема MacBook, а не Dell."
+   },
+   "rationale": "Заменя същия избор.",
+   "split": "holdout"
+  },
+  {
+   "id": "P039",
+   "category": "REPL",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Тестовете ще се пускат ръчно преди release."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Отказваме се от ръчните тестове, ще ги пускаме автоматично в CI."
+   },
+   "rationale": "Заменя същия процес.",
+   "split": "dev"
+  },
+  {
+   "id": "P040",
+   "category": "REPL",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Logging-ът ще е в текстови файлове."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Вместо текстови файлове, logging-ът ще е structured JSON към централизиран сървър."
+   },
+   "rationale": "Заменя същото решение за logging.",
+   "split": "holdout"
+  },
+  {
+   "id": "P041",
+   "category": "REPL",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Design system-ът ще е на Material."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Махаме Material, design system-ът ще е собствен."
+   },
+   "rationale": "Заменя същия design system.",
+   "split": "holdout"
+  },
+  {
+   "id": "P042",
+   "category": "REPL",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Email кампаниите ще минават през Mailchimp."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Преминаваме от Mailchimp на Customer.io за email кампаниите."
+   },
+   "rationale": "Заменя същия инструмент.",
+   "split": "holdout"
+  },
+  {
+   "id": "P043",
+   "category": "REVMC",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 1,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Add a compact density option to the settings screen."
+    },
+    {
+     "id": "idea_1",
+     "project": "Orbit",
+     "text": "The CSV export should include a header row."
+    },
+    {
+     "id": "idea_2",
+     "project": "Orbit",
+     "text": "Send a weekly digest email to all users."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "The header row in the CSV export should use the original column names."
+   },
+   "rationale": "Names the CSV export header explicitly.",
+   "split": "holdout"
+  },
+  {
+   "id": "P044",
+   "category": "REVMC",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 2,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Search needs fuzzy matching."
+    },
+    {
+     "id": "idea_1",
+     "project": "Lumen",
+     "text": "The dashboard should refresh automatically."
+    },
+    {
+     "id": "idea_2",
+     "project": "Lumen",
+     "text": "Invoices must be downloadable as PDF."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "The PDF invoices should carry the company logo in the header."
+   },
+   "rationale": "Clearly refers to PDF invoices.",
+   "split": "holdout"
+  },
+  {
+   "id": "P045",
+   "category": "REVMC",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "The pricing page needs a comparison table."
+    },
+    {
+     "id": "idea_1",
+     "project": "Kestrel",
+     "text": "The blog should have an RSS feed."
+    },
+    {
+     "id": "idea_2",
+     "project": "Kestrel",
+     "text": "The contact form must block spam."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "The comparison table on the pricing page should highlight the recommended plan."
+   },
+   "rationale": "Refers to the pricing comparison table.",
+   "split": "holdout"
+  },
+  {
+   "id": "P046",
+   "category": "REVMC",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 1,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Habits",
+     "text": "Read for twenty minutes before bed."
+    },
+    {
+     "id": "idea_1",
+     "project": "Habits",
+     "text": "Do a ten minute stretching routine every morning."
+    },
+    {
+     "id": "idea_2",
+     "project": "Habits",
+     "text": "Plan tomorrow's top three tasks each evening."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "Make the morning stretching routine fifteen minutes instead of ten."
+   },
+   "rationale": "Changes the morning stretching routine.",
+   "split": "dev"
+  },
+  {
+   "id": "P047",
+   "category": "REVMC",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Rate limit the login endpoint."
+    },
+    {
+     "id": "idea_1",
+     "project": "Orbit",
+     "text": "Cache user profile lookups."
+    },
+    {
+     "id": "idea_2",
+     "project": "Orbit",
+     "text": "Log every failed payment."
+    },
+    {
+     "id": "idea_3",
+     "project": "Orbit",
+     "text": "Rotate API keys every ninety days."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "The login endpoint rate limit should be per IP and per account."
+   },
+   "rationale": "Refers to the login rate limit.",
+   "split": "holdout"
+  },
+  {
+   "id": "P048",
+   "category": "REVMC",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 3,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Add keyboard shortcuts to the editor."
+    },
+    {
+     "id": "idea_1",
+     "project": "Lumen",
+     "text": "Autosave drafts every thirty seconds."
+    },
+    {
+     "id": "idea_2",
+     "project": "Lumen",
+     "text": "Support Markdown tables."
+    },
+    {
+     "id": "idea_3",
+     "project": "Lumen",
+     "text": "Show word count in the footer."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "The word count in the footer should also show reading time."
+   },
+   "rationale": "Refers to the footer word count.",
+   "split": "dev"
+  },
+  {
+   "id": "P049",
+   "category": "REVMC",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 1,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Renew the car insurance in March."
+    },
+    {
+     "id": "idea_1",
+     "project": "Personal",
+     "text": "Book a flight to Lisbon for the conference."
+    },
+    {
+     "id": "idea_2",
+     "project": "Personal",
+     "text": "Call the bank about the mortgage rate."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "The Lisbon flight should be on the morning of the 14th, direct only."
+   },
+   "rationale": "Refers to the Lisbon flight.",
+   "split": "dev"
+  },
+  {
+   "id": "P050",
+   "category": "REVMC",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Добави филтър по дата в списъка с поръчки."
+    },
+    {
+     "id": "idea_1",
+     "project": "Орбит",
+     "text": "Имейлите за потвърждение да са на български."
+    },
+    {
+     "id": "idea_2",
+     "project": "Орбит",
+     "text": "Профилната снимка да се качва до 5 МБ."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Филтърът по дата в поръчките да има бързи опции: днес, тази седмица, този месец."
+   },
+   "rationale": "Отнася се за филтъра по дата.",
+   "split": "dev"
+  },
+  {
+   "id": "P051",
+   "category": "REVMC",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 2,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Кестрел",
+     "text": "Блогът да има категории."
+    },
+    {
+     "id": "idea_1",
+     "project": "Кестрел",
+     "text": "Формата за контакт да праща копие на подателя."
+    },
+    {
+     "id": "idea_2",
+     "project": "Кестрел",
+     "text": "Началната страница да зарежда под две секунди."
+    }
+   ],
+   "new_capture": {
+    "project": "Кестрел",
+    "text": "Началната страница да зарежда под една секунда на мобилен."
+   },
+   "rationale": "Затяга целта за началната страница.",
+   "split": "holdout"
+  },
+  {
+   "id": "P052",
+   "category": "REVMC",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 1,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да подновя шофьорската книжка."
+    },
+    {
+     "id": "idea_1",
+     "project": "Лични",
+     "text": "Да запиша годишен преглед при зъболекаря."
+    },
+    {
+     "id": "idea_2",
+     "project": "Лични",
+     "text": "Да платя данъка на колата."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Прегледът при зъболекаря да е през пролетта, не през зимата."
+   },
+   "rationale": "Отнася се за прегледа при зъболекаря.",
+   "split": "dev"
+  },
+  {
+   "id": "P053",
+   "category": "REVMC",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Нотификациите да могат да се заглушават."
+    },
+    {
+     "id": "idea_1",
+     "project": "Орбит",
+     "text": "Тъмна тема за таблото."
+    },
+    {
+     "id": "idea_2",
+     "project": "Орбит",
+     "text": "Експорт на отчети в Excel."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Заглушаването на нотификациите да важи по подразбиране за 8 часа."
+   },
+   "rationale": "Отнася се за заглушаването.",
+   "split": "holdout"
+  },
+  {
+   "id": "P054",
+   "category": "REVMC",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 2,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лумен",
+     "text": "Автоматично запазване на чернови."
+    },
+    {
+     "id": "idea_1",
+     "project": "Лумен",
+     "text": "Споделяне на документи по линк."
+    },
+    {
+     "id": "idea_2",
+     "project": "Лумен",
+     "text": "История на промените за всеки документ."
+    }
+   ],
+   "new_capture": {
+    "project": "Лумен",
+    "text": "Историята на промените да пази последните 90 дни."
+   },
+   "rationale": "Уточнява историята на промените.",
+   "split": "dev"
+  },
+  {
+   "id": "P055",
+   "category": "REVMC",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 1,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Onboarding flow-ът трябва да е до три стъпки."
+    },
+    {
+     "id": "idea_1",
+     "project": "Orbit",
+     "text": "Push notifications да се пращат само през деня."
+    },
+    {
+     "id": "idea_2",
+     "project": "Orbit",
+     "text": "Invite линковете да изтичат след седмица."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Push notifications да са само между 9 и 20 часа местно време."
+   },
+   "rationale": "Уточнява push notifications.",
+   "split": "dev"
+  },
+  {
+   "id": "P056",
+   "category": "REVMC",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Search bar-ът да е винаги видим."
+    },
+    {
+     "id": "idea_1",
+     "project": "Lumen",
+     "text": "Export към Notion."
+    },
+    {
+     "id": "idea_2",
+     "project": "Lumen",
+     "text": "Collaborative editing в реално време."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Search bar-ът да се фокусира с Cmd+K."
+   },
+   "rationale": "Отнася се за search bar-а.",
+   "split": "holdout"
+  },
+  {
+   "id": "P057",
+   "category": "REVMC",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 2,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Blog post-овете да имат reading time."
+    },
+    {
+     "id": "idea_1",
+     "project": "Kestrel",
+     "text": "Cookie banner-ът да е минималистичен."
+    },
+    {
+     "id": "idea_2",
+     "project": "Kestrel",
+     "text": "Pricing page-ът да показва годишна отстъпка."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Годишната отстъпка на pricing page-а да е 20%, показана като badge."
+   },
+   "rationale": "Уточнява годишната отстъпка.",
+   "split": "dev"
+  },
+  {
+   "id": "P058",
+   "category": "REVMC",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 1,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Да запиша курс по Spanish."
+    },
+    {
+     "id": "idea_1",
+     "project": "Personal",
+     "text": "Gym membership-ът да се смени с по-евтин."
+    },
+    {
+     "id": "idea_2",
+     "project": "Personal",
+     "text": "Да прочета книгата за habits."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Новият gym membership да е под 30 евро и близо до офиса."
+   },
+   "rationale": "Уточнява смяната на gym membership.",
+   "split": "holdout"
+  },
+  {
+   "id": "P059",
+   "category": "TOPIC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Add a compact density option to the settings screen."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "The settings screen should load faster."
+   },
+   "rationale": "Same screen, different concern.",
+   "split": "holdout"
+  },
+  {
+   "id": "P060",
+   "category": "TOPIC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Encrypt backups at rest."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Backups should run every night at 2 am."
+   },
+   "rationale": "Backup encryption versus schedule.",
+   "split": "dev"
+  },
+  {
+   "id": "P061",
+   "category": "TOPIC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "The email newsletter needs a subscribe form."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "The email newsletter should have a weekly topic calendar."
+   },
+   "rationale": "Newsletter, different aspect.",
+   "split": "dev"
+  },
+  {
+   "id": "P062",
+   "category": "TOPIC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Rate limit the public API."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Document the public API with examples."
+   },
+   "rationale": "Same API, separate work item.",
+   "split": "dev"
+  },
+  {
+   "id": "P063",
+   "category": "TOPIC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Habits",
+     "text": "Walk 8000 steps a day."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "Drink two litres of water a day."
+   },
+   "rationale": "Separate health habits.",
+   "split": "dev"
+  },
+  {
+   "id": "P064",
+   "category": "TOPIC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Add SSO login for enterprise accounts."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Add two-factor authentication for all accounts."
+   },
+   "rationale": "Both authentication, separate features.",
+   "split": "dev"
+  },
+  {
+   "id": "P065",
+   "category": "TOPIC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Renew the passport before summer."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Apply for a visa for the Japan trip."
+   },
+   "rationale": "Related travel documents, distinct tasks.",
+   "split": "dev"
+  },
+  {
+   "id": "P066",
+   "category": "TOPIC",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Добави тъмна тема."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Добави превключвател за език."
+   },
+   "rationale": "Различни настройки.",
+   "split": "holdout"
+  },
+  {
+   "id": "P067",
+   "category": "TOPIC",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да сменя маслото на колата."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Да сменя гумите на колата."
+   },
+   "rationale": "Различна поддръжка на същата кола.",
+   "split": "holdout"
+  },
+  {
+   "id": "P068",
+   "category": "TOPIC",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Кестрел",
+     "text": "Блогът трябва да има търсачка."
+    }
+   ],
+   "new_capture": {
+    "project": "Кестрел",
+    "text": "Блогът трябва да има коментари."
+   },
+   "rationale": "Различни функции на блога.",
+   "split": "holdout"
+  },
+  {
+   "id": "P069",
+   "category": "TOPIC",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Криптирай паролите в базата."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Криптирай файловете при качване."
+   },
+   "rationale": "Различна криптографска задача.",
+   "split": "holdout"
+  },
+  {
+   "id": "P070",
+   "category": "TOPIC",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Export на данни към CSV."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Import на данни от Excel."
+   },
+   "rationale": "Export срещу import.",
+   "split": "holdout"
+  },
+  {
+   "id": "P071",
+   "category": "TOPIC",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Push notifications при нов message."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Email digest веднъж седмично."
+   },
+   "rationale": "Различни канали за известяване.",
+   "split": "holdout"
+  },
+  {
+   "id": "P072",
+   "category": "TOPIC",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Landing page-ът да е бърз."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Landing page-ът да има A/B тест за headline-а."
+   },
+   "rationale": "Различно изискване.",
+   "split": "dev"
+  },
+  {
+   "id": "P073",
+   "category": "SAMEPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Build an admin dashboard for support staff."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Add a public status page showing uptime."
+   },
+   "rationale": "Different features of Orbit.",
+   "split": "dev"
+  },
+  {
+   "id": "P074",
+   "category": "SAMEPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Support real-time collaboration in the editor."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Offer a mobile app for reading documents."
+   },
+   "rationale": "Separate features.",
+   "split": "holdout"
+  },
+  {
+   "id": "P075",
+   "category": "SAMEPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Redesign the home page hero section."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Set up a referral programme."
+   },
+   "rationale": "Unrelated work in the same project.",
+   "split": "dev"
+  },
+  {
+   "id": "P076",
+   "category": "SAMEPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Migrate the user table to the new schema."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Write a customer interview script."
+   },
+   "rationale": "Unrelated.",
+   "split": "dev"
+  },
+  {
+   "id": "P077",
+   "category": "SAMEPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Habits",
+     "text": "Track mood every evening."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "Schedule a monthly digital detox day."
+   },
+   "rationale": "Separate habits.",
+   "split": "holdout"
+  },
+  {
+   "id": "P078",
+   "category": "SAMEPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Add webhooks for document events."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Improve the onboarding emails."
+   },
+   "rationale": "Separate features.",
+   "split": "dev"
+  },
+  {
+   "id": "P079",
+   "category": "SAMEPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Organise the garage."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Plan the summer reading list."
+   },
+   "rationale": "Unrelated.",
+   "split": "holdout"
+  },
+  {
+   "id": "P080",
+   "category": "SAMEPROJ",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Направи административен панел."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Добави онлайн чат за клиентите."
+   },
+   "rationale": "Различни функции.",
+   "split": "dev"
+  },
+  {
+   "id": "P081",
+   "category": "SAMEPROJ",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Кестрел",
+     "text": "Подобри SEO на сайта."
+    }
+   ],
+   "new_capture": {
+    "project": "Кестрел",
+    "text": "Нова банер реклама за есента."
+   },
+   "rationale": "Различни дейности.",
+   "split": "holdout"
+  },
+  {
+   "id": "P082",
+   "category": "SAMEPROJ",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да подредя документите у дома."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Да планирам рождения ден на сестра ми."
+   },
+   "rationale": "Несвързани задачи.",
+   "split": "dev"
+  },
+  {
+   "id": "P083",
+   "category": "SAMEPROJ",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лумен",
+     "text": "Добави история на версиите."
+    }
+   ],
+   "new_capture": {
+    "project": "Лумен",
+    "text": "Добави тъмен режим."
+   },
+   "rationale": "Различни функции.",
+   "split": "dev"
+  },
+  {
+   "id": "P084",
+   "category": "SAMEPROJ",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "API документацията да е на OpenAPI."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Onboarding email-ите да са по-кратки."
+   },
+   "rationale": "Несвързани.",
+   "split": "holdout"
+  },
+  {
+   "id": "P085",
+   "category": "SAMEPROJ",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Dashboard-ът да има drill-down."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Да добавим SOC 2 compliance."
+   },
+   "rationale": "Несвързани.",
+   "split": "holdout"
+  },
+  {
+   "id": "P086",
+   "category": "SAMEPROJ",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Нов logo за brand-а."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Webinar-ът да е на английски."
+   },
+   "rationale": "Несвързани.",
+   "split": "holdout"
+  },
+  {
+   "id": "P087",
+   "category": "DIFFPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Add a dark mode toggle to the settings page."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Add a dark mode toggle to the marketing site."
+   },
+   "rationale": "Same feature type, different project and artefact.",
+   "split": "dev"
+  },
+  {
+   "id": "P088",
+   "category": "DIFFPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Write onboarding emails for new users."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "Write a morning routine checklist for new habits."
+   },
+   "rationale": "Different project and subject.",
+   "split": "holdout"
+  },
+  {
+   "id": "P089",
+   "category": "DIFFPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Set up error monitoring."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Set up a monthly spending monitor."
+   },
+   "rationale": "Different domain.",
+   "split": "holdout"
+  },
+  {
+   "id": "P090",
+   "category": "DIFFPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Plan the launch event for March."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Plan the housewarming party for March."
+   },
+   "rationale": "Same pattern, different project.",
+   "split": "dev"
+  },
+  {
+   "id": "P091",
+   "category": "DIFFPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Hire a frontend engineer."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Hire a freelance copywriter."
+   },
+   "rationale": "Different hires for different projects.",
+   "split": "holdout"
+  },
+  {
+   "id": "P092",
+   "category": "DIFFPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Create a roadmap for Q4."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Create a roadmap for Q4."
+   },
+   "rationale": "Identical wording but different project; separate roadmaps.",
+   "split": "dev"
+  },
+  {
+   "id": "P093",
+   "category": "DIFFPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Back up the family photos."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Back up the production database."
+   },
+   "rationale": "Different subjects.",
+   "split": "holdout"
+  },
+  {
+   "id": "P094",
+   "category": "DIFFPROJ",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Добави тъмен режим в настройките."
+    }
+   ],
+   "new_capture": {
+    "project": "Кестрел",
+    "text": "Добави тъмен режим на сайта."
+   },
+   "rationale": "Различен проект и обект.",
+   "split": "dev"
+  },
+  {
+   "id": "P095",
+   "category": "DIFFPROJ",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да планирам отпуската през юли."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Да планирам спринта за юли."
+   },
+   "rationale": "Различна област.",
+   "split": "dev"
+  },
+  {
+   "id": "P096",
+   "category": "DIFFPROJ",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Кестрел",
+     "text": "Да направим безплатен пробен период."
+    }
+   ],
+   "new_capture": {
+    "project": "Лумен",
+    "text": "Да направим безплатен пробен период."
+   },
+   "rationale": "Идентично описание, но различен проект.",
+   "split": "holdout"
+  },
+  {
+   "id": "P097",
+   "category": "DIFFPROJ",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Да нанеса промените в договора."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Да нанеса промените в договора за наем."
+   },
+   "rationale": "Различен договор, различен проект.",
+   "split": "dev"
+  },
+  {
+   "id": "P098",
+   "category": "DIFFPROJ",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Onboarding tour за нови потребители."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "Onboarding tour за новия habit tracker."
+   },
+   "rationale": "Различен проект.",
+   "split": "holdout"
+  },
+  {
+   "id": "P099",
+   "category": "DIFFPROJ",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Да направим backup на сървъра."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Да направя backup на телефона."
+   },
+   "rationale": "Различен обект.",
+   "split": "dev"
+  },
+  {
+   "id": "P100",
+   "category": "DIFFPROJ",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Newsletter за customers."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Newsletter за investors."
+   },
+   "rationale": "Различна аудитория и проект.",
+   "split": "holdout"
+  },
+  {
+   "id": "P101",
+   "category": "NEWMC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Add dark mode."
+    },
+    {
+     "id": "idea_1",
+     "project": "Orbit",
+     "text": "Improve search relevance."
+    },
+    {
+     "id": "idea_2",
+     "project": "Orbit",
+     "text": "Support CSV export."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Add audit logging for admin actions."
+   },
+   "rationale": "None of the candidates match.",
+   "split": "holdout"
+  },
+  {
+   "id": "P102",
+   "category": "NEWMC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Offline mode for the mobile app."
+    },
+    {
+     "id": "idea_1",
+     "project": "Lumen",
+     "text": "Biometric login."
+    },
+    {
+     "id": "idea_2",
+     "project": "Lumen",
+     "text": "Push notification settings."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Add a tablet layout for the dashboard."
+   },
+   "rationale": "Different feature.",
+   "split": "dev"
+  },
+  {
+   "id": "P103",
+   "category": "NEWMC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Launch a podcast."
+    },
+    {
+     "id": "idea_1",
+     "project": "Kestrel",
+     "text": "Redesign the logo."
+    },
+    {
+     "id": "idea_2",
+     "project": "Kestrel",
+     "text": "Run a webinar series."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Attend the industry conference in May."
+   },
+   "rationale": "Not related to any candidate.",
+   "split": "holdout"
+  },
+  {
+   "id": "P104",
+   "category": "NEWMC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Rate limit the API."
+    },
+    {
+     "id": "idea_1",
+     "project": "Orbit",
+     "text": "Cache profile lookups."
+    },
+    {
+     "id": "idea_2",
+     "project": "Orbit",
+     "text": "Rotate API keys."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Add pagination to the API list endpoints."
+   },
+   "rationale": "Same API area, separate idea.",
+   "split": "dev"
+  },
+  {
+   "id": "P105",
+   "category": "NEWMC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Habits",
+     "text": "Meditate in the morning."
+    },
+    {
+     "id": "idea_1",
+     "project": "Habits",
+     "text": "Read before bed."
+    },
+    {
+     "id": "idea_2",
+     "project": "Habits",
+     "text": "Walk after lunch."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "Journal about gratitude on Sundays."
+   },
+   "rationale": "New habit.",
+   "split": "dev"
+  },
+  {
+   "id": "P106",
+   "category": "NEWMC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Book the dentist."
+    },
+    {
+     "id": "idea_1",
+     "project": "Personal",
+     "text": "Renew the passport."
+    },
+    {
+     "id": "idea_2",
+     "project": "Personal",
+     "text": "Pay the electricity bill."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Buy a gift for the neighbour's wedding."
+   },
+   "rationale": "Unrelated.",
+   "split": "dev"
+  },
+  {
+   "id": "P107",
+   "category": "NEWMC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Add comments to documents."
+    },
+    {
+     "id": "idea_1",
+     "project": "Lumen",
+     "text": "Add version history."
+    },
+    {
+     "id": "idea_2",
+     "project": "Lumen",
+     "text": "Add document templates."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Add a presentation mode for documents."
+   },
+   "rationale": "Similar area, new feature.",
+   "split": "holdout"
+  },
+  {
+   "id": "P108",
+   "category": "NEWMC",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Тъмна тема."
+    },
+    {
+     "id": "idea_1",
+     "project": "Орбит",
+     "text": "Известия по имейл."
+    },
+    {
+     "id": "idea_2",
+     "project": "Орбит",
+     "text": "Експорт в CSV."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Двуфакторна автентикация."
+   },
+   "rationale": "Не съвпада с нито един кандидат.",
+   "split": "holdout"
+  },
+  {
+   "id": "P109",
+   "category": "NEWMC",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да се запиша на фитнес."
+    },
+    {
+     "id": "idea_1",
+     "project": "Лични",
+     "text": "Да сменя банката."
+    },
+    {
+     "id": "idea_2",
+     "project": "Лични",
+     "text": "Да подновя абонамента за метрото."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Да запиша детето на плуване."
+   },
+   "rationale": "Нова задача.",
+   "split": "holdout"
+  },
+  {
+   "id": "P110",
+   "category": "NEWMC",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Кестрел",
+     "text": "Нов дизайн на началната страница."
+    },
+    {
+     "id": "idea_1",
+     "project": "Кестрел",
+     "text": "Блог за клиенти."
+    },
+    {
+     "id": "idea_2",
+     "project": "Кестрел",
+     "text": "Видео курс."
+    }
+   ],
+   "new_capture": {
+    "project": "Кестрел",
+    "text": "Партньорска програма с влиятелни личности."
+   },
+   "rationale": "Ново.",
+   "split": "holdout"
+  },
+  {
+   "id": "P111",
+   "category": "NEWMC",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лумен",
+     "text": "Интеграция със Slack."
+    },
+    {
+     "id": "idea_1",
+     "project": "Лумен",
+     "text": "Интеграция с Jira."
+    }
+   ],
+   "new_capture": {
+    "project": "Лумен",
+    "text": "Интеграция с Google Calendar."
+   },
+   "rationale": "Нова интеграция.",
+   "split": "holdout"
+  },
+  {
+   "id": "P112",
+   "category": "NEWMC",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Dark mode за mobile app-а."
+    },
+    {
+     "id": "idea_1",
+     "project": "Orbit",
+     "text": "Onboarding за нови клиенти."
+    },
+    {
+     "id": "idea_2",
+     "project": "Orbit",
+     "text": "Search по ключови думи."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Webhook-ове за външни системи."
+   },
+   "rationale": "Ново.",
+   "split": "dev"
+  },
+  {
+   "id": "P113",
+   "category": "NEWMC",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Cookie banner."
+    },
+    {
+     "id": "idea_1",
+     "project": "Kestrel",
+     "text": "Landing page A/B тест."
+    },
+    {
+     "id": "idea_2",
+     "project": "Kestrel",
+     "text": "Email кампания за launch."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Съвместен webinar с партньор."
+   },
+   "rationale": "Ново.",
+   "split": "dev"
+  },
+  {
+   "id": "P114",
+   "category": "NEWMC",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Да обновя CV-то."
+    },
+    {
+     "id": "idea_1",
+     "project": "Personal",
+     "text": "Да запиша курс по Python."
+    },
+    {
+     "id": "idea_2",
+     "project": "Personal",
+     "text": "Да почистя LinkedIn профила."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Да отида на meetup за data science."
+   },
+   "rationale": "Свързано с кариерата, но различно.",
+   "split": "dev"
+  },
+  {
+   "id": "P115",
+   "category": "SUBTASK",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Plan the trip to Rome."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Book the hotel in Rome."
+   },
+   "rationale": "Hotel booking is part of the trip plan or a separate task; genuinely debatable.",
+   "split": "dev"
+  },
+  {
+   "id": "P116",
+   "category": "SUBTASK",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Build the billing system."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Design the invoice PDF template."
+   },
+   "rationale": "Part of billing or a standalone design item.",
+   "split": "dev"
+  },
+  {
+   "id": "P117",
+   "category": "SUBTASK",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Prepare the quarterly report."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Collect the revenue figures."
+   },
+   "rationale": "Could be a step of the report or a separate task.",
+   "split": "dev"
+  },
+  {
+   "id": "P118",
+   "category": "SUBTASK",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Launch the new website."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Write the launch day announcement email."
+   },
+   "rationale": "Subtask of the launch or its own item.",
+   "split": "holdout"
+  },
+  {
+   "id": "P119",
+   "category": "SUBTASK",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Migrate to the new database."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Write the rollback script."
+   },
+   "rationale": "Likely part of the migration but could be separate.",
+   "split": "dev"
+  },
+  {
+   "id": "P120",
+   "category": "SUBTASK",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Habits",
+     "text": "Get fit this year."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "Sign up for the 10k race in May."
+   },
+   "rationale": "A step toward the goal or a distinct plan.",
+   "split": "dev"
+  },
+  {
+   "id": "P121",
+   "category": "SUBTASK",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Refactor the search module."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Add unit tests for the search tokenizer."
+   },
+   "rationale": "May belong to the refactor or stand alone.",
+   "split": "dev"
+  },
+  {
+   "id": "P122",
+   "category": "SUBTASK",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да организирам сватбата."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Да избера ресторант за сватбата."
+   },
+   "rationale": "Подзадача или отделна задача.",
+   "split": "holdout"
+  },
+  {
+   "id": "P123",
+   "category": "SUBTASK",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Да обновим уебсайта."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Да сменим хостинга на сайта."
+   },
+   "rationale": "Част от обновяването или отделна задача.",
+   "split": "holdout"
+  },
+  {
+   "id": "P124",
+   "category": "SUBTASK",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Кестрел",
+     "text": "Да пуснем нов продукт."
+    }
+   ],
+   "new_capture": {
+    "project": "Кестрел",
+    "text": "Да подготвим снимки за продукта."
+   },
+   "rationale": "Подзадача или самостоятелна.",
+   "split": "holdout"
+  },
+  {
+   "id": "P125",
+   "category": "SUBTASK",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Ремонт на банята."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Да избера плочки за банята."
+   },
+   "rationale": "Стъпка от ремонта или отделна идея.",
+   "split": "dev"
+  },
+  {
+   "id": "P126",
+   "category": "SUBTASK",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Да направим redesign на onboarding-а."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Да сменим илюстрациите в onboarding-а."
+   },
+   "rationale": "Част от redesign-а или отделна идея.",
+   "split": "holdout"
+  },
+  {
+   "id": "P127",
+   "category": "SUBTASK",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Нов reporting модул."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Да изберем charting библиотека."
+   },
+   "rationale": "Стъпка от модула или отделно решение.",
+   "split": "holdout"
+  },
+  {
+   "id": "P128",
+   "category": "SUBTASK",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Marketing кампания за launch-а."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Да направим landing page за кампанията."
+   },
+   "rationale": "Част от кампанията или отделна задача.",
+   "split": "holdout"
+  },
+  {
+   "id": "P129",
+   "category": "SCOPE",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Orbit is a web dashboard."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Orbit is an operations platform, not just a dashboard."
+   },
+   "rationale": "Reframing of the definition; revision or a distinct positioning idea.",
+   "split": "dev"
+  },
+  {
+   "id": "P130",
+   "category": "SCOPE",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Lumen is a note-taking app."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Lumen is a knowledge workspace, not a notes app."
+   },
+   "rationale": "Reframing.",
+   "split": "dev"
+  },
+  {
+   "id": "P131",
+   "category": "SCOPE",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Kestrel is a consumer product."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Kestrel is really an enterprise tool in disguise."
+   },
+   "rationale": "Positioning shift; unclear whether it replaces the idea.",
+   "split": "holdout"
+  },
+  {
+   "id": "P132",
+   "category": "SCOPE",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "The beta will launch on iOS and Android."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Narrow the beta to iOS only."
+   },
+   "rationale": "Explicit scope change to the same beta.",
+   "split": "dev"
+  },
+  {
+   "id": "P133",
+   "category": "SCOPE",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Support English, German and French."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Drop French from the supported languages."
+   },
+   "rationale": "Explicit scope change to the same list.",
+   "split": "dev"
+  },
+  {
+   "id": "P134",
+   "category": "SCOPE",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Habits",
+     "text": "Run three times a week."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "Be an active person."
+   },
+   "rationale": "Broader goal, unclear relation.",
+   "split": "holdout"
+  },
+  {
+   "id": "P135",
+   "category": "SCOPE",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Learn Spanish."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Spend a month in Madrid."
+   },
+   "rationale": "Possibly a means to the goal, but arguably its own idea.",
+   "split": "dev"
+  },
+  {
+   "id": "P136",
+   "category": "SCOPE",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Орбит е мобилно приложение."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Орбит е инструмент за мислене, а не просто приложение."
+   },
+   "rationale": "Преформулиране; ревизия или отделна идея.",
+   "split": "holdout"
+  },
+  {
+   "id": "P137",
+   "category": "SCOPE",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Кестрел",
+     "text": "Пускаме продукта в цяла Европа."
+    }
+   ],
+   "new_capture": {
+    "project": "Кестрел",
+    "text": "Стесняваме първоначалния старт до България и Румъния."
+   },
+   "rationale": "Изрична промяна на обхвата.",
+   "split": "holdout"
+  },
+  {
+   "id": "P138",
+   "category": "SCOPE",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Искам да живея по-здравословно."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Искам да спра захарта."
+   },
+   "rationale": "По-тясна цел; част от същото или отделна.",
+   "split": "holdout"
+  },
+  {
+   "id": "P139",
+   "category": "SCOPE",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лумен",
+     "text": "Лумен е редактор на текстове."
+    }
+   ],
+   "new_capture": {
+    "project": "Лумен",
+    "text": "Лумен е платформа за знания."
+   },
+   "rationale": "Разширяване на определението.",
+   "split": "dev"
+  },
+  {
+   "id": "P140",
+   "category": "SCOPE",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Orbit е SaaS продукт."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Orbit е по-скоро platform за разработчици, не продукт."
+   },
+   "rationale": "Преформулиране.",
+   "split": "holdout"
+  },
+  {
+   "id": "P141",
+   "category": "SCOPE",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Pilot-ът ще е за 50 потребители."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Намаляваме pilot-а до 20 потребители."
+   },
+   "rationale": "Изрична промяна на размера.",
+   "split": "dev"
+  },
+  {
+   "id": "P142",
+   "category": "SCOPE",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Брандът трябва да е playful."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Да направим mascot за марката."
+   },
+   "rationale": "Възможно следствие, но по-скоро нова идея.",
+   "split": "holdout"
+  },
+  {
+   "id": "P143",
+   "category": "AMBREF",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "The export should include timestamps."
+    },
+    {
+     "id": "idea_1",
+     "project": "Orbit",
+     "text": "The importer should validate headers."
+    },
+    {
+     "id": "idea_2",
+     "project": "Orbit",
+     "text": "The report should be paginated."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "It should also handle large files."
+   },
+   "rationale": "'It' could be any of three.",
+   "split": "holdout"
+  },
+  {
+   "id": "P144",
+   "category": "AMBREF",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Move the launch to May."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Let's push it back a bit more."
+   },
+   "rationale": "Plausibly the launch but 'it' is unresolved with no other cue.",
+   "split": "dev"
+  },
+  {
+   "id": "P145",
+   "category": "AMBREF",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Call the landlord about the heating."
+    },
+    {
+     "id": "idea_1",
+     "project": "Personal",
+     "text": "Call the bank about the card."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Don't forget to call them before noon."
+   },
+   "rationale": "'Them' is unresolved.",
+   "split": "dev"
+  },
+  {
+   "id": "P146",
+   "category": "AMBREF",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "We should reconsider the pricing tiers."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Go with option B."
+   },
+   "rationale": "Option B has no referent.",
+   "split": "dev"
+  },
+  {
+   "id": "P147",
+   "category": "AMBREF",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Improve the onboarding."
+    },
+    {
+     "id": "idea_1",
+     "project": "Orbit",
+     "text": "Simplify the settings."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Make it simpler and faster."
+   },
+   "rationale": "Ambiguous 'it'.",
+   "split": "holdout"
+  },
+  {
+   "id": "P148",
+   "category": "AMBREF",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Habits",
+     "text": "Write in the journal daily."
+    },
+    {
+     "id": "idea_1",
+     "project": "Habits",
+     "text": "Stretch every morning."
+    },
+    {
+     "id": "idea_2",
+     "project": "Habits",
+     "text": "Skip social media after 9 pm."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "Let's do that for thirty days."
+   },
+   "rationale": "'That' is unresolved.",
+   "split": "holdout"
+  },
+  {
+   "id": "P149",
+   "category": "AMBREF",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "The CEO wants the new report."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "He needs it by Friday."
+   },
+   "rationale": "'He' and 'it' presumably the CEO and report but not certain.",
+   "split": "dev"
+  },
+  {
+   "id": "P150",
+   "category": "AMBREF",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Експортът трябва да е по-бърз."
+    },
+    {
+     "id": "idea_1",
+     "project": "Орбит",
+     "text": "Импортът трябва да валидира данните."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Това трябва да работи и офлайн."
+   },
+   "rationale": "'Това' не е еднозначно.",
+   "split": "holdout"
+  },
+  {
+   "id": "P151",
+   "category": "AMBREF",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да се обадя на лекаря."
+    },
+    {
+     "id": "idea_1",
+     "project": "Лични",
+     "text": "Да се обадя на майстора."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Обади се утре сутринта."
+   },
+   "rationale": "Кому не е ясно.",
+   "split": "dev"
+  },
+  {
+   "id": "P152",
+   "category": "AMBREF",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Кестрел",
+     "text": "Да преразгледаме цените."
+    }
+   ],
+   "new_capture": {
+    "project": "Кестрел",
+    "text": "Да вземем втория вариант."
+   },
+   "rationale": "Няма ясен втори вариант.",
+   "split": "dev"
+  },
+  {
+   "id": "P153",
+   "category": "AMBREF",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Нов дизайн на таблото."
+    },
+    {
+     "id": "idea_1",
+     "project": "Орбит",
+     "text": "Нов дизайн на профила."
+    },
+    {
+     "id": "idea_2",
+     "project": "Орбит",
+     "text": "Нов дизайн на настройките."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Да го направим по-светъл."
+   },
+   "rationale": "'Го' е неясно.",
+   "split": "dev"
+  },
+  {
+   "id": "P154",
+   "category": "AMBREF",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Search трябва да е по-бърз."
+    },
+    {
+     "id": "idea_1",
+     "project": "Lumen",
+     "text": "Export трябва да е по-надежден."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Същото важи и за синхронизацията при слаба връзка."
+   },
+   "rationale": "'Същото' е неясно.",
+   "split": "holdout"
+  },
+  {
+   "id": "P155",
+   "category": "AMBREF",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Onboarding-ът е твърде дълъг."
+    },
+    {
+     "id": "idea_1",
+     "project": "Orbit",
+     "text": "Settings screen-ът е объркващ."
+    },
+    {
+     "id": "idea_2",
+     "project": "Orbit",
+     "text": "Dashboard-ът е претрупан."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Нека го опростим."
+   },
+   "rationale": "Кое да се опрости?",
+   "split": "holdout"
+  },
+  {
+   "id": "P156",
+   "category": "AMBREF",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Launch-ът е през март."
+    },
+    {
+     "id": "idea_1",
+     "project": "Kestrel",
+     "text": "Webinar-ът е през април."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Премести го с седмица напред."
+   },
+   "rationale": "Кое се премества?",
+   "split": "holdout"
+  },
+  {
+   "id": "P157",
+   "category": "TWOFIT",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Send an email when a payment fails."
+    },
+    {
+     "id": "idea_1",
+     "project": "Orbit",
+     "text": "Send an email when a subscription is cancelled."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "The billing emails should include the customer's name."
+   },
+   "rationale": "Applies to both.",
+   "split": "holdout"
+  },
+  {
+   "id": "P158",
+   "category": "TWOFIT",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Add a PDF export for reports."
+    },
+    {
+     "id": "idea_1",
+     "project": "Lumen",
+     "text": "Add a PDF export for invoices."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "The PDF export should keep the company logo."
+   },
+   "rationale": "Could be either.",
+   "split": "holdout"
+  },
+  {
+   "id": "P159",
+   "category": "TWOFIT",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Write a blog post about the launch."
+    },
+    {
+     "id": "idea_1",
+     "project": "Kestrel",
+     "text": "Write a press release about the launch."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "The launch write-up should mention the free trial."
+   },
+   "rationale": "Could update either.",
+   "split": "holdout"
+  },
+  {
+   "id": "P160",
+   "category": "TWOFIT",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Rate limit the login endpoint."
+    },
+    {
+     "id": "idea_1",
+     "project": "Orbit",
+     "text": "Rate limit the signup endpoint."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "The rate limit should be 10 per minute."
+   },
+   "rationale": "Either endpoint.",
+   "split": "dev"
+  },
+  {
+   "id": "P161",
+   "category": "TWOFIT",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Habits",
+     "text": "Meditate in the morning."
+    },
+    {
+     "id": "idea_1",
+     "project": "Habits",
+     "text": "Meditate before bed."
+    }
+   ],
+   "new_capture": {
+    "project": "Habits",
+    "text": "Meditation sessions should be fifteen minutes."
+   },
+   "rationale": "Either session.",
+   "split": "holdout"
+  },
+  {
+   "id": "P162",
+   "category": "TWOFIT",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Support Google login."
+    },
+    {
+     "id": "idea_1",
+     "project": "Lumen",
+     "text": "Support Apple login."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "The social login button should be above the fold."
+   },
+   "rationale": "Both.",
+   "split": "dev"
+  },
+  {
+   "id": "P163",
+   "category": "TWOFIT",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Book a flight to Lisbon."
+    },
+    {
+     "id": "idea_1",
+     "project": "Personal",
+     "text": "Book a hotel in Lisbon."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Lisbon booking should be done by Friday."
+   },
+   "rationale": "May cover either or both; arguably a joint update.",
+   "split": "dev"
+  },
+  {
+   "id": "P164",
+   "category": "TWOFIT",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Известие при нова поръчка."
+    },
+    {
+     "id": "idea_1",
+     "project": "Орбит",
+     "text": "Известие при отказана поръчка."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Известията да са със звук."
+   },
+   "rationale": "И двете.",
+   "split": "holdout"
+  },
+  {
+   "id": "P165",
+   "category": "TWOFIT",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Кестрел",
+     "text": "Блог пост за продукта."
+    },
+    {
+     "id": "idea_1",
+     "project": "Кестрел",
+     "text": "Видео за продукта."
+    }
+   ],
+   "new_capture": {
+    "project": "Кестрел",
+    "text": "Съдържанието за продукта да е на прост език."
+   },
+   "rationale": "И двете.",
+   "split": "dev"
+  },
+  {
+   "id": "P166",
+   "category": "TWOFIT",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да купя подарък за мама."
+    },
+    {
+     "id": "idea_1",
+     "project": "Лични",
+     "text": "Да купя подарък за татко."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Подаръкът да е до 50 евро."
+   },
+   "rationale": "И двата.",
+   "split": "holdout"
+  },
+  {
+   "id": "P167",
+   "category": "TWOFIT",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Орбит",
+     "text": "Експорт в PDF."
+    },
+    {
+     "id": "idea_1",
+     "project": "Орбит",
+     "text": "Експорт в Excel."
+    }
+   ],
+   "new_capture": {
+    "project": "Орбит",
+    "text": "Експортът да запазва форматирането."
+   },
+   "rationale": "И двата.",
+   "split": "dev"
+  },
+  {
+   "id": "P168",
+   "category": "TWOFIT",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Lumen",
+     "text": "Dark mode за web app-а."
+    },
+    {
+     "id": "idea_1",
+     "project": "Lumen",
+     "text": "Dark mode за mobile app-а."
+    }
+   ],
+   "new_capture": {
+    "project": "Lumen",
+    "text": "Dark mode-ът да следва системната настройка."
+   },
+   "rationale": "И двата.",
+   "split": "holdout"
+  },
+  {
+   "id": "P169",
+   "category": "TWOFIT",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Orbit",
+     "text": "Onboarding email за нови потребители."
+    },
+    {
+     "id": "idea_1",
+     "project": "Orbit",
+     "text": "Onboarding email за нови администратори."
+    }
+   ],
+   "new_capture": {
+    "project": "Orbit",
+    "text": "Onboarding email-ът да е кратък и с един CTA."
+   },
+   "rationale": "И двата.",
+   "split": "dev"
+  },
+  {
+   "id": "P170",
+   "category": "TWOFIT",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Kestrel",
+     "text": "Landing page за продукта."
+    },
+    {
+     "id": "idea_1",
+     "project": "Kestrel",
+     "text": "Landing page за webinar-а."
+    }
+   ],
+   "new_capture": {
+    "project": "Kestrel",
+    "text": "Landing page-ът да има по-голям CTA бутон."
+   },
+   "rationale": "И двата.",
+   "split": "dev"
+  }
+ ]
+}

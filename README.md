@@ -1,309 +1,99 @@
-# ARTHUR — Adaptive Reasoning & Task Handling Unified Runtime
+# A.R.T.H.U.R.
 
-ARTHUR is a small, testable conversational core: it accepts a text request,
-creates a conversation turn, calls a model through a provider-agnostic
-**Model Gateway**, and returns a structured response. Phase 1 implements the
-foundation only — clean boundaries over feature count — as specified by
-`ARTHUR_Phase_1_Core_DeepSeek_Implementation_Spec_v1.0`.
+A.R.T.H.U.R. is a local-first knowledge application built with Tauri v2,
+React, TypeScript and Rust. The product lives in [`apps/arthur`](apps/arthur).
+One native runtime owns its app-local SQLite store; the UI accesses it through
+`ArthurClient` and native commands.
 
-## What Phase 1 does
+The app supports text and Android voice capture, distillation into knowledge
+objects with source provenance, projects, relations, immutable revision history,
+recall, and review-first evolution. Model responses propose candidates; native
+code validates authority, source spans and expected revisions before committing.
+Cloud features require configured provider credentials and can send relevant
+content to the selected provider.
 
-- Text chat through **DeepSeek V4 Flash** behind a provider-agnostic
-  `ModelGateway` (DeepSeek is replaceable behind an interface).
-- A deterministic **FakeProvider** for offline tests and demos.
-- Persistent sessions (SQLite) with an explicit **Personal / Business** mode.
-- A tool system with JSON-schema validation and an approval skeleton.
-- An approval-required **Harness stub** that cannot execute without bound,
-  explicit approval.
-- An **HTTP API** and a **CLI** that use the same core services.
-- Structured logging, tracing, usage capture, and secret redaction.
-- A **local voice layer** (Phase 3): wake word, VAD, local STT, streaming
-  TTS playback, barge-in, push-to-talk fallback, approval-by-voice, a
-  deterministic voice state machine, HTTP control endpoints, and a
-  dependency-free realtime WebSocket channel - all behind
-  provider-agnostic engine boundaries.
+## Development status
 
-## Repository layout
+The development branch is `feature/nodes-integration`. M05 synchronization is a
+**dormant qualification candidate**, not an enabled product feature. Production
+remains schema v9 with closed trust/LAN activation. Passing debug tests does not
+approve enrollment, physical LAN operation or a release.
 
-```
-apps/
-  api/                  HTTP entry point
-  cli/                  local terminal client
-src/
-  core/
-    conversation/       service, models, context_builder, validation
-    modes/              ArthurMode
-    errors/             typed error model
-  models/               gateway, contracts, providers/{deepseek,fake}
-  tools/                registry, contracts, orchestrator, permissions,
-                        adapters/harness_stub, builtin
-  sessions/             SQLite store + migrations
-  observability/        logging, tracing, usage, metrics
-  config/               settings, validation
-  voice/                contracts, state machine, controller, audio,
-                        wake/vad/stt/tts providers + gateways, realtime WS
-  security/             redaction
-tests/
-  unit/ integration/ contract/
-docs/architecture/      phase1/2/3-decisions.md
+See [M05 readiness and remaining gates](docs/architecture/m05-activation-readiness.md)
+and the [M05 scope](docs/architecture/m05-project-capture-mvp.md). G5 owner policy,
+G4 physical bounds and independent security/platform approvals remain required.
+
+The older CLI/HTTP TypeScript runtime remains under its
+[frozen subsystem policy](docs/competition/FROZEN_SUBSYSTEMS.md). Its separate
+stores and configuration are not the product app's authoritative store.
+Its previous setup guide is preserved as a
+[historical reference](docs/legacy-runtime-setup.md).
+
+## Get started
+
+CI uses Node.js 24.13.1 and Rust 1.99.1. Install Node/npm first. Native desktop
+builds also require Rust and the OS dependencies in the
+[app toolchain guide](apps/arthur/README.md#native-toolchain).
+
+```powershell
+git clone https://github.com/Kaloyan3D/A.R.T.H.U.R.git
+cd A.R.T.H.U.R
+git switch feature/nodes-integration
+npm ci
+npm run arthur:install
+npm run arthur:dev
 ```
 
-## Requirements
+`arthur:dev` runs the browser preview with a native-free preview client. It does
+not open the native SQLite store. To run the real native app:
 
-- Node.js **>= 22.5** (uses the built-in `node:sqlite`).
-
-## Setup
-
-```bash
-npm install
-cp .env.example .env   # optional; edit values
+```powershell
+cd apps/arthur
+npm run tauri -- dev
 ```
 
-With no `.env`, ARTHUR runs against the offline `FakeProvider`. To use DeepSeek,
-set `ARTHUR_MODEL_PROVIDER=deepseek` and provide `DEEPSEEK_API_KEY`.
+Android builds require the JDK, SDK/NDK and Rust Android target. Follow the
+[Android instructions](apps/arthur/README.md#android). Identity instrumentation
+uses a separate qualification feature and application ID; leave that feature
+off for normal builds.
 
-## Environment variables
+## Verification
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `ARTHUR_ENV` | `development` | Runtime environment |
-| `ARTHUR_DB_PATH` | `./data/arthur.db` | SQLite database path |
-| `ARTHUR_MODEL_PROVIDER` | `fake` | `deepseek` \| `fake` |
-| `ARTHUR_MODEL_NAME` | *(empty)* | Model identifier (e.g. `deepseek-chat`) |
-| `DEEPSEEK_API_KEY` | *(empty)* | DeepSeek secret |
-| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | DeepSeek API base |
-| `ARTHUR_MODEL_TIMEOUT_SECONDS` | `60` | Connect/read timeout |
-| `ARTHUR_HISTORY_MAX_TURNS` | `20` | Prior turns in context |
-| `ARTHUR_REASONING_PROFILE` | `normal` | `fast` \| `normal` \| `deep` |
-| `ARTHUR_MODEL_RETRY_MAX_ATTEMPTS` | `3` | Retry budget (transient only) |
-| `ARTHUR_APPROVAL_TTL_SECONDS` | `300` | Approval expiry |
-| `ARTHUR_LOG_LEVEL` | `info` | Log level |
-| `ARTHUR_BIND_HOST` | `127.0.0.1` | API bind host (localhost only) |
-| `ARTHUR_BIND_PORT` | `8080` | API bind port |
-| `ARTHUR_MEMORY_PERSONAL_DB_PATH` | `./data/memory-personal.db` | Personal memory store (SQLite) |
-| `ARTHUR_MEMORY_BUSINESS_DB_PATH` | `./data/memory-business.db` | Business memory store (SQLite, physically separate) |
-| `ARTHUR_EMBEDDING_PROVIDER` | `local_multilingual` | `local_multilingual` \| `fake` |
-| `ARTHUR_EMBEDDING_MODEL` | `arthur-ngram-v1` | Local embedding model id |
-| `ARTHUR_EMBEDDING_DIMENSIONS` | `384` | Embedding dimensions (16–2048) |
-| `ARTHUR_MEMORY_MAX_RETRIEVAL_CANDIDATES` | `40` | Vector/FTS candidates before fusion |
-| `ARTHUR_MEMORY_MAX_RERANKED_RESULTS` | `12` | Memories injected per turn |
-| `ARTHUR_MEMORY_MAX_CONTEXT_TOKENS` | `1200` | Memory context token budget |
-| `ARTHUR_MEMORY_MAX_SINGLE_CHUNK_TOKENS` | `300` | Max tokens per snippet |
-| `ARTHUR_MEMORY_VECTOR_MIN_SIMILARITY` | `0.5` | Minimum cosine for vector candidates |
-| `ARTHUR_MEMORY_EXTRACTION_ENABLED` | `false` | Opt-in post-turn extraction |
-| `ARTHUR_MEMORY_EXTRACTION_CONFIDENCE_THRESHOLD` | `0.6` | Extraction confidence gate |
-| `ARTHUR_MEMORY_EXTRACTION_IMPORTANCE_THRESHOLD` | `0.2` | Extraction importance gate |
-| `ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS` | `86400` | TEMPORARY memory TTL |
+Run these from the repository root:
 
-Configuration is validated at startup; invalid configuration fails with an
-actionable message.
-
-## Run
-
-```bash
-npm run build
-
-# HTTP API
-npm start
-
-# CLI
-npm run cli -- chat --mode personal
-npm run cli -- status
-npm run cli -- session <id>
-npm run cli -- approve <approval-id>
-npm run cli -- reject <approval-id>
-npm run cli -- memory remember --session <id> --type semantic "fact to remember"
-npm run cli -- memory search --session <id> "query"
-npm run cli -- memory list --session <id>
-npm run cli -- memory forget --session <id> <memory-id>
-npm run cli -- memory status --session <id>
-npm run cli -- documents add --session <id> --file notes.md --title "Notes"
-npm run cli -- documents list --session <id>
+```powershell
+npm run test:architecture
+npm run arthur:check
+cargo fmt --manifest-path apps/arthur/src-tauri/Cargo.toml -- --check
+cargo clippy --locked --offline --manifest-path apps/arthur/src-tauri/Cargo.toml --lib -- -D clippy::all
+cargo test --locked --offline --manifest-path apps/arthur/src-tauri/Cargo.toml --lib -- --test-threads=1
 ```
 
-Example API interaction:
+For a fresh Rust checkout, first run
+`cargo fetch --locked --manifest-path apps/arthur/src-tauri/Cargo.toml`.
+Install `rustfmt` and `clippy` with rustup if needed. The
+[M05 workflow](.github/workflows/m05.yml) checks Windows native code,
+architecture boundaries, frontend tests/typecheck/build and dependency isolation.
+Single-threaded native execution preserves existing fault/qualification conditions.
 
-```bash
-curl http://127.0.0.1:8080/v1/turns \
-  -H "content-type: application/json" \
-  -d '{"mode":"personal","message":"hello","client_request_id":"1"}'
+Clippy warnings fail CI. Existing Rust dead-code warnings for dormant candidate
+code remain visible; this is not a claim of `-D warnings` cleanliness. No new
+blanket lint suppression is used to make the gate pass. Advisory review is a
+separate release gate: the documented N1 blocker is not waived by these checks.
 
-# Phase 2 memory endpoints (domain is resolved server-side from the session)
-curl http://127.0.0.1:8080/v1/memory/remember \
-  -H "content-type: application/json" \
-  -d '{"session_id":"<id>","client_request_id":"2","text":"remember this","type":"semantic"}'
-curl http://127.0.0.1:8080/v1/memory/search \
-  -H "content-type: application/json" \
-  -d '{"session_id":"<id>","query":"remember"}'
-curl "http://127.0.0.1:8080/v1/memory?session_id=<id>"
-curl -X DELETE "http://127.0.0.1:8080/v1/memory/<memory-id>?session_id=<id>"
-curl http://127.0.0.1:8080/v1/documents \
-  -H "content-type: application/json" \
-  -d '{"session_id":"<id>","client_request_id":"3","title":"Notes","source_type":"text","content":"..."}'
-```
+## Repository map
 
-## Voice (Phase 3)
+| Path | Responsibility |
+| --- | --- |
+| `apps/arthur/src` | React UI and `ArthurClient` boundary |
+| `apps/arthur/src-tauri` | Rust runtime, SQLite, providers and platform adapters |
+| `packages/contracts` | Shared UI/native data contracts |
+| `tests/architecture` | Boundary, freeze and integration checks |
+| `src`, `apps/cli`, `apps/api` | Older TypeScript runtime and entry points |
+| `docs/architecture` | Contracts, decisions and readiness evidence |
+| `hardware`, `tools` | Hardware work and development/qualification utilities |
 
-Voice is **disabled by default** (`ARTHUR_VOICE_ENABLED=false`). Enable it in
-`.env`, then control it over HTTP:
-
-```bash
-curl http://127.0.0.1:8080/v1/voice/status
-curl -X POST http://127.0.0.1:8080/v1/voice/enable \
-  -H "content-type: application/json" -d '{"session_id":"<id>"}'
-curl -X POST http://127.0.0.1:8080/v1/voice/disable
-curl http://127.0.0.1:8080/v1/voice/devices
-curl -X POST http://127.0.0.1:8080/v1/voice/interrupt
-curl -X POST http://127.0.0.1:8080/v1/voice/ptt/start
-curl -X POST http://127.0.0.1:8080/v1/voice/ptt/stop
-```
-
-Realtime events/commands ride the WebSocket at `/v1/voice/realtime`
-(no external dependencies; RFC 6455 handshake + masked frames implemented
-in-repo). The same event stream is available via `app.voice.subscribe`.
-
-Engine selection: `ARTHUR_WAKE_PROVIDER`/`ARTHUR_VAD_PROVIDER`/
-`ARTHUR_STT_PROVIDER`/`ARTHUR_TTS_PROVIDER` = `local` (energy VAD,
-command-based STT/TTS, energy-burst wake) or `fake` (deterministic
-offline stand-ins). Missing engines never fail startup: the status
-endpoint reports availability and never leaks commands, paths, keys, or
-raw audio. Raw audio is processed locally and never sent to DeepSeek -
-only the transcript enters the conversation (client_type=voice).
-
-The local wake provider is a documented energy-burst detector (not a
-keyword spotter); push-to-talk remains available as the fallback and the
-wake path is provider-abstracted.
-
-### Voice - Windows setup (v1 reference)
-
-The local engines are plain child processes with a strict stdin/stdout
-contract (`child_process.spawn`, tokenized command lines, bounded buffers,
-timeouts, and tree-kill cleanup - see `src/voice/process_util.ts`). Any
-tool that matches the contract can be used directly; engines that do not
-are bridged by the zero-dependency wrapper scripts in `tools/voice/`
-(`stt_wrapper.cjs`, `tts_wrapper.cjs`).
-
-**1. FFmpeg (capture + playback)**
-
-- Install FFmpeg (https://www.gyan.dev/ffmpeg/builds/ - the "release"
-  build includes ffplay) and add `bin` to your PATH.
-- List your capture devices once:
-  `ffmpeg -list_devices true -f dshow -i dummy`
-- Capture - raw mono s16le at 16 kHz on stdout:
-  `ARTHUR_AUDIO_CAPTURE_COMMAND="C:\ffmpeg\bin\ffmpeg.exe -f dshow -i audio=\"Microphone (Realtek(R) Audio)\" -ac 1 -ar 16000 -f s16le pipe:1"`
-- Playback - read raw s16le from stdin until EOF:
-  `ARTHUR_AUDIO_PLAYBACK_COMMAND="C:\ffmpeg\bin\ffplay.exe -nodisp -autoexit -f s16le -ar 16000 -ac 1 -"`
-
-**2. whisper.cpp (STT)**
-
-- Build or download `whisper-cli` and a model, e.g. `ggml-base.bin`
-  (https://github.com/ggml-org/whisper.cpp).
-- The wrapper adapts whisper-cli's WAV-file workflow to ARTHUR's stdin PCM
-  contract (temp WAV, deleted before exit; segment text extracted; one JSON
-  line emitted):
-  - `WHISPER_CLI="C:\whisper\build\bin\Release\whisper-cli.exe"`
-  - `WHISPER_MODEL="C:\whisper\models\ggml-base.bin"`
-  - `ARTHUR_STT_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\stt_wrapper.cjs\""`
-
-**3. piper (TTS)**
-
-- Download the piper 1.2.0 Windows zip and a voice, e.g.
-  `en_US-lessac-medium` (https://github.com/rhasspy/piper/releases).
-- The wrapper feeds text straight to `piper --output_raw` and resamples its
-  native 22050 Hz output to ARTHUR's 16 kHz (streaming linear interpolation,
-  no dependencies):
-  - `PIPER_EXE="C:\piper\piper.exe"`
-  - `PIPER_MODEL="C:\piper\voices\en_US-lessac-medium.onnx"`
-  - `PIPER_VOICE_CONFIG="C:\piper\voices\en_US-lessac-medium.onnx.json"`
-  - `ARTHUR_TTS_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\tts_wrapper.cjs\""`
-
-**4. End-to-end `.env` (mic -> STT -> DeepSeek -> TTS -> speaker)**
-
-```dotenv
-DEEPSEEK_API_KEY=sk-...
-ARTHUR_MODEL_PROVIDER=deepseek
-ARTHUR_VOICE_ENABLED=true
-ARTHUR_WAKE_ENABLED=true
-ARTHUR_WAKE_WORD=arthur
-ARTHUR_WAKE_PROVIDER=local
-ARTHUR_VAD_PROVIDER=local
-ARTHUR_STT_PROVIDER=local
-ARTHUR_TTS_PROVIDER=local
-ARTHUR_STT_LANGUAGE=en
-ARTHUR_STT_MODEL_PATH=C:\whisper\models\ggml-base.bin
-ARTHUR_TTS_VOICE=en_US-lessac-medium
-ARTHUR_AUDIO_INPUT_DEVICE=default
-ARTHUR_AUDIO_OUTPUT_DEVICE=default
-ARTHUR_AUDIO_CAPTURE_COMMAND="C:\ffmpeg\bin\ffmpeg.exe -f dshow -i audio=\"Microphone (Realtek(R) Audio)\" -ac 1 -ar 16000 -f s16le pipe:1"
-ARTHUR_AUDIO_PLAYBACK_COMMAND="C:\ffmpeg\bin\ffplay.exe -nodisp -autoexit -f s16le -ar 16000 -ac 1 -"
-ARTHUR_STT_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\stt_wrapper.cjs\""
-ARTHUR_TTS_ENGINE_COMMAND="C:\Program Files\nodejs\node.exe \"D:\A.R.T.H.U.R\tools\voice\tts_wrapper.cjs\""
-WHISPER_CLI=C:\whisper\build\bin\Release\whisper-cli.exe
-WHISPER_MODEL=C:\whisper\models\ggml-base.bin
-PIPER_EXE=C:\piper\piper.exe
-PIPER_MODEL=C:\piper\voices\en_US-lessac-medium.onnx
-PIPER_VOICE_CONFIG=C:\piper\voices\en_US-lessac-medium.onnx.json
-```
-
-Start the app, then: `curl http://127.0.0.1:8080/v1/voice/status` should
-report every component available. Say "arthur" (or use
-`POST /v1/voice/ptt/start`), speak, and ARTHUR replies out loud. Replace
-`audio="Microphone (Realtek(R) Audio)"` with the device name from the
-`ffmpeg -list_devices` output, and adjust paths to your installs. Vosk or
-sherpa-onnx engines that emit the documented JSON line can replace the
-whisper wrapper; any `--output_raw`-style TTS can replace piper.
-See `docs/architecture/phase3-decisions.md` for the full decision record.
-
-## Test
-
-```bash
-npm test              # unit + integration (offline, deterministic)
-npm run test:unit
-npm run test:integration
-npm run test:contract # live DeepSeek test; skipped unless DEEPSEEK_API_KEY is set
-```
-
-The normal test suite never depends on external API availability. The live
-DeepSeek contract test runs only when `DEEPSEEK_API_KEY` is present.
-
-## Architecture boundaries
-
-- **LLM independence** — no core/business logic imports a DeepSeek SDK; all
-  model calls go through `ModelGateway`.
-- **Local orchestration** — conversation state, permissions scaffolding, tool
-  routing scaffolding, logs, and configuration run locally.
-- **Minimal remote payload** — the provider receives only the assembled turn
-  context; secrets, environment, databases, and filesystem contents are never
-  sent.
-- **No silent tool execution** — model output cannot directly execute code,
-  shell commands, or network calls; only registered executors run, after
-  validation and permission checks.
-- **Fail closed** — invalid provider output, invalid tool calls, missing
-  permission, or malformed configuration return a controlled error.
-- **Phase 2 memory isolation** — two physically separate SQLite stores
-  (Personal/Business); the domain is derived only from the trusted server-side
-  session record. Clients/models cannot select a domain, database, or
-  namespace; any attempt fails closed (Phase 2 spec §5 North Star).
-- **Local RAG, remote reasoning** — embeddings, storage, and retrieval
-  (hybrid vector + FTS5 + reciprocal rank fusion + local reranker) run
-  locally; DeepSeek receives only assembled, budgeted, untrusted-labeled
-  memory snippets in a user-role block.
-- **Untrusted memory data** — retrieved memory cannot change the system
-  contract, mode contract, tool schemas, permissions, or approval rules;
-  credential-like content is rejected before persistence, and documents are
-  redacted with the Phase 1 sanitizer boundary.
-- **Local voice, remote reasoning** — wake/VAD/STT/TTS and playback run
-  locally; only the transcript reaches the model (client_type=voice); raw
-  audio is never persisted, logged, or transmitted.
-- **Fail-closed voice** — the deterministic state machine rejects illegal
-  transitions; missing engines disable only their component (PTT fallback),
-  never startup; voice errors map to stable HTTP status codes.
-
-See `docs/architecture/phase1-decisions.md`, `phase2-decisions.md`, and
-`phase3-decisions.md` for detailed decisions.
-
-## Phase 1 non-goals
-
-No wake word/voice, real Harness execution (stub only), autonomous agents, or
-polished UI. *(RAG/embeddings/memory were Phase 1 non-goals — implemented in
-Phase 2; the voice layer was a Phase 1 non-goal — implemented in Phase 3.)*
+UI code does not access SQLite, provider credentials, raw networking or Tauri
+directly. Only the app's `src/client/tauri-ipc.ts` imports `@tauri-apps/*`.
+Keep the single SQLite owner and frozen canonical journal/reducer/snapshot
+contracts when changing native code.

@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "files_checked": 898,
+  "only_authorized_files_changed": true,
+  "changed_files": [
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/adc.kicad_sch",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/analog_power_interlock.kicad_sch",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/emg_channel.kicad_sch",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-lib-table",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/reference_vcm.kicad_sch",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/xiao_brain_interface.kicad_sch",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/ARTHUR.pretty/OSC_SCTF_SX3M_SMD3225-4P.kicad_mod",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Capacitor_SMD.pretty/C_0603_1608Metric.kicad_mod",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Capacitor_SMD.pretty/C_0805_2012Metric.kicad_mod",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Inductor_SMD.pretty/L_0603_1608Metric.kicad_mod",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Resistor_SMD.pretty/R_0603_1608Metric.kicad_mod",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Resistor_SMD.pretty/R_0805_2012Metric.kicad_mod",
+    "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/TestPoint.pretty/TestPoint_Pad_D1.5mm.kicad_mod"
+  ],
+  "missing_files": [],
+  "prior_reports_and_manufacturing_packages_unchanged": true,
+  "branch": "codex/revb-horizontal-jst",
+  "HEAD": "98cc84e07fe4cf2791a56baba2cde3e9bb599724",
+  "no_commit_created": true,
+  "scope": "All saved pre-existing files underrev-b-xiao, excluding history/cache/restore backups and this newclosurefolder; all14changed files are authorizedcanonicalsource/library edits."
+}

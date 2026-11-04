@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Marginalia Mobile playground</title>
+<link rel="stylesheet" href="../exploration/arthur.css"><link rel="stylesheet" href="mobile.css">
+<style>
+  html,body{height:auto;min-height:100%}
+  body{font:400 13.5px/1.45 var(--sans);background:var(--sunken)}
+  .wrap{display:grid;grid-template-columns:300px minmax(0,1fr) 300px;min-height:100vh}
+  aside{padding:22px 20px 40px;overflow:auto;max-height:100vh;position:sticky;top:0}
+  aside.l{border-right:1px solid var(--line-soft)} aside.r{border-left:1px solid var(--line-soft)}
+  h1{margin:0 0 4px;font:400 26px/1.1 var(--serif);letter-spacing:-.015em} .sub{color:var(--ink-3);margin:0 0 18px}
+  h3{margin:22px 0 8px;font:600 13px var(--sans)} h3 small{font-weight:400;color:var(--ink-3);margin-left:6px}
+  .grp{display:flex;flex-wrap:wrap;gap:6px}
+  .grp button,.lnk{height:30px;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--line-soft);color:var(--ink-2);font:500 12.5px var(--sans)}
+  .grp button:hover{border-color:var(--line);color:var(--ink)}
+  .grp button[aria-pressed="true"]{background:var(--selected);color:var(--ink);border-color:var(--ink-4)}
+  .grp.col{flex-direction:column;align-items:stretch} .grp.col button{height:auto;min-height:32px;text-align:left;padding:6px 10px;line-height:1.35}
+  .grp.col small{display:block;color:var(--ink-3);font-weight:400}
+  .stage{display:flex;flex-direction:column;align-items:center;padding:22px 16px 40px;gap:14px;min-width:0}
+  .frame{border-radius:44px;padding:11px;background:#0a0b0b;border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.45);transform-origin:top center}
+  .frame .phone{border-radius:34px}
+  .cap{color:var(--ink-3);font-size:12px}
+  textarea.out{width:100%;height:190px;background:var(--ground);border:1px solid var(--line-soft);border-radius:var(--r-sm);color:var(--ink-2);padding:10px;font:12.5px/1.5 var(--sans);resize:vertical}
+  .copy{margin-top:8px;height:32px;padding:0 14px;border-radius:var(--r-sm);background:var(--ink);color:var(--ground);font-weight:600}
+  .copy:hover{background:#fff} ul.k{margin:0;padding-left:18px;color:var(--ink-2)} ul.k li{margin:5px 0}
+  a{color:var(--ink-2)} a:hover{color:var(--ink)}
+  @media (max-width:1100px){.wrap{grid-template-columns:1fr}aside{position:static;max-height:none}}
+</style></head>
+<body><div class="wrap">
+<aside class="l">
+  <h1>Marginalia Mobile</h1><p class="sub">Capture your thinking. Interactive: tap tabs, ideas, sheets, List/Map, revisions. Pinch or scroll-wheel the map.</p>
+  <a href="board.html">All screens on one board</a> · <a href="system.html">Mobile system</a> · <a href="README.md">Spec</a>
+
+  <h3>Jump to a composition</h3>
+  <div class="grp" id="jump"></div>
+
+  <h3>Device <small>design sizes</small></h3>
+  <div class="grp" id="dev"></div>
+  <h3>Android navigation</h3>
+  <div class="grp" id="nav"></div>
+  <h3>Theme</h3>
+  <div class="grp" id="theme"></div>
+</aside>
+
+<main class="stage">
+  <div class="frame" id="frame"><div id="phone"></div></div>
+  <div class="cap" id="cap"></div>
+</main>
+
+<aside class="r">
+  <h3 style="margin-top:0">Home capture surface <small>C is locked; A and B kept for comparison</small></h3>
+  <div class="grp col" id="capv"></div>
+
+  <h3>Next capture ends with</h3>
+  <div class="grp col" id="outc"></div>
+  <p class="cap">With the microphone already allowed, the Capture tab records immediately. With “First use”, it opens Home and asks only after you tap Speak. Then Stop and save. The outcome you pick decides what happens next.</p>
+
+  <h3>Prompt for Claude <small>updates live</small></h3>
+  <textarea class="out" id="prompt" readonly></textarea>
+  <button class="copy" id="copy">Copy prompt</button>
+</aside>
+</div>
+<script src="../exploration/arthur-ui.js"></script><script src="demo-data.js"></script><script src="mobile-ui.js"></script>
+<script>
+const DEV={"360×800":[360,800],"390×844":[390,844],"412×915":[412,915]};
+const CAPV={c:["C · Speak page (locked, canonical)","Notebook page with a wide Speak pill and a keyboard button. Both entry points in the thumb zone."],a:["A · One big microphone (not chosen)","The surface is a single large tap-to-speak disc. Typing is a text link."],b:["B · Desktop composer (not chosen)","Text first, small microphone. The desktop interaction, shrunk."]};
+const OUT={success:"Success: saved, then organized",orgfail:"Organizing fails (capture stays saved)",denied:"Microphone denied",sttfail:"Transcription fails: retryable (audio kept for retry)",sttterminal:"Speech service unavailable: not retryable",firstuse:"First use: microphone not allowed yet",empty:"No speech recognised",interrupted:"Recording interrupted"};
+const JUMP=[["Home","home"],["Typing","home-typing"],["Recording","home-recording"],["Transcribing","home-transcribing"],["Organizing","home-organizing"],["Organized","home-organized"],["Organize failed","home-orgfail"],["Capture, no permission","home-nopermission"],["Permission dialog","home-permission"],["Mic denied","home-denied"],["STT: retry","home-sttfail"],["STT: terminal","home-sttterminal"],["Interrupted","home-interrupted"],["Ideas","ideas"],["Ideas · Cyrillic search","ideas-search"],["Idea detail","idea"],["Idea · long title","idea-long"],["Revise sheet","revise"],["Connections · List","connections-list"],["Connections · Map","connections-map"],["Map · node","connections-node"],["Map · edge","connections-edge"],["Filters","connections-filtered"],["Evolution","evolution"],["Revision + diff","evolution-rev"],["Merge · compare","evolution-merge"],["Merge sheet","evolution-merge-sheet"],["Pick idea","evolution-pick"],["Settings","settings"]];
+let dev="390×844",nav="gesture",theme="dark",capv="c",outc="success",cur="home";
+const phone=Mobile.mount(document.getElementById("phone"),{w:390,h:844,nav,cap:capv,outcome:outc,preset:"home"});
+const $=id=>document.getElementById(id);
+function mk(id,items,sel,fn,col){ $(id).innerHTML=items.map(([k,l,s])=>`<button data-k="${k}" aria-pressed="${k===sel}">${l}${s?`<small>${s}</small>`:""}</button>`).join(""); $(id).onclick=e=>{const b=e.target.closest("button");if(b){fn(b.dataset.k);}}; }
+function fit(){ const [w,h]=DEV[dev]; const room=innerHeight-90, s=Math.min(1,room/(h+24)); $("frame").style.transform=`scale(${s})`; $("frame").style.marginBottom=(-(h+24)*(1-s))+"px"; }
+function ui(){
+  mk("jump",JUMP.map(([l,k])=>[k,l]),cur,k=>{cur=k;phone.preset(k);ui();});
+  mk("dev",Object.keys(DEV).map(k=>[k,k]),dev,k=>{dev=k;const [w,h]=DEV[k];phone.resize(w,h);fit();ui();});
+  mk("nav",[["gesture","Gesture bar"],["buttons","3-button"]],nav,k=>{nav=k;phone.set("nav",k);ui();});
+  mk("theme",[["dark","Graphite"],["light","Daylight"]],theme,k=>{theme=k;document.documentElement.dataset.theme=k==="light"?"light":"";ui();});
+  mk("capv",Object.entries(CAPV).map(([k,[l,s]])=>[k,l,s]),capv,k=>{capv=k;phone.set("cap",k);phone.preset("home");cur="home";ui();});
+  mk("outc",Object.entries(OUT).map(([k,l])=>[k,l]),outc,k=>{outc=k;phone.set("outcome",k);ui();});
+  const [w,h]=DEV[dev];
+  $("cap").textContent=`${dev} · ${nav==="gesture"?"gesture nav, 20px bottom inset":"3-button nav, 48px bottom inset"} · ${theme==="dark"?"Graphite":"Daylight"}`;
+  const p=[`Update the Marginalia Mobile design (docs/design/mobile).`];
+  p.push(`Home capture surface: variant ${capv.toUpperCase()} (${CAPV[capv][0].replace(/^. · /,"")}).`);
+  if(dev!=="390×844")p.push(`Prioritise the ${dev} layout.`);
+  if(nav!=="gesture")p.push("Check the 3-button Android navigation bar (48px inset).");
+  if(theme==="light")p.push("Review the Daylight theme.");
+  if(outc!=="success")p.push(`Pay extra attention to the "${OUT[outc]}" flow.`);
+  p.push(`Currently viewing: ${JUMP.find(j=>j[1]===cur)?.[0]||"Home"}.`);
+  p.push("Keep the desktop product language unchanged. Do not touch apps/arthur yet.");
+  $("prompt").value=p.join("\n");
+}
+$("copy").onclick=()=>{navigator.clipboard?.writeText($("prompt").value);$("copy").textContent="Copied!";setTimeout(()=>$("copy").textContent="Copy prompt",1200)};
+addEventListener("resize",fit);ui();fit();
+</script></body></html>

@@ -1,0 +1,5 @@
+# Preserve engineering binary artifacts verbatim; some PDF streams lack NUL bytes.
+*.pdf binary
+*.png binary
+*.glb binary
+*.zip binary

@@ -1,0 +1,61 @@
+{
+  "manufacturer": {
+    "url": "https://www.jst-mfg.com/product/pdf/eng/ePH.pdf",
+    "saved_file": "JST_PH_current_2026-10-20.pdf",
+    "pages_used": [
+      2,
+      4
+    ],
+    "authority": "JST published nominal SMT pattern, side-entry drawing, No.1 circuit and dimensions; no JLC reel zero guarantee"
+  },
+  "JLC_documented_convention": {
+    "url": "https://jlcpcb.com/help/article/pcb-assembly-faqs-part-2",
+    "meaning": "EDA and factory zero may differ; packaging orientation matters; preview red dot is an orientation marker, not necessarily pin 1"
+  },
+  "JLC_public_library": [
+    {
+      "LCSC": "C295747",
+      "url": "https://jlcpcb.com/user-center/lcsvg/svg.html?code=C295747&detail=1",
+      "file": "JLC_C295747_footprint.svg",
+      "authority": "Browser-visible exact-part public 2D footprint. Not authenticated assembly preview or reel setup."
+    },
+    {
+      "LCSC": "C40919",
+      "url": "https://jlcpcb.com/user-center/lcsvg/svg.html?code=C40919&detail=1",
+      "file": "JLC_C40919_footprint.svg",
+      "authority": "Browser-visible exact-part public 2D footprint. Not authenticated assembly preview or reel setup."
+    },
+    {
+      "LCSC": "C8545",
+      "url": "https://jlcpcb.com/user-center/lcsvg/svg.html?code=C8545&detail=1",
+      "file": "JLC_C8545_footprint.svg",
+      "authority": "Browser-visible exact-part public 2D footprint. Not authenticated assembly preview or reel setup."
+    },
+    {
+      "LCSC": "C779410",
+      "url": "https://jlcpcb.com/user-center/lcsvg/svg.html?code=C779410&detail=1",
+      "file": "JLC_C779410_footprint.svg",
+      "authority": "Browser-visible exact-part public 2D footprint. Not authenticated assembly preview or reel setup."
+    },
+    {
+      "LCSC": "C963429",
+      "url": "https://jlcpcb.com/user-center/lcsvg/svg.html?code=C963429&detail=1",
+      "file": "JLC_C963429_footprint.svg",
+      "authority": "Browser-visible exact-part public 2D footprint. Not authenticated assembly preview or reel setup."
+    },
+    {
+      "LCSC": "C2862562",
+      "url": "https://jlcpcb.com/user-center/lcsvg/svg.html?code=C2862562&detail=1",
+      "file": "JLC_C2862562_footprint.svg",
+      "authority": "Browser-visible exact-part public 2D footprint. Not authenticated assembly preview or reel setup."
+    },
+    {
+      "LCSC": "C2901557",
+      "url": "https://jlcpcb.com/user-center/lcsvg/svg.html?code=C2901557&detail=1",
+      "file": "JLC_C2901557_footprint.svg",
+      "authority": "Browser-visible exact-part public 2D footprint. Not authenticated assembly preview or reel setup."
+    }
+  ],
+  "retrieved_local_date": "2026-10-20 Europe/Sofia",
+  "private_assembly_preview": "Not accessible; user will upload CPL and provide screenshots"
+}

@@ -1,13 +1,17 @@
 /**
- * Document ingestion service (spec sections 24, 25, 33).
+ * Document ingestion service (spec sections 24, 25, 33; SC-01D atomic commit).
  *
  * Pipeline: sanitize -> normalize -> hash -> idempotency reserve -> chunk
- * -> embed locally -> write source + chunks atomically -> index FTS
- * -> mark ingestion completed. Replaying the same request (same id + same
- * hash) recovers the same logical document; reusing the id with different
- * content is rejected; concurrent identical ingestions converge on one
- * document thanks to deterministic ids and INSERT OR IGNORE semantics.
+ * -> embed locally -> ONE transaction (source + item + chunks + FTS +
+ * ingestion completion). Replaying the same request (same id + same hash)
+ * while the ACTIVE incarnation lives returns the same document; after the
+ * incarnation is deleted the reservation re-opens and re-ingestion creates a
+ * fresh ACTIVE memory id (old tombstone kept for audit). Reusing the id
+ * with different content is rejected; concurrent identical ingestions
+ * converge on one ACTIVE logical memory via the active-hash UNIQUE index.
  */
+
+import { randomUUID } from "node:crypto";
 
 import { Logger } from "../../observability/logging";
 import { Metrics } from "../../observability/metrics";
@@ -25,7 +29,7 @@ import {
 import type { EmbeddingGateway } from "../embeddings/contracts";
 import { chunkText } from "./chunker";
 import { normalizeText } from "./normalizer";
-import { contentHash, documentIdFromHash, documentMemoryIdFromHash, makeSourceRecord, requestHashOf } from "../provenance";
+import { contentHash, documentIdFromHash, makeSourceRecord, requestHashOf } from "../provenance";
 
 export interface DocumentIngestionOptions {
   store: MemoryStore;
@@ -81,8 +85,15 @@ export class DocumentIngestionService {
       });
     }
     if (reservation.kind === "completed") {
-      this.metrics?.counter("arthur.memory.write_reason", 1, { reason: "document", dedupe_action: "replayed" });
-      return this.loadResult(reservation.resultId);
+      // SC-01 re-ingestion: a completed record whose ACTIVE incarnation is
+      // gone (deleted/expired/superseded) re-opens so explicit re-ingestion
+      // creates a fresh ACTIVE memory. The old tombstone stays for audit.
+      const live = await this.store.findActiveBySourceId(reservation.resultId);
+      if (live) {
+        this.metrics?.counter("arthur.memory.write_reason", 1, { reason: "document", dedupe_action: "replayed" });
+        return this.loadResult(reservation.resultId);
+      }
+      this.store.failIngestion(requestId);
     }
     if (!this.store.beginIngestion(requestId, requestHash)) {
       throw new Error("document ingestion reservation could not be claimed");
@@ -93,7 +104,10 @@ export class DocumentIngestionService {
       const safeContent = this.sanitizer.sanitizeText(normalized);
       const safeTitle = this.sanitizer.sanitizeText(normalizeText(request.title)) || "untitled";
       const docId = documentIdFromHash(sourceHash);
-      const memId = documentMemoryIdFromHash(sourceHash);
+      // SC-01D: the memory row is a fresh incarnation per ingestion, never a
+      // deterministic id that a tombstone may already own. Concurrent
+      // identical ingestions still converge via the UNIQUE active-hash index.
+      const memId = `mem-doc-${randomUUID()}`;
 
       const chunks = chunkText(safeContent, { maxTokensPerChunk: this.maxChunkTokens });
       const embedStarted = Date.now();
@@ -136,8 +150,9 @@ export class DocumentIngestionService {
         content_hash: chunk.content_hash,
         embedding: batch.vectors[index],
       }));
-      await this.store.writeDocumentAtomic({ source, item, chunks: chunkWrites });
-      this.store.completeIngestion(requestId, docId);
+      // SC-01 atomic commit: document rows + ingestion completion commit
+      // together, so there is no durable (document exists, writing) state.
+      await this.store.writeDocumentAtomic({ source, item, chunks: chunkWrites, completion: { requestId, resultId: docId } });
       this.metrics?.counter("arthur.memory.write_reason", 1, { reason: "document", dedupe_action: "created" });
       this.logger?.info("document ingested", {
         domain: context.domain,

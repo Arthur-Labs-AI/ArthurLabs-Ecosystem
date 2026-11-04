@@ -8,6 +8,8 @@
 
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
+import { sha256Canonical } from "./canonical_json";
+
 import type { ArthurMode } from "../core/modes/mode";
 import { ApprovalToken, PermissionDecision, ToolDefinition } from "./contracts";
 
@@ -57,9 +59,18 @@ export function canonicalizeArgs(args: Record<string, unknown>): string {
  * Cryptographic digest of the canonical arguments. Persisted on the approval
  * and verified (not compared by string equality) at execution time so an
  * approval can never authorize a different argument set than the one shown.
+ *
+ * SC-02 section 11: the canonical form is now RFC 8785-style JCS (see
+ * `canonical_json.ts`); the legacy key-sorted JSON form is preserved by
+ * `canonicalizeArgs` for backwards-compatible tests only.
  */
 export function argumentsDigest(args: Record<string, unknown>): string {
   return createHash("sha256").update(canonicalizeArgs(args)).digest("hex");
+}
+
+/** SC-02 canonical argument digest: SHA-256 over JCS of the execution snapshot. */
+export function argumentsDigestV2(args: Record<string, unknown>): string {
+  return sha256Canonical(args);
 }
 
 // ---- Approval token integrity (audit MEDIUM 7 / BLOCKER 2) --------------

@@ -54,7 +54,7 @@ export function parseTurnRequest(input: unknown, maxMessageChars: number): TurnR
   return result.data;
 }
 
-export function parseRouteIdentifier(input: string, kind: "session" | "approval" | "memory" | "document"): string {
+export function parseRouteIdentifier(input: string, kind: "session" | "approval" | "memory" | "document" | "execution"): string {
   const result = identifierSchema.safeParse(input);
   if (!result.success) {
     throw invalidRequest(`Invalid ${kind} identifier`);

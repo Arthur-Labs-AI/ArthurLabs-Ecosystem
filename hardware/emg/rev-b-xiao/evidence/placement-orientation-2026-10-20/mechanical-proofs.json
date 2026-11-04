@@ -1,0 +1,312 @@
+{
+  "convention": "Top view; X east, Y south; library mouth local +Y. Manufacturer nominal pad pattern, not tape/reel qualification.",
+  "footprint_sha256": "47c7b317c6e5f13694f33abcd6383353999e07e54c02739b006a9a771f436e3c",
+  "records": [
+    {
+      "reference": "J1",
+      "origin_xy_rotation": [
+        44.4,
+        38.3,
+        90.0
+      ],
+      "mating_direction_xy": [
+        1.0,
+        0.0
+      ],
+      "entry_face_midpoint_xy": [
+        48.8,
+        38.3
+      ],
+      "pads": [
+        {
+          "number": "1",
+          "board_xy": [
+            41.55,
+            39.3
+          ],
+          "net": "VBAT"
+        },
+        {
+          "number": "2",
+          "board_xy": [
+            41.55,
+            37.3
+          ],
+          "net": "GND"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            47.3,
+            41.65
+          ],
+          "net": "unconnected-(J1-PadMP)"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            47.3,
+            34.95
+          ],
+          "net": "unconnected-(J1-PadMP)"
+        }
+      ],
+      "installed_pad_geometry_equals_vendored_library": true
+    },
+    {
+      "reference": "J101",
+      "origin_xy_rotation": [
+        35.05,
+        5.15,
+        180.0
+      ],
+      "mating_direction_xy": [
+        0.0,
+        -1.0
+      ],
+      "entry_face_midpoint_xy": [
+        35.05,
+        0.75
+      ],
+      "pads": [
+        {
+          "number": "1",
+          "board_xy": [
+            36.05,
+            8.0
+          ],
+          "net": "/CH1/ELEC_P"
+        },
+        {
+          "number": "2",
+          "board_xy": [
+            34.05,
+            8.0
+          ],
+          "net": "/CH1/ELEC_N"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            38.4,
+            2.25
+          ],
+          "net": "unconnected-(J101-PadMP)"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            31.7,
+            2.25
+          ],
+          "net": "unconnected-(J101-PadMP)"
+        }
+      ],
+      "installed_pad_geometry_equals_vendored_library": true
+    },
+    {
+      "reference": "J5001",
+      "origin_xy_rotation": [
+        44.45,
+        5.15,
+        180.0
+      ],
+      "mating_direction_xy": [
+        0.0,
+        -1.0
+      ],
+      "entry_face_midpoint_xy": [
+        44.45,
+        0.75
+      ],
+      "pads": [
+        {
+          "number": "1",
+          "board_xy": [
+            45.45,
+            8.0
+          ],
+          "net": "unconnected-(J5001-Pad1)"
+        },
+        {
+          "number": "2",
+          "board_xy": [
+            43.45,
+            8.0
+          ],
+          "net": "/Reference_VCM/RLD_SAFE"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            47.8,
+            2.25
+          ],
+          "net": "unconnected-(J5001-PadMP)"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            41.1,
+            2.25
+          ],
+          "net": "unconnected-(J5001-PadMP)"
+        }
+      ],
+      "installed_pad_geometry_equals_vendored_library": true
+    },
+    {
+      "reference": "J401",
+      "origin_xy_rotation": [
+        6.85,
+        5.15,
+        180.0
+      ],
+      "mating_direction_xy": [
+        0.0,
+        -1.0
+      ],
+      "entry_face_midpoint_xy": [
+        6.85,
+        0.75
+      ],
+      "pads": [
+        {
+          "number": "1",
+          "board_xy": [
+            7.85,
+            8.0
+          ],
+          "net": "/CH4/ELEC_P"
+        },
+        {
+          "number": "2",
+          "board_xy": [
+            5.85,
+            8.0
+          ],
+          "net": "/CH4/ELEC_N"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            10.2,
+            2.25
+          ],
+          "net": "unconnected-(J401-PadMP)"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            3.5,
+            2.25
+          ],
+          "net": "unconnected-(J401-PadMP)"
+        }
+      ],
+      "installed_pad_geometry_equals_vendored_library": true
+    },
+    {
+      "reference": "J201",
+      "origin_xy_rotation": [
+        25.65,
+        5.15,
+        180.0
+      ],
+      "mating_direction_xy": [
+        0.0,
+        -1.0
+      ],
+      "entry_face_midpoint_xy": [
+        25.65,
+        0.75
+      ],
+      "pads": [
+        {
+          "number": "1",
+          "board_xy": [
+            26.65,
+            8.0
+          ],
+          "net": "/CH2/ELEC_P"
+        },
+        {
+          "number": "2",
+          "board_xy": [
+            24.65,
+            8.0
+          ],
+          "net": "/CH2/ELEC_N"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            29.0,
+            2.25
+          ],
+          "net": "unconnected-(J201-PadMP)"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            22.3,
+            2.25
+          ],
+          "net": "unconnected-(J201-PadMP)"
+        }
+      ],
+      "installed_pad_geometry_equals_vendored_library": true
+    },
+    {
+      "reference": "J301",
+      "origin_xy_rotation": [
+        16.25,
+        5.15,
+        180.0
+      ],
+      "mating_direction_xy": [
+        0.0,
+        -1.0
+      ],
+      "entry_face_midpoint_xy": [
+        16.25,
+        0.75
+      ],
+      "pads": [
+        {
+          "number": "1",
+          "board_xy": [
+            17.25,
+            8.0
+          ],
+          "net": "/CH3/ELEC_P"
+        },
+        {
+          "number": "2",
+          "board_xy": [
+            15.25,
+            8.0
+          ],
+          "net": "/CH3/ELEC_N"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            19.6,
+            2.25
+          ],
+          "net": "unconnected-(J301-PadMP)"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            12.9,
+            2.25
+          ],
+          "net": "unconnected-(J301-PadMP)"
+        }
+      ],
+      "installed_pad_geometry_equals_vendored_library": true
+    }
+  ]
+}

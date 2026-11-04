@@ -1,0 +1,15 @@
+/usr/src/debug/kicad/kicad/include/properties/property.h(607): assert "m_choices.GetCount() > 0" failed in PROPERTY_ENUM(): No enum choices defined
+/usr/src/debug/kicad/kicad/include/properties/property.h(607): assert "m_choices.GetCount() > 0" failed in PROPERTY_ENUM(): No enum choices defined
+/usr/src/debug/kicad/kicad/include/properties/property.h(607): assert "m_choices.GetCount() > 0" failed in PROPERTY_ENUM(): No enum choices defined
+{"counts": {"tracks": 1518, "vias": 201, "pads": 364, "holes": 202, "zones": 20}, "track_widths": {"0.15": 24, "0.2": 962, "0.25": 81, "0.3": 407, "0.5": 44}, "via_sizes": [[0.6, 0.3]], "via_annular_ring_mm": [0.15], "pad_drills": [1.9]}
+F.Cu pairs 365 below 0.30: 223 lowest [(0.205, 'track:/ADC/X1_OUT', 'pad:C6009.1', '/ADC/X1_OUT', '/ADC/AFE_CAP'), (0.225, 'track:/Analog_Power_Interlock/VBAT_AFE', 'pad:R4001.1', '/Analog_Power_Interlock/VBAT_AFE', 'VBAT'), (0.225, 'track:/Analog_Power_Interlock/VBUS_GATE', 'pad:Q3001.3', '/Analog_Power_Interlock/VBUS_GATE', '/Analog_Power_Interlock/AFE_EN')]
+In2.Cu pairs 12 below 0.30: 1 lowest [(0.25, 'track:VBAT', 'via:GND', 'VBAT', 'GND')]
+B.Cu pairs 34 below 0.30: 12 lowest [(0.3, 'track:/Analog_Power_Interlock/AFE_EN', 'via:GND', '/Analog_Power_Interlock/AFE_EN', 'GND'), (0.3, 'track:/CH1/BUF_N', 'via:AFE_3V0', '/CH1/BUF_N', 'AFE_3V0'), (0.3, 'track:/CH1_P', 'via:GND', '/CH1_P', 'GND')]
+class-aware clearance violations: 0 []
+hi-Z <0.4 not exempt: 0 [] | exempt: 72 | spi->hiz<2: [] | spi->buf<1: []
+hole2copper<0.25: []
+hole2hole<0.5: []
+edge: [(0.5, 'pad', 'J101.1', 'F.Cu'), (0.5, 'pad', 'J101.2', 'F.Cu'), (0.5, 'pad', 'J201.1', 'F.Cu'), (0.5, 'pad', 'J201.2', 'F.Cu')]
+planes: {'In1.Cu': (1, 3055.4), 'In2.Cu': (1, 2313.6)}
+return path: {'samples': 6009, 'pct': 99.87, 'nets_below_100pct': {'VBAT': 94.0}}
+keepout occupancy: []

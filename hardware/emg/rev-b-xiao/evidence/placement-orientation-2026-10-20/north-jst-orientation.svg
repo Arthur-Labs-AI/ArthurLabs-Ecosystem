@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820"><rect width="1400" height="820" fill="#f7f9fc"/><style>text{font-family:DejaVu Sans,sans-serif;fill:#172d48} .title{font-size:24px;font-weight:bold} .sub{font-size:16px} .small{font-size:14px}</style>
+<text x="40" y="40" class="title">North-edge C295747 placement: verify opening AND terminal registration</text>
+<text x="40" y="69" class="small">Board-measured KiCad lands + nominal JST catalog body bounds. Public JLC 2D zero used as a hypothesis; no factory 3D verification.</text>
+<text x="60" y="117" class="title">RC1 CPL 0°: reported inward mouth</text>
+<text x="60" y="145" class="small">TOP VIEW: north up; no mirrored underside view</text>
+<rect x="70" y="190" width="440" height="330" fill="#e0eee7" stroke="none" stroke-width="2"/>
+<line x1="70" y1="190" x2="510" y2="190" stroke="#176751" stroke-width="3"/>
+<text x="315" y="180" class="small">PCB north edge Y=0</text>
+<rect x="258.5" y="358.75" width="27" height="94.5" fill="#c6963d" stroke="none" stroke-width="2"/>
+<text x="264" y="411" class="small">1</text>
+<rect x="204.5" y="358.75" width="27" height="94.5" fill="#c6963d" stroke="none" stroke-width="2"/>
+<text x="210" y="411" class="small">2</text>
+<rect x="134.3" y="204.85" width="40.5" height="91.8" fill="#c6963d" stroke="none" stroke-width="2"/>
+<text x="146.55" y="255.75" class="small">MP</text>
+<rect x="315.2" y="204.85" width="40.5" height="91.8" fill="#c6963d" stroke="none" stroke-width="2"/>
+<text x="327.45" y="255.75" class="small">MP</text>
+<rect x="138.35" y="285.85" width="213.3" height="162.0" fill="none" stroke="#bc3838" stroke-width="2" stroke-dasharray="7 5"/>
+<line x1="166.7" y1="447.85" x2="323.3" y2="447.85" stroke="#bc3838" stroke-width="6"/>
+<line x1="245" y1="447.85" x2="245" y2="497.85" stroke="#bc3838" stroke-width="4"/>
+<line x1="245" y1="497.85" x2="238" y2="485.85" stroke="#bc3838" stroke-width="3"/>
+<line x1="245" y1="497.85" x2="252" y2="485.85" stroke="#bc3838" stroke-width="3"/>
+<text x="70" y="548" class="small">Gold: fixed PCB lands. Dashed: body in hypothesized CPL pose.</text>
+<text x="70" y="573" class="small">Signal tails must land south; retention tabs must land north.</text>
+<text x="70" y="598" class="small">Pin 1 EAST; pin 2 WEST. A 180° turn also swaps pin sides.</text>
+<text x="70" y="623" class="small" style="fill:#bc3838">Reject if opening, signal leads or retention tabs disagree.</text>
+<text x="720" y="117" class="title">RC2 CPL 180°: proposed outward mouth</text>
+<text x="720" y="145" class="small">TOP VIEW: north up; no mirrored underside view</text>
+<rect x="730" y="190" width="440" height="330" fill="#e0eee7" stroke="none" stroke-width="2"/>
+<line x1="730" y1="190" x2="1170" y2="190" stroke="#176751" stroke-width="3"/>
+<text x="975" y="180" class="small">PCB north edge Y=0</text>
+<rect x="918.5" y="358.75" width="27" height="94.5" fill="#c6963d" stroke="none" stroke-width="2"/>
+<text x="924" y="411" class="small">1</text>
+<rect x="864.5" y="358.75" width="27" height="94.5" fill="#c6963d" stroke="none" stroke-width="2"/>
+<text x="870" y="411" class="small">2</text>
+<rect x="794.3" y="204.85" width="40.5" height="91.8" fill="#c6963d" stroke="none" stroke-width="2"/>
+<text x="806.55" y="255.75" class="small">MP</text>
+<rect x="975.2" y="204.85" width="40.5" height="91.8" fill="#c6963d" stroke="none" stroke-width="2"/>
+<text x="987.45" y="255.75" class="small">MP</text>
+<rect x="798.35" y="210.25" width="213.3" height="162.0" fill="none" stroke="#13765d" stroke-width="2" stroke-dasharray="7 5"/>
+<line x1="826.7" y1="210.25" x2="983.3" y2="210.25" stroke="#13765d" stroke-width="6"/>
+<line x1="905" y1="210.25" x2="905" y2="160.25" stroke="#13765d" stroke-width="4"/>
+<line x1="905" y1="160.25" x2="898" y2="172.25" stroke="#13765d" stroke-width="3"/>
+<line x1="905" y1="160.25" x2="912" y2="172.25" stroke="#13765d" stroke-width="3"/>
+<text x="730" y="548" class="small">Gold: fixed PCB lands. Dashed: body in hypothesized CPL pose.</text>
+<text x="730" y="573" class="small">Signal tails must land south; retention tabs must land north.</text>
+<text x="730" y="598" class="small">Pin 1 EAST; pin 2 WEST. A 180° turn also swaps pin sides.</text>
+<text x="730" y="623" class="small" style="fill:#13765d">Accept only after matching actual JLC 2D + 3D overlays.</text>
+<text x="40" y="675" class="sub">Required board coordinates (mm): signal centers Y=8.00; retention centers Y=2.25; entry face Y=0.75.</text>
+<text x="40" y="704" class="small">Origins west → east: J401 (6.85,5.15), J301 (16.25,5.15), J201 (25.65,5.15), J101 (35.05,5.15), J5001 (44.45,5.15).</text>
+<text x="40" y="733" class="small">Signal pin 1 = origin X+1; pin 2 = origin X−1. Retention pads = origin X±3.35. Body width 7.90; height 5.50 mm.</text>
+<text x="40" y="765" class="sub" style="fill:#a62f28">J1 remains CPL 270° but is ON HOLD: public 2D suggests 90°. Its opening must face EAST, pin 1 must land on VBAT.</text>
+<text x="40" y="795" class="small">NOT RELEASED — diagram is derived geometry, not a manufacturer CAD model or JLCPCB assembly screenshot.</text>
+</svg>

@@ -1,0 +1,78 @@
+{
+ "battery_plug_exit": "north",
+ "hiz_to_module_mm": 30.6,
+ "hiz_nearest_part": "R406",
+ "electrode_to_module_mm": 31.9,
+ "W": 97.0,
+ "H": 32.0,
+ "area": 3104,
+ "aspect": 3.03,
+ "courtyard_utilisation": 0.583,
+ "hpwl_total": 1270,
+ "hpwl_by_class": {
+  "ADC_CAP": 3,
+  "ANALOG_REF": 91,
+  "CTRL_SLOW": 224,
+  "EMG_BUF": 521,
+  "EMG_ELECTRODE": 59,
+  "EMG_HIZ": 125,
+  "PWR_AFE": 90,
+  "PWR_DVDD": 28,
+  "PWR_VBAT": 54,
+  "SPI_FAST": 46,
+  "VBUS_SENSE": 29
+ },
+ "longest_nets": [
+  [
+   89.9,
+   "AFE_3V0"
+  ],
+  [
+   62.3,
+   "/CH1_P"
+  ],
+  [
+   60.0,
+   "/VCM"
+  ],
+  [
+   58.3,
+   "/CH1_N"
+  ],
+  [
+   54.9,
+   "/CH2_P"
+  ],
+  [
+   54.4,
+   "/CH3_P"
+  ]
+ ],
+ "ac_run_leg_len": {
+  "CH1P": 51.9,
+  "CH1N": 43.3,
+  "CH2P": 42.2,
+  "CH2N": 41.4,
+  "CH3P": 40.3,
+  "CH3N": 31.7,
+  "CH4P": 30.6,
+  "CH4N": 29.8
+ },
+ "ac_run_max": 51.9,
+ "ac_run_min": 29.8,
+ "ac_pn_mismatch_max": 8.6,
+ "ac_pn_mismatch": {
+  "CH1": 8.6,
+  "CH2": 0.8,
+  "CH3": 8.6,
+  "CH4": 0.8
+ },
+ "electrode_connector_edges": {
+  "J101": "south",
+  "J201": "south",
+  "J301": "south",
+  "J401": "south",
+  "J5001": "south"
+ },
+ "battery_connector_edge": "north"
+}

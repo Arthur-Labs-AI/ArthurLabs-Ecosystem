@@ -268,6 +268,41 @@ test("STT cancellation terminates the engine and ends the stream", async () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+test("LocalSttProvider forwards the language profile and initial prompt via engine env", async () => {
+  const dir = newTempDir("stt-env");
+  const envFile = join(dir, "env.json");
+  const stt = new LocalSttProvider(nodeCmd(sttFixture), "model.bin", "en", {
+    env: { FIXTURE_ENV_FILE: envFile, FIXTURE_ENV_KEYS: "ARTHUR_STT_LANGUAGE,ARTHUR_STT_INITIAL_PROMPT" },
+    initialPrompt: "ARTHUR, Nexus, AutoPulse",
+  });
+  await collectStt(stt, speechFrames(1), "utt-env");
+  const recorded = JSON.parse(readFileSync(envFile, "utf8")) as Record<string, string>;
+  assert.equal(recorded.ARTHUR_STT_LANGUAGE, "en");
+  assert.equal(recorded.ARTHUR_STT_INITIAL_PROMPT, "ARTHUR, Nexus, AutoPulse");
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("LocalSttProvider config is authoritative over lower-precedence environment keys", async () => {
+  const dir = newTempDir("stt-env-clear");
+  const envFile = join(dir, "env.json");
+  // Lower-precedence sources (opts.env mirrors what an inherited process.env
+  // would do) must never win over provider configuration: auto resolves in
+  // the wrapper and an unset prompt stays unset - nothing leaks through.
+  const stt = new LocalSttProvider(nodeCmd(sttFixture), "model.bin", "auto", {
+    env: {
+      ARTHUR_STT_LANGUAGE: "de",
+      ARTHUR_STT_INITIAL_PROMPT: "GLOBAL-LEAK-SHOULD-NOT-REACH-ENGINE",
+      FIXTURE_ENV_FILE: envFile,
+      FIXTURE_ENV_KEYS: "ARTHUR_STT_LANGUAGE,ARTHUR_STT_INITIAL_PROMPT",
+    },
+  });
+  await collectStt(stt, speechFrames(1), "utt-env-clear");
+  const recorded = JSON.parse(readFileSync(envFile, "utf8")) as Record<string, string>;
+  assert.equal(recorded.ARTHUR_STT_LANGUAGE, "", "auto must clear inherited language keys");
+  assert.equal(recorded.ARTHUR_STT_INITIAL_PROMPT, "", "no prompt configured must clear inherited prompts");
+  rmSync(dir, { recursive: true, force: true });
+});
+
 test("STT unavailable and missing executable yield STT_FAILED", async () => {
   const empty = new LocalSttProvider("", "", "en");
   assert.equal(empty.available, false);
@@ -509,6 +544,95 @@ test("playback unavailable without a command and fails cleanly on a missing exec
   await assert.rejects(empty.play(chunkIter([])), /AUDIO_OUTPUT_UNAVAILABLE/);
   const missing = new LocalAudioPlayback("C:\\arthur-no-such-playback-engine-xyz-12345.exe");
   await assert.rejects(missing.play(chunkIter([])), /AUDIO_OUTPUT_UNAVAILABLE/);
+});
+
+// ---------------------------------------------------------------------------
+// TASK-0007: normal EOF drain vs explicit cancellation
+// ---------------------------------------------------------------------------
+
+test("playback slow natural EOF drains and completes without a false failure", async () => {
+  const dir = newTempDir("pb-eof");
+  const exitMarker = join(dir, "exit.txt");
+  const pidFile = join(dir, "pid.txt");
+  const events: string[] = [];
+  const playback = new LocalAudioPlayback(nodeCmd(sinkFixture), {
+    env: { FIXTURE_PID_FILE: pidFile, FIXTURE_EXIT_MARKER: exitMarker, FIXTURE_EOF_DRAIN_MS: "1500" },
+    events: { onStopped: (reason) => events.push(reason) },
+  });
+  // ~4.8 s of audio written far faster than realtime; the sink lingers
+  // 1.5 s after stdin EOF exactly like ffplay draining its internal buffer.
+  // The old shared 250 ms kill grace reported this as code:null TTS_FAILED.
+  const chunks: AudioChunk[] = [];
+  for (let i = 0; i < 240; i += 1) {
+    chunks.push(syntheticAudioChunk("s", i, Date.now() + i, 20, 16000, i + 1));
+  }
+  await playback.play(chunkIter(chunks));
+  assert.equal(playback.playing, false);
+  assert.deepEqual(events, ["completed"]);
+  await waitFor(() => existsSync(exitMarker), 3000, "sink to exit after drain");
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("playback player that never exits after EOF is reaped and reported as failure", async () => {
+  const dir = newTempDir("pb-stuck");
+  const pidFile = join(dir, "pid.txt");
+  const playback = new LocalAudioPlayback(nodeCmd(sinkFixture), {
+    env: { FIXTURE_PID_FILE: pidFile, FIXTURE_EOF_DRAIN_MS: "30000" },
+    // Small normal-drain deadline so the test stays fast.
+    eofDrainGraceMs: 300,
+  });
+  const chunks: AudioChunk[] = [];
+  for (let i = 0; i < 2; i += 1) {
+    chunks.push(syntheticAudioChunk("s", i, Date.now() + i, 20, 16000, i + 1));
+  }
+  await assert.rejects(() => playback.play(chunkIter(chunks)), /playback process exited with code/);
+  const pid = readPid(pidFile);
+  await waitFor(() => !isAlive(pid), 3000, "stuck sink to be reaped");
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("playback non-zero exit after a normal drain still reports failure", async () => {
+  const dir = newTempDir("pb-eof-code");
+  const playback = new LocalAudioPlayback(nodeCmd(sinkFixture), {
+    env: { FIXTURE_EOF_DRAIN_MS: "100", FIXTURE_EXIT_CODE: "3" },
+  });
+  const chunks: AudioChunk[] = [];
+  for (let i = 0; i < 5; i += 1) {
+    chunks.push(syntheticAudioChunk("s", i, Date.now() + i, 20, 16000, i + 1));
+  }
+  await assert.rejects(() => playback.play(chunkIter(chunks)), /playback process exited with code 3/);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test("playback stop() during the EOF drain stays fast and discards stale audio", async () => {
+  const dir = newTempDir("pb-eof-stop");
+  const pidFile = join(dir, "pid.txt");
+  const events: string[] = [];
+  const playback = new LocalAudioPlayback(nodeCmd(sinkFixture), {
+    env: { FIXTURE_PID_FILE: pidFile, FIXTURE_EOF_DRAIN_MS: "5000" },
+    events: { onStopped: (reason) => events.push(reason) },
+  });
+  let yielded = 0;
+  const source = (async function* () {
+    for (let i = 0; i < 500; i += 1) {
+      yield syntheticAudioChunk("s", i, Date.now(), 20, 16000, i + 1);
+      yielded += 1;
+    }
+  })();
+  const playing = playback.play(source);
+  await waitFor(() => existsSync(pidFile), 3000, "sink to start");
+  const stopStarted = Date.now();
+  await playback.stop();
+  assert.ok(Date.now() - stopStarted < 1000, "stop() must stay fast even during EOF drain");
+  await playing;
+  assert.equal(playback.playing, false);
+  assert.deepEqual(events, ["stopped"]);
+  const yieldedAtStop = yielded;
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.equal(yielded, yieldedAtStop, "no stale audio may be pulled after cancellation");
+  const pid = readPid(pidFile);
+  await waitFor(() => !isAlive(pid), 3000, "cancelled sink to be terminated");
+  rmSync(dir, { recursive: true, force: true });
 });
 
 // ---------------------------------------------------------------------------
