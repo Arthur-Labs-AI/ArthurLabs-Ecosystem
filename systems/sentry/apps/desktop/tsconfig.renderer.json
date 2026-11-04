@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.desktop.json",
+  "compilerOptions": {
+    "outDir": "dist/renderer-types",
+    "composite": false,
+    "noEmit": true,
+    "types": ["vite/client"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src/renderer", "src/shared"]
+}

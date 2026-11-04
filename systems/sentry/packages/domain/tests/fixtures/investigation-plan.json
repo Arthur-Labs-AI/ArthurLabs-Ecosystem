@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "plan_01K7777777777777777777A8WB",
+  "qaRunId": "run_01K7777777777777777777A8W3",
+  "agentRunId": "arun_01K7777777777777777777A8W4",
+  "agentStackId": "stack_muse_main",
+  "projectSnapshotId": "snap_01K7777777777777777777A8W2",
+  "projectContextSnapshotId": "ctx_01K7777777777777777777A8WA",
+  "projectUnderstanding": "Session validation is an authentication boundary backed by TTL configuration.",
+  "criticalFlows": ["Session validation"],
+  "weakPoints": ["Expiry comparison"],
+  "plannedChecks": ["Run auth tests", "Trace TTL configuration use"],
+  "createdAt": "2026-09-09T19:00:01.000Z"
+}

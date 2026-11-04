@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "cicd_01K7777777777777777777A8WE",
+  "projectId": "proj_01K7777777777777777777A8W1",
+  "snapshotId": "snap_01K7777777777777777777A8W2",
+  "provider": "github_actions",
+  "mode": "create",
+  "detectedExistingConfiguration": false,
+  "recommendations": [
+    {
+      "id": "rec-build",
+      "category": "build",
+      "severity": "required",
+      "title": "Run build in CI",
+      "description": "Add pnpm build step."
+    }
+  ],
+  "generatedFiles": [
+    {
+      "relativePath": ".github/workflows/ci.yml",
+      "mode": "create",
+      "summary": "Initial CI workflow"
+    }
+  ],
+  "createdAt": "2026-09-09T19:00:00.000Z"
+}

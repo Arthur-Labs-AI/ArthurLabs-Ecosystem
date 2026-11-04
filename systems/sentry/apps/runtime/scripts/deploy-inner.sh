@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# Sentry WSL runtime deploy (inner, runs inside Linux).
+# Source-clean: only root-level build metadata is copied (never apps/,
+# packages/, node_modules/, dist/, .turbo, .git from Windows). Workspace
+# sources sync via tar with explicit excludes; a clean-tree assertion
+# guarantees ZERO inherited node_modules/dist before the Linux install.
+# Build uses the monorepo graph (turbo --filter=@qa/runtime...) so every
+# transitive workspace dependency builds natively in Linux.
+# Activation is atomic: build+validate happen before `current` moves.
+set -euo pipefail
+SRC="$1"; VERSION="$2"
+if [[ ! "$VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$ ]]; then
+  echo '[sentry-runtime] invalid deployment version' >&2
+  exit 12
+fi
+# Optional explicit pnpm executable (native launcher passes the resolved
+# pinned binary). Defaults to PATH pnpm so the historical 2-arg Windows
+# invocation behaves exactly as before.
+PNPM_BIN="${3:-pnpm}"
+MODE="${4:-activate}"
+if [ "$MODE" != activate ] && [ "$MODE" != stage-only ]; then
+  echo '[sentry-runtime] invalid deployment mode' >&2
+  exit 12
+fi
+# Turbo grandchildren spawn `pnpm` via PATH lookup: when an explicit path
+# was given, its directory leads PATH for this deploy subtree. A bare name
+# needs no export (it already came from PATH).
+case "$PNPM_BIN" in
+  */*) export PATH="$(dirname "$PNPM_BIN"):$PATH" ;;
+esac
+BASE="$HOME/.local/share/sentry/runtime"
+DEST="$BASE/$VERSION"
+if [ "$MODE" = "stage-only" ] && { [ -e "$DEST" ] || [ -e "$DEST.tmp" ]; }; then
+  echo '[sentry-runtime] refusing to overwrite an existing release candidate' >&2
+  exit 11
+fi
+mkdir -p "$BASE"
+echo "[sentry-runtime] staging $VERSION ..."
+rm -rf "$DEST.tmp"; mkdir -p "$DEST.tmp"
+cd "$SRC"
+echo '[sentry-runtime] copying root build metadata (files only)...'
+for e in package.json pnpm-lock.yaml pnpm-workspace.yaml .nvmrc tsconfig.base.json turbo.json eslint.config.js prettier.config.js build-identity.json; do
+  if [ -f "$e" ]; then cp --no-preserve=all "$e" "$DEST.tmp/"; else echo "[sentry-runtime] note: root file missing: $e"; fi
+done
+echo '[sentry-runtime] syncing workspace sources (excluding node_modules/dist/.turbo/coverage)...'
+mkdir -p "$DEST.tmp/apps" "$DEST.tmp/packages"
+EXCLUDES=(--exclude=node_modules --exclude=dist --exclude=.turbo --exclude=coverage '--exclude=*.tsbuildinfo' --exclude=.tsbuildinfo)
+# Deployment copies source from a user checkout: never stage local secrets,
+# provider stores, databases, logs, or private package-manager configuration.
+EXCLUDES+=(--exclude=.git '--exclude=.env*' --exclude=.npmrc --exclude=secrets --exclude=logs
+  --exclude=credentials --exclude=credentials.json --exclude=credentials.enc.json --exclude=models.json
+  '--exclude=*.sqlite*' '--exclude=*.db*' '--exclude=*.log'
+  '--exclude=*.key' '--exclude=*.pem' '--exclude=*.p12'
+  --exclude=.sentry-data --exclude=sentry-data --exclude=.sentry-live --exclude=.qa --exclude=workspaces)
+# GNU tar exits 1 when files change mid-archive (e.g. an IDE/test run touches
+# the tree during staging). That is tolerated here: the clean-tree assertion,
+# frozen install, full Linux build, entry validation, and handshake below
+# still gate activation — a genuinely corrupt stage fails loudly there.
+# Exit >= 2 (real tar errors) aborts the deploy.
+sync_one() {
+  src="$1"; dest="$2"
+  (cd "$src" && tar "${EXCLUDES[@]}" --warning=no-file-changed -cf - .) | tar -xf - -C "$dest"
+  # NOTE: copy PIPESTATUS atomically — even a bare assignment resets it.
+  pipe_codes=("${PIPESTATUS[@]}")
+  archive_code=${pipe_codes[0]}; extract_code=${pipe_codes[1]}
+  if [ "$archive_code" -ge 2 ]; then echo "[sentry-runtime] FATAL: tar archive failed ($archive_code) for $src"; return 1; fi
+  if [ "$extract_code" -ne 0 ]; then echo "[sentry-runtime] FATAL: tar extract failed ($extract_code) for $src"; return 1; fi
+  return 0
+}
+for a in apps/*/; do
+  n=$(basename "$a")
+  mkdir -p "$DEST.tmp/apps/$n"
+  sync_one "$a" "$DEST.tmp/apps/$n"
+done
+for p in packages/*/; do
+  n=$(basename "$p")
+  mkdir -p "$DEST.tmp/packages/$n"
+  sync_one "$p" "$DEST.tmp/packages/$n"
+done
+echo SYNC_OK
+echo '[sentry-runtime] asserting clean Linux staging (no Windows artifacts)...'
+STAGED_JUNK=$(cd "$DEST.tmp" && find apps packages \( -name node_modules -o -name dist \) 2>/dev/null | head -20 || true)
+if [ -n "$STAGED_JUNK" ]; then
+  echo '[sentry-runtime] FATAL: staged tree contains inherited artifacts:'
+  echo "$STAGED_JUNK"
+  rm -rf "$DEST.tmp"
+  exit 10
+fi
+echo STAGE_CLEAN_OK
+cd "$DEST.tmp"
+export CI=true
+echo "[sentry-runtime] installing Linux dependencies (frozen lockfile)..."
+"$PNPM_BIN" install --frozen-lockfile
+echo '[sentry-runtime] building runtime + transitive workspace dependencies (monorepo graph)...'
+"$PNPM_BIN" exec turbo run build --filter=@qa/runtime...
+echo '[sentry-runtime] validating entry...'
+test -f "$DEST.tmp/apps/runtime/dist/host.js"
+echo ENTRY_OK
+echo "$VERSION" > "$DEST.tmp/.sentry-runtime-version"
+echo "[sentry-runtime] activating $VERSION ..."
+if [ -e "$DEST" ] && [ ! -L "$DEST" ]; then rm -rf "$DEST"; fi
+rm -rf "$DEST"; mv "$DEST.tmp" "$DEST"
+if [ "$MODE" = "stage-only" ]; then
+  echo "[sentry-runtime] staged (not activated): $DEST"
+  exit 0
+fi
+rm -f "$BASE/current"
+ln -s "$VERSION" "$BASE/current"
+echo "[sentry-runtime] active: $(readlink "$BASE/current")"

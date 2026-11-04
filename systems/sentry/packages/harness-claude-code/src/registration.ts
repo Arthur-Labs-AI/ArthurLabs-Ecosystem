@@ -1,0 +1,89 @@
+import { AgentStackDefinitionSchema, type AgentRuntimeIdentity } from '@qa/schemas';
+import type { HarnessAdapterRegistration } from '@qa/harness-protocol';
+import { ClaudeCodeHarnessError } from './errors.js';
+import { ClaudeCodeHarnessAdapter, type ClaudeCodeHarnessAdapterOptions } from './adapter.js';
+import {
+  assertGlmAuthConfigured,
+  assertGlmEndpointConfigured,
+  probeClaudeExecutable,
+  resolveClaudeExecutableIdentity,
+  resolveGlmRuntime,
+} from './discovery.js';
+import { CLAUDE_CODE_TESTED_VERSION } from './sdk.js';
+
+export function createGlmRegistration(
+  options: ClaudeCodeHarnessAdapterOptions = {},
+): HarnessAdapterRegistration {
+  // Runtime config resolves lazily so registering an unselected stack
+  // never throws: only the selected stacks' preflight/adapter paths report
+  // GLM_MODEL_NOT_CONFIGURED.
+  let runtime: { modelId: string; executable: string } | undefined;
+  const resolveRuntime = () => (runtime ??= resolveGlmRuntime(options));
+  const stack = AgentStackDefinitionSchema.parse({
+    schemaVersion: 1,
+    id: 'stack_glm_main',
+    displayName: 'GLM QA Agent',
+    enabled: true,
+    // Placeholder until preflight resolves the real model: the stack
+    // definition requires a non-empty modelId, and the authoritative
+    // configured value is reported by preflight/runtimeIdentity.
+    model: {
+      provider: 'zai-anthropic',
+      modelId: 'unconfigured',
+      displayName: 'GLM-5.3-Flash',
+    },
+    harness: { adapterId: 'claude-code', expectedProtocolVersion: 1 },
+    execution: { supportsLocalExecution: true },
+    policy: { id: 'qa-standard', version: 1 },
+  });
+  const runtimeIdentity: Partial<AgentRuntimeIdentity> = {
+    adapterId: 'claude-code',
+    adapterVersion: '0.1.0',
+    // sdkVersion names the TESTED Claude version (honest label: this is
+    // what Sentry validated, not necessarily what runs). The actual
+    // binary version rides in executableVersion (probed) and in the
+    // GLM_CLAUDE_VERSION_UNVERIFIED run warning on drift.
+    sdkVersion: CLAUDE_CODE_TESTED_VERSION,
+  };
+  return {
+    stack,
+    preflight: async () => {
+      const resolved = resolveRuntime();
+      assertGlmEndpointConfigured(options.environment ?? process.env);
+      assertGlmAuthConfigured(options.environment ?? process.env);
+      runtimeIdentity.modelId = resolved.modelId;
+      runtimeIdentity.executable = resolved.executable;
+      try {
+        const identity = await resolveClaudeExecutableIdentity(
+          resolved.executable,
+          options.environment ?? process.env,
+        );
+        runtimeIdentity.executable = identity.resolved;
+        if (identity.version !== undefined) runtimeIdentity.executableVersion = identity.version;
+      } catch (identityError) {
+        if (identityError instanceof ClaudeCodeHarnessError) throw identityError;
+        runtimeIdentity.executableVersion = await probeClaudeExecutable(
+          resolved.executable,
+          options.environment ?? process.env,
+        );
+      }
+    },
+    createAdapter: () =>
+      new ClaudeCodeHarnessAdapter({
+        ...options,
+        // Probed at preflight (runs before createAdapter): lets the run
+        // emit GLM_CLAUDE_VERSION_UNVERIFIED on tested/actual drift.
+        ...(runtimeIdentity.executableVersion === undefined
+          ? {}
+          : { executableVersion: runtimeIdentity.executableVersion }),
+        onRuntimeIdentity: (identity) => {
+          if (identity.harnessVersion !== undefined)
+            runtimeIdentity.harnessVersion = identity.harnessVersion;
+          if (identity.executableVersion !== undefined)
+            runtimeIdentity.executableVersion = identity.executableVersion;
+          options.onRuntimeIdentity?.(identity);
+        },
+      }),
+    runtimeIdentity,
+  };
+}

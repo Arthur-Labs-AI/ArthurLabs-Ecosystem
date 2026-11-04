@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "find_01K7777777777777777777A8W8",
+  "qaRunId": "run_01K7777777777777777777A8W3",
+  "agentRunId": "arun_01K7777777777777777777A8W5",
+  "sourceAgentStackId": "stack_deepseek_main",
+  "title": "Session TTL ignored",
+  "category": "authentication",
+  "severity": "high",
+  "confidence": "probable",
+  "description": "TTL config read but never enforced.",
+  "locations": [
+    {
+      "relativePath": "src/auth/session.ts",
+      "startLine": 60,
+      "endLine": 71
+    }
+  ],
+  "evidenceIds": ["ev_01K7777777777777777777A8WA"],
+  "reproductionSteps": ["Set SESSION_TTL=60", "Log in", "Wait 61s"],
+  "createdAt": "2026-09-09T19:00:00.000Z"
+}

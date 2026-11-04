@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "ctx_01K7777777777777777777A8WA",
+  "projectId": "proj_01K7777777777777777777A8W1",
+  "projectRevisionId": "rev_01K7777777777777777777A8W9",
+  "purpose": "Full QA baseline",
+  "architectureSummary": "A TypeScript service with session-based authentication.",
+  "criticalFlows": [
+    {
+      "name": "Session validation",
+      "description": "Validates an active user session.",
+      "entryPoints": ["src/auth/session.ts"],
+      "sources": [{ "kind": "source", "relativePath": "src/auth/session.ts" }]
+    }
+  ],
+  "businessRules": [
+    {
+      "statement": "Sessions expire after the configured TTL.",
+      "sources": [{ "kind": "documentation", "relativePath": "README.md" }]
+    }
+  ],
+  "constraints": [],
+  "knownLimitations": [],
+  "outOfScope": [],
+  "detectedStack": {
+    "languages": ["TypeScript"],
+    "frameworks": ["Fastify"],
+    "packageManagers": ["pnpm"],
+    "testFrameworks": ["vitest"],
+    "sources": [{ "kind": "configuration", "relativePath": "package.json" }]
+  },
+  "createdAt": "2026-09-09T19:00:00.000Z"
+}

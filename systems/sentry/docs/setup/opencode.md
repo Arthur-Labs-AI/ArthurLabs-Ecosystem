@@ -1,0 +1,184 @@
+# OpenCode setup (OpenRouter provider path)
+
+Sentry runs the OpenCode QA Agent inside the WSL2 Linux runtime. Three
+separate concepts apply:
+
+- **Harness**: OpenCode (`opencode` binary, `@qa/harness-opencode`).
+- **Provider**: OpenRouter (initial production path).
+- **Model**: the exact OpenRouter model id you select.
+
+## 1. Install OpenCode in WSL
+
+Install the `opencode` binary **inside the selected Sentry WSL distro**
+(package `opencode-ai`, tested release `1.18.32`; see
+`OPENCODE_TESTED_VERSION` in `packages/harness-opencode/src/discovery.ts`).
+Verify:
+
+```bash
+opencode --version
+```
+
+The Sentry-managed execution runtime lives under the Linux user's data
+root. With the default data root it is:
+
+```text
+/home/<ubuntu-username>/.local/share/sentry/tools/opencode/node_modules/.bin/opencode
+```
+
+For example, if your WSL/Ubuntu username is `mert`:
+
+```text
+/home/mert/.local/share/sentry/tools/opencode/node_modules/.bin/opencode
+```
+
+Replace `<ubuntu-username>` with your actual WSL/Ubuntu username — do not
+copy a `/home/mert` or `/home/merte` path verbatim onto another machine.
+Find yours with:
+
+```bash
+whoami
+```
+
+or:
+
+```bash
+echo "$HOME"
+```
+
+Prefer `$HOME` in shell commands where possible so the username never
+appears at all:
+
+```bash
+$HOME/.local/share/sentry/tools/opencode/node_modules/.bin/opencode --version
+```
+
+Executable discovery order (no restart needed for changes): explicit
+adapter config → `SENTRY_OPENCODE_BINARY` (Settings → Providers →
+“OpenCode executable”, pushed into runtime memory) → Sentry-managed
+installation (`<dataRoot>/tools/opencode/node_modules/.bin/opencode`)
+→ `opencode` on `PATH` (a valid global/native install is reused when no
+managed install or override exists; an explicit override that is broken
+fails closed with no silent fallback to managed/PATH). A user-local install
+under the data root needs no `PATH` changes, no sudo, and no shell-profile
+edits. Production execution additionally requires working sandbox/isolation
+(functional bubblewrap sandbox, systemd user isolation, and project-config
+masking); the pre-run gate verifies the same executable and sandbox the
+run would use. There is no
+fallback model or fake execution: real runs require the real binary.
+
+## 2. Set the provider, model, and credential
+
+Sentry supports three upstream providers for the OpenCode harness:
+
+| Provider (`SENTRY_OPENCODE_PROVIDER`) | Plan / Gateway                                                                          | API Key Field (`Providers` UI)                                | Example `SENTRY_OPENCODE_MODEL`                |
+| ------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------- |
+| `opencode-go`                         | **OpenCode Go / Go Plus** (monthly subscription on `opencode.ai/console`)               | `OPENCODE_API_KEY` (**OpenCode API key (Zen & Go)**)          | `kimi-k3` or `gemini-4-argon-contributor`      |
+| `opencode`                            | **OpenCode Zen** (pay-as-you-go Console credits & free models on `opencode.ai/console`) | `OPENCODE_API_KEY` (**OpenCode API key (Zen & Go)**)          | `gpt-5.5` or `muse-spark-1.3-contributor-free` |
+| `openrouter` (default when unset)     | **OpenRouter** (third-party pay-as-you-go gateway on `openrouter.ai`)                   | `OPENROUTER_API_KEY` (**OpenRouter API key (Pay-as-you-go)**) | `anthropic/claude-sonnet-4`                    |
+
+Upstream provider (`openrouter` for OpenRouter, `opencode` for OpenCode Zen,
+`opencode-go` for the Go subscription gateway):
+
+```bash
+SENTRY_OPENCODE_PROVIDER=opencode-go
+```
+
+Model id (examples only — use a currently available id). Sentry composes
+the effective OpenCode id as `provider/model` (and if `SENTRY_OPENCODE_PROVIDER`
+is unset, prefixing `SENTRY_OPENCODE_MODEL` with `opencode-go/`, `opencode/`,
+or `openrouter/` also selects that provider automatically):
+
+```bash
+SENTRY_OPENCODE_MODEL=muse-spark-1.3-contributor
+# effective: opencode-go/muse-spark-1.3-contributor
+```
+
+Set the matching provider credential (memory-only in the runtime; never
+persisted to SQLite, events, artifacts, or logs):
+
+```bash
+# OpenCode Go (subscription) or OpenCode Zen (pay-as-you-go Console credits):
+OPENCODE_API_KEY=<your OpenCode Console key>
+# OpenRouter path (third-party pay-as-you-go):
+OPENROUTER_API_KEY=<your OpenRouter key>
+```
+
+In Sentry Desktop, paste the model id, provider, and key on the Providers
+page (encrypted with the OS keychain). The renderer never receives secrets.
+OpenRouter uses its native SDK; OpenCode Zen/Go keep OpenCode's built-in
+per-model transports (`responses` for Muse, `chat/completions` for
+compatible models, `messages` for Anthropic ones) — all go through the
+localhost credential proxy, so the real key never reaches OpenCode tooling.
+Provider-side failures surface as `OPENCODE_UPSTREAM_FAILED` (with HTTP
+status, retryability, and safe correlation ids), never as startup failures.
+
+No OpenCode account/login is required for the OpenRouter API-key path.
+
+## 3. Verify without spending credit
+
+```bash
+qa agent doctor opencode
+```
+
+The doctor checks configuration, the `opencode --version` probe, and
+credential _presence_. Opening Settings/Environment never performs a paid
+LLM request.
+
+## 4. Run
+
+```bash
+qa run start <project-id> --mode full --agents opencode --wait
+```
+
+## Credential isolation
+
+`OPENROUTER_API_KEY` exists in Sentry runtime host memory — and stops
+there. Per run, the adapter starts a localhost auth proxy whose closure
+alone holds the key; OpenCode talks to the proxy with a dummy key, and
+the proxy swaps in the real credential server-side. There is NO `auth.json`
+and NO key in any environment, file, or command line near OpenCode.
+The reporting turn runs tool-free. Never place the key in a project
+`.env` file. See
+[ADR-0014](../adr/0014-opencode-harness-and-provider-separation.md).
+
+## Untrusted projects
+
+The target repository is treated as untrusted data. Model-controlled
+shells run inside a bubblewrap mount namespace (scope, sibling
+workspaces, data root, and developer HOME hidden; workspace re-bound),
+project `.opencode` configuration and plugins are masked to randomized
+destinations with verification before launch (fail-closed: any masking
+failure aborts the run), your global OpenCode state is never loaded, and
+each run gets isolated sessions and an exactly-owned process boundary
+(systemd cgroup on Linux; weaker execution elsewhere is development
+only). Suppression flags alone do not stop project plugin loading —
+masking is mandatory (proven by test). On Linux without systemd +
+bubblewrap, production execution is refused (`OPENCODE_SANDBOX_UNAVAILABLE`)
+unless `SENTRY_OPENCODE_ALLOW_DIRECT=1` explicitly opts in for dev/test.
+
+## Opt-in live smoke
+
+Deterministic tests never spend credit. A live smoke is opt-in:
+
+```bash
+SENTRY_LIVE_OPENCODE=1 OPENROUTER_API_KEY=... SENTRY_OPENCODE_MODEL=... \
+  pnpm --filter @qa/harness-opencode test
+```
+
+Add `SENTRY_LIVE_OPENCODE_RUN=1` to additionally execute one minimal
+headless turn (spends OpenRouter credit).
+
+A zero-credit real-binary suite (local stub provider, no OpenRouter
+spend) covers wire format, session continuity, plugin isolation, and
+process cleanup wherever the `opencode` binary is installed:
+
+```bash
+SENTRY_OPENCODE_STUB_TESTS=1 SENTRY_OPENCODE_BINARY=$(which opencode) \
+  pnpm --filter @qa/harness-opencode test
+```
+
+## Historical Muse runs
+
+Runs executed before the migration (`stack_muse_main`, Muse Code) remain
+listable, viewable, and exportable. They are never rewritten to OpenCode:
+old runs stay Muse, new runs use OpenCode.

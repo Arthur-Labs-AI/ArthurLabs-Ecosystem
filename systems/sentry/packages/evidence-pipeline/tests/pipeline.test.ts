@@ -1,0 +1,683 @@
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { afterEach, describe, expect, it } from 'vitest';
+import { HarnessRunRequestSchema } from '@qa/schemas';
+import type { SentryAgentEvidenceV1 } from '@qa/schemas';
+import {
+  createAgentRunId,
+  createOperationId,
+  createProjectContextSnapshotId,
+  createQARunId,
+  createSnapshotId,
+} from '@qa/shared';
+import {
+  buildBaselineIndex,
+  buildGroundingRepairPrompt,
+  buildReportCorrectionIntro,
+  downgradeUngroundedFindings,
+  isGroundingRepairableError,
+  REPORT_STRENGTH_CONFIDENCE_ATOMICITY,
+  commandIdentity,
+  convertEvidence,
+  convertReportEvidence,
+  emptyGrounding,
+  isTestCommand,
+  normalizeCommandText,
+  parseWholeJson,
+  REPORT_STRENGTH_COMPATIBILITY,
+  summarizeSchemaIssues,
+  validateLocation,
+  validateProductionFindings,
+  type EvidencePipelineContext,
+  type ObservedEvidenceGrounding,
+} from '../src/index.js';
+
+class PipelineError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PipelineError';
+  }
+}
+
+const context: EvidencePipelineContext = {
+  errors: { invalidResult: (message: string) => new PipelineError(message) },
+  authorLabel: 'Test Harness',
+  secrets: ['sentry-test-secret'],
+  redactDiagnostic: (value: string) => value.replaceAll('sentry-test-secret', '[REDACTED]'),
+  redactStructured: (value: unknown) => value,
+};
+
+const roots: string[] = [];
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+});
+
+async function workspace() {
+  const root = await mkdtemp(join(tmpdir(), 'sentry-pipeline-'));
+  roots.push(root);
+  await writeFile(join(root, 'a.ts'), 'line one\nline two\nline three\n');
+  return root;
+}
+
+function request(root: string) {
+  return HarnessRunRequestSchema.parse({
+    schemaVersion: 1,
+    agentRunId: createAgentRunId(),
+    qaRunId: createQARunId(),
+    agentStackId: 'stack_muse_main',
+    projectContextSnapshotId: createProjectContextSnapshotId(),
+    workspace: {
+      runtimePath: root,
+      snapshotId: createSnapshotId(),
+      writable: true,
+      isolated: true,
+    },
+    model: { provider: 'test', modelId: 'test-model' },
+    task: { type: 'qa', prompt: 'x', policyId: 'qa-standard', policyVersion: 1 },
+    executionSafeguards: { runTimeoutMs: 30_000 },
+  });
+}
+
+function groundingWithCommand(command: string, exitCode: number): ObservedEvidenceGrounding {
+  const operationId = createOperationId();
+  return {
+    observedCommands: new Set([commandIdentity(command, exitCode)]),
+    operations: new Map([
+      [
+        'op_1',
+        {
+          operationId,
+          operationKey: 'op_1',
+          toolName: 'shell',
+          commandText: command,
+          exitCode,
+          isTestOperation: isTestCommand(command),
+        },
+      ],
+    ]),
+  };
+}
+
+describe('shared evidence pipeline', () => {
+  it('normalizes command text for identity', () => {
+    expect(normalizeCommandText('  pnpm   test\n')).toBe('pnpm test');
+    expect(commandIdentity('pnpm test', 0)).toBe(commandIdentity('pnpm  test', 0));
+    expect(commandIdentity('pnpm test', 0)).not.toBe(commandIdentity('pnpm test', 1));
+  });
+
+  it('grounds op-linked command evidence from the observed operation', async () => {
+    const root = await workspace();
+    const source = {
+      key: 'cmd',
+      type: 'command',
+      strength: 'tool_diagnostic',
+      description: 'Suite ran.',
+      command: 'pnpm test',
+      exitCode: 0,
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    const evidence = await convertEvidence(
+      request(root),
+      source,
+      context,
+      groundingWithCommand('pnpm test', 0),
+    );
+    expect(evidence.type).toBe('command');
+    if (evidence.type === 'command') {
+      expect(evidence.command.command).toBe('pnpm test');
+      expect(evidence.command.exitCode).toBe(0);
+    }
+  });
+
+  it('retains the canonical operation id on linked evidence, never the temp key', async () => {
+    const root = await workspace();
+    const grounding = groundingWithCommand('pnpm test', 0);
+    const operationId = grounding.operations.get('op_1')?.operationId;
+    expect(operationId).toBeDefined();
+    // Linked command evidence carries the canonical ID.
+    const command = {
+      key: 'cmd',
+      type: 'command',
+      strength: 'tool_diagnostic',
+      description: 'Suite ran.',
+      command: 'pnpm test',
+      exitCode: 0,
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    const commandEvidence = await convertEvidence(request(root), command, context, grounding);
+    expect(commandEvidence.groundingOperationIds).toEqual([operationId]);
+    // Linked test evidence carries the same canonical ID.
+    const test = {
+      key: 't',
+      type: 'test',
+      strength: 'tool_diagnostic',
+      description: 'Suite ran.',
+      framework: 'vitest',
+      name: 'suite',
+      status: 'passed',
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    const testEvidence = await convertEvidence(request(root), test, context, grounding);
+    expect(testEvidence.groundingOperationIds).toEqual([operationId]);
+    // Key-less identity matches and manual items carry no invented link.
+    const keyless = { ...command, operationKey: undefined } as SentryAgentEvidenceV1;
+    const keylessEvidence = await convertEvidence(request(root), keyless, context, grounding);
+    expect(keylessEvidence.groundingOperationIds).toEqual([]);
+    const manual = {
+      key: 'm',
+      type: 'manual',
+      strength: 'agent_reasoning',
+      description: 'Reasoning.',
+    } as SentryAgentEvidenceV1;
+    const manualEvidence = await convertEvidence(request(root), manual, context, grounding);
+    expect(manualEvidence.groundingOperationIds).toEqual([]);
+  });
+
+  it('rejects exit-code spoofing on a linked operation', async () => {
+    const root = await workspace();
+    const source = {
+      key: 'cmd',
+      type: 'command',
+      strength: 'tool_diagnostic',
+      description: 'Suite ran.',
+      command: 'pnpm test',
+      exitCode: 0,
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    await expect(
+      convertEvidence(request(root), source, context, groundingWithCommand('pnpm test', 1)),
+    ).rejects.toThrow(/exit code/);
+  });
+
+  it('rejects reproduced text mismatch and downgrades weak mismatch', async () => {
+    const root = await workspace();
+    const reproduced = {
+      key: 'cmd',
+      type: 'command',
+      strength: 'reproduced_behavior',
+      description: 'Reproduced.',
+      command: 'pnpm lint',
+      exitCode: 0,
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    await expect(
+      convertEvidence(request(root), reproduced, context, groundingWithCommand('pnpm test', 0)),
+    ).rejects.toThrow(/text does not match/);
+    const weak = { ...reproduced, strength: 'tool_diagnostic' } as SentryAgentEvidenceV1;
+    const downgraded = await convertEvidence(
+      request(root),
+      weak,
+      context,
+      groundingWithCommand('pnpm test', 0),
+    );
+    expect(downgraded.type).toBe('manual');
+  });
+
+  it('rejects reproduced test claims without an operation and downgrades weak ones', async () => {
+    const root = await workspace();
+    const reproduced = {
+      key: 't',
+      type: 'test',
+      strength: 'reproduced_failure',
+      description: 'Failed.',
+      framework: 'vitest',
+      name: 'x',
+      status: 'failed',
+    } as SentryAgentEvidenceV1;
+    await expect(
+      convertEvidence(request(root), reproduced, context, emptyGrounding()),
+    ).rejects.toThrow(/correlated observed operation/);
+    const weak = { ...reproduced, strength: 'tool_diagnostic' } as SentryAgentEvidenceV1;
+    const downgraded = await convertEvidence(request(root), weak, context, emptyGrounding());
+    expect(downgraded.type).toBe('manual');
+    expect(downgraded.strength).toBe('agent_reasoning');
+  });
+
+  it('rejects reproduced test status mismatch but downgrades weak mismatch', async () => {
+    const root = await workspace();
+    // Observed exit 1 (failed) vs claimed passed.
+    const grounding = groundingWithCommand('pnpm test', 1);
+    const reproduced = {
+      key: 't',
+      type: 'test',
+      strength: 'reproduced_failure',
+      description: 'Failed.',
+      framework: 'vitest',
+      name: 'x',
+      status: 'passed',
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    await expect(convertEvidence(request(root), reproduced, context, grounding)).rejects.toThrow(
+      /status does not match/,
+    );
+    const weak = { ...reproduced, strength: 'tool_diagnostic' } as SentryAgentEvidenceV1;
+    const downgraded = await convertEvidence(request(root), weak, context, grounding);
+    expect(downgraded.type).toBe('manual');
+    expect(downgraded.strength).toBe('agent_reasoning');
+  });
+
+  it('downgrades weak claims on codeless operations but fails reproduced ones', async () => {
+    const root = await workspace();
+    const codeless = emptyGrounding();
+    const operationId = createOperationId();
+    codeless.operations.set('op_1', {
+      operationId,
+      operationKey: 'op_1',
+      toolName: 'shell',
+      commandText: 'pnpm test',
+      exitCode: undefined,
+      isTestOperation: true,
+    });
+    const weakCommand = {
+      key: 'cmd',
+      type: 'command',
+      strength: 'tool_diagnostic',
+      description: 'Suite ran.',
+      command: 'pnpm test',
+      exitCode: 1,
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    const downgraded = await convertEvidence(request(root), weakCommand, context, codeless);
+    expect(downgraded.type).toBe('manual');
+    const reproduced = { ...weakCommand, strength: 'reproduced_failure' } as SentryAgentEvidenceV1;
+    await expect(convertEvidence(request(root), reproduced, context, codeless)).rejects.toThrow(
+      /exit code was not observed/,
+    );
+    const weakTest = {
+      key: 't',
+      type: 'test',
+      strength: 'tool_diagnostic',
+      description: 'Suite ran.',
+      framework: 'vitest',
+      name: 'suite',
+      status: 'failed',
+      operationKey: 'op_1',
+    } as SentryAgentEvidenceV1;
+    const downgradedTest = await convertEvidence(request(root), weakTest, context, codeless);
+    expect(downgradedTest.type).toBe('manual');
+  });
+
+  it('normalizes ReportV2 evidence by deriving Sentry-owned fields from operations', async () => {
+    const root = await workspace();
+    const grounding = groundingWithCommand('pnpm test', 1);
+    const operationId = grounding.operations.get('op_1')?.operationId;
+    // Command V2 carries no text/code: Sentry derives both from the op.
+    const command = await convertReportEvidence(
+      request(root),
+      {
+        key: 'cmd',
+        type: 'command',
+        strength: 'reproduced_failure',
+        description: 'Suite failed.',
+        operationKey: 'op_1',
+      },
+      context,
+      grounding,
+    );
+    expect(command.type).toBe('command');
+    if (command.type === 'command') {
+      expect(command.command.command).toBe('pnpm test');
+      expect(command.command.exitCode).toBe(1);
+    }
+    expect(command.groundingOperationIds).toEqual([operationId]);
+    // Test V2 carries no status: Sentry derives failed from exit 1.
+    const test = await convertReportEvidence(
+      request(root),
+      {
+        key: 't',
+        type: 'test',
+        strength: 'reproduced_failure',
+        description: 'Suite failed.',
+        operationKey: 'op_1',
+        framework: 'vitest',
+        name: 'suite',
+      },
+      context,
+      grounding,
+    );
+    expect(test.type).toBe('test');
+    if (test.type === 'test') expect(test.test.status).toBe('failed');
+    // Reproduced claims on codeless ops fail; weak ones downgrade.
+    const codeless = emptyGrounding();
+    codeless.operations.set('op_9', {
+      operationId: createOperationId(),
+      operationKey: 'op_9',
+      toolName: 'shell',
+      commandText: 'pnpm test',
+      exitCode: undefined,
+      isTestOperation: true,
+    });
+    await expect(
+      convertReportEvidence(
+        request(root),
+        {
+          key: 'c',
+          type: 'command',
+          strength: 'reproduced_failure',
+          description: 'x',
+          operationKey: 'op_9',
+        },
+        context,
+        codeless,
+      ),
+    ).rejects.toThrow(/without observed command outcome/);
+    const weak = await convertReportEvidence(
+      request(root),
+      {
+        key: 'w',
+        type: 'command',
+        strength: 'tool_diagnostic',
+        description: 'x',
+        operationKey: 'op_9',
+      },
+      context,
+      codeless,
+    );
+    expect(weak.type).toBe('manual');
+  });
+
+  it('rejects unknown operation keys', async () => {
+    const root = await workspace();
+    const source = {
+      key: 't',
+      type: 'test',
+      strength: 'tool_diagnostic',
+      description: 'x',
+      operationKey: 'op_99',
+    } as SentryAgentEvidenceV1;
+    await expect(convertEvidence(request(root), source, context, emptyGrounding())).rejects.toThrow(
+      /unknown operation/,
+    );
+  });
+
+  it('contains evidence paths to the workspace including symlink escapes', async () => {
+    const root = await workspace();
+    await expect(validateLocation(root, 'a.ts', context, 2, 2)).resolves.toContain('a.ts');
+    await expect(validateLocation(root, '../outside.ts', context)).rejects.toThrow(/escapes/);
+    await expect(validateLocation(root, 'missing.ts', context)).rejects.toThrow(/does not exist/);
+    await expect(validateLocation(root, 'a.ts', context, 99)).rejects.toThrow(/line range/);
+    const outside = await mkdtemp(join(tmpdir(), 'sentry-pipeline-outside-'));
+    roots.push(outside);
+    await writeFile(join(outside, 'secret.ts'), 'x\n');
+    await symlink(join(outside, 'secret.ts'), join(root, 'link.ts'));
+    await expect(validateLocation(root, 'link.ts', context)).rejects.toThrow(/outside/);
+  });
+
+  it('classifies baseline vs modified provenance from the sidecar', async () => {
+    const root = await workspace();
+    const { createHash } = await import('node:crypto');
+    const { readFile } = await import('node:fs/promises');
+    const bytes = await readFile(join(root, 'a.ts'));
+    const hash = 'sha256:' + createHash('sha256').update(bytes).digest('hex');
+    const req = request(root);
+    const sidecarDir = join(root, '..', '.sentry-workspace');
+    await mkdir(sidecarDir, { recursive: true });
+    roots.push(sidecarDir);
+    await writeFile(
+      join(sidecarDir, 'baseline-hashes.json'),
+      JSON.stringify({
+        schemaVersion: 1,
+        snapshotId: req.workspace.snapshotId,
+        files: { 'a.ts': hash },
+      }),
+    );
+    const index = await buildBaselineIndex(root, req.workspace.snapshotId);
+    expect(index?.fileHashByPath.get('a.ts')).toBe(hash);
+    const source = {
+      key: 'ref',
+      type: 'code_reference',
+      strength: 'strong_code_evidence',
+      description: 'Line.',
+      relativePath: 'a.ts',
+      lineStart: 1,
+      lineEnd: 1,
+    } as SentryAgentEvidenceV1;
+    const evidence = await convertEvidence(req, source, context, {
+      ...emptyGrounding(),
+      baseline: index,
+    });
+    expect(evidence.type).toBe('code_reference');
+    if (evidence.type === 'code_reference') {
+      expect(evidence.codeReference.sourceState).toBe('baseline');
+      expect(evidence.environmentState).toBe('baseline');
+    }
+  });
+
+  it('gates findings through the generic trust policy', async () => {
+    const root = await workspace();
+    const req = request(root);
+    const source = {
+      key: 'ref',
+      type: 'code_reference',
+      strength: 'strong_code_evidence',
+      description: 'Line.',
+      relativePath: 'a.ts',
+      lineStart: 1,
+      lineEnd: 1,
+    } as SentryAgentEvidenceV1;
+    const evidence = await convertEvidence(req, source, context, emptyGrounding());
+    const byKey = new Map([['ref', evidence]]);
+    expect(() =>
+      validateProductionFindings(
+        [{ evidenceKeys: ['ref'], confidence: 'strong' }],
+        byKey,
+        (message) => new PipelineError(message),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      validateProductionFindings(
+        [{ evidenceKeys: ['ref'], confidence: 'confirmed' }],
+        byKey,
+        (message) => new PipelineError(message),
+      ),
+    ).toThrow(PipelineError);
+  });
+
+  it('classifies only missing-grounding failures as operation-repairable', () => {
+    // DeepSeek run_01M617HK8WXK434SZ4H3RY23K3: a strong finding cited only
+    // downgraded manual evidence. Re-running the one missing operation can
+    // ground it; the whole investigation must not restart.
+    expect(
+      isGroundingRepairableError(['Strong findings require grounded source/tool evidence']),
+    ).toBe(true);
+    expect(
+      isGroundingRepairableError([
+        'Confirmed findings require reproduced or directly correlated operation evidence; manual/model reasoning alone is insufficient',
+      ]),
+    ).toBe(true);
+    expect(
+      isGroundingRepairableError([
+        'Reproduced command evidence cites an operation whose exit code was not observed.',
+      ]),
+    ).toBe(true);
+    expect(
+      isGroundingRepairableError([
+        'Reproduced command evidence cites an operation without observed command outcome.',
+      ]),
+    ).toBe(true);
+    // Fabrication/misrepresentation is never repaired by another operation:
+    // the claim itself is false, so the finding must be corrected or dropped.
+    expect(
+      isGroundingRepairableError([
+        'Command evidence operation does not match the claimed exit code.',
+      ]),
+    ).toBe(false);
+    expect(isGroundingRepairableError(['Finding references unknown evidence: ev_x'])).toBe(false);
+    expect(isGroundingRepairableError(['findings.0.title: Required'])).toBe(false);
+  });
+
+  it('builds a repair prompt scoped to the missing operation only', () => {
+    const prompt = buildGroundingRepairPrompt(
+      ['Strong findings require grounded source/tool evidence'],
+      new Map(),
+    );
+    expect(prompt).toContain('GROUNDING REPAIR');
+    expect(prompt).toContain('ONLY the operation needed');
+    expect(prompt).toContain('Do not start new lines of investigation');
+    expect(prompt).toContain('host must observe');
+    expect(prompt).toContain('ONE single non-compound command');
+    expect(prompt).toContain('Strong findings require grounded source/tool evidence');
+  });
+
+  it('downgrades ungrounded confidence instead of discarding the finding', async () => {
+    const root = await workspace();
+    const req = request(root);
+    const source = {
+      key: 'ref',
+      type: 'code_reference',
+      strength: 'strong_code_evidence',
+      description: 'Line.',
+      relativePath: 'a.ts',
+      lineStart: 1,
+      lineEnd: 1,
+    } as SentryAgentEvidenceV1;
+    const codeEvidence = await convertEvidence(req, source, context, emptyGrounding());
+    const manualEvidence = {
+      ...codeEvidence,
+      id: 'ev_manual000000000000000000000',
+      type: 'manual',
+      strength: 'agent_reasoning',
+      groundingOperationIds: [],
+    } as typeof codeEvidence;
+    // Confirmed with only source evidence -> strong (never reproduced).
+    const confirmed = downgradeUngroundedFindings(
+      [{ evidenceKeys: ['ref'], confidence: 'confirmed' as const, title: 'A' }],
+      new Map([['ref', codeEvidence]]),
+    );
+    expect(confirmed.findings[0]?.confidence).toBe('strong');
+    expect(confirmed.repairs).toHaveLength(1);
+    // Strong with only manual reasoning -> probable, finding preserved.
+    const strong = downgradeUngroundedFindings(
+      [{ evidenceKeys: ['man'], confidence: 'strong' as const, title: 'B' }],
+      new Map([['man', manualEvidence]]),
+    );
+    expect(strong.findings[0]?.confidence).toBe('probable');
+    expect(strong.findings[0]?.title).toBe('B');
+    // No evidence at all is NOT repaired: validation must still reject it.
+    const empty = downgradeUngroundedFindings(
+      [{ evidenceKeys: [], confidence: 'strong' as const, title: 'C' }],
+      new Map(),
+    );
+    expect(empty.findings[0]?.confidence).toBe('strong');
+    expect(empty.repairs).toHaveLength(0);
+    // Already-grounded findings are untouched.
+    const ok = downgradeUngroundedFindings(
+      [{ evidenceKeys: ['ref'], confidence: 'strong' as const, title: 'D' }],
+      new Map([['ref', codeEvidence]]),
+    );
+    expect(ok.findings[0]?.confidence).toBe('strong');
+    expect(ok.repairs).toHaveLength(0);
+  });
+
+  it('parses whole JSON and summarizes schema issues without values', () => {
+    expect(parseWholeJson('{"a":1}', 'planning', context)).toEqual({ a: 1 });
+    expect(() => parseWholeJson('{"a":', 'planning', context)).toThrow(/complete JSON/);
+    const summary = summarizeSchemaIssues({
+      issues: [{ path: ['evidence', 0, 'type'], message: 'bad' }],
+    });
+    expect(summary).toContain('evidence.0.type');
+    expect(summary).not.toContain('sentry-test-secret');
+  });
+
+  it('never teaches a strength value the evidence schema rejects', () => {
+    // Live regression (run_01M320451PT5WGWZ7M32F64JHV): the matrix named
+    // 'weak'/'speculative', which are not in EVIDENCE_STRENGTHS, so a model
+    // that obeyed the correction failed enum validation on retry. Every
+    // quoted strength-like token in the matrix must be a real enum value.
+    const quoted = [...REPORT_STRENGTH_COMPATIBILITY.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    const strengths = quoted.filter((token) =>
+      /^(reproduced|tool|strong|agent|weak|speculative)/.test(token ?? ''),
+    );
+    expect(strengths.length).toBeGreaterThan(0);
+    for (const token of strengths) {
+      expect(
+        [
+          'reproduced_failure',
+          'reproduced_behavior',
+          'tool_diagnostic',
+          'strong_code_evidence',
+          'agent_reasoning',
+        ].includes(token ?? ''),
+        'matrix teaches unknown strength: ' + token,
+      ).toBe(true);
+    }
+  });
+
+  it('teaches the matrix for confidence rejections and warns about interacting fixes', () => {
+    // Live regression (run_01M3FSEE1VGJSP00BJEGQM2WDB): attempt 1 failed on
+    // evidence strength; the retry downgraded to agent_reasoning, which
+    // ungrounded a strong finding that then failed attempt 2 with no
+    // attempts left. The correction must teach atomic strength+confidence
+    // repair, including when the rejection itself is confidence-only.
+    const confidenceErrors = [
+      'findings.4.confidence: strong findings require at least one grounded evidence item',
+    ];
+    const withAtomicity = buildReportCorrectionIntro(confidenceErrors);
+    expect(withAtomicity).toContain(REPORT_STRENGTH_COMPATIBILITY.slice(0, 60));
+    expect(withAtomicity).toContain('fix them together in this one correction');
+    expect(withAtomicity).toContain('downgrade the confidence');
+    const strengthErrors = [
+      'evidence.9.strength: Strength strong_code_evidence is impossible for manual evidence',
+    ];
+    expect(buildReportCorrectionIntro(strengthErrors)).toContain(
+      'fix them together in this one correction',
+    );
+    const unrelated = buildReportCorrectionIntro(['findings.0.locations: Unknown evidence key']);
+    expect(unrelated).not.toContain(REPORT_STRENGTH_COMPATIBILITY.slice(0, 60));
+    expect(unrelated).not.toContain('fix them together in this one correction');
+  });
+
+  it('quotes only valid enum strengths in the atomicity guidance', () => {
+    // Same guard as the matrix itself: correction text must never teach a
+    // strength token the evidence schema rejects.
+    const quoted = [...REPORT_STRENGTH_CONFIDENCE_ATOMICITY.matchAll(/'([a-z_]+)'/g)].map(
+      (m) => m[1],
+    );
+    const strengths = quoted.filter((token) =>
+      /^(reproduced|tool|strong|agent|weak|speculative)/.test(token ?? ''),
+    );
+    expect(strengths.length).toBeGreaterThan(0);
+    for (const token of strengths) {
+      expect(
+        [
+          'reproduced_failure',
+          'reproduced_behavior',
+          'tool_diagnostic',
+          'strong_code_evidence',
+          'agent_reasoning',
+        ].includes(token ?? ''),
+        'atomicity guidance teaches unknown strength: ' + token,
+      ).toBe(true);
+    }
+  });
+
+  it('appends the strength compatibility matrix only for strength rejections', () => {
+    const strengthErrors = [
+      'evidence.14.strength: Strength tool_diagnostic is impossible for manual evidence',
+    ];
+    const withMatrix = buildReportCorrectionIntro(strengthErrors);
+    expect(withMatrix).toContain('Correct these report issues');
+    expect(withMatrix).toContain(REPORT_STRENGTH_COMPATIBILITY.slice(0, 60));
+    expect(withMatrix).toContain('downgrade the strength');
+    const otherErrors = ['findings.0.locations: Unknown evidence key'];
+    const withoutMatrix = buildReportCorrectionIntro(otherErrors);
+    expect(withoutMatrix).toContain('Correct these report issues');
+    expect(withoutMatrix).not.toContain(REPORT_STRENGTH_COMPATIBILITY.slice(0, 60));
+  });
+});
+
+describe('planning preamble tolerance', () => {
+  it('accepts a short sentence before one complete planning object, never for reports', () => {
+    const ctx = {
+      redactStructured: (value: unknown) => value,
+      redactDiagnostic: (value: string) => value,
+      errors: { invalidResult: (message: string) => new Error(message) },
+    } as never;
+    expect(parseWholeJson('Planning the sweep now.\n{"a":1}', 'planning', ctx)).toEqual({ a: 1 });
+    expect(() => parseWholeJson('Planning the sweep now.\n{"a":1}', 'reporting', ctx)).toThrow(
+      /complete JSON/,
+    );
+    expect(() => parseWholeJson('Planning now.\n{"a":', 'planning', ctx)).toThrow(/complete JSON/);
+  });
+});
