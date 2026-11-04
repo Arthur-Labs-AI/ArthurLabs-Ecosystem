@@ -1,0 +1,224 @@
+{
+ "frozen_at": "2026-10-08T16:55:01.126Z",
+ "corpus_sha256": "6a548ee51af52f2b1b656aef753b78b37d44f1155c0faf53b1caa6566eb83819",
+ "objective": "On dev, undisputed cases, first request per case: choose the threshold with the highest sensitivity on reframing=true cases subject to a false-alarm rate <= 20% on correct-target REVISE cases; ties -> higher threshold (more recall). Declared before any data was seen.",
+ "gate_thresholds_inherited_unchanged_from_p1a": {
+  "noul": {
+   "revise": 0.95,
+   "gap": 0.5,
+   "ambig": 0.4,
+   "new": 0.2
+  },
+  "choice": {
+   "revise": 0.99,
+   "margin": 0.8,
+   "new": 0.7
+  },
+  "hybrid": "REVISE only if Noul and Choice both REVISE with the same target; NEW only if both NEW; otherwise UNCERTAIN"
+ },
+ "project_boundary": "a REVISE whose target candidate is in a different Project than the capture becomes NEW",
+ "guard": {
+  "noul_redef_block_at_or_above": 0.8,
+  "choice_kind_reframing_block_at_or_above": 0.95
+ },
+ "dev_guard_fit": {
+  "n_reframing": 11,
+  "n_correct_revise": 22,
+  "auc_noul_redef": 1,
+  "auc_choice_reframing": 1,
+  "noul_rows": [
+   {
+    "t": 0.05,
+    "sens": 1,
+    "fpr": 0.9545454545454546
+   },
+   {
+    "t": 0.1,
+    "sens": 1,
+    "fpr": 0.3181818181818182
+   },
+   {
+    "t": 0.15,
+    "sens": 1,
+    "fpr": 0.18181818181818182
+   },
+   {
+    "t": 0.2,
+    "sens": 1,
+    "fpr": 0.045454545454545456
+   },
+   {
+    "t": 0.25,
+    "sens": 1,
+    "fpr": 0.045454545454545456
+   },
+   {
+    "t": 0.3,
+    "sens": 1,
+    "fpr": 0.045454545454545456
+   },
+   {
+    "t": 0.35,
+    "sens": 1,
+    "fpr": 0.045454545454545456
+   },
+   {
+    "t": 0.4,
+    "sens": 1,
+    "fpr": 0.045454545454545456
+   },
+   {
+    "t": 0.45,
+    "sens": 1,
+    "fpr": 0.045454545454545456
+   },
+   {
+    "t": 0.5,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.55,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.6,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.65,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.7,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.75,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.8,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.85,
+    "sens": 0.9090909090909091,
+    "fpr": 0
+   },
+   {
+    "t": 0.9,
+    "sens": 0.5454545454545454,
+    "fpr": 0
+   },
+   {
+    "t": 0.95,
+    "sens": 0.09090909090909091,
+    "fpr": 0
+   }
+  ],
+  "choice_rows": [
+   {
+    "t": 0.05,
+    "sens": 1,
+    "fpr": 0.09090909090909091
+   },
+   {
+    "t": 0.1,
+    "sens": 1,
+    "fpr": 0.09090909090909091
+   },
+   {
+    "t": 0.15,
+    "sens": 1,
+    "fpr": 0.09090909090909091
+   },
+   {
+    "t": 0.2,
+    "sens": 1,
+    "fpr": 0.09090909090909091
+   },
+   {
+    "t": 0.25,
+    "sens": 1,
+    "fpr": 0.045454545454545456
+   },
+   {
+    "t": 0.3,
+    "sens": 1,
+    "fpr": 0.045454545454545456
+   },
+   {
+    "t": 0.35,
+    "sens": 1,
+    "fpr": 0.045454545454545456
+   },
+   {
+    "t": 0.4,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.45,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.5,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.55,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.6,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.65,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.7,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.75,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.8,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.85,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.9,
+    "sens": 1,
+    "fpr": 0
+   },
+   {
+    "t": 0.95,
+    "sens": 1,
+    "fpr": 0
+   }
+  ]
+ }
+}

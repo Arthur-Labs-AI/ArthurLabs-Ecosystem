@@ -1,0 +1,6438 @@
+{
+ "meta": {
+  "config": "baseline",
+  "split": "dev",
+  "reps": 1,
+  "tag": "baseline-dev",
+  "corpus_sha256": "7b86c37f3ed441690564f48e3e1dac0e194f559dd4a19272a3665c81a35ebecb",
+  "prompt_hashes": {
+   "stageA_focus": "f1c299cefcf80b7e",
+   "stageB": "ec98a027d754a857",
+   "rubric": "6b531cb0f60e1dad",
+   "sources": {
+    "prompt.rs": "6a05d8c6a63dc2b8",
+    "verify_prompt.rs": "14138ab501485620",
+    "semantics.rs": "7257e12aef87dffc"
+   }
+  },
+  "models": {
+   "stageA": {
+    "model": "gpt-4.1-mini",
+    "sampling": {
+     "temperature": 0
+    }
+   },
+   "stageB": {
+    "model": "gpt-5-mini",
+    "sampling": {
+     "reasoning_effort": "low"
+    }
+   }
+  },
+  "at": "2026-10-08T17:22:14.795Z",
+  "cost_usd": 0.25894249999999996
+ },
+ "records": [
+  {
+   "id": "G001",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2657,
+      "completion": 167,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2994,
+      "completion": 600,
+      "reasoning": 448
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2994,
+      "completion": 474,
+      "reasoning": 256
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 2188,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 6250,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4641,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 2,
+    "verified": 2,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "7e7b66a6-b309-4290-8d96-a350410a0e9c",
+      "target": "00bacaea-24d1-426d-8cd2-c5250ec4ac75"
+     },
+     {
+      "kind": "depends_on",
+      "source": "7e7b66a6-b309-4290-8d96-a350410a0e9c",
+      "target": "6f1cbf6f-99bf-413b-8349-eccc0cef3f42"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2657,
+     "completion": 167,
+     "reasoning": 0,
+     "latency_ms": 2188,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2994,
+     "completion": 600,
+     "reasoning": 448,
+     "latency_ms": 6250,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2994,
+     "completion": 474,
+     "reasoning": 256,
+     "latency_ms": 4641,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 13101
+  },
+  {
+   "id": "G004",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2618,
+      "completion": 86,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2848,
+      "completion": 214,
+      "reasoning": 128
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2848,
+      "completion": 278,
+      "reasoning": 192
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1553,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3389,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3394,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "97f2471b-2522-441a-8368-64d947a0be38",
+      "target": "db8e87b1-b0d8-4683-8d8c-27263c32e018"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2618,
+     "completion": 86,
+     "reasoning": 0,
+     "latency_ms": 1553,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2848,
+     "completion": 214,
+     "reasoning": 128,
+     "latency_ms": 3389,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2848,
+     "completion": 278,
+     "reasoning": 192,
+     "latency_ms": 3394,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 8353
+  },
+  {
+   "id": "G005",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2606,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 851,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2606,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 851,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 857
+  },
+  {
+   "id": "G006",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2609,
+      "completion": 82,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2842,
+      "completion": 150,
+      "reasoning": 64
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2842,
+      "completion": 316,
+      "reasoning": 192
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1098,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2954,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3519,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "452bcf77-0a51-4717-8c81-4b09a0c7e8d2",
+      "target": "b257a109-1320-40e3-827d-145bbacab67d"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2609,
+     "completion": 82,
+     "reasoning": 0,
+     "latency_ms": 1098,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2842,
+     "completion": 150,
+     "reasoning": 64,
+     "latency_ms": 2954,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2842,
+     "completion": 316,
+     "reasoning": 192,
+     "latency_ms": 3519,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 7579
+  },
+  {
+   "id": "G007",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "depends_on",
+     "source": "A",
+     "target": "F"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2598,
+      "completion": 84,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2835,
+      "completion": 186,
+      "reasoning": 64
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2835,
+      "completion": 278,
+      "reasoning": 192
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1370,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2570,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3080,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "0d8f31e4-2bfd-41c1-8b2f-a4b090d42a55",
+      "target": "434ae996-8871-4502-8e63-c39167a35f88"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2598,
+     "completion": 84,
+     "reasoning": 0,
+     "latency_ms": 1370,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2835,
+     "completion": 186,
+     "reasoning": 64,
+     "latency_ms": 2570,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2835,
+     "completion": 278,
+     "reasoning": 192,
+     "latency_ms": 3080,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 7028
+  },
+  {
+   "id": "G013",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2617,
+      "completion": 91,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2849,
+      "completion": 213,
+      "reasoning": 128
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2849,
+      "completion": 343,
+      "reasoning": 256
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1128,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2628,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3862,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "extends",
+      "source": "66bc8acb-771c-483c-82af-af9e6ef2c1ba",
+      "target": "85fad891-59e8-4c0f-8aca-a9ee84714e7a"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2617,
+     "completion": 91,
+     "reasoning": 0,
+     "latency_ms": 1128,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2849,
+     "completion": 213,
+     "reasoning": 128,
+     "latency_ms": 2628,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2849,
+     "completion": 343,
+     "reasoning": 256,
+     "latency_ms": 3862,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 7628
+  },
+  {
+   "id": "G015",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "extends",
+     "source": "A",
+     "target": "F"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2603,
+      "completion": 91,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2845,
+      "completion": 441,
+      "reasoning": 320
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2845,
+      "completion": 469,
+      "reasoning": 384
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1395,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4620,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4262,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "extends",
+      "source": "ed636c5f-b3d0-4fdb-8ed1-8a2682a5e26d",
+      "target": "a499015b-f27a-41aa-8ba4-0d45b235dd6e"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2603,
+     "completion": 91,
+     "reasoning": 0,
+     "latency_ms": 1395,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2845,
+     "completion": 441,
+     "reasoning": 320,
+     "latency_ms": 4620,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2845,
+     "completion": 469,
+     "reasoning": 384,
+     "latency_ms": 4262,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 10286
+  },
+  {
+   "id": "G016",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2643,
+      "completion": 87,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2868,
+      "completion": 213,
+      "reasoning": 128
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2868,
+      "completion": 279,
+      "reasoning": 192
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1203,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2485,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2850,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "extends",
+      "source": "3e80f219-6026-4183-80b2-0ee2010187cb",
+      "target": "4b4d60ee-445e-4a32-81c3-85e7a275200c"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2643,
+     "completion": 87,
+     "reasoning": 0,
+     "latency_ms": 1203,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2868,
+     "completion": 213,
+     "reasoning": 128,
+     "latency_ms": 2485,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2868,
+     "completion": 279,
+     "reasoning": 192,
+     "latency_ms": 2850,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 6549
+  },
+  {
+   "id": "G018",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "extends",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2613,
+      "completion": 87,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2846,
+      "completion": 441,
+      "reasoning": 320
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2846,
+      "completion": 149,
+      "reasoning": 64
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1139,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4221,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2146,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "extends",
+      "source": "59d3d819-30d4-4a70-8adc-ad03cad6635e",
+      "target": "40aef91e-2e1d-4ed1-841e-a5b56ad5e4bd"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2613,
+     "completion": 87,
+     "reasoning": 0,
+     "latency_ms": 1139,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2846,
+     "completion": 441,
+     "reasoning": 320,
+     "latency_ms": 4221,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2846,
+     "completion": 149,
+     "reasoning": 64,
+     "latency_ms": 2146,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 7515
+  },
+  {
+   "id": "G019",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2613,
+      "completion": 94,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2846,
+      "completion": 406,
+      "reasoning": 320
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2846,
+      "completion": 662,
+      "reasoning": 576
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1253,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3694,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 5659,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "derived_from",
+      "source": "4a1cab99-ada5-4dd6-848f-75db475af90b",
+      "target": "8b59e03d-1f82-488b-89d7-4eac2eb9bcd5"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2613,
+     "completion": 94,
+     "reasoning": 0,
+     "latency_ms": 1253,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2846,
+     "completion": 406,
+     "reasoning": 320,
+     "latency_ms": 3694,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2846,
+     "completion": 662,
+     "reasoning": 576,
+     "latency_ms": 5659,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 10616
+  },
+  {
+   "id": "G020",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2604,
+      "completion": 89,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2843,
+      "completion": 508,
+      "reasoning": 384
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2843,
+      "completion": 444,
+      "reasoning": 320
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1126,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4607,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4582,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "ca513304-d553-482a-80a3-f0e3f4d98dff",
+      "target": "16a9fde3-e31f-4a28-8b07-1db12c97235d"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2604,
+     "completion": 89,
+     "reasoning": 0,
+     "latency_ms": 1126,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2843,
+     "completion": 508,
+     "reasoning": 384,
+     "latency_ms": 4607,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2843,
+     "completion": 444,
+     "reasoning": 320,
+     "latency_ms": 4582,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 10322
+  },
+  {
+   "id": "G022",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "derived_from",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2623,
+      "completion": 85,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2857,
+      "completion": 380,
+      "reasoning": 256
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2857,
+      "completion": 344,
+      "reasoning": 256
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1700,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3520,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3395,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "a09018db-7695-405f-88d4-5dec092a2e36",
+      "target": "3541c8da-e1c3-4b2a-8b59-930fc5564396"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2623,
+     "completion": 85,
+     "reasoning": 0,
+     "latency_ms": 1700,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2857,
+     "completion": 380,
+     "reasoning": 256,
+     "latency_ms": 3520,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2857,
+     "completion": 344,
+     "reasoning": 256,
+     "latency_ms": 3395,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 8646
+  },
+  {
+   "id": "G025",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2594,
+      "completion": 91,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2834,
+      "completion": 536,
+      "reasoning": 448
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2834,
+      "completion": 406,
+      "reasoning": 320
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1166,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4719,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3807,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "derived_from",
+      "source": "35184f63-e3c3-4bdb-8539-11543e0989b2",
+      "target": "0300706a-1c20-43d2-841b-a0e02b740a84"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2594,
+     "completion": 91,
+     "reasoning": 0,
+     "latency_ms": 1166,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2834,
+     "completion": 536,
+     "reasoning": 448,
+     "latency_ms": 4719,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2834,
+     "completion": 406,
+     "reasoning": 320,
+     "latency_ms": 3807,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 9703
+  },
+  {
+   "id": "G028",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "supersedes",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2594,
+      "completion": 83,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2837,
+      "completion": 543,
+      "reasoning": 448
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2837,
+      "completion": 279,
+      "reasoning": 192
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1103,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 5011,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2969,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "supersedes",
+      "source": "beb2c361-c957-472d-8efc-d633fe7e3929",
+      "target": "827e87de-74fc-41a7-86a0-ad48931fe998"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2594,
+     "completion": 83,
+     "reasoning": 0,
+     "latency_ms": 1103,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2837,
+     "completion": 543,
+     "reasoning": 448,
+     "latency_ms": 5011,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2837,
+     "completion": 279,
+     "reasoning": 192,
+     "latency_ms": 2969,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 9095
+  },
+  {
+   "id": "G030",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2623,
+      "completion": 92,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2851,
+      "completion": 452,
+      "reasoning": 320
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2851,
+      "completion": 537,
+      "reasoning": 448
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1146,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4491,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4790,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "supersedes",
+      "source": "33c55fc6-89f7-46db-82fb-a23bd7e19f5f",
+      "target": "37062867-fd9c-4570-8ca3-379646e0b1c6"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2623,
+     "completion": 92,
+     "reasoning": 0,
+     "latency_ms": 1146,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2851,
+     "completion": 452,
+     "reasoning": 320,
+     "latency_ms": 4491,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2851,
+     "completion": 537,
+     "reasoning": 448,
+     "latency_ms": 4790,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 10435
+  },
+  {
+   "id": "G032",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2637,
+      "completion": 86,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2873,
+      "completion": 431,
+      "reasoning": 320
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2873,
+      "completion": 317,
+      "reasoning": 192
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1133,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4639,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3552,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "supersedes",
+      "source": "78c81eca-e98d-43a0-851e-1c446d68f819",
+      "target": "e18d3614-6c25-45c6-8322-0614602a49dc"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2637,
+     "completion": 86,
+     "reasoning": 0,
+     "latency_ms": 1133,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2873,
+     "completion": 431,
+     "reasoning": 320,
+     "latency_ms": 4639,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2873,
+     "completion": 317,
+     "reasoning": 192,
+     "latency_ms": 3552,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 9333
+  },
+  {
+   "id": "G034",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "supersedes",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2608,
+      "completion": 93,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2847,
+      "completion": 481,
+      "reasoning": 384
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2847,
+      "completion": 522,
+      "reasoning": 384
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1205,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4459,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 5061,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "contradicts",
+      "source": "2733f7d4-1b8c-4ee6-8fb8-26a50ea87447",
+      "target": "27d87987-b40e-4490-8872-57eeaf825bc4"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2608,
+     "completion": 93,
+     "reasoning": 0,
+     "latency_ms": 1205,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2847,
+     "completion": 481,
+     "reasoning": 384,
+     "latency_ms": 4459,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2847,
+     "completion": 522,
+     "reasoning": 384,
+     "latency_ms": 5061,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 10734
+  },
+  {
+   "id": "G037",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "contradicts",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2605,
+      "completion": 150,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2994,
+      "completion": 667,
+      "reasoning": 448
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2994,
+      "completion": 473,
+      "reasoning": 320
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1484,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 6394,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4864,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 2,
+    "verified": 2,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "contradicts",
+      "source": "998ef775-f8b4-4e29-8761-009552dde282",
+      "target": "ba000454-8536-4aa6-809b-cd124f295101"
+     },
+     {
+      "kind": "depends_on",
+      "source": "998ef775-f8b4-4e29-8761-009552dde282",
+      "target": "4c875250-7294-4fab-8eef-5c0d0150e78b"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2605,
+     "completion": 150,
+     "reasoning": 0,
+     "latency_ms": 1484,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2994,
+     "completion": 667,
+     "reasoning": 448,
+     "latency_ms": 6394,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2994,
+     "completion": 473,
+     "reasoning": 320,
+     "latency_ms": 4864,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 12754
+  },
+  {
+   "id": "G038",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2610,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 609,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2610,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 609,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 622
+  },
+  {
+   "id": "G040",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2599,
+      "completion": 171,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2983,
+      "completion": 731,
+      "reasoning": 576
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2983,
+      "completion": 539,
+      "reasoning": 320
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1913,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 5199,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 6266,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 2,
+    "verified": 2,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "546f36ee-5c2d-4149-83cc-3c68497b6120",
+      "target": "c74c1e2c-f275-4e0c-8212-7fd495b4edfa"
+     },
+     {
+      "kind": "contradicts",
+      "source": "216224f1-5750-4198-84d3-49f16f393149",
+      "target": "c74c1e2c-f275-4e0c-8212-7fd495b4edfa"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2599,
+     "completion": 171,
+     "reasoning": 0,
+     "latency_ms": 1913,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2983,
+     "completion": 731,
+     "reasoning": 576,
+     "latency_ms": 5199,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2983,
+     "completion": 539,
+     "reasoning": 320,
+     "latency_ms": 6266,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 13391
+  },
+  {
+   "id": "G042",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "contradicts",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2605,
+      "completion": 173,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2990,
+      "completion": 731,
+      "reasoning": 512
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2990,
+      "completion": 407,
+      "reasoning": 256
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1915,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 7336,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4950,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 2,
+    "verified": 2,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "contradicts",
+      "source": "25b44bcf-4420-480b-8939-d75b5d64488a",
+      "target": "27f78091-c0f8-448a-8edd-f7e1b7ee0fda"
+     },
+     {
+      "kind": "depends_on",
+      "source": "25b44bcf-4420-480b-8939-d75b5d64488a",
+      "target": "24c6aecd-f8db-4de8-8709-7ed38396a050"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2605,
+     "completion": 173,
+     "reasoning": 0,
+     "latency_ms": 1915,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2990,
+     "completion": 731,
+     "reasoning": 512,
+     "latency_ms": 7336,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2990,
+     "completion": 407,
+     "reasoning": 256,
+     "latency_ms": 4950,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 14214
+  },
+  {
+   "id": "G043",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "duplicates",
+     "source": "A",
+     "target": "F"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2604,
+      "completion": 87,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2844,
+      "completion": 149,
+      "reasoning": 64
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2844,
+      "completion": 149,
+      "reasoning": 64
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1195,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2240,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2592,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "duplicates",
+      "source": "108d0950-dace-425e-82e2-12291573b8a0",
+      "target": "1d448e8c-eef9-454f-8eb8-46348138c2ac"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2604,
+     "completion": 87,
+     "reasoning": 0,
+     "latency_ms": 1195,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2844,
+     "completion": 149,
+     "reasoning": 64,
+     "latency_ms": 2240,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2844,
+     "completion": 149,
+     "reasoning": 64,
+     "latency_ms": 2592,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 6037
+  },
+  {
+   "id": "G045",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2615,
+      "completion": 163,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2998,
+      "completion": 663,
+      "reasoning": 512
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2998,
+      "completion": 539,
+      "reasoning": 320
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1768,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 5668,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 5350,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 2,
+    "verified": 2,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "extends",
+      "source": "33813c96-0503-41a2-800f-ad9f8c40426b",
+      "target": "89ac0f70-f7c1-4a55-8c67-44085fdc38a2"
+     },
+     {
+      "kind": "depends_on",
+      "source": "eafb0102-1065-4a93-8113-0cc26af51bf2",
+      "target": "89ac0f70-f7c1-4a55-8c67-44085fdc38a2"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2615,
+     "completion": 163,
+     "reasoning": 0,
+     "latency_ms": 1768,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2998,
+     "completion": 663,
+     "reasoning": 512,
+     "latency_ms": 5668,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2998,
+     "completion": 539,
+     "reasoning": 320,
+     "latency_ms": 5350,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 12789
+  },
+  {
+   "id": "G047",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2597,
+      "completion": 89,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2837,
+      "completion": 378,
+      "reasoning": 256
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2837,
+      "completion": 215,
+      "reasoning": 128
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1207,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4770,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2735,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "related_to",
+      "source": "02356960-8f54-4c20-86d2-aceb83cf94b1",
+      "target": "74629625-ff24-4a31-8284-90a28fd0520f"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2597,
+     "completion": 89,
+     "reasoning": 0,
+     "latency_ms": 1207,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2837,
+     "completion": 378,
+     "reasoning": 256,
+     "latency_ms": 4770,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2837,
+     "completion": 215,
+     "reasoning": 128,
+     "latency_ms": 2735,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 8723
+  },
+  {
+   "id": "G050",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "duplicates",
+     "source": "A",
+     "target": "F"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2603,
+      "completion": 88,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2840,
+      "completion": 185,
+      "reasoning": 64
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2840,
+      "completion": 149,
+      "reasoning": 64
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1248,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2652,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2251,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "duplicates",
+      "source": "985e70e8-8b3b-4593-8c06-37ec137af0bf",
+      "target": "b0d267a4-0509-4d28-8070-dda4d098236d"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2603,
+     "completion": 88,
+     "reasoning": 0,
+     "latency_ms": 1248,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2840,
+     "completion": 185,
+     "reasoning": 64,
+     "latency_ms": 2652,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2840,
+     "completion": 149,
+     "reasoning": 64,
+     "latency_ms": 2251,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 6154
+  },
+  {
+   "id": "G051",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2599,
+      "completion": 91,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2839,
+      "completion": 471,
+      "reasoning": 384
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2839,
+      "completion": 278,
+      "reasoning": 192
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1428,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4776,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2743,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "b9c2e1e2-cb96-457e-8676-3cf6edd39a98",
+      "target": "591689e3-67c0-4c05-89d7-aedf58d3d97b"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2599,
+     "completion": 91,
+     "reasoning": 0,
+     "latency_ms": 1428,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2839,
+     "completion": 471,
+     "reasoning": 384,
+     "latency_ms": 4776,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2839,
+     "completion": 278,
+     "reasoning": 192,
+     "latency_ms": 2743,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 8963
+  },
+  {
+   "id": "G054",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2590,
+      "completion": 92,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2832,
+      "completion": 406,
+      "reasoning": 320
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2832,
+      "completion": 378,
+      "reasoning": 256
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1395,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4241,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4089,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "d984fc69-13f3-4338-8187-cb2426147d88",
+      "target": "9caba315-6f10-4943-81c6-abab065f9a3b"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2590,
+     "completion": 92,
+     "reasoning": 0,
+     "latency_ms": 1395,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2832,
+     "completion": 406,
+     "reasoning": 320,
+     "latency_ms": 4241,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2832,
+     "completion": 378,
+     "reasoning": 256,
+     "latency_ms": 4089,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 9734
+  },
+  {
+   "id": "G055",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2586,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 610,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2586,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 610,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 618
+  },
+  {
+   "id": "G057",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2588,
+      "completion": 77,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2830,
+      "completion": 250,
+      "reasoning": 128
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2830,
+      "completion": 250,
+      "reasoning": 128
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1060,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3029,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3042,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "related_to",
+      "source": "7dab210c-dcc7-4340-85fd-a81c0904da62",
+      "target": "99e91019-3022-441a-8391-d83cd064e068"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2588,
+     "completion": 77,
+     "reasoning": 0,
+     "latency_ms": 1060,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2830,
+     "completion": 250,
+     "reasoning": 128,
+     "latency_ms": 3029,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2830,
+     "completion": 250,
+     "reasoning": 128,
+     "latency_ms": 3042,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 7161
+  },
+  {
+   "id": "G060",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2603,
+      "completion": 94,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2836,
+      "completion": 342,
+      "reasoning": 256
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2836,
+      "completion": 214,
+      "reasoning": 128
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1220,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3518,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2789,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "related_to",
+      "source": "50328a28-3ed9-4d59-82a8-f61aae7b7665",
+      "target": "6484a9bc-09e6-40e1-87d1-7accb4340d4f"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2603,
+     "completion": 94,
+     "reasoning": 0,
+     "latency_ms": 1220,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2836,
+     "completion": 342,
+     "reasoning": 256,
+     "latency_ms": 3518,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2836,
+     "completion": 214,
+     "reasoning": 128,
+     "latency_ms": 2789,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 7544
+  },
+  {
+   "id": "G062",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2546,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 653,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2546,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 653,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 659
+  },
+  {
+   "id": "G063",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2590,
+      "completion": 91,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2830,
+      "completion": 380,
+      "reasoning": 256
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2830,
+      "completion": 378,
+      "reasoning": 256
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1396,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3760,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3885,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "derived_from",
+      "source": "8b08bf2a-1a50-4667-833e-e30e5cf72331",
+      "target": "39a9d01a-d0bd-43d5-8519-34c0bf9cddda"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2590,
+     "completion": 91,
+     "reasoning": 0,
+     "latency_ms": 1396,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2830,
+     "completion": 380,
+     "reasoning": 256,
+     "latency_ms": 3760,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2830,
+     "completion": 378,
+     "reasoning": 256,
+     "latency_ms": 3885,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 9047
+  },
+  {
+   "id": "G066",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2551,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 598,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2551,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 598,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 599
+  },
+  {
+   "id": "G067",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2554,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 629,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2554,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 629,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 638
+  },
+  {
+   "id": "G069",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2560,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 637,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2560,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 637,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 639
+  },
+  {
+   "id": "G072",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2601,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 628,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2601,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 628,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 637
+  },
+  {
+   "id": "G074",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2553,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 686,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2553,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 686,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 687
+  },
+  {
+   "id": "G076",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "related_to",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2542,
+      "completion": 81,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2826,
+      "completion": 278,
+      "reasoning": 192
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2826,
+      "completion": 278,
+      "reasoning": 192
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1164,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2687,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3117,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "related_to",
+      "source": "4753bfd4-aefa-4b81-87cf-0e739dd106d7",
+      "target": "7585812a-f904-42d7-8ad8-a201d10a2e38"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2542,
+     "completion": 81,
+     "reasoning": 0,
+     "latency_ms": 1164,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2826,
+     "completion": 278,
+     "reasoning": 192,
+     "latency_ms": 2687,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2826,
+     "completion": 278,
+     "reasoning": 192,
+     "latency_ms": 3117,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 6977
+  },
+  {
+   "id": "G078",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2597,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 661,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2597,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 661,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 662
+  },
+  {
+   "id": "G079",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2591,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 620,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2591,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 620,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 628
+  },
+  {
+   "id": "G080",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2589,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 673,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2589,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 673,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 678
+  },
+  {
+   "id": "G083",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2595,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 948,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2595,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 948,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 980
+  },
+  {
+   "id": "G085",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "supersedes",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2604,
+      "completion": 85,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2847,
+      "completion": 583,
+      "reasoning": 448
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2847,
+      "completion": 291,
+      "reasoning": 192
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1344,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 5340,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3109,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "supersedes",
+      "source": "510acfe5-384b-4606-805e-550e6e2e33af",
+      "target": "31e323e1-91d1-4d7b-8f31-73df035c89db"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2604,
+     "completion": 85,
+     "reasoning": 0,
+     "latency_ms": 1344,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2847,
+     "completion": 583,
+     "reasoning": 448,
+     "latency_ms": 5340,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2847,
+     "completion": 291,
+     "reasoning": 192,
+     "latency_ms": 3109,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 9838
+  },
+  {
+   "id": "G086",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "supersedes",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2608,
+      "completion": 90,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2845,
+      "completion": 288,
+      "reasoning": 192
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2845,
+      "completion": 548,
+      "reasoning": 448
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1270,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3280,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 5264,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "contradicts",
+      "source": "c94b2fe3-8a8c-4bfe-8174-7eb76198c23a",
+      "target": "fd068c53-4c1f-4b68-85c6-4e79fa035f3a"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2608,
+     "completion": 90,
+     "reasoning": 0,
+     "latency_ms": 1270,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2845,
+     "completion": 288,
+     "reasoning": 192,
+     "latency_ms": 3280,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2845,
+     "completion": 548,
+     "reasoning": 448,
+     "latency_ms": 5264,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 9824
+  },
+  {
+   "id": "G089",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "contradicts",
+     "source": "A",
+     "target": "F"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2591,
+      "completion": 86,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2833,
+      "completion": 215,
+      "reasoning": 128
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2833,
+      "completion": 251,
+      "reasoning": 128
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1209,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2464,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2882,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "contradicts",
+      "source": "4b95775e-ce29-4662-85f4-02dab3efd95c",
+      "target": "c0dfc04d-fa18-45db-89a7-bfda2eba2319"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2591,
+     "completion": 86,
+     "reasoning": 0,
+     "latency_ms": 1209,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2833,
+     "completion": 215,
+     "reasoning": 128,
+     "latency_ms": 2464,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2833,
+     "completion": 251,
+     "reasoning": 128,
+     "latency_ms": 2882,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 6558
+  },
+  {
+   "id": "G094",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "duplicates",
+     "source": "A",
+     "target": "F"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2605,
+      "completion": 80,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2842,
+      "completion": 249,
+      "reasoning": 128
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2842,
+      "completion": 149,
+      "reasoning": 64
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1301,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2627,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2185,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "duplicates",
+      "source": "48a11ce6-f841-4ba4-8f84-24b1599a1c52",
+      "target": "ced93aca-8a13-4bca-8250-42536191e858"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2605,
+     "completion": 80,
+     "reasoning": 0,
+     "latency_ms": 1301,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2842,
+     "completion": 249,
+     "reasoning": 128,
+     "latency_ms": 2627,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2842,
+     "completion": 149,
+     "reasoning": 64,
+     "latency_ms": 2185,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 6121
+  },
+  {
+   "id": "G097",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "extends",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2625,
+      "completion": 88,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2860,
+      "completion": 213,
+      "reasoning": 128
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2860,
+      "completion": 341,
+      "reasoning": 256
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1146,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2153,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3273,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "extends",
+      "source": "12e1f721-1bcb-4614-8ec7-dc84acfa4742",
+      "target": "33b4eb64-768c-44ac-8a99-2958678e5430"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2625,
+     "completion": 88,
+     "reasoning": 0,
+     "latency_ms": 1146,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2860,
+     "completion": 213,
+     "reasoning": 128,
+     "latency_ms": 2153,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2860,
+     "completion": 341,
+     "reasoning": 256,
+     "latency_ms": 3273,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 6581
+  },
+  {
+   "id": "G099",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2586,
+      "completion": 77,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2827,
+      "completion": 214,
+      "reasoning": 128
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2827,
+      "completion": 406,
+      "reasoning": 320
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1112,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2655,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4085,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "167eec57-ecfa-433e-88a0-745c3f38fd39",
+      "target": "ecd34c7f-cc15-4528-8642-b9518131bd0a"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2586,
+     "completion": 77,
+     "reasoning": 0,
+     "latency_ms": 1112,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2827,
+     "completion": 214,
+     "reasoning": 128,
+     "latency_ms": 2655,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2827,
+     "completion": 406,
+     "reasoning": 320,
+     "latency_ms": 4085,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 7861
+  },
+  {
+   "id": "G100",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2588,
+      "completion": 82,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2829,
+      "completion": 314,
+      "reasoning": 192
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2829,
+      "completion": 280,
+      "reasoning": 192
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1207,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3189,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3684,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "4b8fbd22-fd89-4b20-8418-378192f391ee",
+      "target": "ef37ba1e-6712-4991-8520-353d5380bd78"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2588,
+     "completion": 82,
+     "reasoning": 0,
+     "latency_ms": 1207,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2829,
+     "completion": 314,
+     "reasoning": 192,
+     "latency_ms": 3189,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2829,
+     "completion": 280,
+     "reasoning": 192,
+     "latency_ms": 3684,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 8091
+  },
+  {
+   "id": "G102",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2610,
+      "completion": 92,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2846,
+      "completion": 572,
+      "reasoning": 448
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2846,
+      "completion": 472,
+      "reasoning": 384
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1241,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 5283,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4704,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "adbc9f15-04ad-41c9-8d9a-d2087a1a0fca",
+      "target": "492a4737-fc9a-4889-873d-0b3d8d055e7f"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2610,
+     "completion": 92,
+     "reasoning": 0,
+     "latency_ms": 1241,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2846,
+     "completion": 572,
+     "reasoning": 448,
+     "latency_ms": 5283,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2846,
+     "completion": 472,
+     "reasoning": 384,
+     "latency_ms": 4704,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 11250
+  },
+  {
+   "id": "G104",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2582,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 717,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2582,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 717,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 719
+  },
+  {
+   "id": "G105",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2561,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 741,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2561,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 741,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 743
+  },
+  {
+   "id": "G106",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2599,
+      "completion": 181,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2977,
+      "completion": 470,
+      "reasoning": 320
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2977,
+      "completion": 342,
+      "reasoning": 192
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1638,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4708,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3904,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 2,
+    "verified": 2,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "8b2177dd-e93e-4f7d-853c-b1d47cda20a5",
+      "target": "fe6ee6b2-3876-4f23-8434-3ffc93a52c55"
+     },
+     {
+      "kind": "depends_on",
+      "source": "38c89124-0e1c-4b2c-8672-c7b340617b10",
+      "target": "fe6ee6b2-3876-4f23-8434-3ffc93a52c55"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2599,
+     "completion": 181,
+     "reasoning": 0,
+     "latency_ms": 1638,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2977,
+     "completion": 470,
+     "reasoning": 320,
+     "latency_ms": 4708,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2977,
+     "completion": 342,
+     "reasoning": 192,
+     "latency_ms": 3904,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 10256
+  },
+  {
+   "id": "G108",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2680,
+      "completion": 4,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2847,
+      "completion": 1252,
+      "reasoning": 1152
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2847,
+      "completion": 802,
+      "reasoning": 704
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 716,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 10678,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 7035,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 0,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 1,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2680,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 716,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2847,
+     "completion": 1252,
+     "reasoning": 1152,
+     "latency_ms": 10678,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2847,
+     "completion": 802,
+     "reasoning": 704,
+     "latency_ms": 7035,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 18437
+  },
+  {
+   "id": "G109",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": true,
+   "error": "stage B contract failures exhausted",
+   "report": null,
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2671,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 612,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2843,
+     "completion": 516,
+     "reasoning": 384,
+     "latency_ms": 4845,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2843,
+     "completion": 342,
+     "reasoning": 256,
+     "latency_ms": 3350,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2843,
+     "completion": 442,
+     "reasoning": 320,
+     "latency_ms": 4477,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2843,
+     "completion": 598,
+     "reasoning": 512,
+     "latency_ms": 5322,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 18643
+  },
+  {
+   "id": "G110",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 1,
+    "contract_invalid": 1,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2656,
+      "completion": 4,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2834,
+      "completion": 762,
+      "reasoning": 640
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2834,
+      "completion": 706,
+      "reasoning": 576
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2834,
+      "completion": 860,
+      "reasoning": 768
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 699,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 6755,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 6777,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 7353,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 0,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 1,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2656,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 699,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2834,
+     "completion": 762,
+     "reasoning": 640,
+     "latency_ms": 6755,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2834,
+     "completion": 706,
+     "reasoning": 576,
+     "latency_ms": 6777,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2834,
+     "completion": 860,
+     "reasoning": 768,
+     "latency_ms": 7353,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 21591
+  },
+  {
+   "id": "G112",
+   "rep": 1,
+   "add": [],
+   "remove": [
+    0
+   ],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2658,
+      "completion": 4,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2835,
+      "completion": 1059,
+      "reasoning": 960
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2835,
+      "completion": 837,
+      "reasoning": 704
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 574,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 8609,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 7390,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 0,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 1,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2658,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 574,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2835,
+     "completion": 1059,
+     "reasoning": 960,
+     "latency_ms": 8609,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2835,
+     "completion": 837,
+     "reasoning": 704,
+     "latency_ms": 7390,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 16583
+  },
+  {
+   "id": "G117",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2653,
+      "completion": 4,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2832,
+      "completion": 342,
+      "reasoning": 256
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2832,
+      "completion": 214,
+      "reasoning": 128
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 760,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3404,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2887,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 0,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 1,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2653,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 760,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2832,
+     "completion": 342,
+     "reasoning": 256,
+     "latency_ms": 3404,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2832,
+     "completion": 214,
+     "reasoning": 128,
+     "latency_ms": 2887,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 7060
+  },
+  {
+   "id": "G118",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2682,
+      "completion": 4,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2856,
+      "completion": 534,
+      "reasoning": 448
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2856,
+      "completion": 408,
+      "reasoning": 320
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 714,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4704,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4190,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 0,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 1,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2682,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 714,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2856,
+     "completion": 534,
+     "reasoning": 448,
+     "latency_ms": 4704,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2856,
+     "completion": 408,
+     "reasoning": 320,
+     "latency_ms": 4190,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 9611
+  },
+  {
+   "id": "G119",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2663,
+      "completion": 4,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2841,
+      "completion": 278,
+      "reasoning": 192
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2841,
+      "completion": 406,
+      "reasoning": 320
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 715,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2764,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4330,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 0,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2663,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 715,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2841,
+     "completion": 278,
+     "reasoning": 192,
+     "latency_ms": 2764,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2841,
+     "completion": 406,
+     "reasoning": 320,
+     "latency_ms": 4330,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 7811
+  },
+  {
+   "id": "G124",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2663,
+      "completion": 4,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2838,
+      "completion": 342,
+      "reasoning": 256
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2838,
+      "completion": 342,
+      "reasoning": 256
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 716,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3583,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3882,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 0,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 1,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2663,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 716,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2838,
+     "completion": 342,
+     "reasoning": 256,
+     "latency_ms": 3583,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2838,
+     "completion": 342,
+     "reasoning": 256,
+     "latency_ms": 3882,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 8185
+  },
+  {
+   "id": "G126",
+   "rep": 1,
+   "add": [],
+   "remove": [
+    0
+   ],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2648,
+      "completion": 4,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2830,
+      "completion": 249,
+      "reasoning": 128
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2830,
+      "completion": 249,
+      "reasoning": 128
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 655,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2995,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2574,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 0,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2648,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 655,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2830,
+     "completion": 249,
+     "reasoning": 128,
+     "latency_ms": 2995,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2830,
+     "completion": 249,
+     "reasoning": 128,
+     "latency_ms": 2574,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 6234
+  },
+  {
+   "id": "G130",
+   "rep": 1,
+   "add": [],
+   "remove": [
+    0
+   ],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2690,
+      "completion": 4,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2856,
+      "completion": 344,
+      "reasoning": 256
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2856,
+      "completion": 214,
+      "reasoning": 128
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 685,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3583,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3277,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 0,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2690,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 685,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2856,
+     "completion": 344,
+     "reasoning": 256,
+     "latency_ms": 3583,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2856,
+     "completion": 214,
+     "reasoning": 128,
+     "latency_ms": 3277,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 7549
+  },
+  {
+   "id": "G132",
+   "rep": 1,
+   "add": [],
+   "remove": [
+    0
+   ],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2647,
+      "completion": 4,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2833,
+      "completion": 149,
+      "reasoning": 64
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2833,
+      "completion": 343,
+      "reasoning": 256
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 721,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 1673,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3959,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 0,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2647,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 721,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2833,
+     "completion": 149,
+     "reasoning": 64,
+     "latency_ms": 1673,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2833,
+     "completion": 343,
+     "reasoning": 256,
+     "latency_ms": 3959,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 6357
+  },
+  {
+   "id": "G133",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2659,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 580,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2659,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 580,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 584
+  },
+  {
+   "id": "G134",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2658,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 669,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2658,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 669,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 670
+  },
+  {
+   "id": "G135",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2649,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1159,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2649,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 1159,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 1163
+  },
+  {
+   "id": "G136",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2658,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 624,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2658,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 624,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 628
+  },
+  {
+   "id": "G137",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "depends_on",
+     "source": "A",
+     "target": "F"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2582,
+      "completion": 79,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2827,
+      "completion": 796,
+      "reasoning": 704
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2827,
+      "completion": 668,
+      "reasoning": 576
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1191,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 6522,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 6509,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "depends_on",
+      "source": "a0f224fd-5865-49e8-8db5-b1595fb072c1",
+      "target": "44842a0e-3650-4cdd-8934-ed5bc99fa3da"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2582,
+     "completion": 79,
+     "reasoning": 0,
+     "latency_ms": 1191,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2827,
+     "completion": 796,
+     "reasoning": 704,
+     "latency_ms": 6522,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2827,
+     "completion": 668,
+     "reasoning": 576,
+     "latency_ms": 6509,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 14225
+  },
+  {
+   "id": "G138",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2595,
+      "completion": 99,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2836,
+      "completion": 543,
+      "reasoning": 448
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2836,
+      "completion": 708,
+      "reasoning": 576
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1488,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4884,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 6966,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "contradicts",
+      "source": "7daf66fa-2f2f-4c0c-8763-2812907ee13e",
+      "target": "c062ee2f-1691-4695-83d0-5ad54d378771"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2595,
+     "completion": 99,
+     "reasoning": 0,
+     "latency_ms": 1488,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2836,
+     "completion": 543,
+     "reasoning": 448,
+     "latency_ms": 4884,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2836,
+     "completion": 708,
+     "reasoning": 576,
+     "latency_ms": 6966,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 13463
+  },
+  {
+   "id": "G142",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "contradicts",
+     "source": "F",
+     "target": "A"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2582,
+      "completion": 94,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2828,
+      "completion": 407,
+      "reasoning": 320
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2828,
+      "completion": 187,
+      "reasoning": 64
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1413,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3802,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2969,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "contradicts",
+      "source": "23234ea8-fd3f-48a3-8bc7-92cdc054e512",
+      "target": "55e3455d-757e-4e7f-80b1-7d06fec7d9ff"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2582,
+     "completion": 94,
+     "reasoning": 0,
+     "latency_ms": 1413,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2828,
+     "completion": 407,
+     "reasoning": 320,
+     "latency_ms": 3802,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2828,
+     "completion": 187,
+     "reasoning": 64,
+     "latency_ms": 2969,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 8191
+  },
+  {
+   "id": "G143",
+   "rep": 1,
+   "add": [
+    {
+     "kind": "extends",
+     "source": "A",
+     "target": "F"
+    }
+   ],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2584,
+      "completion": 85,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2825,
+      "completion": 277,
+      "reasoning": 192
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2825,
+      "completion": 441,
+      "reasoning": 320
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1373,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2744,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4151,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "extends",
+      "source": "1336e5b4-bbac-4a49-8c32-9dba8118744a",
+      "target": "4c4e73d0-d8f6-4efd-8163-119e799384a7"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2584,
+     "completion": 85,
+     "reasoning": 0,
+     "latency_ms": 1373,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2825,
+     "completion": 277,
+     "reasoning": 192,
+     "latency_ms": 2744,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2825,
+     "completion": 441,
+     "reasoning": 320,
+     "latency_ms": 4151,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 8273
+  },
+  {
+   "id": "G145",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 1,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2604,
+      "completion": 4,
+      "reasoning": 0
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 890,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     }
+    ],
+    "proposed": 0,
+    "verified": 0,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": []
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2604,
+     "completion": 4,
+     "reasoning": 0,
+     "latency_ms": 890,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 892
+  },
+  {
+   "id": "G146",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2595,
+      "completion": 87,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2834,
+      "completion": 443,
+      "reasoning": 320
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2834,
+      "completion": 278,
+      "reasoning": 192
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1287,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 4204,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 2814,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "related_to",
+      "source": "671063e7-626e-4106-844d-36d478a4f5b7",
+      "target": "d9591d9c-7846-4327-8413-c7db6e04f340"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2595,
+     "completion": 87,
+     "reasoning": 0,
+     "latency_ms": 1287,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2834,
+     "completion": 443,
+     "reasoning": 320,
+     "latency_ms": 4204,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2834,
+     "completion": 278,
+     "reasoning": 192,
+     "latency_ms": 2814,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 8317
+  },
+  {
+   "id": "G150",
+   "rep": 1,
+   "add": [],
+   "remove": [],
+   "failed": false,
+   "report": {
+    "provider_requests": 3,
+    "retry_requests": 0,
+    "contract_invalid": 0,
+    "usage": [
+     {
+      "role": "A",
+      "model": "gpt-4.1-mini",
+      "prompt": 2596,
+      "completion": 86,
+      "reasoning": 0
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2838,
+      "completion": 353,
+      "reasoning": 256
+     },
+     {
+      "role": "B",
+      "model": "gpt-5-mini",
+      "prompt": 2838,
+      "completion": 351,
+      "reasoning": 256
+     }
+    ],
+    "calls": [
+     {
+      "role": "A",
+      "latency_ms": 1707,
+      "attempts": 1,
+      "model_reported": "gpt-4.1-mini-2025-04-14"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3211,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     },
+     {
+      "role": "B",
+      "latency_ms": 3036,
+      "attempts": 1,
+      "model_reported": "gpt-5-mini-2025-08-07"
+     }
+    ],
+    "proposed": 1,
+    "verified": 1,
+    "related_suppressed": 0,
+    "moot_blocked": 0,
+    "moot_removed": 0,
+    "dependency_invalidated": 0,
+    "dependency_unresolved": 0,
+    "ambiguous_pairs": 0,
+    "stageA_edges": [
+     {
+      "kind": "supersedes",
+      "source": "e5a94ccc-e656-4aed-8776-e65b61e01f91",
+      "target": "97147230-5c51-454a-8ef0-52eb9ce7ff6b"
+     }
+    ]
+   },
+   "usage": [
+    {
+     "model": "gpt-4.1-mini",
+     "prompt": 2596,
+     "completion": 86,
+     "reasoning": 0,
+     "latency_ms": 1707,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2838,
+     "completion": 353,
+     "reasoning": 256,
+     "latency_ms": 3211,
+     "attempts": 1
+    },
+    {
+     "model": "gpt-5-mini",
+     "prompt": 2838,
+     "completion": 351,
+     "reasoning": 256,
+     "latency_ms": 3036,
+     "attempts": 1
+    }
+   ],
+   "wall_ms": 7957
+  }
+ ]
+}

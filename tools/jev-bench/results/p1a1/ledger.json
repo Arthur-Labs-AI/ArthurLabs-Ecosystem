@@ -1,0 +1,53 @@
+{
+ "spent_usd": 0.037605812000000016,
+ "entries": [
+  {
+   "label": "jev-dev",
+   "usd": 0.005517288000000002,
+   "requests": 120,
+   "at": "2026-10-08T16:54:29.307Z"
+  },
+  {
+   "label": "openai-class-dev",
+   "usd": 0.0067020000000000005,
+   "requests": 60,
+   "at": "2026-10-08T16:54:42.614Z"
+  },
+  {
+   "label": "openai-guard-dev",
+   "usd": 0.0025603999999999996,
+   "requests": 36,
+   "at": "2026-10-08T16:54:49.363Z"
+  },
+  {
+   "label": "jev-holdout",
+   "usd": 0.002822820000000001,
+   "requests": 60,
+   "at": "2026-10-08T16:55:19.055Z"
+  },
+  {
+   "label": "openai-class-holdout",
+   "usd": 0.006713600000000001,
+   "requests": 60,
+   "at": "2026-10-08T16:55:30.671Z"
+  },
+  {
+   "label": "openai-guard-holdout",
+   "usd": 0.0025540000000000007,
+   "requests": 36,
+   "at": "2026-10-08T16:55:36.988Z"
+  },
+  {
+   "label": "jev-cons-fixed",
+   "usd": 0.005367852000000003,
+   "requests": 108,
+   "at": "2026-10-08T16:55:45.214Z"
+  },
+  {
+   "label": "jev-cons-random",
+   "usd": 0.005367852000000003,
+   "requests": 108,
+   "at": "2026-10-08T16:55:54.399Z"
+  }
+ ]
+}

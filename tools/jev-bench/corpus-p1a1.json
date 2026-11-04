@@ -1,0 +1,2881 @@
+{
+ "corpus_version": "identity-p1a1-1",
+ "note": "Fresh cases; labels, targets, reframing flags and disputed flags fixed before any model output.",
+ "cases": [
+  {
+   "id": "Q001",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Nimbus is a file-syncing tool."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Nimbus is a collaboration layer, not a sync tool."
+   },
+   "rationale": "Changes what the product is.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q002",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Quill is a blogging platform."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Quill is a publishing engine for any kind of content, not only blogs."
+   },
+   "rationale": "Broadens the identity of the product.",
+   "split": "dev"
+  },
+  {
+   "id": "Q003",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "Fjord helps freelancers send invoices."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Fjord is a financial operating system for small studios."
+   },
+   "rationale": "Changes purpose and audience.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q004",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Mosaic is an internal tool for the design team."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Mosaic should become a product we sell to other companies."
+   },
+   "rationale": "Changes what the thing is for.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q005",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "The goal of the pilot is to cut support tickets."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "The pilot is really about learning what customers want; tickets are secondary."
+   },
+   "rationale": "Changes the purpose of the pilot.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q006",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "The newsletter is a way to promote the product."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "The newsletter is the product."
+   },
+   "rationale": "Inverts the role.",
+   "split": "dev"
+  },
+  {
+   "id": "Q007",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "The app tracks expenses."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "The app is about changing how people feel about money; tracking is incidental."
+   },
+   "rationale": "Redefines purpose.",
+   "split": "dev"
+  },
+  {
+   "id": "Q008",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Build a prototype to test feasibility."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Treat the prototype as the first release, not an experiment."
+   },
+   "rationale": "Changes the nature of the deliverable.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q009",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "I want to get a promotion this year."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "I want a different career, not a promotion."
+   },
+   "rationale": "A person could read this as a correction of the same goal.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q010",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "The API is for our own frontend."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "The API is a public product for third parties."
+   },
+   "rationale": "Changes purpose and audience.",
+   "split": "dev"
+  },
+  {
+   "id": "Q011",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "The mobile app is a companion to the website."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "The mobile app is the primary product; the website is the companion."
+   },
+   "rationale": "Inverts the roles.",
+   "split": "dev"
+  },
+  {
+   "id": "Q012",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Documentation is a nice-to-have."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Documentation is the core deliverable of this project."
+   },
+   "rationale": "Changes importance and purpose.",
+   "split": "dev"
+  },
+  {
+   "id": "Q013",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "We are building a prototype for investors."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "We are building the real product; the investor demo is a side effect."
+   },
+   "rationale": "Could be read as a plain correction of the plan.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q014",
+   "category": "RFPOS",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "The finance team is a cost centre."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "The finance team is a revenue-generating product group."
+   },
+   "rationale": "Reframing of the role; or simply an update of the same statement.",
+   "split": "dev"
+  },
+  {
+   "id": "Q015",
+   "category": "RFPOS",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Нимбус",
+     "text": "Нимбус е приложение за синхронизация на файлове."
+    }
+   ],
+   "new_capture": {
+    "project": "Нимбус",
+    "text": "Нимбус е платформа за съвместна работа, не просто синхронизация."
+   },
+   "rationale": "Променя същността на продукта.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q016",
+   "category": "RFPOS",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Куил",
+     "text": "Блогът е канал за маркетинг."
+    }
+   ],
+   "new_capture": {
+    "project": "Куил",
+    "text": "Блогът е самостоятелен продукт, а не маркетинг."
+   },
+   "rationale": "Променя ролята.",
+   "split": "dev"
+  },
+  {
+   "id": "Q017",
+   "category": "RFPOS",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Фиорд",
+     "text": "Приложението е за лични разходи."
+    }
+   ],
+   "new_capture": {
+    "project": "Фиорд",
+    "text": "Приложението е за бюджети на цели екипи, не за лични разходи."
+   },
+   "rationale": "Промяна на обхвата или просто корекция на същото твърдение.",
+   "split": "dev"
+  },
+  {
+   "id": "Q018",
+   "category": "RFPOS",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Мозайка",
+     "text": "Прототипът е експеримент."
+    }
+   ],
+   "new_capture": {
+    "project": "Мозайка",
+    "text": "Прототипът е първата версия за клиенти."
+   },
+   "rationale": "Променя същността на прототипа.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q019",
+   "category": "RFPOS",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Искам да спортувам повече."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Искам да сменя целия си начин на живот."
+   },
+   "rationale": "Много по-широка цел; уточнение или нова цел.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q020",
+   "category": "RFPOS",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Нимбус",
+     "text": "Пилотът е за вътрешна употреба."
+    }
+   ],
+   "new_capture": {
+    "project": "Нимбус",
+    "text": "Пилотът е публичен старт."
+   },
+   "rationale": "Променя целта.",
+   "split": "dev"
+  },
+  {
+   "id": "Q021",
+   "category": "RFPOS",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Куил",
+     "text": "Подкастът е допълнение към блога."
+    }
+   ],
+   "new_capture": {
+    "project": "Куил",
+    "text": "Подкастът е основният ни канал."
+   },
+   "rationale": "Обръща ролите.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q022",
+   "category": "RFPOS",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "Fjord е tool за счетоводители."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Fjord е platform за цялата финансова екосистема на малкия бизнес."
+   },
+   "rationale": "Променя същността.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q023",
+   "category": "RFPOS",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Dashboard-ът е за мениджъри."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Dashboard-ът е за целия екип, не за мениджъри."
+   },
+   "rationale": "Промяна на аудиторията; обхват или просто корекция.",
+   "split": "dev"
+  },
+  {
+   "id": "Q024",
+   "category": "RFPOS",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Onboarding-ът е tutorial."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Onboarding-ът е самият продукт за първите седмици."
+   },
+   "rationale": "Променя същността.",
+   "split": "dev"
+  },
+  {
+   "id": "Q025",
+   "category": "RFPOS",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Community-то е support канал."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Community-то е ядрото на бизнеса."
+   },
+   "rationale": "Променя ролята.",
+   "split": "dev"
+  },
+  {
+   "id": "Q026",
+   "category": "RFPOS",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Курсът по Python е хоби."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Курсът по Python е началото на нова кариера."
+   },
+   "rationale": "Променя целта.",
+   "split": "dev"
+  },
+  {
+   "id": "Q027",
+   "category": "RFPOS",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Sync engine-ът е вътрешна библиотека."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Sync engine-ът е самостоятелен open-source проект."
+   },
+   "rationale": "Променя същността.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q028",
+   "category": "RFPOS",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": true,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "Pricing е временен експеримент."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Pricing моделът е стратегията на компанията."
+   },
+   "rationale": "Преформулиране или просто актуализация.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q029",
+   "category": "RFNEG",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "The sync interval is 15 minutes."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "The sync interval should be 5 minutes, not 15."
+   },
+   "rationale": "Parameter correction.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q030",
+   "category": "RFNEG",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Use blue for the publish button."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Make the publish button green instead of blue."
+   },
+   "rationale": "Value replacement.",
+   "split": "dev"
+  },
+  {
+   "id": "Q031",
+   "category": "RFNEG",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "Invoices are due in 30 days."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Invoices should be due in 14 days rather than 30."
+   },
+   "rationale": "Parameter correction.",
+   "split": "dev"
+  },
+  {
+   "id": "Q032",
+   "category": "RFNEG",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Host the docs on Netlify."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Host the docs on Cloudflare Pages instead of Netlify."
+   },
+   "rationale": "Vendor replacement.",
+   "split": "dev"
+  },
+  {
+   "id": "Q033",
+   "category": "RFNEG",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "The dinner reservation is for 6 people."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "The reservation is for 8 people, not 6."
+   },
+   "rationale": "Number correction.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q034",
+   "category": "RFNEG",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Release the client on Tuesday."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Release the client on Thursday, not Tuesday."
+   },
+   "rationale": "Date correction.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q035",
+   "category": "RFNEG",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Use Markdown for the editor input."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Switch the editor input from Markdown to rich text."
+   },
+   "rationale": "Implementation replacement.",
+   "split": "dev"
+  },
+  {
+   "id": "Q036",
+   "category": "RFNEG",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "The import supports CSV only."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "The import should support CSV and XLSX, not CSV only."
+   },
+   "rationale": "Capability extension.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q037",
+   "category": "RFNEG",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Нимбус",
+     "text": "Синхронизацията е на всеки 15 минути."
+    }
+   ],
+   "new_capture": {
+    "project": "Нимбус",
+    "text": "Синхронизацията да е на всеки 5 минути, а не на 15."
+   },
+   "rationale": "Корекция на параметър.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q038",
+   "category": "RFNEG",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Куил",
+     "text": "Бутонът за публикуване е син."
+    }
+   ],
+   "new_capture": {
+    "project": "Куил",
+    "text": "Бутонът за публикуване да е зелен, не син."
+   },
+   "rationale": "Замяна на стойност.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q039",
+   "category": "RFNEG",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Фиорд",
+     "text": "Фактурите се плащат до 30 дни."
+    }
+   ],
+   "new_capture": {
+    "project": "Фиорд",
+    "text": "Срокът за фактурите е 14 дни вместо 30."
+   },
+   "rationale": "Корекция на параметър.",
+   "split": "dev"
+  },
+  {
+   "id": "Q040",
+   "category": "RFNEG",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Вечерята е в петък."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Вечерята е в събота, не в петък."
+   },
+   "rationale": "Корекция на дата.",
+   "split": "dev"
+  },
+  {
+   "id": "Q041",
+   "category": "RFNEG",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Docs-ът е на Netlify."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Docs-ът минава на Cloudflare Pages вместо Netlify."
+   },
+   "rationale": "Замяна на доставчик.",
+   "split": "dev"
+  },
+  {
+   "id": "Q042",
+   "category": "RFNEG",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Editor-ът ползва Markdown."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Editor-ът ще е rich text, не Markdown."
+   },
+   "rationale": "Замяна на имплементация.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q043",
+   "category": "RFNEG",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Release-ът е във вторник."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Release-ът е в четвъртък, не във вторник."
+   },
+   "rationale": "Корекция на дата.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q044",
+   "category": "RFNEG",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "Import-ът поддържа само CSV."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Import-ът да поддържа CSV и XLSX, не само CSV."
+   },
+   "rationale": "Разширяване на възможност.",
+   "split": "dev"
+  },
+  {
+   "id": "Q045",
+   "category": "RVCLEAN",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Add a conflict-resolution screen to the client."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "The conflict-resolution screen should show both versions side by side."
+   },
+   "rationale": "Refines the same screen.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q046",
+   "category": "RVCLEAN",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Posts need scheduled publishing."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Scheduled publishing should respect the author's timezone."
+   },
+   "rationale": "Refines the same feature.",
+   "split": "dev"
+  },
+  {
+   "id": "Q047",
+   "category": "RVCLEAN",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "Support recurring invoices."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Recurring invoices should be pausable by the customer."
+   },
+   "rationale": "Refines the same feature.",
+   "split": "dev"
+  },
+  {
+   "id": "Q048",
+   "category": "RVCLEAN",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "The style guide needs a colour section."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "The colour section of the style guide should list accessible contrast pairs."
+   },
+   "rationale": "Refines the same section.",
+   "split": "dev"
+  },
+  {
+   "id": "Q049",
+   "category": "RVCLEAN",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Plan the hiking weekend."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "For the hiking weekend: leave Friday evening and spend two nights in the hut."
+   },
+   "rationale": "Fills in the same plan.",
+   "split": "dev"
+  },
+  {
+   "id": "Q050",
+   "category": "RVCLEAN",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Retry failed syncs."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Failed syncs should be retried three times with growing delays."
+   },
+   "rationale": "Specifies the same retry.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q051",
+   "category": "RVCLEAN",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Authors can upload cover images."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Cover images must be at least 1200 pixels wide."
+   },
+   "rationale": "Constrains the same feature.",
+   "split": "dev"
+  },
+  {
+   "id": "Q052",
+   "category": "RVCLEAN",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Нимбус",
+     "text": "Клиентът да показва статус на синхронизацията."
+    }
+   ],
+   "new_capture": {
+    "project": "Нимбус",
+    "text": "Статусът на синхронизацията да е иконка в лентата с менюта."
+   },
+   "rationale": "Уточнява същия статус.",
+   "split": "dev"
+  },
+  {
+   "id": "Q053",
+   "category": "RVCLEAN",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Куил",
+     "text": "Авторите трябва да виждат статистика за прочитанията."
+    }
+   ],
+   "new_capture": {
+    "project": "Куил",
+    "text": "Статистиката за прочитанията да се обновява на всеки час."
+   },
+   "rationale": "Уточнява същата статистика.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q054",
+   "category": "RVCLEAN",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Фиорд",
+     "text": "Да има напомняния за неплатени фактури."
+    }
+   ],
+   "new_capture": {
+    "project": "Фиорд",
+    "text": "Напомнянията за неплатени фактури да се пращат на третия и седмия ден."
+   },
+   "rationale": "Уточнява същите напомняния.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q055",
+   "category": "RVCLEAN",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да уредя застраховката на апартамента."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Застраховката на апартамента да покрива и наводнение."
+   },
+   "rationale": "Допълва същата застраховка.",
+   "split": "dev"
+  },
+  {
+   "id": "Q056",
+   "category": "RVCLEAN",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Мозайка",
+     "text": "Трябва ни шаблон за презентации."
+    }
+   ],
+   "new_capture": {
+    "project": "Мозайка",
+    "text": "Шаблонът за презентации да е във формат 16:9."
+   },
+   "rationale": "Уточнява същия шаблон.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q057",
+   "category": "RVCLEAN",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Notifications при конфликт."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Notifications при конфликт да идват и като email."
+   },
+   "rationale": "Допълва същите notifications.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q058",
+   "category": "RVCLEAN",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Search в архива."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Search-ът в архива да поддържа филтри по автор."
+   },
+   "rationale": "Допълва същия search.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q059",
+   "category": "RVCLEAN",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Handoff документ за developers."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Handoff документът да включва spacing токени."
+   },
+   "rationale": "Допълва същия документ.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q060",
+   "category": "RVCLEAN",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "Автоматично разпознаване на разходи."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Разпознаването на разходи да работи и с PDF разписки."
+   },
+   "rationale": "Допълва същото разпознаване.",
+   "split": "dev"
+  },
+  {
+   "id": "Q061",
+   "category": "RVMC",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 1,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Add a tagging system to posts."
+    },
+    {
+     "id": "idea_1",
+     "project": "Quill",
+     "text": "Enable comments with moderation."
+    },
+    {
+     "id": "idea_2",
+     "project": "Quill",
+     "text": "Offer an RSS feed per author."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Moderation should hold the first comment of every new reader."
+   },
+   "rationale": "Names the moderation feature.",
+   "split": "dev"
+  },
+  {
+   "id": "Q062",
+   "category": "RVMC",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 1,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Compress files before upload."
+    },
+    {
+     "id": "idea_1",
+     "project": "Nimbus",
+     "text": "Show the storage quota in settings."
+    },
+    {
+     "id": "idea_2",
+     "project": "Nimbus",
+     "text": "Allow selective folder sync."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "The quota display should warn at 90 percent usage."
+   },
+   "rationale": "Names the quota display.",
+   "split": "dev"
+  },
+  {
+   "id": "Q063",
+   "category": "RVMC",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 2,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "Export reports to PDF."
+    },
+    {
+     "id": "idea_1",
+     "project": "Fjord",
+     "text": "Support multiple currencies."
+    },
+    {
+     "id": "idea_2",
+     "project": "Fjord",
+     "text": "Add a tax summary view."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "The tax summary view should group totals by quarter."
+   },
+   "rationale": "Names the tax summary.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q064",
+   "category": "RVMC",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Create an icon set."
+    },
+    {
+     "id": "idea_1",
+     "project": "Mosaic",
+     "text": "Write contribution guidelines."
+    },
+    {
+     "id": "idea_2",
+     "project": "Mosaic",
+     "text": "Set up a component playground."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "The icon set should use a 24 pixel grid."
+   },
+   "rationale": "Names the icon set.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q065",
+   "category": "RVMC",
+   "lang": "en",
+   "expected": "REVISE",
+   "target": 1,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Renew the gym membership."
+    },
+    {
+     "id": "idea_1",
+     "project": "Personal",
+     "text": "Book a tax advisor appointment."
+    },
+    {
+     "id": "idea_2",
+     "project": "Personal",
+     "text": "Order new running shoes."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "The advisor appointment should be before the end of March."
+   },
+   "rationale": "Names the advisor appointment.",
+   "split": "dev"
+  },
+  {
+   "id": "Q066",
+   "category": "RVMC",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 2,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Нимбус",
+     "text": "Компресия на файловете преди качване."
+    },
+    {
+     "id": "idea_1",
+     "project": "Нимбус",
+     "text": "Показване на квота в настройките."
+    },
+    {
+     "id": "idea_2",
+     "project": "Нимбус",
+     "text": "Избирателна синхронизация на папки."
+    }
+   ],
+   "new_capture": {
+    "project": "Нимбус",
+    "text": "Избирателната синхронизация да помни последния избор на папки."
+   },
+   "rationale": "Посочва избирателната синхронизация.",
+   "split": "dev"
+  },
+  {
+   "id": "Q067",
+   "category": "RVMC",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Куил",
+     "text": "Етикети към публикации."
+    },
+    {
+     "id": "idea_1",
+     "project": "Куил",
+     "text": "Коментари с модерация."
+    },
+    {
+     "id": "idea_2",
+     "project": "Куил",
+     "text": "RSS емисия по автор."
+    }
+   ],
+   "new_capture": {
+    "project": "Куил",
+    "text": "Етикетите да се предлагат автоматично от текста."
+   },
+   "rationale": "Посочва етикетите.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q068",
+   "category": "RVMC",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 1,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Фиорд",
+     "text": "Експорт на справки в PDF."
+    },
+    {
+     "id": "idea_1",
+     "project": "Фиорд",
+     "text": "Поддръжка на няколко валути."
+    },
+    {
+     "id": "idea_2",
+     "project": "Фиорд",
+     "text": "Изглед с данъчно резюме."
+    }
+   ],
+   "new_capture": {
+    "project": "Фиорд",
+    "text": "Валутите да се обновяват всеки ден сутрин."
+   },
+   "rationale": "Посочва валутите.",
+   "split": "dev"
+  },
+  {
+   "id": "Q069",
+   "category": "RVMC",
+   "lang": "bg",
+   "expected": "REVISE",
+   "target": 1,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да подновя абонамента за фитнес."
+    },
+    {
+     "id": "idea_1",
+     "project": "Лични",
+     "text": "Да запиша час при данъчен консултант."
+    },
+    {
+     "id": "idea_2",
+     "project": "Лични",
+     "text": "Да поръчам нови маратонки."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Часът при консултанта да е преди края на март."
+   },
+   "rationale": "Посочва консултанта.",
+   "split": "dev"
+  },
+  {
+   "id": "Q070",
+   "category": "RVMC",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 2,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Icon pack за дизайн системата."
+    },
+    {
+     "id": "idea_1",
+     "project": "Mosaic",
+     "text": "Правила за contribution."
+    },
+    {
+     "id": "idea_2",
+     "project": "Mosaic",
+     "text": "Playground за компонентите."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Playground-ът да позволява линк към конкретен state."
+   },
+   "rationale": "Посочва playground-а.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q071",
+   "category": "RVMC",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 2,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Tagging на постове."
+    },
+    {
+     "id": "idea_1",
+     "project": "Quill",
+     "text": "Comments с модерация."
+    },
+    {
+     "id": "idea_2",
+     "project": "Quill",
+     "text": "RSS feed по автор."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "RSS feed-ът да включва пълния текст, не само откъс."
+   },
+   "rationale": "Посочва RSS feed-а.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q072",
+   "category": "RVMC",
+   "lang": "mixed",
+   "expected": "REVISE",
+   "target": 0,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Compression преди upload."
+    },
+    {
+     "id": "idea_1",
+     "project": "Nimbus",
+     "text": "Quota индикатор в settings."
+    },
+    {
+     "id": "idea_2",
+     "project": "Nimbus",
+     "text": "Sync само на избрани папки."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Compression-ът да е по избор на потребителя."
+   },
+   "rationale": "Посочва compression-а.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q073",
+   "category": "NWSAME",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Add end-to-end encryption to synced files."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Add a version history for synced files."
+   },
+   "rationale": "Different feature.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q074",
+   "category": "NWSAME",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Authors can schedule posts."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Authors can co-write a post in real time."
+   },
+   "rationale": "Different feature.",
+   "split": "dev"
+  },
+  {
+   "id": "Q075",
+   "category": "NWSAME",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "Support partial payments."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Support credit notes for refunds."
+   },
+   "rationale": "Different feature.",
+   "split": "dev"
+  },
+  {
+   "id": "Q076",
+   "category": "NWSAME",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "The icon set needs a dark variant."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "The icon set needs an animated loading icon."
+   },
+   "rationale": "Different icon work.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q077",
+   "category": "NWSAME",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Learn to cook three risotto dishes."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Learn to bake sourdough bread."
+   },
+   "rationale": "Different skill.",
+   "split": "dev"
+  },
+  {
+   "id": "Q078",
+   "category": "NWSAME",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Нимбус",
+     "text": "Криптиране на файловете при синхронизация."
+    }
+   ],
+   "new_capture": {
+    "project": "Нимбус",
+    "text": "История на версиите на файловете."
+   },
+   "rationale": "Различна функция.",
+   "split": "dev"
+  },
+  {
+   "id": "Q079",
+   "category": "NWSAME",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Куил",
+     "text": "Авторите могат да планират публикации."
+    }
+   ],
+   "new_capture": {
+    "project": "Куил",
+    "text": "Авторите могат да пишат заедно в реално време."
+   },
+   "rationale": "Различна функция.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q080",
+   "category": "NWSAME",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Фиорд",
+     "text": "Частични плащания."
+    }
+   ],
+   "new_capture": {
+    "project": "Фиорд",
+    "text": "Кредитни известия при връщане."
+   },
+   "rationale": "Различна функция.",
+   "split": "dev"
+  },
+  {
+   "id": "Q081",
+   "category": "NWSAME",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да се науча да готвя ризото."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Да се науча да правя хляб."
+   },
+   "rationale": "Различно умение.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q082",
+   "category": "NWSAME",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Dark variant на icon set-а."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Анимиран loading icon."
+   },
+   "rationale": "Различна задача.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q083",
+   "category": "NWSAME",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Selective sync за папки."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Bandwidth limit за sync-а."
+   },
+   "rationale": "Различна функция.",
+   "split": "dev"
+  },
+  {
+   "id": "Q084",
+   "category": "NWSAME",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "RSS feed за блога."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Newsletter signup форма в блога."
+   },
+   "rationale": "Различна функция.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q085",
+   "category": "XPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Retry failed uploads three times."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Retry failed uploads five times instead of three."
+   },
+   "rationale": "Project boundary.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q086",
+   "category": "XPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Launch the beta on Friday."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Move the beta launch to Monday."
+   },
+   "rationale": "Project boundary.",
+   "split": "dev"
+  },
+  {
+   "id": "Q087",
+   "category": "XPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Renew the lease in June."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "The lease renewal should be in July instead."
+   },
+   "rationale": "Project boundary.",
+   "split": "dev"
+  },
+  {
+   "id": "Q088",
+   "category": "XPROJ",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Use Inter as the typeface."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Use Georgia as the typeface instead of Inter."
+   },
+   "rationale": "Project boundary.",
+   "split": "dev"
+  },
+  {
+   "id": "Q089",
+   "category": "XPROJ",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Нимбус",
+     "text": "Опитвай отново при грешка три пъти."
+    }
+   ],
+   "new_capture": {
+    "project": "Фиорд",
+    "text": "Опитвай отново при грешка пет пъти, не три."
+   },
+   "rationale": "Граница на проекта.",
+   "split": "dev"
+  },
+  {
+   "id": "Q090",
+   "category": "XPROJ",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Куил",
+     "text": "Бета стартът е в петък."
+    }
+   ],
+   "new_capture": {
+    "project": "Мозайка",
+    "text": "Бета стартът се мести за понеделник."
+   },
+   "rationale": "Граница на проекта.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q091",
+   "category": "XPROJ",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Primary цветът е син."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Primary цветът е зелен, не син."
+   },
+   "rationale": "Граница на проекта.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q092",
+   "category": "XPROJ",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Release-ът е в сряда."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Release-ът е в четвъртък, не в сряда."
+   },
+   "rationale": "Граница на проекта.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q093",
+   "category": "SUBT",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Ship the Windows client."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Write the installer for the Windows client."
+   },
+   "rationale": "Subtask or its own item.",
+   "split": "dev"
+  },
+  {
+   "id": "Q094",
+   "category": "SUBT",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Redesign the author dashboard."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Choose the chart library for the author dashboard."
+   },
+   "rationale": "Step or separate decision.",
+   "split": "dev"
+  },
+  {
+   "id": "Q095",
+   "category": "SUBT",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "Prepare the year-end tax export."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Collect the missing receipts from March."
+   },
+   "rationale": "Step or separate task.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q096",
+   "category": "SUBT",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Organise the family reunion."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Reserve the hall for the reunion."
+   },
+   "rationale": "Step or separate task.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q097",
+   "category": "SUBT",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Нимбус",
+     "text": "Да пуснем клиента за Windows."
+    }
+   ],
+   "new_capture": {
+    "project": "Нимбус",
+    "text": "Да напишем инсталатора за клиента."
+   },
+   "rationale": "Подзадача или отделна.",
+   "split": "dev"
+  },
+  {
+   "id": "Q098",
+   "category": "SUBT",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Куил",
+     "text": "Да обновим таблото на авторите."
+    }
+   ],
+   "new_capture": {
+    "project": "Куил",
+    "text": "Да изберем библиотека за графики."
+   },
+   "rationale": "Стъпка или отделно решение.",
+   "split": "dev"
+  },
+  {
+   "id": "Q099",
+   "category": "SUBT",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да организирам семейния събор."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Да резервирам залата за събора."
+   },
+   "rationale": "Стъпка или отделна задача.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q100",
+   "category": "SUBT",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Нова design система."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Да одитираме съществуващите компоненти."
+   },
+   "rationale": "Стъпка или отделна задача.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q101",
+   "category": "SUBT",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "Tax export за годината."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Да съберем липсващите разписки."
+   },
+   "rationale": "Стъпка или отделна задача.",
+   "split": "dev"
+  },
+  {
+   "id": "Q102",
+   "category": "SUBT",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": true,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Windows client launch."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Да напишем release notes за launch-а."
+   },
+   "rationale": "Стъпка или отделна задача.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q103",
+   "category": "AMB2",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Improve the upload speed."
+    },
+    {
+     "id": "idea_1",
+     "project": "Nimbus",
+     "text": "Improve the download speed."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "It should be at least twice as fast."
+   },
+   "rationale": "Either.",
+   "split": "dev"
+  },
+  {
+   "id": "Q104",
+   "category": "AMB2",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Write the launch post."
+    },
+    {
+     "id": "idea_1",
+     "project": "Quill",
+     "text": "Write the changelog."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Keep it short and friendly."
+   },
+   "rationale": "Either.",
+   "split": "dev"
+  },
+  {
+   "id": "Q105",
+   "category": "AMB2",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Fjord",
+     "text": "Add card payments."
+    },
+    {
+     "id": "idea_1",
+     "project": "Fjord",
+     "text": "Add bank transfers."
+    }
+   ],
+   "new_capture": {
+    "project": "Fjord",
+    "text": "Payments should show a confirmation screen."
+   },
+   "rationale": "Both.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q106",
+   "category": "AMB2",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Audit the buttons."
+    },
+    {
+     "id": "idea_1",
+     "project": "Mosaic",
+     "text": "Audit the inputs."
+    },
+    {
+     "id": "idea_2",
+     "project": "Mosaic",
+     "text": "Audit the modals."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Fix the accessibility issues in them."
+   },
+   "rationale": "Which?",
+   "split": "holdout"
+  },
+  {
+   "id": "Q107",
+   "category": "AMB2",
+   "lang": "en",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Personal",
+     "text": "Call the electrician."
+    },
+    {
+     "id": "idea_1",
+     "project": "Personal",
+     "text": "Call the locksmith."
+    }
+   ],
+   "new_capture": {
+    "project": "Personal",
+    "text": "Do it before the weekend."
+   },
+   "rationale": "Which call?",
+   "split": "dev"
+  },
+  {
+   "id": "Q108",
+   "category": "AMB2",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Нимбус",
+     "text": "Да подобрим качването."
+    },
+    {
+     "id": "idea_1",
+     "project": "Нимбус",
+     "text": "Да подобрим теглението."
+    }
+   ],
+   "new_capture": {
+    "project": "Нимбус",
+    "text": "Да е поне два пъти по-бързо."
+   },
+   "rationale": "Кое?",
+   "split": "holdout"
+  },
+  {
+   "id": "Q109",
+   "category": "AMB2",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Куил",
+     "text": "Да напишем поста за старта."
+    },
+    {
+     "id": "idea_1",
+     "project": "Куил",
+     "text": "Да напишем бележките за версията."
+    }
+   ],
+   "new_capture": {
+    "project": "Куил",
+    "text": "Да е кратко и приятелско."
+   },
+   "rationale": "Кое?",
+   "split": "dev"
+  },
+  {
+   "id": "Q110",
+   "category": "AMB2",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да се обадя на електротехника."
+    },
+    {
+     "id": "idea_1",
+     "project": "Лични",
+     "text": "Да се обадя на ключаря."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Направи го преди уикенда."
+   },
+   "rationale": "Кое?",
+   "split": "holdout"
+  },
+  {
+   "id": "Q111",
+   "category": "AMB2",
+   "lang": "bg",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Фиорд",
+     "text": "Плащания с карта."
+    },
+    {
+     "id": "idea_1",
+     "project": "Фиорд",
+     "text": "Банкови преводи."
+    }
+   ],
+   "new_capture": {
+    "project": "Фиорд",
+    "text": "Плащанията да показват екран за потвърждение."
+   },
+   "rationale": "Кое?",
+   "split": "holdout"
+  },
+  {
+   "id": "Q112",
+   "category": "AMB2",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Audit на buttons."
+    },
+    {
+     "id": "idea_1",
+     "project": "Mosaic",
+     "text": "Audit на inputs."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Да оправим accessibility проблемите."
+   },
+   "rationale": "Кое?",
+   "split": "holdout"
+  },
+  {
+   "id": "Q113",
+   "category": "AMB2",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Upload speed."
+    },
+    {
+     "id": "idea_1",
+     "project": "Nimbus",
+     "text": "Download speed."
+    },
+    {
+     "id": "idea_2",
+     "project": "Nimbus",
+     "text": "Sync latency."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Това трябва да е под секунда."
+   },
+   "rationale": "Кое?",
+   "split": "dev"
+  },
+  {
+   "id": "Q114",
+   "category": "AMB2",
+   "lang": "mixed",
+   "expected": "UNCERTAIN",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Launch post."
+    },
+    {
+     "id": "idea_1",
+     "project": "Quill",
+     "text": "Changelog."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Да е кратко."
+   },
+   "rationale": "Кое?",
+   "split": "dev"
+  },
+  {
+   "id": "Q115",
+   "category": "NWMC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Add a dark theme."
+    },
+    {
+     "id": "idea_1",
+     "project": "Nimbus",
+     "text": "Support drag and drop uploads."
+    },
+    {
+     "id": "idea_2",
+     "project": "Nimbus",
+     "text": "Show file previews."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "Add single sign-on for teams."
+   },
+   "rationale": "None match.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q116",
+   "category": "NWMC",
+   "lang": "en",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Quill",
+     "text": "Add tags."
+    },
+    {
+     "id": "idea_1",
+     "project": "Quill",
+     "text": "Add comments."
+    },
+    {
+     "id": "idea_2",
+     "project": "Quill",
+     "text": "Add an RSS feed."
+    }
+   ],
+   "new_capture": {
+    "project": "Quill",
+    "text": "Add a reading-list feature for readers."
+   },
+   "rationale": "None match.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q117",
+   "category": "NWMC",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Фиорд",
+     "text": "Експорт на отчети към счетоводител."
+    },
+    {
+     "id": "idea_1",
+     "project": "Фиорд",
+     "text": "Поддръжка на повече валути."
+    }
+   ],
+   "new_capture": {
+    "project": "Фиорд",
+    "text": "Интеграция с банка."
+   },
+   "rationale": "Нито един.",
+   "split": "dev"
+  },
+  {
+   "id": "Q118",
+   "category": "NWMC",
+   "lang": "bg",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Лични",
+     "text": "Да сменя телефона."
+    },
+    {
+     "id": "idea_1",
+     "project": "Лични",
+     "text": "Да сменя оператора."
+    }
+   ],
+   "new_capture": {
+    "project": "Лични",
+    "text": "Да сменя таблета."
+   },
+   "rationale": "Нито един.",
+   "split": "dev"
+  },
+  {
+   "id": "Q119",
+   "category": "NWMC",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Mosaic",
+     "text": "Icon set."
+    },
+    {
+     "id": "idea_1",
+     "project": "Mosaic",
+     "text": "Guidelines."
+    },
+    {
+     "id": "idea_2",
+     "project": "Mosaic",
+     "text": "Playground."
+    }
+   ],
+   "new_capture": {
+    "project": "Mosaic",
+    "text": "Figma plugin за експорт на токени."
+   },
+   "rationale": "Нито един.",
+   "split": "holdout"
+  },
+  {
+   "id": "Q120",
+   "category": "NWMC",
+   "lang": "mixed",
+   "expected": "NEW",
+   "target": null,
+   "disputed": false,
+   "reframing": false,
+   "candidates": [
+    {
+     "id": "idea_0",
+     "project": "Nimbus",
+     "text": "Dark theme."
+    },
+    {
+     "id": "idea_1",
+     "project": "Nimbus",
+     "text": "Drag and drop."
+    }
+   ],
+   "new_capture": {
+    "project": "Nimbus",
+    "text": "SSO за екипи."
+   },
+   "rationale": "Нито един.",
+   "split": "dev"
+  }
+ ]
+}

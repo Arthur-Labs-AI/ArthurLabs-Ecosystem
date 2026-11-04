@@ -1,0 +1,281 @@
+{
+  "local_date": "2026-10-22 Europe/Sofia",
+  "git_HEAD": "69b3f7410b88d11a77dddeeee453310e0d5b39b9",
+  "status": "PASS: no Gerber change needed for CPL-only rotation correction",
+  "source_hashes_unchanged": 27,
+  "Gerber_zip": "evidence/placement-orientation-2026-10-20/NOT_RELEASED_PENDING_PREVIEW_VERIFICATION/ARTHUR_Neuron_RevB_HJ_JLC_RC2_NOT_RELEASED_Gerbers.zip",
+  "Gerber_zip_SHA256": "2dba5ebe1220329af378240519455e628f2672eb88e753b587c8c0f893d82dfd",
+  "RC1_RC2_Gerber_ZIP_byte_identical": true,
+  "fresh_Gerber_members_geometry_identical": {
+    "ARTHUR_EMG_RevB-B_Cu.gbl": true,
+    "ARTHUR_EMG_RevB-B_Mask.gbs": true,
+    "ARTHUR_EMG_RevB-B_Silkscreen.gbo": true,
+    "ARTHUR_EMG_RevB-Edge_Cuts.gm1": true,
+    "ARTHUR_EMG_RevB-F_Cu.gtl": true,
+    "ARTHUR_EMG_RevB-F_Mask.gts": true,
+    "ARTHUR_EMG_RevB-F_Paste.gtp": true,
+    "ARTHUR_EMG_RevB-F_Silkscreen.gto": true,
+    "ARTHUR_EMG_RevB-In1_Cu.g1": true,
+    "ARTHUR_EMG_RevB-In2_Cu.g2": true,
+    "ARTHUR_EMG_RevB.drl": true
+  },
+  "connector_checks": [
+    {
+      "reference": "J1",
+      "all_four_pad_centers_match_copper_mask_paste": true,
+      "copper_pin_numbers_and_nets_match": true,
+      "pads": [
+        {
+          "number": "1",
+          "board_xy": [
+            41.55,
+            39.3
+          ],
+          "net": "VBAT"
+        },
+        {
+          "number": "2",
+          "board_xy": [
+            41.55,
+            37.3
+          ],
+          "net": "GND"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            47.3,
+            41.65
+          ],
+          "net": "unconnected-(J1-PadMP)"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            47.3,
+            34.95
+          ],
+          "net": "unconnected-(J1-PadMP)"
+        }
+      ]
+    },
+    {
+      "reference": "J101",
+      "all_four_pad_centers_match_copper_mask_paste": true,
+      "copper_pin_numbers_and_nets_match": true,
+      "pads": [
+        {
+          "number": "1",
+          "board_xy": [
+            36.05,
+            8.0
+          ],
+          "net": "/CH1/ELEC_P"
+        },
+        {
+          "number": "2",
+          "board_xy": [
+            34.05,
+            8.0
+          ],
+          "net": "/CH1/ELEC_N"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            38.4,
+            2.25
+          ],
+          "net": "unconnected-(J101-PadMP)"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            31.7,
+            2.25
+          ],
+          "net": "unconnected-(J101-PadMP)"
+        }
+      ]
+    },
+    {
+      "reference": "J5001",
+      "all_four_pad_centers_match_copper_mask_paste": true,
+      "copper_pin_numbers_and_nets_match": true,
+      "pads": [
+        {
+          "number": "1",
+          "board_xy": [
+            45.45,
+            8.0
+          ],
+          "net": "unconnected-(J5001-Pad1)"
+        },
+        {
+          "number": "2",
+          "board_xy": [
+            43.45,
+            8.0
+          ],
+          "net": "/Reference_VCM/RLD_SAFE"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            47.8,
+            2.25
+          ],
+          "net": "unconnected-(J5001-PadMP)"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            41.1,
+            2.25
+          ],
+          "net": "unconnected-(J5001-PadMP)"
+        }
+      ]
+    },
+    {
+      "reference": "J401",
+      "all_four_pad_centers_match_copper_mask_paste": true,
+      "copper_pin_numbers_and_nets_match": true,
+      "pads": [
+        {
+          "number": "1",
+          "board_xy": [
+            7.85,
+            8.0
+          ],
+          "net": "/CH4/ELEC_P"
+        },
+        {
+          "number": "2",
+          "board_xy": [
+            5.85,
+            8.0
+          ],
+          "net": "/CH4/ELEC_N"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            10.2,
+            2.25
+          ],
+          "net": "unconnected-(J401-PadMP)"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            3.5,
+            2.25
+          ],
+          "net": "unconnected-(J401-PadMP)"
+        }
+      ]
+    },
+    {
+      "reference": "J201",
+      "all_four_pad_centers_match_copper_mask_paste": true,
+      "copper_pin_numbers_and_nets_match": true,
+      "pads": [
+        {
+          "number": "1",
+          "board_xy": [
+            26.65,
+            8.0
+          ],
+          "net": "/CH2/ELEC_P"
+        },
+        {
+          "number": "2",
+          "board_xy": [
+            24.65,
+            8.0
+          ],
+          "net": "/CH2/ELEC_N"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            29.0,
+            2.25
+          ],
+          "net": "unconnected-(J201-PadMP)"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            22.3,
+            2.25
+          ],
+          "net": "unconnected-(J201-PadMP)"
+        }
+      ]
+    },
+    {
+      "reference": "J301",
+      "all_four_pad_centers_match_copper_mask_paste": true,
+      "copper_pin_numbers_and_nets_match": true,
+      "pads": [
+        {
+          "number": "1",
+          "board_xy": [
+            17.25,
+            8.0
+          ],
+          "net": "/CH3/ELEC_P"
+        },
+        {
+          "number": "2",
+          "board_xy": [
+            15.25,
+            8.0
+          ],
+          "net": "/CH3/ELEC_N"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            19.6,
+            2.25
+          ],
+          "net": "unconnected-(J301-PadMP)"
+        },
+        {
+          "number": "MP",
+          "board_xy": [
+            12.9,
+            2.25
+          ],
+          "net": "unconnected-(J301-PadMP)"
+        }
+      ]
+    }
+  ],
+  "drill_hits": 192,
+  "PCB_outline_mm": [
+    51.3,
+    64.95
+  ],
+  "outline_evidence": "Fresh outline member identical to hash-bound RC1/RC2; prior measured outline retained",
+  "selected_CPL": "evidence/placement-orientation-2026-10-20/ALTERNATE_J1_TEST_ONLY/ARTHUR_Neuron_RevB_HJ_JLC_RC2_J1_90_TEST_ONLY_NOT_RELEASED_CPL.csv",
+  "CPL_rotations_deg": {
+    "J101": "180",
+    "J201": "180",
+    "J301": "180",
+    "J401": "180",
+    "J5001": "180",
+    "J1": "90"
+  },
+  "CPL_coordinates_sides_and_other_120_rotations_unchanged": true,
+  "private_preview_file_identification": "User confirms provided file; interpreted as last linked J1_90 test alternative",
+  "rendered_mouth_direction": "New user screenshot corroborates outward north-row and outward J1 openings; user confirms correct direction",
+  "final_2D_pin_net_overlay_and_factory_CAM": "UNVERIFIED",
+  "production_approved": false,
+  "human_contact_approved": false,
+  "screenshot_SHA256": "7495cb5254e35f4b1c483c36a949164be10e7016d8492094cfa89c4a3532505e",
+  "user_confirmation_BG": "\u0414\u0410 \u0438\u0437\u043f\u043e\u043b\u0437\u0432\u0430\u0445 \u0444\u0430\u0439\u043b\u0430 \u043a\u043e\u0439\u0442\u043e \u0442\u0438 \u043c\u0438 \u043f\u0440\u0435\u0434\u043e\u0441\u0442\u0430\u0432\u0438"
+}
