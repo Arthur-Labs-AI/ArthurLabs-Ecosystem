@@ -1,10 +1,9 @@
 # Phase A1: Complete Nexus import
 
-**Delivery status — local only.** Phase A1.1 reproduced all 355 strict Linux
-failures by test name on pinned Nexus and the import. The Ubuntu guest
-blocked sandbox startup before the original Phase A1 execution scenarios
-could be compared with real receipts. That comparison is still required
-before pushing the branch.
+**Phase A1.2 validation complete.** The pinned source and imported subtree
+passed the same 14 selected Fedora sandbox tests. A separate paired run
+also produced identical command verdicts, chained write hashes and
+approval event counts. This comparison supports opening the import PR.
 
 The Nexus `main` snapshot is at `systems/nexus/`. This is a source and
 history import; it does not wire Nexus into the monorepo website or start a
@@ -125,7 +124,7 @@ fixture's `x509 -not_before/-not_after` flags. The upstream
 other ARM64 suite limitations. The source and website were left exact;
 no runtime changes or test skips were introduced to pass the gate.
 
-Before pushing, run the locked workspace build and test suite on a supported
+The Phase A1 follow-up was to run the locked workspace build and test suite on a supported
 Linux host with working sandbox primitives, trusted system Node, and an
 OpenSSL CLI that supports the test fixtures. Compare any remaining failing
 tests against the pinned source standalone and resolve critical failures
@@ -201,12 +200,88 @@ There were zero import-only failing tests in the paired run.
 This establishes that the stock-guest failure set is shared, including the
 absence of receipts where the sandbox probe refuses to start. It does not
 reproduce the original Phase A1 receipt-level failures under a guest where
-the sandbox actually launches. The next check is to run the two critical
+the sandbox actually launches. The next check was to run the two critical
 `code_a56` cases in both checkouts on a Linux guest with functioning
 Bubblewrap and the required kernel features, with
 `NEXUS_REQUIRE_SANDBOX=1`. Compare their command exit classifications and
-execution receipts before delivery. No integration-only code fix is
-supported by the evidence so far.
+execution receipts before delivery. Phase A1.2 below records that comparison.
+
+## Phase A1.2 Fedora sandbox validation
+
+Tested the original Nexus release at
+`b58aeef8724e5645c68169d81d9525431fbb2de7` and the imported subtree at
+`1a9e8a24266bea8bd0463dc12183bf6cd9496ebf`. Both detached checkouts
+were made from a local Git bundle in the historical M4.7 UTM guest,
+`ARTHUR VM`. Their Git trees were equal and both checkouts remained
+clean. Only this report changed after the tested integration commit.
+
+| Prerequisite | Observed on the Fedora guest |
+| --- | --- |
+| Operating system and kernel | Fedora 44 ARM64, `6.19.10-300.fc44.aarch64` |
+| Kernel protections | SELinux enforcing. Landlock ABI 7. Kernel seccomp filter and user-namespace options enabled. |
+| Bubblewrap | 0.11.0. A combined user/network namespace and read-only root bind probe exited 0. |
+| cgroups | Running systemd user manager. Created and removed a child cgroup in a user scope with `Delegate=yes`. |
+| Node | v22.23.1, root-owned canonical executable under `/usr/bin`. Starts with an empty environment. |
+| Build and TLS tools | Rust 1.99.1, system C compiler, Git, and OpenSSL 3.5.9. The CLI advertises both required X.509 date options. |
+
+Both sides used `umask 022`, the same locked dependencies, compiler,
+target directory, fixture identity and filesystem. Temporary fixtures were
+placed under the validation workspace on disk. The existing Fedora
+configuration was sufficient. No enforcement or test changes were made.
+
+```sh
+NEXUS_REQUIRE_SANDBOX=1 systemd-run --user --scope -p Delegate=yes -- \
+  cargo test --locked --manifest-path native/Cargo.toml -p nexus-broker \
+  --test code_a56 -- --test-threads=1 --nocapture \
+  a56_e2e_edit_test_fail_diagnose_fix_pass_through_the_real_kernel_sandbox_and_approvals \
+  a56_a_hostile_build_script_in_the_repo_cannot_reach_the_network_the_host_or_leave_children \
+  a56_a_denied_approval_executes_nothing_and_the_run_continues \
+  a56_the_kernel_independently_refuses_unapproved_or_out_of_scope_model_writes_and_processes \
+  pa_
+
+NEXUS_REQUIRE_SANDBOX=1 systemd-run --user --scope -p Delegate=yes -- \
+  cargo test --locked --manifest-path native/Cargo.toml -p nexus-tools \
+  --test seccomp_arch --test sandbox_a34 -- --test-threads=1 --nocapture \
+  privilege_escalation_primitives_are_denied \
+  aarch64_policy_uses_native_numbers_and_rejects_compat_abi \
+  network_including_host_loopback_is_unreachable \
+  host_filesystem_is_invisible_and_credentials_unreadable
+```
+
+| Selected check | Standalone Nexus | Imported Nexus |
+| --- | --- | --- |
+| `code_a56` critical execution | 10 passed, 0 failed, 0 ignored | 10 passed, 0 failed, 0 ignored |
+| `sandbox_a34` isolation | 3 passed, 0 failed, 0 ignored | 3 passed, 0 failed, 0 ignored |
+| `seccomp_arch` | 1 passed, 0 failed, 0 ignored | 1 passed, 0 failed, 0 ignored |
+
+The edit/test/repair scenario asserted two chained write receipts and two
+command outcomes, first a nonzero exit and a fail verdict, then exit 0 and
+a pass verdict. Four mutating or execution operations carried approved
+decisions. Read operations did not require approval. The explicit denial
+produced no execution or file change, and direct unapproved or out-of-scope
+requests were refused by the kernel. The hostile fixture ran inside the
+sandbox and its output confirmed blocked network, host reads and host
+writes. It inherited no ambient secret and left no surviving children.
+The six `pa_*` cases also checked how the broker classified command exit,
+filter status, attested repair and cancelled writeback.
+
+A separate read-only SQLite audit reran the edit/test/repair case once per
+checkout. Both passed. The audit selected stable fields from
+`tool_journal` and counted transitions from `approval_events` while
+the synthetic fixture existed. The resulting JSON was byte-identical,
+with SHA-256 `aebb873e288f062917d593423c0867f0573806baa2994aa56f31fde262773e71`.
+It showed two real process starts and normal exits, code 101 with
+`fail` followed by code 0 with `pass`, and matching pre- and post-image
+hashes for both writes. The first write's post-image was the second write's
+pre-image. Each side recorded four requested, pending, review-armed,
+reviewed, approved and consumed events. The comparison omitted transient
+IDs, timestamps, and resource usage.
+
+The paired Fedora results close the earlier receipt-level validation gap
+for the selected tests. They do not replace the full Ubuntu baseline in
+Phase A1.1 or certify the entire Fedora workspace. The shared Ubuntu
+Bubblewrap, TLS fixture and snapshot-detection failures and the unrelated
+website baseline failure remain recorded above.
 
 ## Synchronizing future Nexus changes
 
