@@ -50,7 +50,7 @@ Both editions are maintained. Neither replaces the other.
 | Built on | The DeepSeek Harness (DSH) runtime: its sessions, tools, permissions, Git integration and web UI | A Rust engine with its own kernel, broker, daemon and sandboxed tools |
 | Interface | Universal Nexus app and Control Room, opened with `aih -Open` | Tauri desktop app |
 | Install | `setup.sh` (Linux) or `setup.ps1` (Windows) | `.deb` / `.dmg` from [Releases](https://github.com/Arthur-Labs-AI/ArthurLabs-Ecosystem/releases), or build from source |
-| Platforms | Windows and Linux x86_64 | Linux x86_64 (full), macOS Apple Silicon (shell only) |
+| Platforms | Windows and Linux x86_64 | Linux x86_64 and macOS Apple Silicon |
 | Code | `runtime/`, `ui/`, `bin/`, `config/`, `scripts/` | `native/`, `apps/nexus-desktop/` |
 
 ### Platform support
@@ -59,7 +59,7 @@ Both editions are maintained. Neither replaces the other.
 | --- | --- | --- |
 | Linux x86_64 | Supported | Full app: engine, sandbox, `.deb` package (Debian/Ubuntu, glibc 2.39+) |
 | Linux ARM64 | Not documented | Development builds (Fedora 44 verified). Release packaging does not target ARM64. |
-| macOS (Apple Silicon) | Not documented | Desktop **shell only**: the sandboxed engine is Linux-bound, so engine commands return `engine-unavailable`. See [`M1-MACOS-DESKTOP-REPORT.md`](systems/nexus/M1-MACOS-DESKTOP-REPORT.md). |
+| macOS (Apple Silicon) | Not documented | Full app. The sandboxed Linux engine runs in an embedded headless microVM (Apple Virtualization.framework, no UTM or SSH), about 3 s to ready. Builds without the engine image are a UI-only shell. See [`M4-EMBEDDED-ENGINE-REPORT.md`](systems/nexus/M4-EMBEDDED-ENGINE-REPORT.md). |
 | Windows | Supported | Not part of the native release workflow |
 
 ### Run Nexus DSH from source
@@ -141,7 +141,8 @@ Needs Node.js 20.9+. End-to-end tests run with Playwright against the production
 
 - Trigger: push a `nexus-v*` tag, or run **Nexus release** from the Actions tab with a tag name.
 - Linux job: builds and content-verifies the `.deb`.
-- macOS job: builds the arm64 `.dmg`. It is ad-hoc signed and not notarized, so Gatekeeper will warn on first launch (right-click, then Open).
+- Engine image job: builds the Fedora ARM64 guest image and kernel on an ARM64 Linux runner.
+- macOS job: builds the app with the embedded VM engine and packages the arm64 `.dmg` (about 430 MB). It is ad-hoc signed and not notarized, so Gatekeeper will warn on first launch (right-click, then Open).
 - The workflow creates a **draft** GitHub release with both installers and SHA-256 files. It never publishes on its own.
 
 Published builds are listed under [Releases](https://github.com/Arthur-Labs-AI/ArthurLabs-Ecosystem/releases). Sentry releases are published separately on its own repository (link above).
