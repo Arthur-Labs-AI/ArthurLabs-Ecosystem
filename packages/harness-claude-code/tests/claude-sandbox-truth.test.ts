@@ -275,11 +275,12 @@ describe('Bash outcome truthfulness (bubblewrap bootstrap failures)', () => {
     const executed = events.filter((event) => event.type === 'command.executed');
     expect(executed).toHaveLength(1);
     expect(executed[0]).toMatchObject({ command: 'printf sentry-bash-ok', exitCode: 0 });
-    // A proven bootstrap failure aborts the turn immediately.
-    expect(events.at(-1)).toMatchObject({
-      type: 'run.failed',
-      failure: { code: 'GLM_SANDBOX_UNAVAILABLE' },
-    });
+    // A proven bootstrap failure aborts the turn immediately, but because a
+    // command already executed the banked facts are still reported (partial).
+    expect(events.at(-1)?.type).toBe('run.completed');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_INVESTIGATION_INCOMPLETE' }),
+    );
   });
 
   it('keeps an explicit nonzero shell exit as a failed command', async () => {

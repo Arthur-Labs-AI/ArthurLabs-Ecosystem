@@ -98,10 +98,9 @@ export async function projectDoctor(input: {
   currentRevisionId?: string;
   revisionCount: number;
   runCount: number;
-  issueCount: number;
   detectedEcosystem: string[];
   runtimes: { name: string; available: boolean }[];
-  verifier: { sandboxAvailable: boolean; runtimeReplaySupported: boolean; reason?: string };
+  sandbox: { sandboxAvailable: boolean; reason?: string };
   warnings: string[];
 }> {
   const projects = new ProjectManager(input.dataRoot, input.repository);
@@ -122,18 +121,13 @@ export async function projectDoctor(input: {
     if (!runtime.available)
       warnings.push('Detected ecosystem ' + runtime.name + ' has no runtime on PATH.');
   }
-  const { SystemdSandboxBackend } = await import('@qa/verifier');
-  const { verifierStagingParent } = await import('@qa/run-engine');
+  const { SystemdSandboxBackend, sandboxStagingParent } = await import('@qa/run-engine');
   const { mkdir } = await import('node:fs/promises');
-  const probeParent = verifierStagingParent(input.dataRoot);
+  const probeParent = sandboxStagingParent(input.dataRoot);
   await mkdir(probeParent, { recursive: true });
   const availability = await new SystemdSandboxBackend().preflight(probeParent);
   if (!availability.available) {
-    warnings.push(
-      'Verifier sandbox unavailable: ' +
-        (availability.reason ?? 'unknown reason') +
-        '. Verification stays inconclusive.',
-    );
+    warnings.push('Sandbox unavailable: ' + (availability.reason ?? 'unknown reason') + '.');
   }
   if (record.managedCopy.state !== 'ready') {
     warnings.push('Managed copy is ' + record.managedCopy.state + ', not ready.');
@@ -145,12 +139,10 @@ export async function projectDoctor(input: {
     currentRevisionId: record.revision.id,
     revisionCount: input.repository.listRevisions(record.project.id).length,
     runCount: input.repository.countProjectRuns(record.project.id),
-    issueCount: input.repository.listIssues(record.project.id).length,
     detectedEcosystem: ecosystem,
     runtimes,
-    verifier: {
+    sandbox: {
       sandboxAvailable: availability.available,
-      runtimeReplaySupported: availability.available,
       ...(availability.reason === undefined ? {} : { reason: availability.reason }),
     },
     warnings,
@@ -161,22 +153,14 @@ export async function storageReport(input: {
   readonly dataRoot: string;
   readonly repository: SentryRepository;
 }) {
-  const { verifierStagingParent } = await import('@qa/run-engine');
-  return inspectStorageHealth(
-    input.dataRoot,
-    input.repository,
-    verifierStagingParent(input.dataRoot),
-    {},
-  );
+  return inspectStorageHealth(input.dataRoot, input.repository, {});
 }
 
 export async function cleanupReport(
   input: { readonly dataRoot: string; readonly repository: SentryRepository },
   options: { apply: boolean },
 ) {
-  const { verifierStagingParent } = await import('@qa/run-engine');
-  const stagingParent = verifierStagingParent(input.dataRoot);
-  const health = await inspectStorageHealth(input.dataRoot, input.repository, stagingParent, {});
+  const health = await inspectStorageHealth(input.dataRoot, input.repository, {});
   const operationId = createOperationId();
   if (!options.apply) {
     return {
@@ -185,7 +169,7 @@ export async function cleanupReport(
       orphans: health.orphans.map((orphan) => ({ ...orphan, removed: false as const })),
     };
   }
-  const audits = await cleanupOrphans(input.dataRoot, stagingParent, health.orphans, {
+  const audits = await cleanupOrphans(input.dataRoot, health.orphans, {
     operationId,
   });
   return {
@@ -210,7 +194,6 @@ export function configReport(dataRoot: string) {
     defaultAgents: [...config.defaultAgents],
     runTimeoutMs: config.productionRunTimeoutMs,
     simulationTimeoutMs: config.simulationRunTimeoutMs,
-    verificationCommandTimeoutMs: config.verificationCommandTimeoutMs,
     orphanMinAgeMs: config.orphanMinAgeMs,
     sandboxBackend: config.sandboxBackend,
     supportedPlatforms: [...config.supportedPlatforms],

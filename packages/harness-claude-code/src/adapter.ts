@@ -1,3 +1,4 @@
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
@@ -7,13 +8,42 @@ import {
   createInvestigationPlanId,
   createOperationId,
   nowIsoTimestamp,
+  dependencyCacheEnvironment,
+  webAccessEnabled,
+  allowedAgentHosts,
+  toolDownloadsEnabled,
   type AgentRunId,
   type OperationId,
+  describePlanRejection,
+  describeSchemaIssues,
 } from '@qa/shared';
 import {
+  limitPhase,
+  investigateChecks,
+  scanHazardFiles,
+  reportAttemptDeadline,
+  PhaseDeadlineReached,
+  ObservedToolNotes,
+  maxPlannedChecks,
+  renderCheckConclusions,
+  compactToolOutput,
+  ContextBudget,
+  estimatePromptTokens,
+  isContextWindowExceeded,
+  buildInvestigationCompactionContext,
+  buildRecoveryReportContext,
+  buildQaPlanningPrompt,
+  applyBlockedChecks,
+  applyUnprovenChecks,
+  buildQaReportPrompt,
+  boundedValidation,
+  coverageErrors,
+  groundCoverage,
+  resolveReportChecks,
+  reportableDepthPlan,
+  depthPolicy,
   boundCorrectionMessage,
   buildPlanningCorrectionIntro,
-  buildReportCorrectionIntro,
   buildBaselineIndex,
   commandIdentity,
   convertReportEvidence,
@@ -21,18 +51,16 @@ import {
   MAX_PLANNING_ATTEMPTS,
   MAX_REPORT_ATTEMPTS,
   parseWholeJson,
-  renderFrozenLedger,
-  REPORT_CONFIDENCE_CALIBRATION,
-  REPORT_ENVELOPE_SCHEMA,
-  REPORT_LEDGER_RULES,
   summarizeSchemaIssues,
   validateLocation,
   validateProductionFindings,
+  downgradeUngroundedFindings,
+  buildGroundingRepairPrompt,
+  isGroundingRepairableError,
   type EvidencePipelineContext,
   type ObservedOperation,
 } from '@qa/evidence-pipeline';
 import {
-  describeSentryAgentReportContract,
   FindingSchema,
   type Finding,
   HarnessEventSchema,
@@ -111,6 +139,10 @@ export interface ClaudeCodeHarnessAdapterOptions {
    * Production never sets this; the real preflight always runs.
    */
   readonly wslMountIsolationOverride?: ClaudeWslIsolationReport | undefined;
+  /** Provider context window in tokens for the configured GLM model.
+   *  Conservative 200k default (Claude Code session window); rotation
+   *  happens at the shared safety ratio before it is full. */
+  readonly contextWindowTokens?: number;
   readonly onRuntimeIdentity?: (identity: {
     readonly harnessVersion?: string;
     readonly executableVersion?: string;
@@ -161,6 +193,34 @@ function isEventCarryingAbort(cause: unknown): cause is ClaudeCodeHarnessError {
       cause.code === 'GLM_TOOL_PERMISSION_UNAVAILABLE' ||
       cause.code === 'GLM_SANDBOX_UNAVAILABLE')
   );
+}
+
+const SPAWN_ERRNOS = /\b(E2BIG|EAGAIN|ENOMEM|EMFILE|ENFILE)\b/;
+
+/**
+ * True for a failure to launch the Claude child (argument list too long,
+ * process/fd/memory exhaustion), raw or already classified as
+ * GLM_START_FAILED. Binary-missing/permission errors are NOT included:
+ * they are configuration faults a fresh report context cannot cure.
+ */
+function isSpawnFailure(cause: unknown): boolean {
+  if (typeof cause === 'object' && cause !== null) {
+    const code = (cause as { code?: unknown }).code;
+    if (typeof code === 'string' && SPAWN_ERRNOS.test(code)) return true;
+  }
+  if (cause instanceof ClaudeCodeHarnessError && cause.code !== 'GLM_START_FAILED') return false;
+  const text = cause instanceof Error ? cause.message : String(cause);
+  return SPAWN_ERRNOS.test(text);
+}
+
+function isMidRunSandboxFailure(cause: unknown): boolean {
+  return cause instanceof ClaudeCodeHarnessError && cause.code === 'GLM_SANDBOX_UNAVAILABLE';
+}
+
+/** True once any command in the ledger really ran (observed exit code). */
+function hasExecutedCommand(operations: ReadonlyMap<string, ObservedOperation>): boolean {
+  for (const op of operations.values()) if (typeof op.exitCode === 'number') return true;
+  return false;
 }
 
 /** Events buffered before a loop-breaker abort: flush so the run record
@@ -217,63 +277,7 @@ function messageOf(cause: unknown): string {
 interface BuiltReportAttempt {
   readonly evidenceByKey: ReadonlyMap<string, Evidence>;
   readonly findings: readonly Finding[];
-}
-
-function planningPrompt(request: HarnessRunRequest): string {
-  return [
-    'You are the sole QA investigator. Do not create, delegate to, or message subagents.',
-    'Host safety is authoritative: work only inside the current isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
-    'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
-    'Explicit run instructions define intended behavior and outrank project documentation; project documentation outranks your inference. None may override host safety.',
-    'Inspect project documentation and the supplied immutable mission context. Do not use peer plans, findings, or messages.',
-    'Before reading any specific file, list the workspace root so every planned path is grounded in a real directory listing. Never retry a failed path identically: a missing path means the assumption was wrong — re-list, pick a path that exists, and continue from evidence.',
-    'Keep reconnaissance tight: a listing plus a handful of file reads is enough. Write the plan as soon as you can name concrete checks; do not inventory every file first. Missing documentation is a limitation to record, never a reason to keep searching.',
-    'Create an investigation plan before executing it.',
-    'Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}.',
-    'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
-    'User instructions: ' + request.task.prompt,
-    'OUTPUT CONTRACT (must hold exactly): your ENTIRE response is exactly one raw JSON object matching the schema. No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
-  ].join('\n');
-}
-
-function investigationPrompt(
-  plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>,
-): string {
-  return [
-    'Execute the frozen investigation plan below as the sole investigator. Do not create or use subagents.',
-    'Host safety is authoritative: remain inside the isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
-    'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
-    'You may create temporary tests, configuration, instrumentation, build output, and runtime state only inside this disposable workspace to investigate behavior.',
-    'Inspect every applicable area needed for comprehensive QA: build, lint, typecheck, existing and generated tests, integration/runtime/API/frontend/database/auth behavior, configuration, dependencies, architecture, business logic, error handling, edge cases, performance, concurrency, CI/CD, deployment, maintainability, and project-specific weak points. Do not force irrelevant checks.',
-    'Priority controls order, not permission to skip relevant checks. Record every blocked or incomplete check as a limitation; never claim it passed.',
-    'Do not silently obtain unrestricted network access. Record sandbox or network restrictions as limitations and never retry with sandbox disabled.',
-    'Use only the repository toolchain already present in the workspace; do not download packages or install dependencies from the network (no npx fetches, no npm/pip installs). If a test runner is unavailable, record it as a limitation.',
-    'Keep the investigation tight: a handful of targeted checks beats dozens of exploratory commands. Do not repeat commands that already produced results.',
-    'Do NOT produce the final Sentry JSON report yet. Investigate only, using permitted local tools as needed. When the investigation is complete, finish this turn with a short terminal message such as: Investigation complete.',
-    'Sentry will provide the authoritative operation ledger in the following reporting turn.',
-    'Frozen plan: ' + JSON.stringify(plan),
-  ].join('\n');
-}
-
-function reportPrompt(
-  plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>,
-  operations: ReadonlyMap<string, ObservedOperation>,
-  correction?: readonly string[],
-): string {
-  return [
-    'Serialize the investigation you just completed into exactly one Sentry report. No new QA: do not run commands, read files, or use any tools in this turn. Temporary evidence keys only; Sentry owns all durable IDs.',
-    ...(correction === undefined ? [] : [buildReportCorrectionIntro(correction)]),
-    REPORT_LEDGER_RULES,
-    REPORT_CONFIDENCE_CALIBRATION,
-    'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value fails validation. Severity MUST be exactly one of: critical, high, medium, low, info.',
-    'Report evidence contract (exact fields per type; copy names exactly): ' +
-      describeSentryAgentReportContract(),
-    REPORT_ENVELOPE_SCHEMA,
-    'Authoritative Sentry operation ledger (frozen after investigation):\n' +
-      renderFrozenLedger(operations),
-    'Frozen plan: ' + JSON.stringify(plan),
-    'OUTPUT CONTRACT (must hold exactly): your ENTIRE response is exactly one raw JSON object matching SentryAgentReportV2 (schemaVersion 2). No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
-  ].join('\n');
+  readonly groundingRepairs: readonly string[];
 }
 
 function eventText(value: unknown): string | undefined {
@@ -328,11 +332,16 @@ function textFromContentBlocks(content: unknown): string {
  * failures.
  */
 export function isSandboxBootstrapFailureText(text: string): boolean {
-  if (/^[\t ]*bwrap:/im.test(text)) return true;
-  if (/^[\t ]*can'?t\s+(mkdir|create\s+file|mount|bind|chdir|pivot|clone|unshare)\b/im.test(text))
+  // A genuine bootstrap failure IS the leading diagnostic of the result
+  // (optionally after an `Exit code N` line). Markers buried deeper are
+  // quoted content — e.g. a printed test file whose fixtures quote bwrap —
+  // and must never abort a healthy investigation.
+  const head = text.split(/\r?\n/).slice(0, 3).join('\n');
+  if (/^[\t ]*bwrap:/im.test(head)) return true;
+  if (/^[\t ]*can'?t\s+(mkdir|create\s+file|mount|bind|chdir|pivot|clone|unshare)\b/im.test(head))
     return true;
-  if (/^[\t ]*sandbox[\t ]+unavailable\b/im.test(text)) return true;
-  if (/^[\t ]*bubblewrap\b[^\r\n]*(permission denied|failed)/im.test(text)) return true;
+  if (/^[\t ]*sandbox[\t ]+unavailable\b/im.test(head)) return true;
+  if (/^[\t ]*bubblewrap\b[^\r\n]*(permission denied|failed)/im.test(head)) return true;
   return false;
 }
 
@@ -358,7 +367,9 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
   private activeTurn: ClaudeTurnStream | undefined;
   private readonly secrets: readonly string[];
   private client?: ClaudeClientView;
-  private closePromise?: Promise<void>;
+  private closePromise: Promise<void> | undefined;
+  private cancelled = false;
+  private readonly toolNotes = new ObservedToolNotes();
   private readonly operationIds = new Map<string, OperationId>();
   private readonly pendingToolUses = new Map<
     string,
@@ -549,7 +560,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     this.runtime = resolveGlmRuntime({ ...options, environment: this.hostEnvironment });
     this.clientFactory = options.clientFactory ?? createProductionClaudeClient;
     this.shutdownTimeoutMs = options.shutdownTimeoutMs ?? 10_000;
-    this.turnTimeoutMs = options.turnTimeoutMs ?? 1_800_000;
+    this.turnTimeoutMs = options.turnTimeoutMs ?? 10_800_000;
     this.initializeTimeoutMs = options.initializeTimeoutMs ?? 30_000;
     const child = buildClaudeChildEnvironment({ source: this.hostEnvironment });
     this.environment = child.environment;
@@ -652,11 +663,12 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       });
       evidenceByKey.set(source.key, converted);
     }
-    validateProductionFindings(result.findings, evidenceByKey, (message: string) =>
+    const repaired = downgradeUngroundedFindings(result.findings, evidenceByKey);
+    validateProductionFindings(repaired.findings, evidenceByKey, (message: string) =>
       pipeline.errors.invalidResult(message),
     );
     const findings: Finding[] = [];
-    for (const source of result.findings) {
+    for (const source of repaired.findings) {
       for (const location of source.locations)
         await validateLocation(
           request.workspace.runtimePath,
@@ -684,7 +696,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         }),
       );
     }
-    return { evidenceByKey, findings };
+    return { evidenceByKey, findings, groundingRepairs: repaired.repairs };
   }
 
   private observeStreamEvent(
@@ -907,7 +919,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             new ClaudeCodeHarnessError(
               'GLM_SANDBOX_UNAVAILABLE',
               'Claude Code sandbox failed to initialize (' +
-                redactDiagnostic(rawResultText, this.secrets).slice(0, 300) +
+                redactDiagnostic(rawResultText, this.secrets).split(/\r?\n/)[0]!.slice(0, 200) +
                 '); the shell command never executed. Repair the sandbox instead of retrying model turns.',
             ),
             { partialEvents: [...out] },
@@ -979,7 +991,10 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           out.push(
             emit({
               type: 'agent.message',
-              message: ('tool ' + toolName + ' result: ' + rawResultText).slice(0, 2_000),
+              message: ('tool ' + toolName + ' result: ' + compactToolOutput(rawResultText)).slice(
+                0,
+                2_000,
+              ),
             }),
           );
         }
@@ -1089,7 +1104,8 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     if (cause instanceof Error && cause.name === 'ZodError')
       return new ClaudeCodeHarnessError(
         'GLM_INVALID_RESULT',
-        'Claude Code returned data that did not match the required schema.',
+        'Claude Code returned data that did not match the required schema' +
+          (describeSchemaIssues(cause) === '' ? '.' : ': ' + describeSchemaIssues(cause) + '.'),
       );
     return new ClaudeCodeHarnessError('GLM_START_FAILED', message, true);
   }
@@ -1188,6 +1204,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         }
         for (const emitted of produced) {
           collected.push(emitted);
+          this.toolNotes.add(emitted);
           yield emitted;
         }
       }
@@ -1218,6 +1235,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             const merged = [...collected, ...partialTurnEvents(cause)];
             for (const emitted of merged.slice(collected.length)) {
               collected.push(emitted);
+              this.toolNotes.add(emitted);
               yield emitted;
             }
             await live.abort().catch(() => undefined);
@@ -1233,6 +1251,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         }
         for (const emitted of produced) {
           collected.push(emitted);
+          this.toolNotes.add(emitted);
           yield emitted;
         }
       }
@@ -1324,6 +1343,26 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
 
   async *run(request: HarnessRunRequest): AsyncIterable<HarnessEvent> {
     yield event(request.agentRunId, { type: 'run.started' });
+    if (depthPolicy(request.task.context) !== undefined) {
+      yield event(request.agentRunId, {
+        type: 'agent.message',
+        message: 'QA_DEPTH_V1: independent validation enabled.',
+      });
+      const preparation = request.task.context?.['workspacePreparation'] as
+        { status?: string; reason?: string } | undefined;
+      if (preparation !== undefined)
+        yield event(request.agentRunId, {
+          type: 'agent.message',
+          message: 'QA_PREPARATION_RECEIPT: ' + JSON.stringify(preparation),
+        });
+      if (preparation?.status === 'limited')
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_PREPARATION_LIMITED',
+          message: preparation.reason ?? 'Workspace preparation is limited.',
+        });
+    }
+
     // Version policy (data-driven, TASK-0012): the tested version is
     // ready; live-proven incompatible versions fail closed BEFORE any
     // provider budget burns; unknown newer versions warn and continue
@@ -1447,13 +1486,17 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     try {
       await mkdir(ephemeralClaudeDir, { recursive: true });
       await mkdir(configDir, { recursive: true });
-      await writeFile(settingsPath, JSON.stringify(buildClaudeSettings()), 'utf8');
+      await writeFile(settingsPath, JSON.stringify(buildClaudeSettings({ allowedDomains: allowedAgentHosts(request.executionSafeguards) })), 'utf8');
       const spec: ClaudeSpawnSpec = {
         executable: this.runtime.executable,
         cwd: request.workspace.runtimePath,
         configDir,
         homeDir: ephemeralHome,
-        environment: this.environment,
+        environment: {
+          ...this.environment,
+          ...dependencyCacheEnvironment(request.workspace.runtimePath),
+        },
+        webAccess: webAccessEnabled(request.executionSafeguards),
         modelId: this.runtime.modelId,
         settingsPath,
         initializeTimeoutMs: this.initializeTimeoutMs,
@@ -1466,6 +1509,51 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       };
       this.client = await this.clientFactory(spec);
       session = await this.client.startSession();
+      let recoveryContext = '';
+      const contextBudget = new ContextBudget(this.options.contextWindowTokens ?? 200_000);
+      const freshClient = async () => {
+        await this.dispose();
+        if (this.cancelled)
+          throw new ClaudeCodeHarnessError(
+            'GLM_CANCEL_FAILED',
+            'Run cancelled before report recovery.',
+          );
+        // The workspace can vanish mid-run (run 01M63HWV: bwrap "Can't find
+        // source path"). Recreate the disposable cwd/home/settings so the
+        // fresh, tool-free recovery session can still start; the report
+        // reads the host ledger, never the workspace.
+        if (!existsSync(spec.cwd) || !existsSync(settingsPath)) {
+          mkdirSync(spec.cwd, { recursive: true });
+          mkdirSync(ephemeralClaudeDir, { recursive: true });
+          mkdirSync(configDir, { recursive: true });
+          writeFileSync(settingsPath, JSON.stringify(buildClaudeSettings({ allowedDomains: allowedAgentHosts(request.executionSafeguards) })), 'utf8');
+        }
+        const candidate = await this.clientFactory(spec);
+        if (this.cancelled) {
+          await candidate.close();
+          throw new ClaudeCodeHarnessError(
+            'GLM_CANCEL_FAILED',
+            'Run cancelled before report recovery.',
+          );
+        }
+        this.client = candidate;
+        this.closePromise = undefined;
+        session = await candidate.startSession();
+        if (this.cancelled)
+          throw new ClaudeCodeHarnessError(
+            'GLM_CANCEL_FAILED',
+            'Run cancelled before report recovery.',
+          );
+      };
+      /** The investigator's per-check closing statements, labelled unverified for fresh sessions. */
+      let conclusionBlock = '';
+      const startReportContext = async (conclusions?: string) => {
+        if (conclusions !== undefined) conclusionBlock = conclusions;
+        await freshClient();
+        recoveryContext =
+          buildRecoveryReportContext(request, this.toolNotes.render(), conclusionBlock) + '\n';
+        contextBudget.reset();
+      };
       markGlmRuntimeVerified();
       const pipeline = pipelineContext(this.secrets);
       // STAGE 1 — planning with one bounded correction. A prose-first or
@@ -1475,6 +1563,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // minted once; resume chain continues into investigation).
       let planResult: ReturnType<typeof SentryInvestigationPlanV1Schema.parse> | undefined;
       let planCorrection: string[] | undefined;
+      let planRejection = '';
       let planningTurns = 0;
       let planningUsage: AgentUsage | undefined;
       for (let attempt = 1; attempt <= MAX_PLANNING_ATTEMPTS; attempt += 1) {
@@ -1486,10 +1575,8 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           const live = this.streamPhaseTurn(
             session,
             planCorrection === undefined
-              ? planningPrompt(request)
-              : buildPlanningCorrectionIntro(planCorrection) +
-                  '\nImmutable mission context: ' +
-                  JSON.stringify(request.task.context ?? {}),
+              ? buildQaPlanningPrompt(request)
+              : buildPlanningCorrectionIntro(planCorrection),
             request.agentRunId,
             'planning',
           );
@@ -1507,17 +1594,24 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           }
         }
         planningTurns += 1;
+        contextBudget.observeTurn(planning.usage);
         planningUsage = sumUsage(planningUsage, planning.usage ?? {});
         if (planning.text.trim().length === 0) {
           planCorrection = ['Planning turn produced no response.'];
+          planRejection = describePlanRejection(undefined, true);
         } else {
           try {
-            planResult = SentryInvestigationPlanV1Schema.parse(
-              parseWholeJson(planning.text, 'planning', pipeline),
+            planResult = reportableDepthPlan(
+              SentryInvestigationPlanV1Schema.parse(
+                parseWholeJson(planning.text, 'planning', pipeline),
+              ),
+              depthPolicy(request.task.context) !== undefined,
+              maxPlannedChecks(request.task.context),
             );
             break;
           } catch (cause) {
             planCorrection = [boundCorrectionMessage(messageOf(cause))];
+            planRejection = describePlanRejection(cause);
           }
         }
         if (attempt < MAX_PLANNING_ATTEMPTS) {
@@ -1525,7 +1619,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
             type: 'warning',
             code: 'GLM_PLANNING_RETRY',
             message:
-              'Claude Code planning attempt ' + attempt + ' rejected; retrying planning only.',
+              'Claude Code planning attempt ' + attempt + ' rejected (' + planRejection + '); retrying planning only.',
           });
         } else {
           throw new ClaudeCodeHarnessError(
@@ -1559,26 +1653,55 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // parsed as a result, never persisted as reasoning); tool events
       // carry the evidentiary facts. Live: yielded mid-turn so the
       // coordinator's activity window tracks real tool work.
-      let investigation: CollectedTurn;
-      {
-        const live = this.streamPhaseTurn(
-          session,
-          investigationPrompt(planResult),
-          request.agentRunId,
-          'investigation',
-        );
-        try {
-          let step = await live.next();
-          while (step.done !== true) {
-            yield step.value;
-            step = await live.next();
-          }
-          investigation = step.value;
-        } catch (cause) {
-          for (const emitted of partialTurnEvents(cause)) yield emitted;
-          throw cause;
-        }
-      }
+      // Investigation: one host-driven turn per frozen check (see
+      // DeepSeek adapter). A dead turn blocks only its remaining checks.
+      const depth = depthPolicy(request.task.context);
+      let reportingIssued = 0;
+      const investigation = yield* investigateChecks<CollectedTurn>({
+        agentLabel: 'Claude Code',
+        agentRunId: request.agentRunId,
+        plan: planResult,
+        depth,
+        operations: this.observedOperations,
+        contextBudget,
+        network: {
+          webAccess: webAccessEnabled(request.executionSafeguards),
+          toolDownloads: toolDownloadsEnabled(request.executionSafeguards),
+        },
+        event: (body) => event(request.agentRunId, body),
+        streamTurn: (turnText) =>
+          this.streamPhaseTurn(session!, turnText, request.agentRunId, 'investigation'),
+        stop: () => this.dispose(),
+        freshSession: freshClient,
+        compactionSeed: (completedChecks, conclusions) =>
+          buildInvestigationCompactionContext(
+            request,
+            planResult!,
+            this.observedOperations,
+            this.toolNotes.render(),
+            completedChecks,
+            conclusions,
+          ) + '\n',
+        startReportContext,
+        cancelled: () => this.cancelled,
+        hazardFiles: () => scanHazardFiles(request.workspace.runtimePath),
+        isTurnTimeout: (cause) => cause instanceof ClaudeTurnTimeoutError,
+        // A spawn failure (E2BIG, EAGAIN, ...) after banked operations, or a
+        // sandbox that died mid-run after commands already executed (a
+        // cold-start sandbox failure has no executed command and still
+        // fails fast), is infrastructure loss, not a verdict: block the
+        // remaining checks and report the banked facts from a fresh context
+        // instead of failing the run and discarding finished work.
+        isSalvageable: (cause) =>
+          (this.observedOperations.size > 0 && isSpawnFailure(cause)) ||
+          (isMidRunSandboxFailure(cause) && hasExecutedCommand(this.observedOperations)),
+        partialEvents: (cause) => partialTurnEvents(cause),
+      });
+      conclusionBlock = renderCheckConclusions(planResult, investigation.checkConclusions);
+      const { blockedChecks, unprovenChecks, redRetryChecks } = investigation;
+      const investigationUsage = investigation.usage;
+      const investigationTurns = investigation.steps;
+
       // STAGE 3 — reporting against the frozen ledger. Strict whole-
       // document JSON only. Provider structured output (--json-schema)
       // is REMOVED from the report flow: measured live, the schema path
@@ -1591,107 +1714,278 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         status: 'reporting',
         message: 'Claude Code is serializing the frozen investigation into a report.',
       });
+      // Prevention: reporting is the context peak — rotate first when the
+      // investigation session is near its window (see DeepSeek adapter).
+      if (
+        recoveryContext === '' &&
+        contextBudget.shouldRotate(
+          estimatePromptTokens(buildQaReportPrompt(planResult, this.observedOperations)),
+        )
+      ) {
+        await startReportContext();
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_CONTEXT_COMPACTED',
+          message:
+            'Context budget reached before reporting; reporting from a fresh session seeded with host-observed facts only.',
+        });
+      }
+      let contextReportRecovered = false;
       const reportTurns: Array<{ usage?: AgentUsage }> = [];
       let result: SentryAgentReportV2 | undefined;
       let built: BuiltReportAttempt | undefined;
       let correction: string[] | undefined;
-      for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
-        let reporting: CollectedTurn | undefined;
-        let errors: string[] | undefined;
+      let groundingRepairUsed = false;
+      let checkpoint: { result: SentryAgentReportV2; built: BuiltReportAttempt } | undefined;
+      let validationCleanupFailed = false;
+      const stopValidation = async (): Promise<void> => {
+        await (this.client?.close() ?? Promise.resolve());
+      };
+      for (let reportPass = 0; reportPass < (depth === undefined ? 1 : 2); reportPass += 1) {
         try {
-          // Live: report-turn events stream mid-turn; the resolved turn
-          // feeds report parsing only (its events already yielded).
-          const live = this.streamPhaseTurn(
-            session,
-            reportPrompt(planResult, this.observedOperations, correction),
-            request.agentRunId,
-            'reporting',
-            { forbidTools: true },
-          );
-          let step = await live.next();
-          while (step.done !== true) {
-            yield step.value;
-            step = await live.next();
-          }
-          reporting = step.value;
-        } catch (cause) {
-          for (const emitted of partialTurnEvents(cause)) yield emitted;
-          // Firewall trip: the model attempted a tool call in the
-          // tool-free turn. Per protocol this fails the REPORT ATTEMPT
-          // (not the run): the correction loop tells the model to
-          // serialize from the frozen ledger without tools.
-          if (
-            cause instanceof ClaudeCodeHarnessError &&
-            cause.code === 'GLM_REPORT_TOOL_FORBIDDEN'
-          ) {
-            errors = [
-              boundCorrectionMessage(messageOf(cause)) +
-                ' The reporting stage is tool-free: ' +
-                'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
-                'Do not run commands, read files, or use any tools.',
-            ];
-          } else {
-            throw cause;
-          }
-        }
-        // A completed report turn consumed a model turn: account it.
-        // Live events already yielded above stay persisted either way;
-        // the resolved turn feeds parsing only (never re-yielded).
-        if (reporting !== undefined) {
-          if (reporting.usage === undefined) reportTurns.push({});
-          else reportTurns.push({ usage: reporting.usage });
-          const candidate = parseReportAttempt(reporting.text, pipeline);
-          if (!candidate.ok) {
-            errors = candidate.errors;
-          } else {
+          for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
+            let reporting: CollectedTurn | undefined;
+            let errors: string[] | undefined;
             try {
-              built = await this.buildReportAttempt(request, candidate.report, pipeline);
-              result = candidate.report;
-              break;
+              const reportText =
+                recoveryContext +
+                buildQaReportPrompt(
+                  planResult,
+                  this.observedOperations,
+                  recoveryContext ? undefined : correction,
+                );
+              recoveryContext = '';
+              reportingIssued += 1;
+              // Live: report-turn events stream mid-turn; the resolved turn
+              // feeds report parsing only (its events already yielded).
+              if (reportPass > 0) {
+                reporting = await boundedValidation(
+                  () =>
+                    this.runTurn(session!, reportText, request.agentRunId, 'reporting', {
+                      forbidTools: true,
+                    }),
+                  Math.max(1, depth!.deadlineAt - Date.now() - 30_000),
+                  stopValidation,
+                );
+                for (const emitted of reporting.events) yield emitted;
+              } else {
+                const work = this.streamPhaseTurn(
+                  session!,
+                  reportText,
+                  request.agentRunId,
+                  'reporting',
+                  { forbidTools: true },
+                );
+                const live =
+                  depth === undefined
+                    ? work
+                    : limitPhase(
+                        work,
+                        reportAttemptDeadline(depth.deadlineAt, attempt),
+                        () => this.dispose(),
+                        'Reporting',
+                      );
+                let step = await live.next();
+                while (step.done !== true) {
+                  yield step.value;
+                  step = await live.next();
+                }
+                reporting = step.value;
+              }
             } catch (cause) {
-              errors = [boundCorrectionMessage(messageOf(cause))];
+              for (const emitted of partialTurnEvents(cause)) yield emitted;
+              // Firewall trip: the model attempted a tool call in the
+              // tool-free turn. Per protocol this fails the REPORT ATTEMPT
+              // (not the run): the correction loop tells the model to
+              // serialize from the frozen ledger without tools.
+              if (isContextWindowExceeded(cause) && !contextReportRecovered && !this.cancelled) {
+                // Reactive compaction: rotate once to a fresh report-only
+                // context and retry there (see DeepSeek adapter).
+                contextReportRecovered = true;
+                await startReportContext();
+                if (attempt >= MAX_REPORT_ATTEMPTS) attempt -= 1;
+                errors = [
+                  'Context window exceeded. Return a shorter complete report from observed facts only.',
+                ];
+                yield event(request.agentRunId, {
+                  type: 'warning',
+                  code: 'QA_CONTEXT_COMPACTED',
+                  message:
+                    'Provider reported context overflow during reporting; retrying in a fresh session seeded with host-observed facts only.',
+                });
+              } else if (
+                cause instanceof PhaseDeadlineReached &&
+                reportPass === 0 &&
+                depth !== undefined &&
+                attempt < MAX_REPORT_ATTEMPTS &&
+                !this.cancelled
+              ) {
+                await startReportContext();
+                errors = [
+                  'Reporting time budget reached. Return a shorter complete report from observed facts only.',
+                ];
+              } else if (
+                cause instanceof ClaudeCodeHarnessError &&
+                cause.code === 'GLM_REPORT_TOOL_FORBIDDEN'
+              ) {
+                errors = [
+                  boundCorrectionMessage(messageOf(cause)) +
+                    ' The reporting stage is tool-free: ' +
+                    'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
+                    'Do not run commands, read files, or use any tools.',
+                ];
+              } else {
+                throw cause;
+              }
+            }
+            // A completed report turn consumed a model turn: account it.
+            // Live events already yielded above stay persisted either way;
+            // the resolved turn feeds parsing only (never re-yielded).
+            if (reporting !== undefined) {
+              if (reporting.usage === undefined) reportTurns.push({});
+              else reportTurns.push({ usage: reporting.usage });
+              const candidate = parseReportAttempt(reporting.text, pipeline);
+              if (!candidate.ok) {
+                errors = candidate.errors;
+              } else {
+                try {
+                  const grounded = applyUnprovenChecks(
+                    applyBlockedChecks(
+                      depth === undefined
+                        ? resolveReportChecks(planResult, candidate.report)
+                        : groundCoverage(
+                            resolveReportChecks(planResult, candidate.report),
+                            this.observedOperations,
+                          ),
+                      blockedChecks,
+                    ),
+                    unprovenChecks,
+                    redRetryChecks,
+                  );
+                  const missing = depth === undefined ? [] : coverageErrors(planResult, grounded);
+                  if (missing.length > 0) throw new Error(missing.join('\n'));
+                  built = await this.buildReportAttempt(request, grounded, pipeline);
+                  result = grounded;
+                  if (built.groundingRepairs.length > 0)
+                    yield event(request.agentRunId, {
+                      type: 'warning',
+                      code: 'QA_GROUNDING_DOWNGRADED',
+                      message:
+                        'Ungrounded confidence downgraded, findings preserved: ' +
+                        built.groundingRepairs.join('; '),
+                    });
+                  break;
+                } catch (cause) {
+                  errors = [boundCorrectionMessage(messageOf(cause))];
+                }
+              }
+            }
+            // Firewall trips (reporting undefined) arrive here with errors
+            // already set; parse/build failures arrive via the block above.
+            if (errors === undefined) {
+              throw new ClaudeCodeHarnessError(
+                'GLM_INVALID_RESULT',
+                'Claude Code report attempt produced no result and no error.',
+              );
+            }
+            correction = errors;
+            if (
+              attempt < MAX_REPORT_ATTEMPTS &&
+              !groundingRepairUsed &&
+              !this.cancelled &&
+              isGroundingRepairableError(errors)
+            ) {
+              // One bounded tool-enabled repair in the live session (see
+              // the DeepSeek adapter for the shared contract).
+              groundingRepairUsed = true;
+              yield event(request.agentRunId, {
+                type: 'warning',
+                code: 'QA_GROUNDING_REPAIR',
+                message:
+                  'Report lacks observed grounding; running the single missing operation before one report retry.',
+              });
+              try {
+                const repair = await this.runTurn(
+                  session!,
+                  buildGroundingRepairPrompt(errors, this.observedOperations),
+                  request.agentRunId,
+                  'investigation',
+                );
+                for (const emitted of repair.events) yield emitted;
+                reportTurns.push(repair.usage === undefined ? {} : { usage: repair.usage });
+              } catch {
+                // Fall through: the tool-free correction below still runs.
+              }
+            }
+            if (attempt < MAX_REPORT_ATTEMPTS) {
+              // Observability: persist the bounded rejection reasons (not just
+              // the count) so a failed correction loop is diagnosable from run
+              // history without the model's raw report text.
+              const reasonPreview = errors
+                .slice(0, 3)
+                .map((issue) => boundCorrectionMessage(issue))
+                .join('; ')
+                .slice(0, 1_500);
+              yield event(request.agentRunId, {
+                type: 'warning',
+                code: 'GLM_REPORT_RETRY',
+                message: (
+                  'Claude Code report attempt ' +
+                  attempt +
+                  ' rejected; retrying report only (' +
+                  errors.length +
+                  ' issues): ' +
+                  reasonPreview
+                ).slice(0, 2_000),
+              });
+            } else {
+              throw new ClaudeCodeHarnessError(
+                'GLM_INVALID_RESULT',
+                'Claude Code report failed after ' +
+                  MAX_REPORT_ATTEMPTS +
+                  ' attempts: ' +
+                  errors.map(boundCorrectionMessage).join('; '),
+              );
             }
           }
-        }
-        // Firewall trips (reporting undefined) arrive here with errors
-        // already set; parse/build failures arrive via the block above.
-        if (errors === undefined) {
-          throw new ClaudeCodeHarnessError(
-            'GLM_INVALID_RESULT',
-            'Claude Code report attempt produced no result and no error.',
-          );
-        }
-        correction = errors;
-        if (attempt < MAX_REPORT_ATTEMPTS) {
-          // Observability: persist the bounded rejection reasons (not just
-          // the count) so a failed correction loop is diagnosable from run
-          // history without the model's raw report text.
-          const reasonPreview = errors
-            .slice(0, 3)
-            .map((issue) => boundCorrectionMessage(issue))
-            .join('; ')
-            .slice(0, 1_500);
+        } catch (cause) {
+          if (checkpoint === undefined) throw cause;
+          try {
+            await stopValidation();
+          } catch {
+            validationCleanupFailed = true;
+          }
+          if (cause instanceof Error && cause.message === 'QA_VALIDATION_CLEANUP_FAILED')
+            validationCleanupFailed = true;
+          result = checkpoint.result;
+          built = checkpoint.built;
           yield event(request.agentRunId, {
             type: 'warning',
-            code: 'GLM_REPORT_RETRY',
-            message: (
-              'Claude Code report attempt ' +
-              attempt +
-              ' rejected; retrying report only (' +
-              errors.length +
-              ' issues): ' +
-              reasonPreview
-            ).slice(0, 2_000),
+            code: 'QA_VALIDATION_INCOMPLETE',
+            message:
+              'Optional refinement did not complete; the validated checkpoint report is retained. Analysis is partial.',
           });
-        } else {
-          throw new ClaudeCodeHarnessError(
-            'GLM_INVALID_RESULT',
-            'Claude Code report failed after ' +
-              MAX_REPORT_ATTEMPTS +
-              ' attempts: ' +
-              errors.map(boundCorrectionMessage).join('; '),
-          );
+          break;
         }
+        if (result === undefined || built === undefined) break;
+        if (reportPass > 0 || depth === undefined) break;
+        checkpoint = { result, built };
+        yield event(request.agentRunId, {
+          type: 'report.checkpoint',
+          findings: built.findings,
+          evidence: [...built.evidenceByKey.values()],
+        });
+        yield event(request.agentRunId, {
+          type: 'agent.message',
+          message: 'QA_REPORT_CHECKPOINT_READY: valid report prepared before optional validation.',
+        });
+        // The validated checkpoint IS the final report (see DeepSeek).
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_CHALLENGE_NOT_RUN',
+          message: 'Checkpoint report is final; no self-challenge stage.',
+        });
+        break;
       }
       if (result === undefined || built === undefined)
         throw new ClaudeCodeHarnessError('GLM_INVALID_RESULT', 'Claude Code produced no report.');
@@ -1725,6 +2019,15 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         yield event(request.agentRunId, { type: 'evidence.submitted', evidence });
       for (const finding of attempt.findings)
         yield event(request.agentRunId, { type: 'finding.submitted', finding });
+      if (
+        depth !== undefined &&
+        result.checks.some((check) => ['not_run', 'inconclusive'].includes(check.status))
+      )
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_COVERAGE_PARTIAL',
+          message: 'Analysis is partial: applicable planned checks remain unverified.',
+        });
       for (const limitation of result.limitations)
         yield event(request.agentRunId, {
           type: 'warning',
@@ -1734,43 +2037,57 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
       // Actual turn accounting: every planning attempt + investigation +
       // every report attempt (initial, schema-fallback retries,
       // corrections). Never hardcoded.
-      let summed = sumUsage(planningUsage, investigation.usage ?? {});
+      let summed = sumUsage(planningUsage, investigationUsage ?? {});
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
         ...summed,
-        turns: planningTurns + 1 + reportTurns.length,
+        turns: planningTurns + investigationTurns + reportingIssued,
       };
       yield event(request.agentRunId, { type: 'usage.updated', usage });
-      yield event(request.agentRunId, {
-        type: 'run.completed',
-        usage,
-      });
+      if (validationCleanupFailed) {
+        yield event(request.agentRunId, {
+          type: 'run.failed',
+          failure: {
+            code: 'QA_VALIDATION_CLEANUP_FAILED',
+            message:
+              'Validation process cleanup could not be confirmed; checkpoint output was retained.',
+            retryable: false,
+          },
+        });
+      } else {
+        yield event(request.agentRunId, {
+          type: 'run.completed',
+          usage,
+        });
+      }
     } catch (cause) {
       // Structured-first classification: typed harness errors (loop,
       // firewall, timeouts) pass through verbatim; transport/process
       // failures map via classifyTurnFailure. Auth/sandbox hints apply
       // only when no precise signal exists.
       const typed =
-        cause instanceof ClaudeCodeHarnessError
-          ? cause
-          : (() => {
-              const text = String(cause);
-              if (
-                /not logged in|login|authentication_failed|unauthorized|api key|credential|sign in|401/i.test(
-                  text,
+        cause instanceof PhaseDeadlineReached
+          ? new ClaudeCodeHarnessError('QA_REPORT_DEADLINE', cause.message, false)
+          : cause instanceof ClaudeCodeHarnessError
+            ? cause
+            : (() => {
+                const text = String(cause);
+                if (
+                  /not logged in|login|authentication_failed|unauthorized|api key|credential|sign in|401/i.test(
+                    text,
+                  )
                 )
-              )
-                return new ClaudeCodeHarnessError(
-                  'GLM_AUTH_FAILED',
-                  redactDiagnostic(cause, this.secrets),
-                );
-              if (/sandbox/i.test(text))
-                return new ClaudeCodeHarnessError(
-                  'GLM_SANDBOX_UNAVAILABLE',
-                  redactDiagnostic(cause, this.secrets),
-                );
-              return this.classifyTurnFailure(cause, 'run');
-            })();
+                  return new ClaudeCodeHarnessError(
+                    'GLM_AUTH_FAILED',
+                    redactDiagnostic(cause, this.secrets),
+                  );
+                if (/sandbox/i.test(text))
+                  return new ClaudeCodeHarnessError(
+                    'GLM_SANDBOX_UNAVAILABLE',
+                    redactDiagnostic(cause, this.secrets),
+                  );
+                return this.classifyTurnFailure(cause, 'run');
+              })();
       yield event(request.agentRunId, {
         type: 'run.failed',
         failure: {
@@ -1789,6 +2106,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
   }
 
   async cancel(_runId: AgentRunId): Promise<void> {
+    this.cancelled = true;
     try {
       // Live cancel: abort the in-flight owned turn immediately so the
       // child dies while the turn is active (not at process exit), then

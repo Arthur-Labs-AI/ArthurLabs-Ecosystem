@@ -10,7 +10,7 @@
 import { z } from 'zod';
 import { RUN_TIMEOUT_MS_MAX, RUN_TIMEOUT_MS_MIN } from '@qa/shared';
 import type { AgentStackDefinition } from '@qa/schemas';
-import type { DesktopOperation, RetestSnapshot, RunSnapshot } from '../../shared/ipc-contract.js';
+import type { DesktopOperation, RunSnapshot } from '../../shared/ipc-contract.js';
 import { toSafeError } from '../desktop-command-router.js';
 import type { ProviderCredentialService } from './provider-credentials.js';
 import type { RuntimeClient } from '../runtime/runtime-client.js';
@@ -26,8 +26,6 @@ export interface DesktopServiceDeps {
 
 const ProjectIdInput = z.string().min(1).max(200);
 const RunIdInput = z.string().regex(/^run_[0-9A-HJKMNP-TV-Z]{26}$/);
-const IssueIdInput = z.string().regex(/^issue_[0-9A-HJKMNP-TV-Z]{26}$/);
-const RetestRunIdInput = z.string().regex(/^retest_[0-9A-HJKMNP-TV-Z]{26}$/);
 const StartRunOptions = z
   .object({
     mode: z.enum(['full', 'targeted']),
@@ -39,6 +37,9 @@ const StartRunOptions = z
     instructions: z.string().min(1).max(5000).optional(),
     agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
     runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
+    webAccess: z.boolean().optional(),
+    toolDownloads: z.boolean().optional(),
+    useProfile: z.boolean().optional(),
   })
   .strict();
 
@@ -135,6 +136,31 @@ export class DesktopApplicationService {
     return this.call('projects.suggestTargets', { projectId: id });
   }
 
+  toolchainStatus(): Promise<unknown> {
+    return this.call('toolchains.status', {});
+  }
+
+  toolchainInstall(packId: string, version: string): Promise<unknown> {
+    return this.call('toolchains.install', { packId, version });
+  }
+
+  toolchainRemove(packId: string, version: string): Promise<unknown> {
+    return this.call('toolchains.remove', { packId, version });
+  }
+
+  profileStatus(projectId: string): Promise<unknown> {
+    const id = ProjectIdInput.parse(projectId);
+    return this.call('projects.profile', { projectId: id });
+  }
+
+  buildProfiles(projectId: string, agentStackIds?: string[]): Promise<unknown> {
+    const id = ProjectIdInput.parse(projectId);
+    return this.call('projects.buildProfile', {
+      projectId: id,
+      ...(agentStackIds === undefined ? {} : { agentStackIds }),
+    });
+  }
+
   async updateProject(projectId: string, sourcePath?: string): Promise<unknown> {
     const id = ProjectIdInput.parse(projectId);
     if (sourcePath === undefined) return this.call('projects.update', { projectId: id });
@@ -185,6 +211,9 @@ export class DesktopApplicationService {
         ...(parsed.instructions === undefined ? {} : { instructions: parsed.instructions }),
         ...(parsed.agentStackIds === undefined ? {} : { agentStackIds: [...parsed.agentStackIds] }),
         ...(parsed.runTimeoutMs === undefined ? {} : { runTimeoutMs: parsed.runTimeoutMs }),
+        ...(parsed.webAccess === true ? { webAccess: true } : {}),
+        ...(parsed.toolDownloads === true ? { toolDownloads: true } : {}),
+        ...(parsed.useProfile === true ? { useProfile: true } : {}),
       })) as DesktopOperation;
     } catch (error) {
       // A client-side timeout does NOT mean the runtime didn't start the run:
@@ -250,52 +279,6 @@ export class DesktopApplicationService {
     const id = RunIdInput.parse(runId);
     const parsed = z.enum(['log', 'json']).parse(format);
     return this.call('runs.export', { runId: id, format: parsed });
-  }
-
-  // ---- issues ----
-  listIssues(projectId: string): Promise<unknown[]> {
-    const id = ProjectIdInput.parse(projectId);
-    return this.call('issues.list', { projectId: id }) as Promise<unknown[]>;
-  }
-
-  getIssue(issueId: string): Promise<unknown> {
-    const id = IssueIdInput.parse(issueId);
-    return this.call('issues.get', { issueId: id });
-  }
-
-  issueHistory(issueId: string): Promise<unknown> {
-    const id = IssueIdInput.parse(issueId);
-    return this.call('issues.history', { issueId: id });
-  }
-
-  // ---- retests ----
-  listRetests(issueId: string): Promise<unknown[]> {
-    const id = IssueIdInput.parse(issueId);
-    return this.call('retests.list', { issueId: id }) as Promise<unknown[]>;
-  }
-
-  startRetest(
-    issueId: string,
-    options?: { revisionId?: string; agentStackIds?: string[] },
-  ): Promise<DesktopOperation> {
-    const id = IssueIdInput.parse(issueId);
-    return this.call('retests.start', {
-      issueId: id,
-      ...(options?.revisionId === undefined ? {} : { revisionId: options.revisionId }),
-      ...(options?.agentStackIds === undefined
-        ? {}
-        : { agentStackIds: [...options.agentStackIds] }),
-    }) as Promise<DesktopOperation>;
-  }
-
-  retestSnapshot(retestRunId: string): Promise<RetestSnapshot> {
-    const id = RetestRunIdInput.parse(retestRunId);
-    return this.call('retests.get', { retestRunId: id }) as Promise<RetestSnapshot>;
-  }
-
-  cancelRetest(retestRunId: string): Promise<unknown> {
-    const id = RetestRunIdInput.parse(retestRunId);
-    return this.call('retests.cancel', { retestRunId: id });
   }
 
   // ---- doctors / system ----

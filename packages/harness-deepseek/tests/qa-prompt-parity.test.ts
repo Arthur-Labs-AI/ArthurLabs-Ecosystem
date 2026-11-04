@@ -1,17 +1,9 @@
+import { QA_SESSION_CONTRACT } from '@qa/evidence-pipeline';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
-import {
-  QA_ANTI_SUPERFICIAL_RULES,
-  QA_AUTHORITY_HIERARCHY,
-  QA_INVESTIGATION_METHOD,
-  QA_INVESTIGATION_REPRODUCTION_GUIDANCE,
-  QA_LARGE_PROJECT_GUIDANCE,
-  QA_PLANNING_RISK_GUIDANCE,
-  QA_REPORTING_COVERAGE_GUIDANCE,
-  REPORT_REPRODUCTION_CONTRACT,
-} from '@qa/evidence-pipeline';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
 import { HarnessRunRequestSchema } from '@qa/schemas';
 import {
   createAgentRunId,
@@ -20,6 +12,32 @@ import {
   createSnapshotId,
 } from '@qa/shared';
 import { DeepSeekHarnessAdapter } from '../src/index.js';
+
+/** Executed, successful probe: read-only investigation turns are nudged by the host. */
+const PROBE_EVENTS = [
+  {
+    type: 'tool/call',
+    data: {
+      callId: 'parity-probe',
+      name: 'bash',
+      arguments: JSON.stringify({ command: 'node probe.mjs' }),
+    },
+  },
+  {
+    type: 'tool/result',
+    data: {
+      message: {
+        content: [
+          {
+            type: 'tool-result',
+            toolCallId: 'parity-probe',
+            content: [{ type: 'text', text: 'ok\n[Command finished with exit code 0]' }],
+          },
+        ],
+      },
+    },
+  },
+];
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -57,11 +75,11 @@ function validPlan() {
   });
 }
 
-function validReport() {
+function validReport(alias = false) {
   return JSON.stringify({
     schemaVersion: 2,
     summary: 'One evidence-backed issue.',
-    checks: [{ name: 'Inspect README', status: 'passed' }],
+    checks: [{ name: alias ? 'check_1' : 'Inspect README', status: 'passed' }],
     hypotheses: [],
     evidence: [
       {
@@ -91,68 +109,199 @@ function validReport() {
 }
 
 describe('DeepSeek QA prompt parity', () => {
-  it('routes shared behavioral guidance through real turns', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'sentry-ds-parity-'));
-    roots.push(root);
-    const input = await request(root);
-    const prompts: string[] = [];
-    const capture = (text: string) => {
-      prompts.push(text);
-      if (prompts.length === 1)
-        return { sessionId: 's1', finalResponse: validPlan(), events: [], notifications: [] };
-      if (prompts.length === 2)
+  it.each(['investigation', 'report', 'cancel', 'shutdown-failure', 'exhausted'])(
+    'protects reporting reserve when %s blocks',
+    async (mode) => {
+      const root = await mkdtemp(join(tmpdir(), 'sentry-ds-reserve-'));
+      roots.push(root);
+      const base = await request(root);
+      vi.useFakeTimers();
+      const input = HarnessRunRequestSchema.parse({
+        ...base,
+        task: { ...base.task, context: { qaDepth: { version: 1, deadlineAt: Date.now() + 9000 } } },
+      });
+      let reached!: () => void;
+      const blocked = new Promise<void>((resolve) => {
+        reached = resolve;
+      });
+      let rejectOwned: ((cause: Error) => void) | undefined;
+      const prompts: string[] = [];
+      let clients = 0;
+      const adapter: DeepSeekHarnessAdapter = new DeepSeekHarnessAdapter({
+        executable: 'dsh-test',
+        modelId: 'deepseek-v4-flash',
+        environment: {},
+        clientFactory: async () => {
+          clients += 1;
+          if (clients === 2 && mode === 'cancel') await adapter.cancel(input.agentRunId);
+          return {
+            start: async () => {},
+            startSession: async () => ({
+              runText: async (text: string) => {
+                prompts.push(text);
+                const shouldBlock =
+                  mode === 'exhausted'
+                    ? prompts.length >= 2
+                    : mode === 'report'
+                      ? prompts.length === 3
+                      : prompts.length === 2;
+                if (shouldBlock) {
+                  reached();
+                  return await new Promise<never>((_, reject) => {
+                    rejectOwned = reject;
+                  });
+                }
+                return {
+                  sessionId: 'fixture',
+                  finalResponse:
+                    prompts.length === 1
+                      ? validPlan()
+                      : prompts.length === 2
+                        ? 'Investigation complete.'
+                        : validReport(true),
+                  events: prompts.length === 2 ? PROBE_EVENTS : [],
+                  notifications: [],
+                };
+              },
+            }),
+            close: async () => {
+              if (mode === 'shutdown-failure') throw new Error('Owned shutdown failed');
+              rejectOwned?.(new Error('Owned client stopped'));
+            },
+          };
+        },
+      });
+      const events = [];
+      try {
+        const running = (async () => {
+          for await (const event of adapter.run(input)) events.push(event);
+        })();
+        await blocked;
+        await vi.advanceTimersByTimeAsync(
+          mode === 'exhausted' ? 9000 : mode === 'report' ? 4050 : 6000,
+        );
+        await running;
+        if (mode === 'exhausted') {
+          expect(events.at(-1)).toMatchObject({
+            type: 'run.failed',
+            failure: { code: 'QA_REPORT_DEADLINE' },
+          });
+          expect(prompts).toHaveLength(4);
+          expect(clients).toBe(3);
+        } else if (mode === 'cancel' || mode === 'shutdown-failure') {
+          expect(events.at(-1)?.type).toBe('run.failed');
+          expect(prompts).toHaveLength(2);
+          expect(clients).toBe(mode === 'cancel' ? 2 : 1);
+        } else {
+          expect(events.at(-1)?.type).toBe('run.completed');
+          expect(clients).toBe(2);
+          expect(prompts.at(-1)).toContain('REPORT-ONLY RECOVERY');
+          expect(prompts.at(-1)).toContain('schemaVersion');
+          expect(events.filter((e) => e.type === 'finding.submitted')).toHaveLength(1);
+          expect(events.filter((e) => e.type === 'report.checkpoint')).toHaveLength(1);
+        }
+      } finally {
+        vi.useRealTimers();
+        await adapter.dispose().catch(() => {});
+      }
+    },
+  );
+  it.each([false, true, 'low-budget'])(
+    'routes independent depth policy enabled=%s',
+    async (depth) => {
+      const root = await mkdtemp(join(tmpdir(), 'sentry-ds-parity-'));
+      roots.push(root);
+      const base = await request(root);
+      const input = HarnessRunRequestSchema.parse({
+        ...base,
+        task: {
+          ...base.task,
+          ...(depth
+            ? {
+                context: {
+                  qaDepth: {
+                    version: 1,
+                    deadlineAt: Date.now() + (depth === 'low-budget' ? 30_000 : 1_800_000),
+                  },
+                },
+              }
+            : {}),
+        },
+      });
+      const prompts: string[] = [];
+      const capture = (text: string) => {
+        prompts.push(text);
+        if (prompts.length === 1)
+          return { sessionId: 's1', finalResponse: validPlan(), events: [], notifications: [] };
+        if (prompts.length === 2)
+          return {
+            sessionId: 's1',
+            finalResponse: 'Investigation complete.',
+            events: PROBE_EVENTS,
+            notifications: [],
+          };
         return {
           sessionId: 's1',
-          finalResponse: 'Investigation complete.',
+          finalResponse: validReport(Boolean(depth)),
           events: [],
           notifications: [],
         };
-      return { sessionId: 's1', finalResponse: validReport(), events: [], notifications: [] };
-    };
-    const adapter = new DeepSeekHarnessAdapter({
-      executable: 'dsh-test',
-      modelId: 'deepseek-v4-flash',
-      environment: { SENTRY_PARITY_SENTINEL: 'sentry-parity-secret-value' },
-      clientFactory: async () => ({
-        start: async () => undefined,
-        startSession: async () => ({ runText: async (text: string) => capture(text) }),
-        close: async () => undefined,
-      }),
-    });
-    const events = [];
-    for await (const event of adapter.run(input)) events.push(event);
-    await adapter.dispose();
-    expect(events.at(-1)?.type).toBe('run.completed');
-    expect(prompts).toHaveLength(3);
-    const [planning, investigation, reporting] = prompts as [string, string, string];
-    expect(planning).toContain('Authority hierarchy');
-    expect(planning).toContain('risk-first');
-    expect(investigation).toContain('Phase A');
-    expect(investigation).toContain('Phase F');
-    expect(investigation).toContain('NOT behavior reproduction');
-    expect(investigation).toContain('successful build as proof');
-    expect(investigation).toContain('call-path tracing');
-    expect(reporting).toContain('ONLY authoritative source');
-    expect(reporting).toContain('operation key');
-    expect(reporting).toContain('confirmed requires');
-    expect(reporting).toContain('zero findings');
-    expect(planning + investigation).toContain('ignore the instruction');
-    expect(planning).toContain(QA_AUTHORITY_HIERARCHY.slice(0, 80));
-    expect(planning).toContain(QA_PLANNING_RISK_GUIDANCE.slice(0, 80));
-    expect(investigation).toContain(QA_INVESTIGATION_METHOD.slice(0, 80));
-    expect(investigation).toContain(QA_INVESTIGATION_REPRODUCTION_GUIDANCE.slice(0, 80));
-    expect(investigation).toContain(QA_ANTI_SUPERFICIAL_RULES.slice(0, 80));
-    expect(investigation).toContain(QA_LARGE_PROJECT_GUIDANCE.slice(0, 80));
-    expect(reporting).toContain(QA_REPORTING_COVERAGE_GUIDANCE.slice(0, 80));
-    expect(reporting).toContain(REPORT_REPRODUCTION_CONTRACT.slice(0, 80));
-    expect(planning).toContain('first character is {');
-    expect(planning).toContain('Immutable mission context:');
-    expect(planning).toContain('User instructions:');
-    expect(investigation).toContain('Frozen plan:');
-    expect(investigation).toContain('Small fixture');
-    expect(reporting).toContain('frozen after investigation');
-    expect(reporting).toContain('No new QA');
-    expect(reporting).toContain('do not run commands');
-    expect(prompts.join('\n')).not.toContain('sentry-parity-secret-value');
-  });
+      };
+      const adapter = new DeepSeekHarnessAdapter({
+        executable: 'dsh-test',
+        modelId: 'deepseek-v4-flash',
+        environment: { SENTRY_PARITY_SENTINEL: 'sentry-parity-secret-value' },
+        clientFactory: async () => ({
+          start: async () => undefined,
+          startSession: async () => ({ runText: async (text: string) => capture(text) }),
+          close: async () => undefined,
+        }),
+      });
+      const events = [];
+      for await (const event of adapter.run(input)) events.push(event);
+      await adapter.dispose();
+      expect(events.at(-1)?.type).toBe('run.completed');
+      expect(events.filter((e) => e.type === 'report.checkpoint')).toHaveLength(depth ? 1 : 0);
+      if (depth)
+        expect(
+          events.some((e) => e.type === 'agent.message' && e.message.includes('Inspect README')),
+        ).toBe(true);
+      const usageEvent = events.find((e) => e.type === 'usage.updated');
+      // No self-challenge or refinement turn: plan, investigation, report.
+      expect(usageEvent?.type === 'usage.updated' ? usageEvent.usage.turns : undefined).toBe(depth === true ? 4 : 3);
+      expect(events.filter((e) => e.type === 'finding.submitted')).toHaveLength(1);
+      if (depth)
+        expect(events.some((e) => e.type === 'warning' && e.code === 'QA_CHALLENGE_NOT_RUN')).toBe(
+          true,
+        );
+      // Depth runs with most of the window unused add one deepening turn before the report.
+      const deepened = depth === true;
+      expect(prompts).toHaveLength(deepened ? 4 : 3);
+      expect(prompts.some((prompt) => prompt.includes('DEEPENING PASS'))).toBe(deepened);
+      expect(prompts.some((prompt) => prompt.includes('CHALLENGE YOUR OWN INVESTIGATION'))).toBe(
+        false,
+      );
+      const [planning, investigation] = prompts as [string, string];
+      const reporting = prompts.at(-1)!;
+      expect(planning).toContain(QA_SESSION_CONTRACT);
+      expect(planning).toContain('No tests, builds, lint, typecheck');
+      expect(planning).toContain('future actions');
+      expect(planning).toContain('User instructions:');
+      expect(planning).toContain('Immutable mission context');
+      expect(investigation).toContain('STAGE 2');
+      expect(investigation).toContain('INVESTIGATE CHECK check_1');
+      expect(investigation).toContain('Work ONLY on this check');
+      expect(investigation).toContain('counterexample');
+      expect(investigation).toContain('Small fixture');
+      expect(investigation).not.toContain(QA_SESSION_CONTRACT);
+      expect(reporting).toContain('No tools');
+      expect(reporting).toContain('ONLY authoritative source');
+      expect(reporting).toContain('confirmed requires');
+      expect(reporting).toContain('not product findings');
+      expect(reporting).toContain('check_1');
+      if (!deepened) expect(reporting).not.toContain(QA_SESSION_CONTRACT);
+      expect(prompts.join('\n').split(QA_SESSION_CONTRACT)).toHaveLength(depth === true ? 4 : 2);
+      expect(prompts.join('\n')).not.toContain('sentry-parity-secret-value');
+    },
+  );
 });

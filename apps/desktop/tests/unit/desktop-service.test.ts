@@ -34,8 +34,6 @@ function fakeService(calls: Array<{ method: string; params: Record<string, unkno
       switch (method) {
         case 'runs.start':
           return { operationId: 'dop_test', runId: 'run_01K7777777777777777777A8W1' };
-        case 'retests.start':
-          return { operationId: 'dop_test', retestRunId: 'retest_01K7777777777777777777A8W1' };
         case 'production.preRunGate':
           return { ready: true, stacks: [] };
         case 'runtime.configure':

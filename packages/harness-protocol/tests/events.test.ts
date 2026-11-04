@@ -61,6 +61,40 @@ const evidence = EvidenceSchema.parse(
 );
 
 describe('HarnessEvent protocol', () => {
+  it('validates checkpoint ownership before its facts can be recovered', () => {
+    const checkpoint = HarnessEventSchema.parse({
+      ...base,
+      type: 'report.checkpoint',
+      findings: [{ ...finding, qaRunId: plan.qaRunId, agentRunId: base.agentRunId }],
+      evidence: [],
+    });
+    const validator = new IncrementalHarnessEventValidator(
+      plan.qaRunId as never,
+      base.agentRunId as never,
+    );
+    validator.accept(HarnessEventSchema.parse({ ...base, type: 'run.started' }));
+    validator.accept(checkpoint);
+    expect(() =>
+      validator.accept(
+        HarnessEventSchema.parse({
+          ...checkpoint,
+          findings: [
+            { ...finding, qaRunId: 'run_01K7777777777777777777Z8W3', agentRunId: base.agentRunId },
+          ],
+        }),
+      ),
+    ).toThrow('another QARun');
+    expect(() =>
+      validator.accept(
+        HarnessEventSchema.parse({
+          ...checkpoint,
+          evidence: [
+            { ...evidence, qaRunId: plan.qaRunId, agentRunId: 'arun_01K7777777777777777777Z8W4' },
+          ],
+        }),
+      ),
+    ).toThrow('another AgentRun');
+  });
   it('accepts every event variant', () => {
     const variants = [
       { ...base, type: 'run.started' },

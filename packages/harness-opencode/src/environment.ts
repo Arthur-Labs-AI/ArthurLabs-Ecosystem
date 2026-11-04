@@ -256,9 +256,12 @@ export function buildOpenCodeProviderConfig(input: {
   readonly models?: Readonly<Record<string, Record<string, unknown>>>;
   /** Sentry-owned tool shell wrapper (Linux production; undefined elsewhere). */
   readonly shell?: string;
+  /** Tool permission rules (e.g. deny webfetch/websearch when web access is off). */
+  readonly permission?: Readonly<Record<string, 'allow' | 'ask' | 'deny'>>;
 }): string {
   return JSON.stringify({
     ...(input.shell === undefined ? {} : { shell: input.shell }),
+    ...(input.permission === undefined ? {} : { permission: { ...input.permission } }),
     provider: {
       [input.provider]: {
         ...(input.npm === undefined ? {} : { npm: input.npm }),

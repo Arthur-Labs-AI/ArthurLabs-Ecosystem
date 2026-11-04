@@ -55,7 +55,12 @@ export class IncrementalHarnessEventValidator {
       this.openOperations.delete(event.operationId);
     }
 
-    if (event.type === 'finding.submitted') {
+    if (event.type === 'report.checkpoint') {
+      for (const finding of event.findings)
+        this.assertOwned(finding.qaRunId, finding.agentRunId, index, 'Checkpoint finding');
+      for (const evidence of event.evidence)
+        this.assertOwned(evidence.qaRunId, evidence.agentRunId, index, 'Checkpoint evidence');
+    } else if (event.type === 'finding.submitted') {
       this.assertOwned(event.finding.qaRunId, event.finding.agentRunId, index, 'Finding');
     } else if (event.type === 'evidence.submitted') {
       this.assertOwned(event.evidence.qaRunId, event.evidence.agentRunId, index, 'Evidence');

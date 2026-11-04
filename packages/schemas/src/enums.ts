@@ -1,11 +1,8 @@
 /** Controlled vocabularies. Literal unions (never TS enums) so JSON and Zod stay aligned. */
-export const QARUN_MODES = ['quick', 'full', 'targeted', 'ci', 'verify', 'retest', 'cicd'] as const;
+export const QARUN_MODES = ['quick', 'full', 'targeted', 'ci', 'cicd'] as const;
 export type QARunMode = (typeof QARUN_MODES)[number];
 
-/** Phase 7 closure (§30-§33): the canonical production QARun execution
- *  modes are full | targeted. RETEST is a first-class cross-revision
- *  workflow (RetestRun + child FULL/TARGETED QARun), not a QARun mode.
- *  QARUN_MODES retains legacy IDs so historical rows still decode. */
+/** The canonical production QARun execution modes are full | targeted. */
 export const CANONICAL_QA_RUN_MODES = ['full', 'targeted'] as const;
 export type CanonicalQARunMode = (typeof CANONICAL_QA_RUN_MODES)[number];
 
@@ -18,8 +15,6 @@ export const QARUN_STATUSES = [
   'agents_running',
   'collecting',
   'normalizing',
-  'clustering',
-  'verifying',
   'synthesizing',
   'completed',
   'partial',
@@ -28,7 +23,7 @@ export const QARUN_STATUSES = [
 ] as const;
 export type QARunStatus = (typeof QARUN_STATUSES)[number];
 
-export const AGENT_TASK_TYPES = ['qa', 'verify', 'retest', 'cicd', 'targeted_analysis'] as const;
+export const AGENT_TASK_TYPES = ['qa', 'cicd', 'targeted_analysis'] as const;
 export type AgentTaskType = (typeof AGENT_TASK_TYPES)[number];
 
 export const AGENT_RUN_STATUSES = [
@@ -97,28 +92,6 @@ export type EvidenceStrength = (typeof EVIDENCE_STRENGTHS)[number];
 export const EVIDENCE_ENVIRONMENT_STATES = ['baseline', 'modified_workspace'] as const;
 export type EvidenceEnvironmentState = (typeof EVIDENCE_ENVIRONMENT_STATES)[number];
 
-export const UNIFIED_ISSUE_STATUSES = [
-  'confirmed',
-  'corroborated',
-  'probable',
-  'unverified',
-  'rejected',
-] as const;
-export type UnifiedIssueStatus = (typeof UNIFIED_ISSUE_STATUSES)[number];
-
-export const ISSUE_AGREEMENT_STATES = ['single_source', 'aligned', 'mixed', 'disputed'] as const;
-export type IssueAgreementState = (typeof ISSUE_AGREEMENT_STATES)[number];
-
-export const VERIFICATION_STATUSES = [
-  'pending',
-  'running',
-  'verified',
-  'failed',
-  'inconclusive',
-  'cancelled',
-] as const;
-export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
-
 export const FIX_FILE_OPERATIONS = ['create', 'modify', 'delete', 'rename'] as const;
 export type FixFileOperation = (typeof FIX_FILE_OPERATIONS)[number];
 
@@ -176,9 +149,6 @@ export type SnapshotFileType = (typeof SNAPSHOT_FILE_TYPES)[number];
 export const OPERATING_SYSTEMS = ['linux', 'windows', 'macos', 'any'] as const;
 export type OperatingSystem = (typeof OPERATING_SYSTEMS)[number];
 
-export const VERIFICATION_LEVELS = ['fast', 'balanced', 'strict'] as const;
-export type VerificationLevel = (typeof VERIFICATION_LEVELS)[number];
-
 export const MANAGED_PROJECT_COPY_STATES = [
   'ready',
   'updating',
@@ -199,14 +169,7 @@ export const CONTEXT_SOURCE_KINDS = [
 ] as const;
 export type ContextSourceKind = (typeof CONTEXT_SOURCE_KINDS)[number];
 
-export const RUN_ACTIVITY_SOURCES = [
-  'sentry',
-  'agent',
-  'baseline',
-  'verifier',
-  'merger',
-  'report',
-] as const;
+export const RUN_ACTIVITY_SOURCES = ['sentry', 'agent', 'baseline', 'report'] as const;
 export type RunActivitySource = (typeof RUN_ACTIVITY_SOURCES)[number];
 
 export const RUN_ACTIVITY_KINDS = [
@@ -227,8 +190,6 @@ export const RUN_ACTIVITY_KINDS = [
   'test',
   'evidence',
   'finding',
-  'merger',
-  'verification',
   'report',
   'other',
 ] as const;

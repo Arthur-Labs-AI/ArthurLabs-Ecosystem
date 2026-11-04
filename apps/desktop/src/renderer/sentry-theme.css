@@ -771,10 +771,6 @@ table.table tr:hover td {
 .collapsible-head[aria-expanded='true'] .disclosure-icon {
   transform: rotate(90deg);
 }
-.retest-workspace {
-  flex: none;
-  gap: 12px;
-}
 .status-pill.tone-thinking {
   color: #d0c28e;
   background: rgba(181, 170, 102, 0.1);
@@ -871,8 +867,7 @@ table.table tr:hover td {
   color: #d8c57d;
   border-color: rgba(194, 167, 96, 0.3);
 }
-.detail-page > p,
-.retest-page > p {
+.detail-page > p {
   margin: 0;
 }
 .page .timeline {

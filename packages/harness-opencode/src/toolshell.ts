@@ -1,5 +1,10 @@
-import { chmod, mkdir, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import {
+  BINARY_DOWNLOAD_SKIP_ENVIRONMENT,
+  NON_INTERACTIVE_ENVIRONMENT,
+  type ToolchainSetup,
+} from '@qa/shared';
 
 /**
  * Sentry-owned tool shell wrapper: OS-enforced filesystem view for
@@ -25,8 +30,15 @@ import { dirname, join } from 'node:path';
  * is spawned by the process launcher and never exec'd through this
  * wrapper). Same-namespace loopback still works, so a shell that starts
  * its own local server and probes it keeps functioning; only HOST network
- * access is removed. There is intentionally no toggle: network access for
- * model-controlled shells is deny-by-default and Sentry-owned.
+ * access is removed. Network access for model-controlled shells is
+ * deny-by-default and Sentry-owned.
+ *
+ * Package installs (always on): when `egress` is set the namespace keeps
+ * `--unshare-net` and gains exactly one way out, a Unix socket bind-mounted
+ * at /tmp/.sentry-egress.sock and bridged by `socat` to 127.0.0.1:<port>
+ * inside the namespace. Proxy environment variables point package managers
+ * at it, and the host-side proxy admits only package-registry hosts.
+ * Without `egress` the wrapper is the fully offline one.
  *
  * In-process file tools (`read`/`edit`) do NOT pass through here; they are
  * contained by explicit deny rules plus upstream ask-to-reject, and they
@@ -50,6 +62,37 @@ export interface ToolShellSpec {
   readonly scopeHome: string;
   /** Absolute agent workspace (re-bound read-write). */
   readonly workspace: string;
+  /** Registry-only egress through a host-side proxy; omitted means fully offline. */
+  readonly egress?: ToolShellEgress | undefined;
+  /** Installed language toolchains: mounted read-only and put on PATH. */
+  readonly toolchains?: ToolchainSetup | undefined;
+}
+
+export interface ToolShellEgress {
+  /** Absolute host path of the egress proxy Unix socket. */
+  readonly socketPath: string;
+  /** Absolute socat binary path (bridges the in-namespace loopback port to the socket). */
+  readonly socat: string;
+  /** Loopback port inside the tool namespace. */
+  readonly port: number;
+}
+
+export const TOOL_SHELL_EGRESS_SOCKET = '/tmp/.sentry-egress.sock';
+export const TOOL_SHELL_EGRESS_PORT = 39871;
+
+/** Proxy environment for tool shells; only the in-namespace loopback bridge is reachable. */
+export function toolShellProxyEnvironment(port: number): Record<string, string> {
+  const proxy = 'http://127.0.0.1:' + port;
+  return {
+    HTTPS_PROXY: proxy,
+    HTTP_PROXY: proxy,
+    https_proxy: proxy,
+    http_proxy: proxy,
+    npm_config_https_proxy: proxy,
+    npm_config_proxy: proxy,
+    NO_PROXY: 'localhost,127.0.0.1,::1',
+    no_proxy: 'localhost,127.0.0.1,::1',
+  };
 }
 
 /** Normalize a hide candidate; undefined means never hide (root/empty/drive-root). */
@@ -59,6 +102,41 @@ export function normalizeHidePath(raw: string): string | undefined {
   if (normalized === '/') return undefined;
   if (/^[A-Za-z]:$/.test(normalized)) return undefined;
   return normalized;
+}
+
+/**
+ * Mount points of Windows drives in a /proc/self/mountinfo text (drvfs and 9p, the
+ * filesystems WSL uses for C:, D:, ...), wherever the automount root is configured.
+ */
+export function windowsMountPaths(mountinfo: string): string[] {
+  const found: string[] = [];
+  for (const line of mountinfo.split('\n')) {
+    const [before, after] = line.split(' - ');
+    if (before === undefined || after === undefined) continue;
+    const fstype = after.split(' ')[0];
+    if (fstype !== 'drvfs' && fstype !== '9p') continue;
+    const mountPoint = before.split(' ')[4];
+    // Octal escapes (\040 for a space) keep their form; such a path is simply not hidden here.
+    if (mountPoint !== undefined && mountPoint.startsWith('/') && !mountPoint.includes('\\'))
+      found.push(mountPoint);
+  }
+  return found;
+}
+
+/**
+ * What a tool shell must not see of Windows under WSL: the drive mounts, /mnt (the usual
+ * automount root and /mnt/wsl) and the WSL interop folder. Only paths that exist are returned.
+ */
+export async function windowsHiddenPaths(
+  mountinfoPath = '/proc/self/mountinfo',
+): Promise<string[]> {
+  const mounts = windowsMountPaths(await readFile(mountinfoPath, 'utf8').catch(() => ''));
+  const found: string[] = [];
+  for (const path of [...mounts, '/mnt', '/run/WSL']) {
+    if (found.includes(path)) continue;
+    if (await access(path).then(() => true, () => false)) found.push(path);
+  }
+  return found;
 }
 
 /**
@@ -72,13 +150,19 @@ export function computeToolHiddenPaths(input: {
   readonly scopeDir: string;
   readonly workspace: string;
   readonly realHome?: string;
+  /** Further existing paths to hide, such as the Windows drive mounts under WSL. */
+  readonly extra?: readonly string[];
 }): readonly string[] {
   const workspace = normalizeHidePath(input.workspace);
   const scopeDir = normalizeHidePath(input.scopeDir);
   if (workspace === undefined || scopeDir === undefined) return [];
   const slash = workspace.lastIndexOf('/');
   const parent = slash > 0 ? workspace.slice(0, slash) : undefined;
-  const candidates: Array<string | undefined> = [scopeDir, parent];
+  const candidates: Array<string | undefined> = [
+    scopeDir,
+    parent,
+    ...(input.extra ?? []).map(normalizeHidePath),
+  ];
   const home =
     input.realHome === undefined || input.realHome.length === 0
       ? undefined
@@ -106,6 +190,60 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
   spec.hidePaths.forEach((p) => {
     hideArgs.push(`  --tmpfs ${q(p)} \\`);
   });
+  const egress = spec.egress;
+  const egressPrelude =
+    egress === undefined
+      ? []
+      : [
+          'SENTRY_EGRESS_SOCKET=' + q(egress.socketPath),
+          'SENTRY_SOCAT=' + q(egress.socat),
+          'export SENTRY_REAL_SHELL SENTRY_SOCAT',
+          'SENTRY_PRELUDE=' +
+            q(
+              [
+                'socat_pid=',
+                '"$SENTRY_SOCAT" TCP-LISTEN:' +
+                  egress.port +
+                  ',bind=127.0.0.1,fork,reuseaddr UNIX-CONNECT:' +
+                  TOOL_SHELL_EGRESS_SOCKET +
+                  ' >/dev/null 2>&1 &',
+                'socat_pid=$!',
+                'n=0',
+                'while [ "$n" -lt 40 ]; do',
+                '  if (exec 3<>/dev/tcp/127.0.0.1/' + egress.port + ') 2>/dev/null; then break; fi',
+                '  n=$((n+1)); sleep 0.05',
+                'done',
+                '"$SENTRY_REAL_SHELL" -o pipefail -c "$1"',
+                'code=$?',
+                'kill "$socat_pid" 2>/dev/null',
+                'exit "$code"',
+              ].join('\n'),
+            ),
+        ];
+  const egressBinds =
+    egress === undefined
+      ? []
+      : [
+          '  --unshare-pid \\',
+          '  --bind "$SENTRY_EGRESS_SOCKET" ' + TOOL_SHELL_EGRESS_SOCKET + ' \\',
+          ...Object.entries({
+            ...toolShellProxyEnvironment(egress.port),
+            ...BINARY_DOWNLOAD_SKIP_ENVIRONMENT,
+            ...NON_INTERACTIVE_ENVIRONMENT,
+          }).map(([name, value]) => '  --setenv ' + name + ' ' + q(value) + ' \\'),
+        ];
+  const toolchains = spec.toolchains;
+  // Mounted after the home/data-root tmpfs hides, so the read-only folder is visible again.
+  const toolchainBinds =
+    toolchains === undefined
+      ? []
+      : [
+          ...toolchains.binds.map((dir) => `  --ro-bind ${q(dir)} ${q(dir)} \\`),
+          `  --setenv PATH ${q(toolchains.path.join(':'))}":$PATH" \\`,
+          ...Object.entries(toolchains.env).map(
+            ([name, value]) => `  --setenv ${name} ${q(value)} \\`,
+          ),
+        ];
   return [
     '#!/bin/sh',
     '# Sentry-owned OpenCode tool shell wrapper (generated per AgentRun).',
@@ -116,6 +254,7 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
     `SENTRY_RUN_TMP=${q(spec.runTmp)}`,
     `SENTRY_WORKSPACE=${q(spec.workspace)}`,
     `SENTRY_SCOPE_HOME=${q(spec.scopeHome)}`,
+    ...egressPrelude,
     'if [ "$SENTRY_SCOPE_HOME" != "$HOME" ]; then',
     '  echo "sentry-tool-shell: HOME mismatch" >&2',
     '  exit 126',
@@ -134,13 +273,21 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
     'exec "$SENTRY_BWRAP" \\',
     '  --ro-bind / / \\',
     '  --unshare-net \\',
+    // Windows interop is reached through this socket variable; without it a shell cannot start .exe files.
+    '  --unsetenv WSL_INTEROP \\',
+    // .NET (and other tools) keep lock files under $XDG_RUNTIME_DIR; the host value is read-only here.
+    '  --setenv XDG_RUNTIME_DIR /tmp \\',
     '  --dev /dev \\',
     '  --proc /proc \\',
     '  --bind "$SENTRY_RUN_TMP" /tmp \\',
     ...hideArgs,
     '  --bind "$SENTRY_WORKSPACE" "$SENTRY_WORKSPACE" \\',
     '  --bind "$SENTRY_SCOPE_HOME" "$SENTRY_SCOPE_HOME" \\',
-    '  -- "$SENTRY_REAL_SHELL" -c "$SCRIPT"',
+    ...toolchainBinds,
+    ...egressBinds,
+    egress === undefined
+      ? '  -- "$SENTRY_REAL_SHELL" -o pipefail -c "$SCRIPT"'
+      : '  -- "$SENTRY_REAL_SHELL" -o pipefail -c "$SENTRY_PRELUDE" sentry-egress "$SCRIPT"',
     '',
   ].join('\n');
 }

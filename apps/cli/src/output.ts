@@ -31,7 +31,6 @@ export function emitHumanSuccess(response: CliSuccessEnvelope, io: CliIo): void 
           'Run inspection: yes',
           'Fake simulation: yes (development transport only)',
           'Real agent execution: yes (OpenCode, DeepSeek, GLM)',
-          'Retest execution: yes',
           'Run cancellation: yes',
           'Run result export: yes (run result)',
           'Async run start: yes (default; pass --wait to observe)',
@@ -143,40 +142,6 @@ export function emitHumanSuccess(response: CliSuccessEnvelope, io: CliIo): void 
     case 'run.export':
       io.stdout(response.data.path);
       return;
-    case 'verify.start': {
-      const attempts = response.data.attempts as Record<string, number>;
-      io.stdout(
-        'VERIFICATION ' +
-          response.data.status +
-          '\nRun: ' +
-          response.data.verificationRunId +
-          '\nReproduced: ' +
-          attempts['reproduced'] +
-          '  Partially verified: ' +
-          attempts['partiallyVerified'] +
-          '  Not reproducible: ' +
-          attempts['notReproducible'] +
-          '  Inconclusive: ' +
-          attempts['inconclusive'],
-      );
-      return;
-    }
-    case 'verify.show':
-      io.stdout(JSON.stringify(response.data, null, 2));
-      return;
-    case 'verify.doctor': {
-      const available = response.data.sandboxAvailable as boolean;
-      io.stdout(
-        'VERIFIER SANDBOX ' +
-          (available ? 'available' : 'UNAVAILABLE') +
-          '\nBackend: ' +
-          response.data.sandboxBackend +
-          '\nRuntime replay: ' +
-          ((response.data.runtimeReplaySupported as boolean) ? 'supported' : 'inconclusive-only') +
-          (response.data.reason === undefined ? '' : '\nReason: ' + response.data.reason),
-      );
-      return;
-    }
   }
 }
 

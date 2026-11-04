@@ -163,10 +163,7 @@ try {
     ['/projects', 'Projects', 'projects'],
     ['/projects/ui-project', 'Sentry workspace', 'project'],
     ['/runs', 'Runs', 'runs'],
-    ['/issues', 'Issues', 'issues'],
-    ['/issues/ui-issue', 'Session refresh lacks expiry validation', 'issue'],
     ['/history', 'History', 'history'],
-    ['/retests/ui-retest', 'Retest', 'retest'],
     ['/environment', 'Environment', 'environment'],
     ['/settings', 'Settings', 'settings'],
     ['/settings/providers', 'Providers', 'providers'],
@@ -174,22 +171,6 @@ try {
   ]) {
     await page.goto(base + '#' + route);
     await page.getByRole('heading', { name: heading, exact: true }).waitFor();
-    if (name === 'retest') {
-      await graphReady();
-      const assessmentBox = await node('retest-assessment').boundingBox();
-      for (const id of [
-        'agent-stack_opencode_main',
-        'agent-stack_deepseek_main',
-        'agent-stack_glm_main',
-      ]) {
-        const agentBox = await node(id).boundingBox();
-        assert.ok(
-          assessmentBox.y > agentBox.y + agentBox.height,
-          'retest assessment does not overlap agents',
-        );
-      }
-      await page.locator('.canvas-host').scrollIntoViewIfNeeded();
-    }
     await capture(name);
   }
   await page.goto(base + '#/');

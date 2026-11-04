@@ -66,8 +66,7 @@ v1.0.0/v1.0.1 archives lack the CLI frontend; use the
 
 Project removal confirms deletion of managed data/history and preserves imported
 originals. Optional WSL disk reclamation requires confirmation and administrator
-consent; reclaimed Windows space varies. Historical merger/verifier/retest
-components are not advertised as active Desktop QA flows.
+consent; reclaimed Windows space varies.
 
 ## Security and recovery
 

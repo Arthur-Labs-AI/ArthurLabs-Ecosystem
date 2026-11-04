@@ -1,10 +1,10 @@
 /** Finish-pass closure regressions: strict owner identity, request-only
  *  foreign cancellation, owner-driven settlement (no manual ack), lock and
  *  workspace ordering, stale recovery, deterministic resolution. */
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SentryDatabase, SentryRepository, RuntimeInstanceLease } from '@qa/persistence';
 import { ProjectManager } from '@qa/project-manager';
 import { INITIAL_AGENT_STACKS } from '@qa/domain';
@@ -18,10 +18,11 @@ import {
 } from '@qa/shared';
 import {
   HarnessAdapterRegistry,
+  FakeHarnessAdapter,
   type HarnessAdapter,
   type HarnessRunRequest,
 } from '@qa/harness-protocol';
-import { RunCoordinator, resolveRetestTargets } from '../src/index.js';
+import { RunCoordinator } from '../src/index.js';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -347,7 +348,7 @@ describe('finish-pass §24/§56-§58: multi-agent cancel preserves completed', (
 });
 
 describe('micro-patch §27: cancellation before adapter start launches no workers', () => {
-  it('hook-time self-cancel short-circuits provider execution', async () => {
+  it('self-cancel right after the run row is created short-circuits provider execution', async () => {
     const f = await fixture();
     let adapterStarts = 0;
     const counting = new HarnessAdapterRegistry();
@@ -362,13 +363,13 @@ describe('micro-patch §27: cancellation before adapter start launches no worker
       });
     }
     const owner = new RunCoordinator(f.dataRoot, f.repository, f.lease, counting);
-    // Simulate a cancel landing after freeze but before workers: the hook
-    // requests cancellation of its own freshly persisted run row.
+    // Simulate a cancel landing before workers: the callback requests
+    // cancellation of its own freshly persisted run row.
     const details = await owner.run(f.added.project.id, {
       executionKind: 'simulation',
       runTimeoutMs: 30_000,
-      onSnapshotFrozen: (frozen) => {
-        owner.requestRunCancellation(frozen.runId);
+      onRunCreated: (created) => {
+        owner.requestRunCancellation(created.id);
       },
     });
     expect(details.run.status).toBe('cancelled');
@@ -381,6 +382,146 @@ describe('micro-patch §27: cancellation before adapter start launches no worker
 });
 
 describe('finish-pass §25: stale owner recovery is honest', () => {
+  it.each([false, true])(
+    'retains checkpoint facts and cleans the workspace even when restore fails=%s',
+    async (restoreFails) => {
+      const f = await fixture();
+      let workspacePath = '';
+      try {
+        if (restoreFails)
+          vi.spyOn(f.repository, 'saveFinding').mockImplementation(() => {
+            throw new Error('scripted restore write failure');
+          });
+        const adapter = new (class extends FakeHarnessAdapter {
+          override async *run(request: HarnessRunRequest) {
+            for await (const event of super.run(request)) {
+              if (event.type !== 'run.completed') {
+                yield event;
+                continue;
+              }
+              yield HarnessEventSchema.parse({
+                schemaVersion: 1,
+                eventId: createHarnessEventId(),
+                agentRunId: request.agentRunId,
+                timestamp: nowIsoTimestamp(),
+                type: 'report.checkpoint',
+                evidence: [],
+                findings: [
+                  {
+                    schemaVersion: 1,
+                    id: createFindingId(),
+                    qaRunId: request.qaRunId,
+                    agentRunId: request.agentRunId,
+                    sourceAgentStackId: request.agentStackId,
+                    title: 'Checkpoint finding',
+                    category: 'logic',
+                    severity: 'low',
+                    confidence: 'speculative',
+                    description: 'Fixture only',
+                    locations: [{ relativePath: 'README.md' }],
+                    evidenceIds: [],
+                    reproductionSteps: [],
+                    createdAt: nowIsoTimestamp(),
+                  },
+                ],
+              });
+              throw new Error('scripted disconnect after checkpoint');
+            }
+          }
+        })();
+        const registry = new HarnessAdapterRegistry();
+        const stack = INITIAL_AGENT_STACKS[0]!;
+        registry.register({
+          stack,
+          runtimeIdentity: { modelId: stack.model.modelId },
+          createAdapter: () => adapter,
+        });
+        const done = await new RunCoordinator(f.dataRoot, f.repository, f.lease, registry).run(
+          f.added.project.id,
+          {
+            executionKind: 'simulation',
+            agentStackIds: [stack.id],
+            onHarnessRequest: (request) => {
+              workspacePath = request.workspace.runtimePath;
+            },
+          },
+        );
+        expect(done.run.status).toBe(restoreFails ? 'failed' : 'partial');
+        expect(f.repository.listFindings(done.run.id)).toHaveLength(restoreFails ? 0 : 1);
+        expect(f.repository.listAgentRuns(done.run.id)[0]?.status).toBe('interrupted');
+        await expect(stat(workspacePath)).rejects.toThrow();
+      } finally {
+        f.database.close();
+      }
+    },
+  );
+  it('recovers durable checkpoint facts after owner death without claiming completion', async () => {
+    const f = await fixture();
+    const { createFakeHarnessRegistry } = await import('../src/index.js');
+    const done = await new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      createFakeHarnessRegistry('success'),
+    ).run(f.added.project.id, {
+      executionKind: 'simulation',
+      agentStackIds: [INITIAL_AGENT_STACKS[0]!.id],
+    });
+    const agent = f.repository.listAgentRuns(done.run.id)[0]!;
+    const checkpointEvidence = {
+      ...f.repository.listEvidence(done.run.id)[0]!,
+      id: createEvidenceId(),
+    };
+    const checkpointFinding = {
+      ...f.repository.listFindings(done.run.id)[0]!,
+      id: createFindingId(),
+      title: 'Recovered checkpoint',
+      evidenceIds: [checkpointEvidence.id],
+    };
+    f.repository.appendHarnessEvent(
+      done.run.id,
+      HarnessEventSchema.parse({
+        schemaVersion: 1,
+        eventId: createHarnessEventId(),
+        agentRunId: agent.id,
+        timestamp: nowIsoTimestamp(),
+        type: 'report.checkpoint',
+        findings: [checkpointFinding],
+        evidence: [checkpointEvidence],
+      }),
+    );
+    // A completed worker must never be replaced by a checkpoint, even if peers died.
+    f.repository.saveRun({
+      ...done.run,
+      status: 'agents_running',
+      completedAt: undefined,
+      runtimeInstanceId: undefined,
+    } as never);
+    await new RunCoordinator(f.dataRoot, f.repository, f.lease).recover();
+    expect(f.repository.listFindings(done.run.id).some((x) => x.id === checkpointFinding.id)).toBe(
+      false,
+    );
+    // Remove simulated final facts, then reproduce interruption before submission.
+    f.database.connection.prepare('DELETE FROM findings WHERE qa_run_id=?').run(done.run.id);
+    f.database.connection.prepare('DELETE FROM evidence WHERE qa_run_id=?').run(done.run.id);
+    f.repository.saveAgentRun({ ...agent, status: 'running', completedAt: undefined } as never);
+    f.repository.saveRun({
+      ...done.run,
+      status: 'agents_running',
+      completedAt: undefined,
+      runtimeInstanceId: undefined,
+    } as never);
+    await new RunCoordinator(f.dataRoot, f.repository, f.lease).recover();
+    expect(f.repository.listFindings(done.run.id).map((x) => x.id)).toEqual([checkpointFinding.id]);
+    expect(f.repository.listEvidence(done.run.id).map((x) => x.id)).toEqual([
+      checkpointEvidence.id,
+    ]);
+    expect(f.repository.getAgentRun(agent.id)?.status).toBe('interrupted');
+    expect(f.repository.getRun(done.run.id)?.status).toBe('partial');
+    await new RunCoordinator(f.dataRoot, f.repository, f.lease).recover();
+    expect(f.repository.listFindings(done.run.id)).toHaveLength(1);
+    f.database.close();
+  });
   it('stale request completes; run interrupts (never fake-cancelled)', async () => {
     const f = await fixture();
     const { createFakeHarnessRegistry } = await import('../src/index.js');
@@ -423,43 +564,161 @@ describe('finish-pass §25: stale owner recovery is honest', () => {
   }, 120_000);
 });
 
-describe('resolution: manifest-based, absence never fixed', () => {
-  it('deleted file resolves to the nearest existing ancestor', () => {
-    const resolved = resolveRetestTargets({
-      historicalPaths: ['src/auth/legacy-token.ts'],
-      snapshotFiles: new Set(['src/auth/login.ts', 'README.md']),
+describe('private preparation and unconditional teardown', () => {
+  it('reports the configured deadline, not the legacy larger activity cap', async () => {
+    const f = await fixture();
+    const registry = new HarnessAdapterRegistry();
+    let release!: () => void;
+    const untilCancelled = new Promise<void>((resolve) => {
+      release = resolve;
     });
-    expect(resolved.strategy).toBe('nearest_ancestor');
-    expect(resolved.resolvedTargetPaths).toEqual(['src/auth']);
-  });
-  it('all targets gone uses the explicit focused full-snapshot fallback', () => {
-    const resolved = resolveRetestTargets({
-      historicalPaths: ['src/auth/legacy-token.ts'],
-      snapshotFiles: new Set(['README.md']),
+    class Hanging extends FakeHarnessAdapter {
+      override async *run(request: HarnessRunRequest) {
+        yield HarnessEventSchema.parse({
+          schemaVersion: 1,
+          eventId: createHarnessEventId(),
+          agentRunId: request.agentRunId,
+          timestamp: nowIsoTimestamp(),
+          type: 'run.started',
+        });
+        await untilCancelled;
+      }
+      override async cancel() {
+        release();
+      }
+    }
+    registry.register({ stack: INITIAL_AGENT_STACKS[0]!, createAdapter: () => new Hanging() });
+    let ready!: () => void;
+    const requestReady = new Promise<void>((resolve) => {
+      ready = resolve;
     });
-    expect(resolved.strategy).toBe('full_snapshot_fallback');
-    expect(resolved.limitations.join(' ')).toMatch(/RETEST_HISTORICAL_TARGETS_ABSENT/);
-  });
-  it('different failure stays inconclusive, never fixed', async () => {
-    const { compareRetestSteps, classifyRetest } = await import('@qa/domain');
-    const compared = compareRetestSteps({
-      sourceSteps: [
-        {
-          type: 'command_replay',
-          expected: { command: 'npm test', cwdRelative: '.', exitCode: '1' },
-          outcome: 'matched',
-          matchStrength: 'strong_match',
+    const coordinator = new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      registry,
+      async () => ({ status: 'ready', reason: 'fixture', removedBuildCaches: 0 }),
+    );
+    try {
+      const running = coordinator.run(f.added.project.id, {
+        executionKind: 'production',
+        runTimeoutMs: 10_000,
+        onHarnessRequest: () => {
+          vi.useFakeTimers();
+          ready();
         },
-      ],
-      targetSteps: [
-        {
-          type: 'command_replay',
-          expected: { command: 'npm test', cwdRelative: '.', exitCode: '2' },
-          outcome: 'matched',
-          matchStrength: 'strong_match',
-        },
-      ],
+      });
+      await requestReady;
+      await vi.advanceTimersByTimeAsync(10_001);
+      const result = await running;
+      expect(result.agentRuns[0]?.failure?.message).toContain('configured run deadline reached');
+      expect(result.agentRuns[0]?.failure?.message).not.toContain('absolute cap');
+    } finally {
+      vi.useRealTimers();
+      f.lease.release();
+      f.database.close();
+    }
+  });
+  it('cancels preparation without launching a provider turn', async () => {
+    const f = await fixture();
+    const registry = new HarnessAdapterRegistry();
+    let launched = false;
+    class ObservedAdapter extends FakeHarnessAdapter {
+      override async *run(request: HarnessRunRequest) {
+        launched = true;
+        yield* super.run(request);
+      }
+    }
+    registry.register({
+      stack: INITIAL_AGENT_STACKS[0]!,
+      createAdapter: () => new ObservedAdapter(),
     });
-    expect(classifyRetest(compared.input).result).toBe('inconclusive');
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    let runId: Parameters<RunCoordinator['requestRunCancellation']>[0] | undefined;
+    const coordinator = new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      registry,
+      async (input) => {
+        entered();
+        await new Promise<void>((_, reject) => {
+          input.signal.addEventListener('abort', () => reject(input.signal.reason), { once: true });
+          if (input.signal.aborted) reject(input.signal.reason);
+        });
+        throw new Error('unreachable');
+      },
+    );
+    try {
+      const running = coordinator.run(f.added.project.id, {
+        executionKind: 'production',
+        onRunCreated: (run) => {
+          runId = run.id;
+        },
+      });
+      await started;
+      coordinator.requestRunCancellation(runId!);
+      const result = await running;
+      expect(result.run.status).toBe('cancelled');
+      expect(result.agentRuns[0]?.status).toBe('cancelled');
+      expect(launched).toBe(false);
+    } finally {
+      f.lease.release();
+      f.database.close();
+    }
+  });
+  it('recreates failed-install copies and cleans workspaces even if dispose rejects', async () => {
+    const f = await fixture();
+    const registry = new HarnessAdapterRegistry();
+    class DisposeFailure extends FakeHarnessAdapter {
+      override async dispose(): Promise<void> {
+        throw new Error('synthetic dispose failure');
+      }
+      override async *run(request: HarnessRunRequest) {
+        await expect(
+          stat(join(request.workspace.runtimePath, 'partial-install-marker')),
+        ).rejects.toMatchObject({ code: 'ENOENT' });
+        yield* super.run(request);
+      }
+    }
+    registry.register({
+      stack: INITIAL_AGENT_STACKS[0]!,
+      createAdapter: () => new DisposeFailure(),
+    });
+    let capturedRoot = '';
+    const coordinator = new RunCoordinator(
+      f.dataRoot,
+      f.repository,
+      f.lease,
+      registry,
+      async (input) => {
+        await writeFile(join(input.workspaceRoot, 'partial-install-marker'), 'must disappear');
+        return {
+          status: 'limited',
+          reason: 'incomplete cache',
+          removedBuildCaches: 0,
+          needsFreshCopy: true,
+        };
+      },
+    );
+    try {
+      const result = await coordinator.run(f.added.project.id, {
+        executionKind: 'production',
+        onHarnessRequest: (request) => {
+          capturedRoot = request.workspace.runtimePath;
+          expect(request.task.context?.['qaDepth']).toMatchObject({ version: 1 });
+        },
+      });
+      expect(result.run.status).toBe('completed');
+      expect(capturedRoot).not.toBe('');
+      await expect(stat(capturedRoot)).rejects.toMatchObject({ code: 'ENOENT' });
+      expect(result.activities.some((a) => a.title.includes('shutdown failed'))).toBe(true);
+    } finally {
+      f.lease.release();
+      f.database.close();
+    }
   });
 });

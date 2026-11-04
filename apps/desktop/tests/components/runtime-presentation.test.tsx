@@ -57,9 +57,6 @@ function shell(cachedReport = false) {
     evidence: [],
     events: [],
     activities: [],
-    mergeResults: [],
-    verificationRuns: [],
-    issues: [],
   };
   const get = vi.fn(async () => report);
   if (cachedReport) client.setQueryData(['run', 'r'], report);

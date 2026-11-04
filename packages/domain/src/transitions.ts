@@ -3,13 +3,7 @@
  * canTransition* + assert*Transition; illegal moves raise
  * InvalidStateTransitionError.
  */
-import type {
-  AgentRunStatus,
-  ManagedProjectCopyState,
-  QARunStatus,
-  RetestRunStatus,
-  VerificationStatus,
-} from '@qa/schemas';
+import type { AgentRunStatus, ManagedProjectCopyState, QARunStatus } from '@qa/schemas';
 import { InvalidStateTransitionError } from './errors.js';
 
 const QA_RUN_TRANSITIONS: Readonly<Record<QARunStatus, readonly QARunStatus[]>> = {
@@ -20,9 +14,7 @@ const QA_RUN_TRANSITIONS: Readonly<Record<QARunStatus, readonly QARunStatus[]>> 
   preparing: ['agents_running', 'failed', 'cancelled'],
   agents_running: ['collecting', 'failed', 'cancelled'],
   collecting: ['normalizing', 'failed', 'cancelled'],
-  normalizing: ['clustering', 'failed', 'cancelled'],
-  clustering: ['verifying', 'failed', 'cancelled'],
-  verifying: ['synthesizing', 'failed', 'cancelled'],
+  normalizing: ['synthesizing', 'failed', 'cancelled'],
   synthesizing: ['completed', 'partial', 'failed', 'cancelled'],
   completed: [],
   partial: [],
@@ -52,29 +44,6 @@ const MANAGED_PROJECT_COPY_TRANSITIONS: Readonly<
   error: ['ready'],
 };
 
-const RETEST_RUN_TRANSITIONS: Readonly<Record<RetestRunStatus, readonly RetestRunStatus[]>> = {
-  created: ['agents_running', 'failed', 'cancelled'],
-  agents_running: ['merging', 'failed', 'cancelled', 'interrupted'],
-  merging: ['assessing', 'failed', 'cancelled', 'interrupted'],
-  assessing: ['completed', 'partial', 'failed', 'cancelled', 'interrupted'],
-  completed: [],
-  partial: [],
-  failed: [],
-  cancelled: [],
-  interrupted: [],
-};
-
-const VERIFICATION_TRANSITIONS: Readonly<
-  Record<VerificationStatus, readonly VerificationStatus[]>
-> = {
-  pending: ['running', 'cancelled'],
-  running: ['verified', 'failed', 'inconclusive', 'cancelled'],
-  verified: [],
-  failed: [],
-  inconclusive: [],
-  cancelled: [],
-};
-
 function makeHelpers<S extends string>(table: Readonly<Record<S, readonly S[]>>, entity: string) {
   return {
     canTransition(from: S, to: S): boolean {
@@ -95,16 +64,6 @@ const agent = makeHelpers(AGENT_RUN_TRANSITIONS, 'AgentRun');
 export const canTransitionAgentRun = agent.canTransition;
 export const assertAgentRunTransition = agent.assertTransition;
 export const AGENT_RUN_TRANSITIONS_MAP = AGENT_RUN_TRANSITIONS;
-
-const retest = makeHelpers(RETEST_RUN_TRANSITIONS, 'RetestRun');
-export const canTransitionRetestRun = retest.canTransition;
-export const assertRetestRunTransition = retest.assertTransition;
-export const RETEST_RUN_TRANSITIONS_MAP = RETEST_RUN_TRANSITIONS;
-
-const verification = makeHelpers(VERIFICATION_TRANSITIONS, 'VerificationAttempt');
-export const canTransitionVerification = verification.canTransition;
-export const assertVerificationTransition = verification.assertTransition;
-export const VERIFICATION_TRANSITIONS_MAP = VERIFICATION_TRANSITIONS;
 
 const managedCopy = makeHelpers(MANAGED_PROJECT_COPY_TRANSITIONS, 'ManagedProjectCopy');
 export const canTransitionManagedProjectCopy = managedCopy.canTransition;

@@ -25,7 +25,7 @@ export function RemoveProjectButton({
     onSuccess: async () => {
       setConfirm(false);
       onRemoved?.();
-      // Project deletion cascades into runs, issues, revisions and artifacts.
+      // Project deletion cascades into runs, revisions and artifacts.
       // Refresh all mounted consumers from canonical state, including Dashboard.
       await queryClient.invalidateQueries();
     },

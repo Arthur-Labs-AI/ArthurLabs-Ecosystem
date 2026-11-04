@@ -2,7 +2,7 @@ import React from 'react';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useRunSnapshot, useRetestSnapshot } from '../../src/renderer/lib/use-live-run.js';
+import { useRunSnapshot } from '../../src/renderer/lib/use-live-run.js';
 import type { RunUpdateCallback, RunUpdatePayload } from '../../src/shared/ipc-contract.js';
 
 const clients: QueryClient[] = [];
@@ -21,12 +21,10 @@ function setup() {
   clients.push(client);
   const listeners = new Set<RunUpdateCallback>();
   const getRun = vi.fn(async (id: string) => run(id, 'completed'));
-  const getRetest = vi.fn(async (id: string) => retest(id, 'completed'));
   const start = vi.fn();
   const runtimeStatus = vi.fn(async () => ({ connected: false }));
   vi.stubGlobal('sentry', {
     runs: { get: getRun, start, startProduction: start },
-    retests: { get: getRetest, start },
     runtime: { status: runtimeStatus },
     subscribe: {
       onRunUpdate: (cb: RunUpdateCallback) => {
@@ -38,7 +36,6 @@ function setup() {
   return {
     client,
     getRun,
-    getRetest,
     start,
     runtimeStatus,
     listeners,
@@ -57,15 +54,8 @@ function run(id: string, status: string) {
     evidence: [],
     activities: [],
     events: [],
-    mergeResults: [],
-    verificationRuns: [],
-    issues: [],
   };
 }
-function retest(id: string, status: string) {
-  return { retestRun: { id, status }, assessments: [] };
-}
-
 describe('canonical live snapshots', () => {
   it('uses an old run notification only as a hint, retaining terminal data while canonical read is pending', async () => {
     const s = setup();
@@ -88,37 +78,19 @@ describe('canonical live snapshots', () => {
     expect(s.start).not.toHaveBeenCalled();
   });
 
-  it('does not install a retest notification payload over the canonical assessment', async () => {
+  it('reconciles a run after offline-to-online even with no notification', async () => {
     const s = setup();
-    const hook = renderHook(() => useRetestSnapshot('rt'), { wrapper: s.wrapper });
+    s.client.setQueryData(['runtime-status'], { connected: false });
+    const hook = renderHook(() => useRunSnapshot('r'), { wrapper: s.wrapper });
     await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
-    s.emit({ kind: 'retest-snapshot', retestRunId: 'rt', snapshot: retest('rt', 'running') });
-    await waitFor(() => expect(s.getRetest).toHaveBeenCalledTimes(2));
-    expect((hook.result.current.data?.retestRun as { status: string }).status).toBe('completed');
-    s.emit({ kind: 'retest-snapshot', retestRunId: 'rt' });
-    await waitFor(() => expect(s.getRetest).toHaveBeenCalledTimes(3));
+    const before = s.getRun.mock.calls.length;
+    await act(async () => {
+      s.client.setQueryData(['runtime-status'], { connected: true });
+    });
+    await waitFor(() => expect(s.getRun.mock.calls.length).toBeGreaterThan(before));
+    expect(s.listeners.size).toBe(1);
+    expect(s.start).not.toHaveBeenCalled();
   });
-
-  it.each(['run', 'retest'] as const)(
-    'reconciles %s after offline-to-online even with no notification',
-    async (kind) => {
-      const s = setup();
-      s.client.setQueryData(['runtime-status'], { connected: false });
-      const hook = renderHook(
-        () => (kind === 'run' ? useRunSnapshot('r') : useRetestSnapshot('r')),
-        { wrapper: s.wrapper },
-      );
-      await waitFor(() => expect(hook.result.current.isSuccess).toBe(true));
-      const get = kind === 'run' ? s.getRun : s.getRetest;
-      const before = get.mock.calls.length;
-      await act(async () => {
-        s.client.setQueryData(['runtime-status'], { connected: true });
-      });
-      await waitFor(() => expect(get.mock.calls.length).toBeGreaterThan(before));
-      expect(s.listeners.size).toBe(1);
-      expect(s.start).not.toHaveBeenCalled();
-    },
-  );
 
   it('cleans up on run switches and unmount, ignoring unrelated hints', async () => {
     const s = setup();

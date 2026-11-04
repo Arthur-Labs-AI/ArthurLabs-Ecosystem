@@ -15,6 +15,7 @@ import {
   buildClaudeSettings,
   CLAUDE_ALLOWED_SECRET_ENV_NAMES,
   ClaudeCodeHarnessAdapter,
+  ClaudeCodeHarnessError,
   parseStreamJsonLine,
   type ClaudeClientFactory,
   type ClaudeStreamEvent,
@@ -219,6 +220,187 @@ function threeStage(
 }
 
 describe('ClaudeCodeHarnessAdapter', () => {
+  it('recovers a context-exceeded report in a fresh compacted session', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-context-'));
+    roots.push(root);
+    const input = await request(root);
+    let clients = 0;
+    let calls = 0;
+    const prompts: string[] = [];
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
+      clientFactory: async () => {
+        clients += 1;
+        return {
+          sessionId: 'session-context-' + clients,
+          startSession: async () => ({
+            runText: async (text: string) => {
+              prompts.push(text);
+              calls += 1;
+              if (calls === 1) return planTurn();
+              if (calls === 2) return investigationTurn();
+              if (calls === 3)
+                throw new Error('prompt is too long: 213462 tokens > 200000 maximum');
+              return reportTurn(validReportV2());
+            },
+          }),
+          close: async () => undefined,
+        };
+      },
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1), JSON.stringify(events.slice(-4))).toMatchObject({
+      type: 'run.completed',
+    });
+    expect(clients).toBe(2);
+    expect(prompts.at(-1)).toContain('REPORT-ONLY RECOVERY');
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_CONTEXT_COMPACTED' }),
+    );
+  });
+
+  it('falls back to blocked checks and a fresh report when spawn fails (E2BIG) after banked work', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-e2big-'));
+    roots.push(root);
+    const input = await request(root);
+    let clients = 0;
+    let calls = 0;
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
+      clientFactory: async () => {
+        clients += 1;
+        return {
+          sessionId: 'session-e2big-' + clients,
+          startSession: async () => ({
+            runText: async () => {
+              calls += 1;
+              if (calls === 1) {
+                const plan = JSON.parse(validPlan()) as Record<string, unknown>;
+                plan['plannedChecks'] = ['Inspect README', 'Second check'];
+                return [
+                  evt('system', {
+                    subtype: 'init',
+                    session_id: 's',
+                    tools: ['Bash', 'Read'],
+                    model: 'm',
+                  }),
+                  evt('assistant', {
+                    message: { content: [{ type: 'text', text: JSON.stringify(plan) }] },
+                  }),
+                  evt('result', { is_error: false, usage: { input_tokens: 10, output_tokens: 5 } }),
+                ];
+              }
+              if (calls === 2) return investigationTurn();
+              if (calls === 3)
+                throw Object.assign(new Error('spawn systemd-run E2BIG'), { code: 'E2BIG' });
+              return reportTurn(validReportV2());
+            },
+          }),
+          close: async () => undefined,
+        };
+      },
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1), JSON.stringify(events.slice(-4))).toMatchObject({
+      type: 'run.completed',
+    });
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_INVESTIGATION_INCOMPLETE' }),
+    );
+  });
+
+  it('falls back to blocked checks and a fresh report when the sandbox dies mid-run after banked work', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-sandbox-midrun-'));
+    roots.push(root);
+    const input = await request(root);
+    let clients = 0;
+    let calls = 0;
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
+      clientFactory: async () => {
+        clients += 1;
+        return {
+          sessionId: 'session-sandbox-' + clients,
+          startSession: async () => ({
+            runText: async () => {
+              calls += 1;
+              if (calls === 1) {
+                const plan = JSON.parse(validPlan()) as Record<string, unknown>;
+                plan['plannedChecks'] = ['Inspect README', 'Second check'];
+                return [
+                  evt('system', {
+                    subtype: 'init',
+                    session_id: 's',
+                    tools: ['Bash', 'Read'],
+                    model: 'm',
+                  }),
+                  evt('assistant', {
+                    message: { content: [{ type: 'text', text: JSON.stringify(plan) }] },
+                  }),
+                  evt('result', { is_error: false, usage: { input_tokens: 10, output_tokens: 5 } }),
+                ];
+              }
+              if (calls === 2) return investigationTurn();
+              if (calls === 3)
+                throw new ClaudeCodeHarnessError(
+                  'GLM_SANDBOX_UNAVAILABLE',
+                  'bwrap: Cannot find source path',
+                );
+              return reportTurn(validReportV2());
+            },
+          }),
+          close: async () => undefined,
+        };
+      },
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1), JSON.stringify(events.slice(-4))).toMatchObject({
+      type: 'run.completed',
+    });
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'warning', code: 'QA_INVESTIGATION_INCOMPLETE' }),
+    );
+  });
+
+  it('still fails the run on a spawn failure when no work was banked', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-claude-e2big-early-'));
+    roots.push(root);
+    const input = await request(root);
+    let calls = 0;
+    const adapter = new ClaudeCodeHarnessAdapter({
+      executable: 'claude-test',
+      modelId: 'glm-5.3-flash',
+      environment: {},
+      windowsUsersRoot: hermeticUsersRoot(),
+      clientFactory: async () => ({
+        sessionId: 'session-e2big-early',
+        startSession: async () => ({
+          runText: async () => {
+            calls += 1;
+            if (calls === 1) return planTurn();
+            throw Object.assign(new Error('spawn systemd-run E2BIG'), { code: 'E2BIG' });
+          },
+        }),
+        close: async () => undefined,
+      }),
+    });
+    const events = await collect(adapter, input);
+    await adapter.dispose();
+    expect(events.at(-1)).toMatchObject({ type: 'run.failed' });
+  });
+
   it('fails fast with GLM_TOOL_LOOP on 10 identical failing tool calls', async () => {
     // Regression for the 166x Read-on-directory loop that burned a whole
     // 30-minute run budget: the adapter aborts the phase with a clear
@@ -727,15 +909,19 @@ describe('ClaudeCodeHarnessAdapter', () => {
     await adapter.dispose();
     expect(events.at(-1)?.type).toBe('run.completed');
     expect(schemaOnAttempt).toEqual([false, false]);
-    expect(reportPrompts[0]).toContain('Frozen plan:');
-    // Release v1.0.2 repeats the authoritative plan and evidence contract
-    // during report repair. This intentional rollback is owner-requested.
-    expect(reportPrompts[1]).toContain('Frozen plan:');
-    expect(reportPrompts[1]).toContain('Report evidence contract (exact fields per type');
+    // Compact stage contracts retain exact check IDs, not the full plan/schema
+    // again during correction. Latest owner request supersedes old prompt prose.
+    expect(reportPrompts[0]).toContain('"id":"check_1"');
+    expect(reportPrompts[1]).toContain('"id":"check_1"');
+    expect(reportPrompts[1]).not.toContain('Evidence variants (exact fields');
     // The repair stays in the same session and retains every authoritative
     // operation key, even if Claude compacted the earlier conversation.
-    expect(reportPrompts[0]).toContain('Operation op_1');
-    expect(reportPrompts[1]).toContain('Operation op_1');
+    for (const prompt of reportPrompts)
+      expect(
+        JSON.parse(
+          prompt.split('Authoritative operation receipt (frozen after investigation): ')[1]!,
+        ),
+      ).toContainEqual(expect.objectContaining({ key: 'op_1' }));
     expect(events).toContainEqual(
       expect.objectContaining({ type: 'warning', code: 'GLM_REPORT_RETRY' }),
     );
@@ -900,6 +1086,17 @@ describe('ClaudeCodeHarnessAdapter', () => {
     expect(parseStreamJsonLine('[claude-code:unrecognized_model] {"a":1}')).toBeUndefined();
     expect(parseStreamJsonLine('not json')).toBeUndefined();
     expect(parseStreamJsonLine('[1,2]')).toBeUndefined();
+  });
+
+  it('limits sandbox shell network to package registries', () => {
+    const sandbox = (
+      buildClaudeSettings() as { sandbox: { network: { allowedDomains: string[] } } }
+    ).sandbox;
+    const domains = sandbox.network.allowedDomains;
+    expect(domains).toContain('registry.npmjs.org');
+    expect(domains).toContain('pypi.org');
+    expect(domains).not.toContain('*');
+    expect(domains.some((host) => /z\.ai|bigmodel|anthropic|openai/i.test(host))).toBe(false);
   });
 
   it('writes fail-closed sandbox settings', () => {

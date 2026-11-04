@@ -34,6 +34,10 @@ export function validateHarnessEventSequence(
 
 function inferQARunId(events: readonly HarnessEvent[]): QARunId {
   for (const event of events) {
+    if (event.type === 'report.checkpoint') {
+      const qaRunId = event.findings[0]?.qaRunId ?? event.evidence[0]?.qaRunId;
+      if (qaRunId !== undefined) return qaRunId;
+    }
     if (event.type === 'finding.submitted') return event.finding.qaRunId;
     if (event.type === 'evidence.submitted') return event.evidence.qaRunId;
     if (event.type === 'investigation.plan.created') return event.plan.qaRunId;

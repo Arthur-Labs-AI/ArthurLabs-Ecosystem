@@ -1,3 +1,268 @@
+## 2026-10-29 - Uncommitted QA stack committed to fix/qa-stage-contracts
+
+The accumulated uncommitted stack (per-check investigation loop, closure
+gate, grounding repair/downgrade, null-exit ledger fix, stall watchdog,
+challenge removal, 3h safety fuse, context-window compaction) was split
+into structured commits on fix/qa-stage-contracts (not main, not pushed):
+f7aad54 fix(evidence-pipeline): add context budget, grounding repair, and
+per-check closure; 8c4cceb fix(qa): compact contexts and drive per-check
+investigation in all three harnesses; 5892cfc fix(run-engine): add stall
+watchdog, 3h safety fuse, and snapshot hash parity; c71eeaf feat(desktop):
+accept revisionId for production QA runs. Verified this session before
+committing: evidence 100, DS 77, GLM 107 PASS; run-engine focused
+targeted+stall-watchdog 14 PASS. OpenCode suite: 129 PASS, 1 FAIL =
+pre-existing functional systemd probe on Windows (unavailable systemd),
+unrelated to the committed files. Full run-engine suite likewise fails
+only on verification-trust systemd/EBUSY environment cases, recorded
+earlier as environmental. Paid comparison run remains owner's.
+shux CLI unavailable in this environment (contract command could not run).
+## 2026-10-28 - Context-window compaction in all 3 harnesses (uncommitted, deployed)
+
+Owner run_01M622G8P67JCK4CCA3VG0CYXN: DeepSeek reporting died with
+CONTEXT_WINDOW_EXCEEDED (816237 message tokens + 256000 requested completion
+> 1048576 window) after 1231 events in ONE session; run failed, 0 findings
+from DS, GLM cancelled as a consequence. Root cause: no context budget
+anywhere - planning+per-check investigation+reporting shared one session,
+and the existing fresh report context was used only on deadline/timeout.
+Fix, identical semantics in DS/OC/GLM via shared evidence-pipeline:
+(a) new context-budget.ts: isContextWindowExceeded classifier (provider
+wordings + error codes + cause chain), ContextBudget (peak observed input
+tokens, rotate at 70% of window, reset on rotation), estimatePromptTokens.
+(b) buildInvestigationCompactionContext: host compaction seed - contract,
+frozen plan, operation receipt, bounded tool notes; model reasoning never
+crosses. (c) Each adapter: proactive rotation before a check turn and
+before reporting when budget trips; reactive rotation+one retry of the
+same check / report attempt on provider context overflow; overflow after
+retry falls back to blocked-checks + fresh report (partial, never run loss).
+Warning code QA_CONTEXT_COMPACTED in all 3. Windows: DS 1048576 (provider-
+reported), OC/GLM conservative 200000 defaults, all overridable via
+contextWindowTokens adapter option. Regression tests red-first: DS report
+recovery (was run.failed, now run.completed + 2 clients + REPORT-ONLY
+RECOVERY seed), DS proactive rotation (tiny window), OC report recovery,
+GLM report recovery, shared classifier/budget units.
+Gates: evidence 100, DS 77, OC 130, GLM 107 PASS; typecheck 37/37, lint
+20/20, build 20/20, prettier PASS. Full turbo test: only
+@qa/snapshot-engine FAIL = 5s timeout flake under parallel load (passes
+standalone 4/4 in 390ms; package does not depend on touched code) - not
+all-green, recorded honestly. Runtime redeployed 1.0.2-488602a (18 tasks,
+ENTRY_OK, SENTRY_DEPLOY_EXIT:0); Sentry reopened, Running yes. Nothing
+committed. Paid comparison run is owner's; acceptance = DS completes
+reporting on a long investigation (or emits QA_CONTEXT_COMPACTED and
+still reports) instead of CONTEXT_WINDOW_EXCEEDED run failure.
+shux CLI unavailable in this environment (contract command could not run).
+## 2026-10-28 — Reporting reserve COMPLETE / ACTIVATED
+
+Run_01M60MRP6TCY47QM8S1ZXF28HZ consumed30min before reports. Host phase
+deadlines now reserve reporting time; owned shutdown precedes explicit fresh
+report-only context with same private copy/model and own redacted facts only.
+OC tool observations stream/dedup; failed shutdown/cancel forbids recovery.
+Final Windows static60 tasks, broad non-engine39 tasks, engine94, shared86,
+focused DS11/OC13/GLM17 PASS. Native trust8/preparation smoke PASS; actual
+three vendor binaries x investigation/report timeout =6 local-stub cases PASS.
+No funded model run/accuracy claim. Details: docs/reviews/qa-report-reserve.md.
+Implementation defd410 pushed on fix/qa-stage-contracts. Native runtime
+1.0.2-defd410 deployed:18 build tasks PASS, ENTRY_OK, current symlink and
+runtime.hello PASS. Desktop opened from this checkout. No active QA runs
+at pre-activation check. Main/dev were not merged in this task.
+shux contract unavailable; protocol recorded directly.
+
+## Compact QA stages / live DeepSeek — COMPLETE / ACTIVATED
+
+Implementation380b7e0 + test-onlydf224dc pushed on fix/qa-stage-contracts. Old
+branch name removed locally/remotely after equal-tip preservation; main/dev stay.
+Final Windows non-engine39tasks, engine94 and static/build60tasks PASS; DS69 PASS.
+Native evidence81, trust8/8 and real preparation/isolation/cancel smoke PASS on
+380b7e0 product code. Native DS initially68/69: test looked up transitive runtime
+from adapter scope instead of SDK owner. Test-only correction retains exact pin;
+Windows/native DS69 PASS, no skips/timeouts/expectations weakened. Final active
+runtime1.0.2-df224dc native18 build tasks + hello/current symlink verified; code
+unchanged from380b7e0. Sentry reopened. No paid run, no claim of model accuracy or
+guaranteed deadline compliance; prompt behavior still needs funded comparison.
+Docs: docs/reviews/qa-stage-contracts.md. shux absent; protocol updated directly.
+## Ordered compact QA stages + DeepSeek streaming — IMPLEMENTED / VERIFIED
+
+Branch renamed locally/remotely to fix/qa-stage-contracts at owner request; old
+remote codex name removed after equal-SHA preservation. Shared compact stage
+builders replace copied prompts across all3; mission/safety once, planning future
+work only/no suites, investigation with prior receipts/no duplicate checks,
+compact tool-free reports and targeted repair, environmental limits separated.
+DeepSeek primary stages forward live SDK notifications through existing observer;
+final buffer deduped, child payload rejected, interruptions close known tool ops
+without invented exit codes. Consumer-return RED exposed owned-client leak;
+generator finally fixes it. Latest owner request supersedes GLM old prose tests,
+not transport/sandbox/firewall guards. Fixture prompt characters reduced54% for
+OC/DS,23% GLM (not latency/accuracy proof). Final non-engine39tasks, engine94,
+static/build60tasks PASS; DS69, GLM102 PASS, format/hygiene/diff PASS. No paid runs.
+Desktop stopped gracefully after no-active-run check. Activation/hello/native tests
+next. Details: docs/reviews/qa-stage-contracts.md. shux unavailable; direct receipts.
+## Latest run 01M5ZS2 assessment — COMPLETE (investigation)
+
+New runtime workflow confirmed: all3 prep ready, OC/GLM checkpoint present, correct
+30min deadline diagnostic. OC14:39/1 finding, GLM29:23/8 findings completed; DS
+requested deepseek-flash30:07 timeout before report,10:17 planning with full tests.
+Confirmed adapter defect: pinned SDK supports onNotification but facade omits it;
+adapter awaits entire turn before forwarding events, so unfinished investigation
+observations are absent. Export cannot distinguish slow work/tool hang/provider
+stall. Streaming fixes visibility, not the deadline by itself. GLM reporting14:50
+and two explicit environmental limitations misclassified low/confirmed findings.
+No product edits/deploy/paid run. Recommended next scope: live DeepSeek event
+forwarding + interrupted-turn regression, enforce phase separation/budgets, semantic
+limitation classification. Details: docs/reviews/sentry-run-01M5ZS2-assessment.md.
+shux unavailable; direct protocol receipts updated.
+## QA depth activation — COMPLETE
+
+Implementation51c3896 pushed on codex/independent-agent-depth. Active Linux runtime
+1.0.2-51c3896 verified via current symlink and successful runtime.hello (Ubuntu,
+Node22.23.2). Native runtime18 build tasks PASS; actual deployed offline preparation
+smoke PASS (two private ready copies, lifecycle/peer/original/network isolation,
+owned cancellation); native verifier trust8/8 PASS. Windows final engine94 PASS,
+non-engine39tasks PASS, combined static/build60tasks PASS. Sentry reopened from
+this checkout after graceful stop/no active QA. No paid model run/accuracy claim.
+Source tree committed; this receipt records activation. Main/dev unchanged.
+Details and new-run diagnosis: docs/reviews/qa-depth-follow-up.md. shux absent.
+## QA depth follow-up — IMPLEMENTED / VERIFIED, activation pending
+
+Reviewed owner run_01M5ZNPA0HBVTQE9E42YHESM58: old workflow, all prep limited;
+DeepSeek18min planning then30min timeout; GLM invalid/truncated report and exact
+long-check-name mismatch. Stable report IDs added to all3 adapters; no fuzzy
+matching. Ambiguous shell success/absolute inspection coverage downgraded.
+Typed report.checkpoint persists converted facts in existing SQLite event journal;
+live disconnect/stale-owner recovery retain facts without fabricated completion.
+Cleanup survives restore write failure. Regression RED->GREEN recorded.
+Final engine94 PASS (excluding Linux trust), non-engine39tasks PASS, final combined
+build/typecheck/lint60tasks PASS; adapter phase18 PASS; format/hygiene/diff PASS.
+No paid run. Desktop stopped gracefully after verifying no active runs. Runtime
+activation/hello and native smoke next. No main/dev merge. shux unavailable.
+Details: docs/reviews/qa-depth-follow-up.md.
+## Review of AI completion d85ca84 — COMPLETE
+
+Owner requested review, not further implementation. Full diff/callers inspected.
+Important correctness gap reproduced: failed node test followed by pwd (semicolon
+or newline), and absolute-path grep still retain passed coverage. Current WSL
+runtime link remains1.0.2-1251a7d; new commit not activated. In-memory checkpoint
+limitation disclosed, no crash-recovery claim. No demonstrated new sandbox escape.
+Evidence73, DeepSeek62, GLM102, engine preparation/closure18 PASS; OpenCode parallel
+PATH probe timeout/EPERM, full serial rerun125 PASS unchanged. Actual WSL populated
+cache preparation/isolation/cancellation smoke PASS. No product edits, deployment,
+paid run or commit. Review: docs/reviews/qa-depth-d85ca84-review.md.
+shux unavailable; direct protocol receipts. Recommended next work: coverage
+negative fixtures and conservative classification, then deploy/hello and comparison.
+## First real depth run assessment — COMPLETE
+
+Reviewed owner export run_01M5Z8X98VKXVTVJ262GB9HACH, treated as data only.
+New QA_DEPTH_V1/challenge executed for all3. All preparation limited: cache unset,
+20 compiler caches removed but dependencies not provisioned. Muse2:35/4commands,
+DeepSeek30:05 timeout during challenge before reporting (145tools, no submitted
+findings/evidence), GLM22:26/5low-info findings. Same target revision/hash as prior.
+Confirmed implementation gaps: manual setup not done at test launch; challenge
+only start-gated, no protected reporting budget; coverage validation structural
+only; timeout diagnostic displays90min while30min hard deadline actually fired.
+GLM cache-exclusion claim refuted against retained revision's source-selection
+and import caller; test-gap claim rests on filenames, not test bodies. Conditional
+manifest integrity gap and low/info hardening remain distinct from major defects.
+No product changes or new provider run. Full report:
+docs/reviews/sentry-run-01M5Z8X98-assessment.md. shux absent; direct receipts.
+
+## Test launch — COMPLETE
+
+Opened the built Desktop from codex/independent-agent-depth at owner request.
+Deployed and activated Linux runtime 1.0.2-1251a7d; native build18 tasks PASS,
+entry validation and runtime.hello PASS (Linux/WSL, protocol1, Node22.23.2).
+Confirmed visible Sentry window from this checkout's electron.exe (PID32960).
+No QA/model run started. Local protocol receipt only; product sources unchanged.
+
+## Independent agent depth — IMPLEMENTED / VERIFIED
+
+Branch codex/independent-agent-depth from dev f47f527. Private copies/sessions
+preserved; offline per-copy pnpm preparation, common challenge turn, coverage
+validation and UI proof labels implemented. Default production workflow; rollback
+SENTRY_QA_DEPTH=0, offline cache SENTRY_QA_CACHE_SEED required for full preparation.
+New imports prune tsbuildinfo without altering frozen v2 hashes. Reset failed
+install copies, cancel before provider launch, and unconditional workspace cleanup.
+Version probe hook discovery fixed using private HOME; malicious hook smoke PASS.
+Actual WSL HOME sandbox failure reproduced then fixed with private tmpfs HOME;
+original/peer/network isolation, private dependency writes, postinstall denial and
+owned process cancellation verified. Existing native trust suite8 PASS.
+Format/lint20/typecheck37/build20/hygiene PASS; non-engine39 tasks PASS;
+engine87 tests PASS at broad checkpoint, final lifecycle/preparation16 PASS,
+adapter phase9 PASS, depth contract4 PASS. Known opt-in/platform skips retained.
+No paid model comparison or published-artifact install: UNVERIFIED, no accuracy or
+release-ready claim. Full evidence: docs/reviews/independent-agent-depth-verification.md.
+Deleted merged local/remote branches chore/app-cleanup-and-polish (75f5f58),
+fix/glm-sandbox-result-detection (22b58b0), feature/native-linux-support (6793a9c),
+all ancestors of dev. Retained main/dev/new work branch per corrected instruction.
+Temporary WSL verification checkouts cleaned. shux unavailable; direct protocol.
+
+## Independent QA depth implementation plan — COMPLETE (planning only)
+
+Owner requested a simple production-oriented implementation plan, not code.
+Created docs/reviews/independent-agent-depth-plan.md after inspecting workspace,
+adapter phase transitions, report/check schemas and existing sandbox backend.
+Design: preserve private copies/sessions; deterministic offline per-copy
+preparation; one same-session challenge turn; existing evidence/coverage labels.
+Bounded deadlines, no peer sharing/new service/DB migration, fail-closed sandbox,
+cache miss limitations, historical compatibility and rollout/release gates.
+Architecture review ten questions answered in plan. Implementation gates remain
+UNVERIFIED; no product edits, provider calls or commit. shux unavailable.
+
+## OpenCode speed investigation — COMPLETE
+
+Audited nine Desktop exports and current adapter/config/client/pipeline source.
+Muse is fastest in all seven successful paired exports (67–308 seconds).
+Counterexample: MiMo through OpenCode failed after1919seconds, so not a universal
+adapter speed rule. Last run phase seconds: Muse40/117/62, DeepSeek649/577/314,
+GLM351/167/429. GLM total is largely planning/reporting, not longer investigation.
+No short Muse timeout/step cap/explicit low-effort override found. Model declares
+investigation done; adapter advances to report without semantic rebuttal pass.
+DeepSeek restored1009 cached packages (downloaded0;6s), enabling actual tests;
+Muse/GLM reported missing-dependency limits. No live model or setting changes.
+Prompt parity unit1 PASS. Detailed findings/limits:
+docs/reviews/opencode-speed-investigation.md. shux unavailable; direct receipts.
+
+## OpenCode log identity audit — COMPLETE
+
+Inspected exported harness event envelopes for run_01M5YWGJHHS964R0N2GAM5NWRT,
+OpenCode arun_01M5YWGKM6JPKEGHY3TC9YEZZQ. All observed file reads use its isolated
+workspace. Plan records snapshot snap_01M5YWGKKDJ84JY8MM5KX7BZJJ; export maps it
+to revision rev_01M5YPSV7K06HRK480WXE8R9ET (imported 12:54:12.980 UTC).
+Agent calls it Sentry v1.0.2, consistent with README release label; that is not
+proof of Git tag/commit identity. git status explicitly failed: not a git repo.
+Source planning prompt serializes mission context including revision, but raw
+provider prompt receipt is not retained in this export, so exact model attention
+to revision ID cannot be proven. No evidence of reading another revision.
+No product changes or provider execution; protocol notes only. shux absent.
+
+## Review run_01M5YWGJHHS964R0N2GAM5NWRT — COMPLETE
+
+Owner requested verdicts only, one per 14 exported findings. Reviewed current dev
+f47f527 source, protocol validator, cleanup/export/credentials/cancellation flows,
+and tracked-file inventory. Actual production-module synthetic probes confirm:
+forgetAll leaves legacy file, custom file exclusions ignored, root accepted by
+resolveInside, planning->completed rejected. No deletion probe on real data.
+Important: stale incremental caches in snapshots; legacy credential residue;
+dispose rejection skips cleanup. Conditional hardening: cleanup root guard and
+export temp symlink. Qualified: starting->completed violates start-first protocol;
+completed cancellation row is not shown reachable stale; leases intentionally
+support peers; caches/stub locks not tracked (old run JSON IS tracked).
+No new provider run, product fix or commit. shux contract unavailable.
+
+# Sentry findings verification handoff — 2026-10-27
+
+Validated all12 findings in owner export run01M5YMA9B8T5581M67PTBCA8Q8 against
+dev f47f527 and retained snapshot. Full mapping/proofs/limits in
+`docs/reviews/sentry-run-01M5YMA9B8-validation.md`. Actionable: snapshot cache
+without dist (actual tsc exit0/0outputs versus24after cache removal), auth/cookie
+redaction, newline parser; merge tie contract inconsistency conditional on
+multiple results. No host escape or reachable outside-delete exploit proven.
+Lease exclusion claim refuted by intended cross-runtime ownership behavior;
+root stubs not tracked; Git/sandbox environment failures not production defects;
+old WSL parity fixture already fixed. Other observations minor/conditional.
+Merger29/exclusions5/closure1/verifier1/WSL prompt1 and hygiene PASS.
+No new QA/provider run or product edit; report and protocol notes local only.
+shux unavailable; direct receipts maintained.
+
+## Previous record (preserved)
+
 # Owner-authorized commit/integration to dev — 2026-10-27
 
 Owner explicitly asked to commit all outstanding work and integrate dev.
@@ -1364,3 +1629,22 @@ validate official model IDs and endpoint compatibility, preserve both encrypted 
 persist activation with SENTRY_OPENCODE_PROVIDER and test rendered interactions/runtime routing.
 The cause of the other AI stopping cannot be established from the working tree alone.
 shux contract attempted, unavailable on PATH; task status/ledger/handoff updated directly.
+
+
+## 2026-10-28 — Protected reporting reserve (in progress)
+
+Investigating run_01M60MRP6TCY47QM8S1ZXF28HZ: all agents consumed the run deadline before a valid report. Implementing host phase deadlines, owned-process shutdown and fresh report-only recovery from each agent’s own redacted facts. OpenCode observations now stream. DeepSeek real SDK local-stub probe proves old session IDs cannot resume after process restart. Four deterministic recovery/cancellation/shutdown tests pass for DeepSeek. Remaining: parity tests, real-binary zero-credit recovery, full gates, deployment. shux contract unavailable; protocol updated directly.
+
+
+## 2026-10-28 — Infrastructure and large-project problem document (complete)
+
+Owner requested one detailed English Markdown file. Created
+docs/architecture/QA_EXECUTION_INFRASTRUCTURE_AND_LARGE_PROJECT_LIMITATIONS.md
+at source488602a: architecture, package ownership, Windows/WSL RPC, managed
+copies, private agents, preparation, provider differences, persistence, evidence,
+latest export chronology, reserve formulas, large-project limits and explicitly
+unimplemented proposals. Cross-checked source and owner export. Historical gate
+receipts remain attributed; no new model-quality or live-runtime claims.
+Documentation formatting and referenced repository-path checks PASS. Product
+code/settings/prompts untouched; no provider run/deployment/commit performed.
+shux contract attempted, unavailable on PATH; protocol maintained directly.

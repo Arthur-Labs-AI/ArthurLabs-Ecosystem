@@ -2,6 +2,7 @@ import {
   DeepSeekHarness,
   type DeepSeekHarnessOptions,
   type RunResult,
+  type HarnessNotification,
 } from '@deepseek-ai/dsh-sdk-client';
 
 export const DEEPSEEK_SDK_VERSION = '0.1.5-rc.2' as const;
@@ -9,7 +10,7 @@ export const DEEPSEEK_RUNTIME_PROFILE = 'sdk-minimal' as const;
 export type DeepSeekRunResult = RunResult;
 
 export interface DeepSeekSessionView {
-  runText(text: string, sessionId?: string): Promise<RunResult>;
+  runText(text: string, sessionId?: string, onEvent?: (event: unknown) => void): Promise<RunResult>;
 }
 
 export interface DeepSeekClientView {
@@ -33,7 +34,13 @@ export type DeepSeekClientFactory = (input: {
 
 interface ProductionHarnessView {
   start(): Promise<void>;
-  run(text: string, options: { readonly sessionId: string }): Promise<RunResult>;
+  run(
+    text: string,
+    options: {
+      readonly sessionId: string;
+      readonly onNotification?: (notification: HarnessNotification) => void;
+    },
+  ): Promise<RunResult>;
   close(): Promise<void>;
 }
 
@@ -43,8 +50,29 @@ class ProductionSession implements DeepSeekSessionView {
     private readonly sessionId: string,
   ) {}
 
-  async runText(text: string, sessionId?: string): Promise<RunResult> {
-    return this.harness.run(text, { sessionId: sessionId ?? this.sessionId });
+  async runText(
+    text: string,
+    sessionId?: string,
+    onEvent?: (event: unknown) => void,
+  ): Promise<RunResult> {
+    const ownedId = sessionId ?? this.sessionId;
+    return this.harness.run(text, {
+      sessionId: ownedId,
+      ...(onEvent === undefined
+        ? {}
+        : {
+            onNotification: (notification: HarnessNotification) => {
+              if (notification.method !== 'session.event') return;
+              // The SDK subscription is scoped to this root and discovered descendants.
+              // Child activity is a delegation violation, never attributed to the root.
+              if (notification.params['sessionId'] !== ownedId) {
+                onEvent({ type: 'subagent.started', data: {} });
+                return;
+              }
+              onEvent(notification.params['event']);
+            },
+          }),
+    });
   }
 }
 

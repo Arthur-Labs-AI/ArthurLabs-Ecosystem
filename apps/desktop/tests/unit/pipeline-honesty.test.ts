@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRetestGraph, buildRunGraph } from '../../src/renderer/lib/run-graph.js';
+import { buildRunGraph } from '../../src/renderer/lib/run-graph.js';
 
 const BASE_RUN = {
   id: 'run_01K7777777777777777777A8W1',
@@ -43,18 +43,6 @@ describe('pipeline state honesty', () => {
     expect(graph.nodes).toHaveLength(6);
   });
 
-  it('historical MergeResult input creates no merger node (ignored, still accepted)', () => {
-    const graph = buildRunGraph({
-      run: BASE_RUN,
-      agentRuns: AGENTS,
-      findings: [],
-      evidence: [],
-      mergeResults: [{ id: 'merge_01K7777777777777777777A8W1' }],
-    });
-    expect(graph.nodes.find((n) => n.kind === 'merger')).toBeUndefined();
-    expect(graph.nodes.find((n) => n.kind === 'verifier')).toBeUndefined();
-  });
-
   it('active runs show agents without any downstream pipeline state', () => {
     const graph = buildRunGraph({
       run: { ...BASE_RUN, status: 'agents_running' },
@@ -76,23 +64,5 @@ describe('pipeline state honesty', () => {
     });
     expect(graph.nodes.some((n) => n.kind === 'target')).toBe(true);
     expect(graph.nodes.find((n) => n.kind === 'issues')).toBeUndefined();
-  });
-
-  it('assessment result=fixed drives a FIXED assessment node hung off the snapshot', () => {
-    const graph = buildRetestGraph({
-      run: BASE_RUN,
-      agentRuns: AGENTS,
-      findings: [],
-      evidence: [],
-      sourceRevisionId: 'rev_01K7777777777777777777A8W1',
-      targetRevisionId: 'rev_01K7777777777777777777A8W2',
-      assessment: { result: 'fixed' },
-    });
-    const node = graph.nodes.find((n) => n.kind === 'retest-assessment');
-    expect(node?.status).toBe('fixed');
-    expect(node?.data['result']).toBe('fixed');
-    const edge = graph.edges.find((e) => e.target === 'retest-assessment');
-    expect(edge?.source).toBe('snapshot');
-    expect(graph.nodes.find((n) => n.id === edge?.source)).toBeDefined();
   });
 });

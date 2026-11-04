@@ -15,10 +15,8 @@ describe('machine CLI schemas', () => {
         runInspection: true,
         fakeRunSimulation: true,
         realAgentExecution: true,
-        retestExecution: true,
         runCancellation: true,
         targetedExecution: true,
-        issueLineage: true,
       },
     });
     expect(

@@ -16,6 +16,8 @@ export const IPC_CHANNELS = [
   'projects:delete',
   'projects:doctor',
   'projects:suggest-targets',
+  'projects:profile',
+  'projects:build-profile',
   'runs:list',
   'runs:get',
   'runs:status',
@@ -25,13 +27,6 @@ export const IPC_CHANNELS = [
   'runs:export',
   'runs:export-save',
   'runs:export-reveal',
-  'issues:list',
-  'issues:get',
-  'issues:history',
-  'retests:list',
-  'retests:start',
-  'retests:get',
-  'retests:cancel',
   'doctors:environment',
   'providers:status',
   'providers:save',
@@ -42,6 +37,9 @@ export const IPC_CHANNELS = [
   'providers:detect-binaries',
   'production:readiness',
   'system:info',
+  'toolchains:status',
+  'toolchains:install',
+  'toolchains:remove',
   'system:active-runs',
   'runtime:status',
   'runtime:distros',
@@ -66,7 +64,6 @@ export interface WslSpaceResult {
 export interface DesktopOperation {
   readonly operationId: string;
   readonly runId?: string | undefined;
-  readonly retestRunId?: string | undefined;
   // Persisted initial status for async starts (e.g. agents_running): lets
   // CLI callers return the created runId without a follow-up status request.
   readonly status?: string | undefined;
@@ -79,25 +76,12 @@ export interface DesktopRunSnapshot {
   readonly evidence: unknown[];
   readonly activities: unknown[];
   readonly events: unknown[];
-  readonly mergeResults: unknown[];
-  readonly verificationRuns: unknown[];
-  readonly issues: unknown[];
   readonly targetSpec?: unknown;
 }
 
 export type RunSnapshot = DesktopRunSnapshot;
 
-export interface DesktopRetestSnapshot {
-  readonly retestRun: unknown;
-  readonly spec?: unknown;
-  readonly targetRun?: DesktopRunSnapshot | undefined;
-  readonly assessments: unknown[];
-}
-
-export type RetestSnapshot = DesktopRetestSnapshot;
-
-export type RunUpdateKind =
-  'run-created' | 'run-snapshot' | 'retest-created' | 'retest-snapshot' | 'active-runs';
+export type RunUpdateKind = 'run-created' | 'run-snapshot' | 'active-runs';
 
 export interface ActiveRunsPayload {
   readonly activeRuns: Array<{ runId: string; projectId: string; status: string }>;
@@ -106,12 +90,43 @@ export interface ActiveRunsPayload {
 export interface RunUpdatePayload {
   readonly kind: RunUpdateKind;
   readonly runId?: string | undefined;
-  readonly retestRunId?: string | undefined;
   readonly operationId?: string | undefined;
-  readonly snapshot?: RunSnapshot | RetestSnapshot | undefined;
+  readonly snapshot?: RunSnapshot | undefined;
 }
 
 export type RunUpdateCallback = (payload: RunUpdatePayload) => void;
+
+export interface ProjectProfileAgent {
+  readonly agentStackId: string;
+  readonly state: 'none' | 'fresh' | 'stale';
+  readonly createdAt?: string;
+  readonly text?: string;
+  readonly building: boolean;
+  readonly error?: string;
+}
+
+export interface ProjectProfileStatus {
+  readonly projectId: string;
+  readonly agents: readonly ProjectProfileAgent[];
+}
+
+export interface ToolchainVersionStatus {
+  readonly version: string;
+  readonly installed: boolean;
+  readonly installing: boolean;
+  readonly sizeMb?: number;
+  readonly error?: string;
+}
+
+export interface ToolchainPackStatus {
+  readonly id: string;
+  readonly label: string;
+  readonly description: string;
+  readonly approxSizeMb: number;
+  readonly defaultVersion: string;
+  readonly note?: string;
+  readonly versions: readonly ToolchainVersionStatus[];
+}
 
 export interface SentryDesktopApi {
   readonly projects: {
@@ -126,6 +141,13 @@ export interface SentryDesktopApi {
     remove(projectId: string): Promise<{ projectId: string; deleted: true }>;
     doctor(projectId: string): Promise<unknown>;
     suggestTargets(projectId: string): Promise<{ projectId: string; paths: string[] }>;
+    /** Each agent's own orientation notes for the project: none, fresh, or stale after an update. */
+    profile(projectId: string): Promise<ProjectProfileStatus>;
+    /** Starts the agents writing their notes (all, or the listed stacks); returns at once. */
+    buildProfile(
+      projectId: string,
+      agentStackIds?: string[],
+    ): Promise<{ projectId: string; started: string[] }>;
   };
   readonly runs: {
     list(projectId: string): Promise<unknown[]>;
@@ -144,6 +166,9 @@ export interface SentryDesktopApi {
         instructions?: string;
         agentStackIds?: string[];
         revisionId?: string;
+        webAccess?: boolean;
+        toolDownloads?: boolean;
+        useProfile?: boolean;
       },
     ): Promise<DesktopOperation>;
     /** Back-compat alias for start. */
@@ -155,6 +180,9 @@ export interface SentryDesktopApi {
         instructions?: string;
         agentStackIds?: string[];
         revisionId?: string;
+        webAccess?: boolean;
+        toolDownloads?: boolean;
+        useProfile?: boolean;
       },
     ): Promise<DesktopOperation>;
     cancel(runId: string): Promise<unknown>;
@@ -173,20 +201,6 @@ export interface SentryDesktopApi {
      * Export in the OS file manager. Unknown paths are rejected.
      */
     revealExport(path: string): Promise<{ status: 'shown' }>;
-  };
-  readonly issues: {
-    list(projectId: string): Promise<unknown[]>;
-    get(issueId: string): Promise<unknown>;
-    history(issueId: string): Promise<unknown>;
-  };
-  readonly retests: {
-    list(issueId: string): Promise<unknown[]>;
-    start(
-      issueId: string,
-      options?: { revisionId?: string | undefined; agentStackIds?: string[] },
-    ): Promise<DesktopOperation>;
-    get(retestRunId: string): Promise<RetestSnapshot>;
-    cancel(retestRunId: string): Promise<unknown>;
   };
   readonly doctors: {
     environment(): Promise<unknown>;
@@ -241,6 +255,11 @@ export interface SentryDesktopApi {
     }>;
     selectDistro(distro: string): Promise<{ saved: string; restartRequired: boolean }>;
     reclaimSpace(): Promise<WslSpaceResult>;
+  };
+  readonly toolchains: {
+    status(): Promise<ToolchainPackStatus[]>;
+    install(packId: string, version: string): Promise<{ started: boolean }>;
+    remove(packId: string, version: string): Promise<{ removed: true }>;
   };
   readonly system: {
     info(): Promise<{ dataRoot: string; versions: Record<string, string> }>;

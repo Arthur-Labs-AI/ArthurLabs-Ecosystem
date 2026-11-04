@@ -292,3 +292,17 @@ describe('stdio RPC loop', () => {
     }
   }, 180000);
 });
+
+describe('project profile methods', () => {
+  it('reject unknown projects and agents, and report an empty profile state', async () => {
+    const host = new SentryRuntimeHost(await tempDataRoot(), () => undefined);
+    try {
+      await host.recover();
+      const unknown = 'proj_01ARZ3NDEKTSV4RRFFQ69G5FAV';
+      await expect(host.profileStatus(unknown)).rejects.toMatchObject({ code: 'PROJECT_NOT_FOUND' });
+      expect(() => host.buildProfiles(unknown)).toThrow(/Project not found/);
+    } finally {
+      host.close();
+    }
+  });
+});

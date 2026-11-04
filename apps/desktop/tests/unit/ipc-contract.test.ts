@@ -47,7 +47,6 @@ describe('IPC security contract', () => {
       'runs:export-save',
       'runs:export-reveal',
       'projects:suggest-targets',
-      'retests:cancel',
       'doctors:environment',
       'production:readiness',
       'providers:detect-binaries',
@@ -72,8 +71,6 @@ describe('IPC security contract', () => {
     for (const key of [
       'projects:',
       'runs:',
-      'issues:',
-      'retests:',
       'doctors:',
       'production:',
       'runtime:',

@@ -1,4 +1,5 @@
 export type ClaudeCodeHarnessErrorCode =
+  | 'QA_REPORT_DEADLINE'
   | 'GLM_STACK_UNAVAILABLE'
   | 'GLM_BINARY_NOT_FOUND'
   | 'GLM_MODEL_NOT_CONFIGURED'

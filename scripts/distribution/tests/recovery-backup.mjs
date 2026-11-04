@@ -144,7 +144,7 @@ export async function inspectBundle(input) {
       fail();
     for (const row of db.prepare('SELECT payload FROM runtime_instances').all())
       if (JSON.parse(row.payload).releasedAt === undefined) fail();
-    for (const table of ['qa_runs', 'retest_runs'])
+    for (const table of ['qa_runs'])
       for (const row of db.prepare('SELECT status FROM ' + table).all())
         if (!['completed', 'partial', 'failed', 'cancelled', 'interrupted'].includes(row.status))
           fail();
@@ -161,39 +161,6 @@ export async function inspectBundle(input) {
         fail();
       const artifact = entity('artifacts', snapshot.manifest.artifactId);
       if (material.data[artifact.relativeStoragePath] !== artifact.sha256) fail();
-    }
-    for (const { payload } of db.prepare('SELECT payload FROM issue_occurrences').all()) {
-      const occurrence = JSON.parse(payload);
-      if (
-        entity('issues', occurrence.issueId).projectId !== occurrence.projectId ||
-        entity('merge_results', occurrence.mergeResultId).qaRunId !== occurrence.qaRunId
-      )
-        fail();
-      entity('finding_clusters', occurrence.findingClusterId);
-    }
-    for (const { payload } of db.prepare('SELECT payload FROM retest_runs').all()) {
-      const retest = JSON.parse(payload),
-        source = entity('qa_runs', retest.sourceQaRunId);
-      if (
-        entity('issues', retest.issueId).projectId !== retest.projectId ||
-        source.projectId !== retest.projectId ||
-        source.snapshotId !== retest.sourceSnapshotId ||
-        entity('merge_results', retest.sourceMergeResultId).qaRunId !== source.id
-      )
-        fail();
-      entity('finding_clusters', retest.sourceFindingClusterId);
-      if (
-        entity('project_snapshots', retest.sourceSnapshotId).projectRevisionId !==
-        retest.sourceProjectRevisionId
-      )
-        fail();
-      if (
-        retest.targetQaRunId !== undefined &&
-        (entity('qa_runs', retest.targetQaRunId).snapshotId !== retest.targetSnapshotId ||
-          entity('project_snapshots', retest.targetSnapshotId).projectRevisionId !==
-            retest.targetProjectRevisionId)
-      )
-        fail();
     }
     for (const { name } of db
       .prepare(

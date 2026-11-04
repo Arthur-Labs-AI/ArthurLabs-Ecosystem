@@ -48,8 +48,6 @@ async function harness(gateReady = true, configureImpl?: () => Promise<unknown>)
         };
       if (method === 'runs.start')
         return { operationId: 'dop_test', runId: 'run_01K7777777777777777777A8W1' };
-      if (method === 'retests.start')
-        return { operationId: 'dop_test', retestRunId: 'retest_01K7777777777777777777A8W1' };
       if (method === 'runtime.configure') return { configured: true };
       return { ok: true };
     },
@@ -64,18 +62,22 @@ async function harness(gateReady = true, configureImpl?: () => Promise<unknown>)
   return { service, seen };
 }
 describe('shared desktop command router', () => {
-  it.each(['runs:merge', 'runs:verify', 'issues:ingest'])(
-    'rejects retired %s on both renderer and external CLI paths',
-    async (channel) => {
-      const h = await harness();
-      for (const external of [false, true]) {
-        await expect(
-          dispatchDesktopCommand(h.service, channel, {}, {}, { external }),
-        ).rejects.toMatchObject({ code: 'IPC_UNKNOWN_CHANNEL' });
-      }
-      expect(h.seen).toEqual([]);
-    },
-  );
+  it.each([
+    'runs:merge',
+    'runs:verify',
+    'issues:ingest',
+    'issues:list',
+    'retests:start',
+    'retests:get',
+  ])('rejects retired %s on both renderer and external CLI paths', async (channel) => {
+    const h = await harness();
+    for (const external of [false, true]) {
+      await expect(
+        dispatchDesktopCommand(h.service, channel, {}, {}, { external }),
+      ).rejects.toMatchObject({ code: 'IPC_UNKNOWN_CHANNEL' });
+    }
+    expect(h.seen).toEqual([]);
+  });
 
   it('routes renderer and external CLI through the same dispatch with the same result', async () => {
     const a = await harness();
@@ -128,6 +130,19 @@ describe('shared desktop command router', () => {
         { external: true },
       ),
     ).rejects.toThrow();
+  });
+
+  it('accepts revisionId on runs:start-production exactly like runs:start', async () => {
+    const h = await harness(true);
+    const revisionId = 'rev_01K7777777777777777777A8W1';
+    await dispatchDesktopCommand(
+      h.service,
+      'runs:start-production',
+      { projectId: 'proj_01K7777777777777777777A8W1', mode: 'full', revisionId },
+      {},
+    );
+    const start = h.seen.find((c) => c.method === 'runs.start');
+    expect(start?.params['revisionId']).toBe(revisionId);
   });
 
   it('fires run-created hooks for CLI-started runs (Desktop live updates stay truthful)', async () => {

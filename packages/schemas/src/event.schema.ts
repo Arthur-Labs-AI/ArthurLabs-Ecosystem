@@ -122,6 +122,11 @@ export const EvidenceSubmittedEventSchema = HarnessEventBaseSchema.extend({
   type: z.literal('evidence.submitted'),
   evidence: EvidenceSchema,
 }).strict();
+export const ReportCheckpointEventSchema = HarnessEventBaseSchema.extend({
+  type: z.literal('report.checkpoint'),
+  findings: z.array(FindingSchema).max(500),
+  evidence: z.array(EvidenceSchema).max(1000),
+}).strict();
 export const UsageUpdatedEventSchema = HarnessEventBaseSchema.extend({
   type: z.literal('usage.updated'),
   usage: AgentUsageSchema,
@@ -158,6 +163,7 @@ export const HarnessEventSchema = z.discriminatedUnion('type', [
   InvestigationHypothesisDiscoveredEventSchema,
   FindingSubmittedEventSchema,
   EvidenceSubmittedEventSchema,
+  ReportCheckpointEventSchema,
   UsageUpdatedEventSchema,
   WarningEventSchema,
   RunCompletedEventSchema,
@@ -180,6 +186,7 @@ export const HarnessEventTypeSchema = z.enum([
   'investigation.hypothesis.discovered',
   'finding.submitted',
   'evidence.submitted',
+  'report.checkpoint',
   'usage.updated',
   'warning',
   'run.completed',

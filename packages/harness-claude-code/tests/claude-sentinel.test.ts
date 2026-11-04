@@ -11,6 +11,7 @@ import {
   CLAUDE_INVESTIGATION_ALLOWED_TOOLS,
   CLAUDE_PLANNING_ALLOWED_TOOLS,
   describeClaudeHeadlessEnvironment,
+  withoutWebTools,
 } from '../src/index.js';
 
 describe('Claude session flag shape', () => {
@@ -21,7 +22,7 @@ describe('Claude session flag shape', () => {
   };
 
   it('classifies investigation tools: web QA allowed, delegation denied (§27-30)', () => {
-    const args = buildClaudeArgs({ ...base, resume: false });
+    const args = buildClaudeArgs({ ...base, resume: false, webAccess: true });
     const flag = args[args.indexOf('--disallowedTools') + 1] as string;
     const denied = new Set(flag.split(','));
     // B: AI-agent delegation stays denied (independent-AgentStack semantics).
@@ -50,6 +51,35 @@ describe('Claude session flag shape', () => {
     ]) {
       expect(denied.has(tool)).toBe(true);
     }
+  });
+
+  it('denies and strips web tools unless the run opted in to web access', () => {
+    const allowed = CLAUDE_INVESTIGATION_ALLOWED_TOOLS;
+    for (const webAccess of [undefined, false] as const) {
+      const args = buildClaudeArgs({
+        ...base,
+        resume: false,
+        allowedTools: allowed,
+        ...(webAccess === undefined ? {} : { webAccess }),
+      });
+      const denied = new Set((args[args.indexOf('--disallowedTools') + 1] as string).split(','));
+      const permitted = new Set((args[args.indexOf('--allowedTools') + 1] as string).split(','));
+      expect(denied.has('WebFetch')).toBe(true);
+      expect(denied.has('WebSearch')).toBe(true);
+      expect(permitted.has('WebFetch')).toBe(false);
+      expect(permitted.has('WebSearch')).toBe(false);
+      expect(permitted.has('Bash')).toBe(true);
+    }
+    const opted = buildClaudeArgs({
+      ...base,
+      resume: false,
+      allowedTools: allowed,
+      webAccess: true,
+    });
+    const permitted = new Set((opted[opted.indexOf('--allowedTools') + 1] as string).split(','));
+    expect(permitted.has('WebFetch')).toBe(true);
+    expect(permitted.has('WebSearch')).toBe(true);
+    expect(withoutWebTools('Bash,WebFetch,Read,WebSearch')).toBe('Bash,Read');
   });
 
   it('emits phase-scoped explicit allowlists (verified --allowedTools syntax)', () => {
@@ -413,6 +443,25 @@ describe('Claude executable runtime identity', () => {
   ])('does not classify source or documentation output as bootstrap failure: %s', async (text) => {
     const { isSandboxBootstrapFailureText } = await import('../src/index.js');
     expect(isSandboxBootstrapFailureText(text)).toBe(false);
+  });
+
+  it('does not classify markers buried in file output as bootstrap failure', async () => {
+    const { isSandboxBootstrapFailureText } = await import('../src/index.js');
+    // Regression (run_01M617HK8WXK434SZ4H3RY23K3): a Bash result printing a
+    // test file whose fixture strings quote bwrap at line starts deep in
+    // the content aborted a healthy GLM investigation mid-run.
+    const fileContent = [
+      "import { describe, expect, it } from 'vitest';",
+      "import { renderToolShellWrapper } from '../src/index.js';",
+      "describe('tool shell wrapper', () => {",
+      "  it('fails closed', () => {",
+      '    const diagnostic = `',
+      "bwrap: Can't mkdir /tmp/example: Permission denied",
+      '`;',
+      '  });',
+      '});',
+    ].join('\n');
+    expect(isSandboxBootstrapFailureText(fileContent)).toBe(false);
   });
 
   it('detects sandbox bootstrap markers without flagging ordinary errors', async () => {

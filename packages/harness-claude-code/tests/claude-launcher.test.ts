@@ -59,6 +59,24 @@ describe('Claude process launcher boundary', () => {
     await expect(owned.stopOwnedUnit()).resolves.toBe(true);
   });
 
+  it('direct launcher delivers a multi-megabyte prompt over stdin, not argv (E2BIG)', async () => {
+    const prompt = 'x'.repeat(4 * 1024 * 1024);
+    const owned = new DirectClaudeProcessLauncher().launch({
+      executable: process.execPath,
+      argv: [
+        '-e',
+        'let n=0;process.stdin.on("data",c=>n+=c.length).on("end",()=>console.log("bytes="+n))',
+      ],
+      stdin: prompt,
+      cwd: process.cwd(),
+      env: { PATH: process.env['PATH'] ?? '' },
+    });
+    let out = '';
+    owned.child.stdout?.on('data', (c: Buffer) => (out += c.toString('utf8')));
+    await new Promise<void>((resolve) => owned.child.on('close', () => resolve()));
+    expect(out).toContain('bytes=' + String(prompt.length));
+  });
+
   it.runIf(process.platform !== 'win32')(
     'systemd argv hides /mnt/c with name-only secret transport',
     async () => {

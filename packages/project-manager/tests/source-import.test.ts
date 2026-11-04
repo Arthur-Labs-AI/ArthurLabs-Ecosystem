@@ -47,6 +47,27 @@ const generated = [
 ];
 
 describe('source import selection and errors', () => {
+  it('prunes incremental build state on new imports without changing v2 integrity rules', async () => {
+    const f = await fixture();
+    try {
+      await writeFile(join(f.source, 'tsconfig.tsbuildinfo'), 'old compiler state');
+      const fresh = await f.manager.addProject(f.source);
+      const freshCopy = projectDataPaths(f.dataRoot, fresh.project.id).workingCopy;
+      await expect(stat(join(freshCopy, 'tsconfig.tsbuildinfo'))).rejects.toMatchObject({
+        code: 'ENOENT',
+      });
+      await f.manager.assertWorkingCopyIntegrity(fresh.project.id);
+      const legacy = await f.manager.addProject(f.source, { includeAll: true });
+      f.repository.saveRevision({ ...legacy.revision, hashVersion: 2 });
+      await f.manager.assertWorkingCopyIntegrity(legacy.project.id);
+      const legacyCopy = projectDataPaths(f.dataRoot, legacy.project.id).workingCopy;
+      expect(await readFile(join(legacyCopy, 'tsconfig.tsbuildinfo'), 'utf8')).toBe(
+        'old compiler state',
+      );
+    } finally {
+      f.database.close();
+    }
+  });
   it('prunes Python caches/environments and web build output on import and update', async () => {
     const f = await fixture();
     try {

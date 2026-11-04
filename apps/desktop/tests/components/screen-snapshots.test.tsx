@@ -5,12 +5,7 @@ import React from 'react';
 import { AgentCanvasNode } from '../../src/renderer/components/nodes/AgentCanvasNode.js';
 import { PipelineNode } from '../../src/renderer/components/nodes/PipelineNode.js';
 import { AgentInspector } from '../../src/renderer/components/AgentInspector.js';
-import {
-  MergerInspector,
-  VerifierInspector,
-  IssuesInspector,
-} from '../../src/renderer/components/PipelineInspectors.js';
-import { buildRetestGraph, buildRunGraph } from '../../src/renderer/lib/run-graph.js';
+import { buildRunGraph } from '../../src/renderer/lib/run-graph.js';
 import { makeAgentNodeView, makeAgentRun, resetFixtureCounter } from '../fixtures.js';
 
 /**
@@ -171,75 +166,6 @@ describe('screen snapshots: FULL run workspace', () => {
     expect(activity).toContain('Commands');
     expect(activity).toContain('src/auth/session.ts');
   });
-
-  it('merger inspector shows usable/unavailable without confidence conflation', () => {
-    const html = renderToStaticMarkup(
-      React.createElement(MergerInspector, {
-        payload: {
-          mergeResultId: 'merge_01K7777777777777777777A8W1',
-          mergerVersion: 2,
-          usableAgentCount: 2,
-          expectedAgentCount: 3,
-          unavailableAgentStackIds: ['stack_glm_main'],
-          clusters: [
-            {
-              id: 'cluster_01K7777777777777777777A8W1',
-              agreementState: 'multi_source',
-              supportingAgentCount: 2,
-              usableAgentCount: 2,
-              sourceAgentStackIds: ['stack_muse_main', 'stack_deepseek_main'],
-            },
-          ],
-        },
-      }),
-    );
-    expect(html).toContain('Merger v2');
-    expect(html).toContain('2');
-    expect(html).toContain('stack_glm_main');
-    expect(html).toContain('Agreement is not confidence');
-  });
-
-  it('verifier inspector breaks down outcomes and stays honest on inconclusive', () => {
-    const html = renderToStaticMarkup(
-      React.createElement(VerifierInspector, {
-        payload: {
-          attempts: [
-            { id: 'a1', findingClusterId: 'c1', status: 'completed', outcome: 'reproduced' },
-            { id: 'a2', findingClusterId: 'c2', status: 'completed', outcome: 'inconclusive' },
-          ],
-        },
-      }),
-    );
-    expect(html).toContain('Verifier v3');
-    expect(html).toContain('REPRODUCED');
-    expect(html).toContain('INCONCLUSIVE');
-    expect(html.toLowerCase()).not.toContain('bug-free');
-  });
-
-  it('issues node never claims bug-free on zero findings', () => {
-    const html = renderToStaticMarkup(
-      withFlow(
-        React.createElement(
-          PipelineNode,
-          flowNodeProps({
-            label: 'Issues',
-            status: 'completed',
-            kind: 'issues',
-            payload: { count: 0, findings: [] },
-          }) as never,
-        ),
-      ),
-    );
-    expect(html).toContain('No issues ingested');
-    expect(html.toLowerCase()).not.toContain('bug-free');
-    const withIssues = renderToStaticMarkup(
-      React.createElement(IssuesInspector, {
-        payload: { count: 1 },
-        occurrences: [{ id: 'occ_1', issueId: 'issue_1', findingClusterId: 'c1' }],
-      }),
-    );
-    expect(withIssues).toContain('1 created');
-  });
 });
 
 describe('screen snapshots: TARGETED workspace', () => {
@@ -265,22 +191,5 @@ describe('screen snapshots: TARGETED workspace', () => {
       ),
     );
     expect(html).toContain('src/auth');
-  });
-});
-
-describe('screen snapshots: RETEST workspace', () => {
-  it('shows A→B lineage and assessment for every outcome', () => {
-    for (const outcome of ['fixed', 'still_reproducible', 'partially_fixed', 'inconclusive']) {
-      const graph = buildRetestGraph({
-        ...fullRunInput(),
-        sourceRevisionId: 'rev_01K7777777777777777777A8W1',
-        targetRevisionId: 'rev_01K7777777777777777777A8W2',
-        assessment: { outcome },
-      });
-      expect(graph.nodes.some((n) => n.kind === 'retest-source')).toBe(true);
-      expect(graph.nodes.some((n) => n.kind === 'retest-spec')).toBe(true);
-      const assessment = graph.nodes.find((n) => n.kind === 'retest-assessment');
-      expect(assessment?.data['outcome']).toBe(outcome);
-    }
   });
 });

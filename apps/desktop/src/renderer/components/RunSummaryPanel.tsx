@@ -16,11 +16,6 @@ export function RunSummaryPanel({
   const agentRuns = (snapshot['agentRuns'] as Array<Record<string, unknown>>) ?? [];
   const findings = (snapshot['findings'] as unknown[]) ?? [];
   const evidence = (snapshot['evidence'] as unknown[]) ?? [];
-  // Historical merger/verifier/issues payloads may still be present on old
-  // runs; the active product reports independent per-agent results instead.
-  void (snapshot['mergeResults'] as unknown);
-  void (snapshot['verificationRuns'] as unknown);
-  void (snapshot['issues'] as unknown);
   const projectName =
     project !== undefined
       ? String(project['name'] ?? run['projectId'] ?? '')
@@ -33,7 +28,19 @@ export function RunSummaryPanel({
     }
   }
   const completedAgentCount = agentRuns.filter((agent) => agent['status'] === 'completed').length;
-  const configuration = run['configuration'] as { agentStackIds?: string[] } | undefined;
+  const configuration = run['configuration'] as
+    | {
+        agentStackIds?: string[];
+        executionSafeguards?: { webAccess?: boolean; toolDownloads?: boolean };
+        profileUsage?: {
+          requested: boolean;
+          usedAgentStackIds: string[];
+          staleAgentStackIds: string[];
+          missingAgentStackIds: string[];
+        };
+      }
+    | undefined;
+  const profileUsage = configuration?.profileUsage;
   const selected = [
     ...new Set(
       configuration?.agentStackIds ?? agentRuns.map((agent) => String(agent['agentStackId'])),
@@ -58,6 +65,26 @@ export function RunSummaryPanel({
             ' QA · ' +
             (run['executionKind'] === 'production' ? 'Production' : 'Legacy simulation')}
         </div>
+        <div className="metadata" style={{ marginTop: 4 }}>
+          {'Web access: ' +
+            (configuration?.executionSafeguards?.webAccess === true ? 'on' : 'off') +
+            ' · tool and SDK downloads: ' +
+            (configuration?.executionSafeguards?.toolDownloads === true ? 'on' : 'off')}
+        </div>
+        {profileUsage === undefined ? null : (
+          <div className="metadata" style={{ marginTop: 4 }}>
+            {profileUsage.requested
+              ? 'Project profile: used by ' +
+                profileUsage.usedAgentStackIds.length +
+                ' agent(s)' +
+                (profileUsage.staleAgentStackIds.length + profileUsage.missingAgentStackIds.length > 0
+                  ? ', ' +
+                    (profileUsage.staleAgentStackIds.length + profileUsage.missingAgentStackIds.length) +
+                    ' without (out of date or not built)'
+                  : '')
+              : 'Project profile: off'}
+          </div>
+        )}
       </section>
       <section aria-label="Results by agent">
         <div className="section-title" style={{ marginBottom: 8 }}>

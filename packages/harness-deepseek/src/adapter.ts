@@ -3,18 +3,46 @@ import { dirname, join } from 'node:path';
 import { RequestTimeoutError } from '@deepseek-ai/dsh-sdk-client';
 import {
   createFindingId,
+  createAgentRunId,
   createHarnessEventId,
   createInvestigationHypothesisId,
   createInvestigationPlanId,
   createOperationId,
   nowIsoTimestamp,
+  webAccessEnabled,
   type AgentRunId,
   type OperationId,
+  describePlanRejection,
+  describeSchemaIssues,
 } from '@qa/shared';
 import {
+  limitPhase,
+  investigateChecks,
+  scanHazardFiles,
+  reportAttemptDeadline,
+  promisePhase,
+  PhaseDeadlineReached,
+  ObservedToolNotes,
+  maxPlannedChecks,
+  renderCheckConclusions,
+  compactToolOutput,
+  ContextBudget,
+  estimatePromptTokens,
+  isContextWindowExceeded,
+  buildInvestigationCompactionContext,
+  buildRecoveryReportContext,
+  buildQaPlanningPrompt,
+  applyBlockedChecks,
+  applyUnprovenChecks,
+  buildQaReportPrompt,
+  boundedValidation,
+  coverageErrors,
+  groundCoverage,
+  resolveReportChecks,
+  reportableDepthPlan,
+  depthPolicy,
   boundCorrectionMessage,
   buildPlanningCorrectionIntro,
-  buildReportCorrectionIntro,
   buildBaselineIndex,
   commandIdentity,
   convertReportEvidence,
@@ -22,26 +50,16 @@ import {
   MAX_PLANNING_ATTEMPTS,
   MAX_REPORT_ATTEMPTS,
   parseWholeJson,
-  renderFrozenLedger,
-  QA_ANTI_SUPERFICIAL_RULES,
-  QA_AUTHORITY_HIERARCHY,
-  QA_INVESTIGATION_METHOD,
-  QA_INVESTIGATION_REPRODUCTION_GUIDANCE,
-  QA_LARGE_PROJECT_GUIDANCE,
-  QA_PLANNING_RISK_GUIDANCE,
-  QA_REPORTING_COVERAGE_GUIDANCE,
-  REPORT_CONFIDENCE_CALIBRATION,
-  REPORT_REPRODUCTION_CONTRACT,
-  REPORT_ENVELOPE_SCHEMA,
-  REPORT_LEDGER_RULES,
   summarizeSchemaIssues,
   validateLocation,
   validateProductionFindings,
+  downgradeUngroundedFindings,
+  buildGroundingRepairPrompt,
+  isGroundingRepairableError,
   type EvidencePipelineContext,
   type ObservedOperation,
 } from '@qa/evidence-pipeline';
 import {
-  describeSentryAgentReportContract,
   FindingSchema,
   type Finding,
   HarnessEventSchema,
@@ -86,6 +104,10 @@ export interface DeepSeekHarnessAdapterOptions {
   readonly clientFactory?: DeepSeekClientFactory;
   readonly shutdownTimeoutMs?: number;
   readonly turnTimeoutMs?: number;
+  /** Provider context window in tokens; defaults to the DeepSeek window
+   *  the provider itself reported (1048576). Rotation happens at the
+   *  shared safety ratio before the window is full. */
+  readonly contextWindowTokens?: number;
   readonly onRuntimeIdentity?: (identity: {
     readonly harnessVersion?: string;
     readonly executableVersion?: string;
@@ -184,67 +206,7 @@ function isInitializeTimeout(cause: unknown): boolean {
 interface BuiltReportAttempt {
   readonly evidenceByKey: ReadonlyMap<string, Evidence>;
   readonly findings: readonly Finding[];
-}
-
-function planningPrompt(request: HarnessRunRequest): string {
-  return [
-    'You are the sole QA investigator. Do not create, delegate to, or message subagents.',
-    'Host safety is authoritative: work only inside the current isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
-    'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
-    QA_AUTHORITY_HIERARCHY,
-    'Inspect project documentation and the supplied immutable mission context. Do not use peer plans, findings, or messages.',
-    QA_PLANNING_RISK_GUIDANCE,
-    'Create an investigation plan before executing it. Express prioritization inside the existing schema fields: plannedChecks names the high-risk boundary plus its intended verification.',
-    'Schema: {"schemaVersion":1,"projectUnderstanding":string,"criticalFlows":string[],"weakPoints":string[],"plannedChecks":string[at least one]}.',
-    'Immutable mission context: ' + JSON.stringify(request.task.context ?? {}),
-    'User instructions: ' + request.task.prompt,
-    'OUTPUT CONTRACT (must hold exactly): your ENTIRE response is exactly one raw JSON object matching the schema. No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
-  ].join('\n');
-}
-
-function investigationPrompt(
-  plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>,
-): string {
-  return [
-    'Execute the frozen investigation plan below as the sole investigator. Do not create or use subagents.',
-    'Host safety is authoritative: remain inside the isolated workspace; never disable or bypass sandboxing; never access the original project, Sentry managed baseline, other workspaces, Sentry data, or arbitrary host files.',
-    'Do not commit, push, modify Git remotes, create pull requests, or intentionally fix product defects.',
-    'You may create temporary tests, configuration, instrumentation, build output, and runtime state only inside this disposable workspace to investigate behavior.',
-    'Consider every applicable area needed for risk-based QA: build, lint, typecheck, existing and generated tests, integration/runtime/API/frontend/database/auth behavior, configuration, dependencies, architecture, business logic, error handling, edge cases, performance, concurrency, CI/CD, deployment, maintainability, and project-specific weak points. Prioritize by risk and evidence value; do not force irrelevant checks.',
-    'Priority controls order, not permission to skip relevant checks. Record every blocked or incomplete check as a limitation; never claim it passed.',
-    'Do not silently obtain unrestricted network access. Record sandbox or network restrictions as limitations and never retry with sandbox disabled.',
-    'Use only the repository toolchain already present in the workspace; do not download packages or install dependencies from the network (no npx fetches, no npm/pip installs). If a test runner is unavailable, record it as a limitation.',
-    QA_INVESTIGATION_METHOD,
-    QA_INVESTIGATION_REPRODUCTION_GUIDANCE,
-    QA_ANTI_SUPERFICIAL_RULES,
-    QA_LARGE_PROJECT_GUIDANCE,
-    'Do NOT produce the final Sentry JSON report yet. Investigate only, using permitted local tools as needed. When the investigation is complete, finish this turn with a short terminal message such as: Investigation complete.',
-    'Sentry will provide the authoritative operation ledger in the following reporting turn.',
-    'Frozen plan: ' + JSON.stringify(plan),
-  ].join('\n');
-}
-
-function reportPrompt(
-  plan: ReturnType<typeof SentryInvestigationPlanV1Schema.parse>,
-  operations: ReadonlyMap<string, ObservedOperation>,
-  correction?: readonly string[],
-): string {
-  return [
-    'Serialize the investigation you just completed into exactly one Sentry report. No new QA: do not run commands, read files, or use any tools in this turn. Temporary evidence keys only; Sentry owns all durable IDs.',
-    ...(correction === undefined ? [] : [buildReportCorrectionIntro(correction)]),
-    REPORT_LEDGER_RULES,
-    REPORT_REPRODUCTION_CONTRACT,
-    REPORT_CONFIDENCE_CALIBRATION,
-    QA_REPORTING_COVERAGE_GUIDANCE,
-    'Finding category MUST be exactly one of: build, runtime, logic, api, frontend, database, authentication, authorization, security, configuration, performance, concurrency, dependency, testing, cicd, deployment, maintainability, documentation, other. Copy the string exactly; any other value fails validation. Severity MUST be exactly one of: critical, high, medium, low, info.',
-    'Report evidence contract (exact fields per type; copy names exactly): ' +
-      describeSentryAgentReportContract(),
-    REPORT_ENVELOPE_SCHEMA,
-    'Authoritative Sentry operation ledger (frozen after investigation):\n' +
-      renderFrozenLedger(operations),
-    'Frozen plan: ' + JSON.stringify(plan),
-    'OUTPUT CONTRACT (must hold exactly): your ENTIRE response is exactly one raw JSON object matching SentryAgentReportV2 (schemaVersion 2). No Markdown. No code fences. No preamble, introduction, explanation, or closing sentence. The first character is { and the last character is }. Any additional text invalidates the response.',
-  ].join('\n');
+  readonly groundingRepairs: readonly string[];
 }
 
 /**
@@ -427,6 +389,30 @@ function textFromToolResultMessage(message: unknown): string {
   return parts.join('\n').slice(0, 4_000);
 }
 
+/**
+ * Terminal text of a tool result for exit-marker parsing. The shell marker
+ * is appended at the very end, so diagnostics truncation must never decide
+ * marker visibility: keep a rolling tail across content blocks instead of
+ * re-reading the head-bounded diagnostic text.
+ */
+function tailTextFromToolResultMessage(message: unknown): string {
+  if (message === null || typeof message !== 'object' || Array.isArray(message)) return '';
+  const content = (message as { content?: unknown }).content;
+  if (!Array.isArray(content)) return '';
+  let tail = '';
+  const visit = (blocks: unknown[]): void => {
+    for (const block of blocks) {
+      if (block === null || typeof block !== 'object' || Array.isArray(block)) continue;
+      const record = block as { text?: unknown; content?: unknown };
+      const text = eventText(record.text);
+      if (text !== undefined) tail = (tail + '\n' + text).slice(-1_024);
+      if (Array.isArray(record.content)) visit(record.content);
+    }
+  };
+  visit(content);
+  return tail;
+}
+
 export class DeepSeekHarnessAdapter implements HarnessAdapter {
   private readonly hostEnvironment: NodeJS.ProcessEnv;
   private readonly environment: NodeJS.ProcessEnv;
@@ -440,9 +426,12 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
   private readonly turnTimeoutMs: number;
   private readonly secrets: readonly string[];
   private client?: DeepSeekClientView;
-  private closePromise?: Promise<void>;
+  private closePromise: Promise<void> | undefined;
+  private cancelled = false;
+  private readonly toolNotes = new ObservedToolNotes();
   private readonly operationIds = new Map<string, OperationId>();
   private readonly pendingToolCalls = new Map<string, PendingToolCall>();
+  private readonly liveOpenOperations = new Map<OperationId, string>();
   private readonly completedTools = new Set<string>();
   private readonly observedCommands = new Set<string>();
   private readonly observedOperations = new Map<string, ObservedOperation>();
@@ -454,7 +443,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
     this.runtime = resolveDeepSeekRuntime({ ...options, environment: this.hostEnvironment });
     this.clientFactory = options.clientFactory ?? createProductionDeepSeekClient;
     this.shutdownTimeoutMs = options.shutdownTimeoutMs ?? 10_000;
-    this.turnTimeoutMs = options.turnTimeoutMs ?? 1_800_000;
+    this.turnTimeoutMs = options.turnTimeoutMs ?? 10_800_000;
     const child = buildDeepSeekChildEnvironment({ source: this.hostEnvironment });
     this.environment = child.environment;
     this.childEnvironmentReport = child;
@@ -527,11 +516,12 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       });
       evidenceByKey.set(source.key, converted);
     }
-    validateProductionFindings(result.findings, evidenceByKey, (message: string) =>
+    const repaired = downgradeUngroundedFindings(result.findings, evidenceByKey);
+    validateProductionFindings(repaired.findings, evidenceByKey, (message: string) =>
       pipeline.errors.invalidResult(message),
     );
     const findings: Finding[] = [];
-    for (const source of result.findings) {
+    for (const source of repaired.findings) {
       for (const location of source.locations)
         await validateLocation(
           request.workspace.runtimePath,
@@ -559,7 +549,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
         }),
       );
     }
-    return { evidenceByKey, findings };
+    return { evidenceByKey, findings, groundingRepairs: repaired.repairs };
   }
 
   private observeSessionEvent(
@@ -723,7 +713,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
     // default 0): fabricating success for unobserved codes is exactly
     // the spoofing our own pipeline exists to reject.
     const marker = /^(bash|pwsh|powershell|shell|command)$/i.test(toolName)
-      ? parseShellExitMarker(resultText)
+      ? parseShellExitMarker(tailTextFromToolResultMessage(data.message))
       : undefined;
     const signalKilled = marker !== undefined && 'signal' in marker;
     const resolvedFailed = failed || signalKilled;
@@ -772,7 +762,10 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       out.push(
         emit({
           type: 'agent.message',
-          message: ('tool ' + toolName + ' result: ' + resultText).slice(0, 2_000),
+          message: ('tool ' + toolName + ' result: ' + compactToolOutput(resultText)).slice(
+            0,
+            2_000,
+          ),
         }),
       );
     }
@@ -785,39 +778,21 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
     agentRunId: AgentRunId,
     phase: string,
     forbidTools = false,
+    onObserved?: (event: HarnessEvent) => void,
   ): Promise<CollectedTurn> {
     const deadline = Date.now() + this.turnTimeoutMs;
     // Reporting tool denial is enforced adapter-side (observeSessionEvent
     // firewall): the DeepSeek session slot carries session routing, not
     // turn options, so no per-turn tool flag exists at this SDK layer.
-    const runPromise = session.runText(text);
-    const result = await (async (): Promise<DeepSeekRunResult> => {
-      const budget = deadline - Date.now();
-      if (budget <= 0) throw new DeepSeekTurnTimeoutError(phase, this.turnTimeoutMs);
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      try {
-        return await Promise.race([
-          runPromise,
-          new Promise<never>((_resolve, reject) => {
-            timer = setTimeout(
-              () => reject(new DeepSeekTurnTimeoutError(phase, this.turnTimeoutMs)),
-              budget,
-            );
-          }),
-        ]);
-      } finally {
-        if (timer !== undefined) clearTimeout(timer);
-      }
-    })();
     const emit = (value: Readonly<Record<string, unknown>>): HarnessEvent =>
       event(agentRunId, value);
     const collected: HarnessEvent[] = [];
     let usage: AgentUsage | undefined;
-    for (const raw of result.events ?? []) {
+    const observe = (raw: unknown): void => {
       try {
         // The pinned SDK resolves on idle even after a failed model request.
         // A structured terminal failure overrides any partial final text.
-        if (raw.type === 'turn/end') {
+        if ((raw as { type?: unknown } | null)?.type === 'turn/end') {
           const reason = eventData(raw)?.reason;
           if (reason !== null && typeof reason === 'object') {
             const outcome = reason as { kind?: unknown; error?: unknown };
@@ -842,6 +817,8 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
         }
         const observed = this.observeSessionEvent(raw, agentRunId, emit, forbidTools);
         collected.push(...observed.events);
+        for (const value of observed.events) this.toolNotes.add(value);
+        for (const value of observed.events) onObserved?.(value);
         if (observed.usage !== undefined) usage = sumUsage(usage, observed.usage);
       } catch (cause) {
         if (cause instanceof DeepSeekHarnessError) throw cause;
@@ -850,12 +827,133 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
           'DeepSeek session event could not be interpreted.',
         );
       }
+    };
+    let active = true;
+    let streamed = 0;
+    let result: DeepSeekRunResult;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const budget = deadline - Date.now();
+      if (budget <= 0) throw new DeepSeekTurnTimeoutError(phase, this.turnTimeoutMs);
+      const runPromise = Promise.resolve().then(() =>
+        session.runText(
+          text,
+          undefined,
+          onObserved === undefined
+            ? undefined
+            : (raw) => {
+                if (!active) return;
+                streamed += 1;
+                observe(raw);
+              },
+        ),
+      );
+      result = await Promise.race([
+        runPromise,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(new DeepSeekTurnTimeoutError(phase, this.turnTimeoutMs)),
+            budget,
+          );
+        }),
+      ]);
+    } finally {
+      active = false;
+      if (timer !== undefined) clearTimeout(timer);
     }
+    // SDK callbacks are an ordered prefix of the final root event list. Buffered
+    // fake/legacy clients supply no callback and still follow the same observer.
+    for (const raw of (result.events ?? []).slice(streamed)) observe(raw);
     return { text: result.finalResponse, result, events: collected, usage };
+  }
+
+  /** Primary stages persist genuine observed events while the SDK turn is live. */
+  private async *streamTurn(
+    session: DeepSeekSessionView,
+    text: string,
+    agentRunId: AgentRunId,
+    phase: string,
+  ): AsyncGenerator<HarnessEvent, CollectedTurn> {
+    const queue: HarnessEvent[] = [];
+    let wake: (() => void) | undefined;
+    let settled = false;
+    let result: CollectedTurn | undefined;
+    let failure: unknown;
+    let failed = false;
+    const signal = () => {
+      wake?.();
+      wake = undefined;
+    };
+    void this.runTurn(session, text, agentRunId, phase, false, (value) => {
+      queue.push(value);
+      signal();
+    }).then(
+      (value) => {
+        result = value;
+        settled = true;
+        signal();
+      },
+      (cause) => {
+        failure = cause;
+        failed = true;
+        settled = true;
+        signal();
+      },
+    );
+    try {
+      while (!settled || queue.length > 0) {
+        const value = queue.shift();
+        if (value !== undefined) {
+          if (value.type === 'tool.started')
+            this.liveOpenOperations.set(value.operationId, value.tool.name);
+          if (value.type === 'tool.completed') this.liveOpenOperations.delete(value.operationId);
+          yield value;
+        } else
+          await new Promise<void>((resolve) => {
+            wake = resolve;
+          });
+      }
+      if (failed) {
+        // The SDK has no wire cancel: close only this owned client before yielding
+        // a failure. This also detaches the callback when runText rejects.
+        await this.dispose().catch(() => undefined);
+        throw failure;
+      }
+      if (result === undefined)
+        throw new DeepSeekHarnessError(
+          'DEEPSEEK_INVALID_RESULT',
+          'DeepSeek turn ended without a result.',
+        );
+      return result;
+    } finally {
+      // A consumer may stop on persistence/transport failure while a yield is
+      // suspended. Iterator return must not leave the owned model running.
+      if (!settled) await this.dispose();
+    }
   }
 
   async *run(request: HarnessRunRequest): AsyncIterable<HarnessEvent> {
     yield event(request.agentRunId, { type: 'run.started' });
+    if (depthPolicy(request.task.context) !== undefined) {
+      yield event(request.agentRunId, {
+        type: 'agent.message',
+        message: 'QA_DEPTH_V1: independent validation enabled.',
+      });
+      const preparation = request.task.context?.['workspacePreparation'] as
+        { status?: string; reason?: string } | undefined;
+      if (preparation !== undefined)
+        yield event(request.agentRunId, {
+          type: 'agent.message',
+          message: 'QA_PREPARATION_RECEIPT: ' + JSON.stringify(preparation),
+        });
+      if (preparation?.status === 'limited')
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_PREPARATION_LIMITED',
+          message: preparation.reason ?? 'Workspace preparation is limited.',
+        });
+    }
+
     yield event(request.agentRunId, {
       type: 'agent.status',
       status: 'planning',
@@ -897,6 +995,47 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
           shutdownTimeoutMs: this.shutdownTimeoutMs,
         });
       let session: DeepSeekSessionView;
+      let recoveryContext = '';
+      const contextBudget = new ContextBudget(this.options.contextWindowTokens ?? 1_048_576);
+      const freshSession = async () => {
+        await this.dispose();
+        if (this.cancelled)
+          throw new DeepSeekHarnessError(
+            'DEEPSEEK_CANCEL_FAILED',
+            'Run was cancelled before report recovery.',
+          );
+        const candidate = await createClient();
+        if (this.cancelled) {
+          await candidate.close();
+          throw new DeepSeekHarnessError(
+            'DEEPSEEK_CANCEL_FAILED',
+            'Run was cancelled before report recovery.',
+          );
+        }
+        this.client = candidate;
+        this.closePromise = undefined;
+        await candidate.start();
+        if (this.cancelled)
+          throw new DeepSeekHarnessError(
+            'DEEPSEEK_CANCEL_FAILED',
+            'Run was cancelled before report recovery.',
+          );
+        session = await candidate.startSession({ sessionId: createAgentRunId() });
+        if (this.cancelled)
+          throw new DeepSeekHarnessError(
+            'DEEPSEEK_CANCEL_FAILED',
+            'Run was cancelled before report recovery.',
+          );
+      };
+      /** The investigator's per-check closing statements, labelled unverified for fresh sessions. */
+      let conclusionBlock = '';
+      const startReportContext = async (conclusions?: string) => {
+        if (conclusions !== undefined) conclusionBlock = conclusions;
+        await freshSession();
+        recoveryContext =
+          buildRecoveryReportContext(request, this.toolNotes.render(), conclusionBlock) + '\n';
+        contextBudget.reset();
+      };
       try {
         this.client = await createClient();
         await this.client.start();
@@ -921,39 +1060,45 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       // error fed back; planning ops stay valid (ledger not frozen yet).
       let planResult: ReturnType<typeof SentryInvestigationPlanV1Schema.parse> | undefined;
       let planCorrection: string[] | undefined;
+      let planRejection = '';
       let planningUsage: AgentUsage | undefined;
       let planningTurns = 0;
       for (let attempt = 1; attempt <= MAX_PLANNING_ATTEMPTS; attempt += 1) {
-        const planning = await this.runTurn(
+        const planning = yield* this.streamTurn(
           session,
           planCorrection === undefined
-            ? planningPrompt(request)
-            : buildPlanningCorrectionIntro(planCorrection) +
-                '\nImmutable mission context: ' +
-                JSON.stringify(request.task.context ?? {}),
+            ? buildQaPlanningPrompt(request)
+            : buildPlanningCorrectionIntro(planCorrection),
           request.agentRunId,
           'planning',
         );
-        for (const emitted of planning.events) yield emitted;
+
         planningTurns += 1;
+        contextBudget.observeTurn(planning.usage);
         planningUsage = sumUsage(planningUsage, planning.usage ?? {});
         if (planning.text.trim().length === 0) {
           planCorrection = ['Planning turn produced no response.'];
+          planRejection = describePlanRejection(undefined, true);
         } else {
           try {
-            planResult = SentryInvestigationPlanV1Schema.parse(
-              parseWholeJson(planning.text, 'planning', pipeline),
+            planResult = reportableDepthPlan(
+              SentryInvestigationPlanV1Schema.parse(
+                parseWholeJson(planning.text, 'planning', pipeline),
+              ),
+              depthPolicy(request.task.context) !== undefined,
+              maxPlannedChecks(request.task.context),
             );
             break;
           } catch (cause) {
             planCorrection = [boundCorrectionMessage(messageOf(cause))];
+            planRejection = describePlanRejection(cause);
           }
         }
         if (attempt < MAX_PLANNING_ATTEMPTS) {
           yield event(request.agentRunId, {
             type: 'warning',
             code: 'DEEPSEEK_PLANNING_RETRY',
-            message: 'DeepSeek planning attempt ' + attempt + ' rejected; retrying planning only.',
+            message: 'DeepSeek planning attempt ' + attempt + ' rejected (' + planRejection + '); retrying planning only.',
           });
         } else {
           throw new DeepSeekHarnessError(
@@ -983,16 +1128,49 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
         status: 'investigating',
         message: 'DeepSeek is executing the frozen plan.',
       });
-      // STAGE 2 — investigation only. Terminal prose is ignored (never
-      // parsed as a result, never persisted as reasoning); tool events
-      // carry the evidentiary facts.
-      const investigation = await this.runTurn(
-        session,
-        investigationPrompt(planResult),
-        request.agentRunId,
-        'investigation',
-      );
-      for (const emitted of investigation.events) yield emitted;
+      // STAGE 2 — investigation, one host-driven turn per frozen check.
+      // Terminal prose is ignored (never parsed as a result, never
+      // persisted as reasoning); tool events carry the evidentiary facts.
+      // A turn that dies blocks only its remaining checks, never the
+      // whole investigation: earlier checks' operations stay in the ledger.
+      const depth = depthPolicy(request.task.context);
+      let reportingIssued = 0;
+      const investigation = yield* investigateChecks<CollectedTurn>({
+        agentLabel: 'DeepSeek',
+        agentRunId: request.agentRunId,
+        plan: planResult,
+        depth,
+        operations: this.observedOperations,
+        contextBudget,
+        network: {
+          webAccess: webAccessEnabled(request.executionSafeguards),
+          webToolsAvailable: false,
+        },
+        event: (body) => event(request.agentRunId, body),
+        streamTurn: (turnText) =>
+          this.streamTurn(session, turnText, request.agentRunId, 'investigation'),
+        stop: () => this.dispose(),
+        freshSession,
+        compactionSeed: (completedChecks, conclusions) =>
+          buildInvestigationCompactionContext(
+            request,
+            planResult!,
+            this.observedOperations,
+            this.toolNotes.render(),
+            completedChecks,
+            conclusions,
+          ) + '\n',
+        startReportContext,
+        cancelled: () => this.cancelled,
+        hazardFiles: () => scanHazardFiles(request.workspace.runtimePath),
+        isTurnTimeout: (cause) => cause instanceof DeepSeekTurnTimeoutError,
+        onInterrupted: () => this.liveOpenOperations.clear(),
+      });
+      conclusionBlock = renderCheckConclusions(planResult, investigation.checkConclusions);
+      const { blockedChecks, unprovenChecks, redRetryChecks } = investigation;
+      const investigationUsage = investigation.usage;
+      const investigationTurns = investigation.steps;
+
       // STAGE 3 — reporting against the frozen ledger. Bounded correction:
       // schema/trust failures retry the REPORT ONLY (same session, no
       // tools, same frozen ledger); investigation never reruns.
@@ -1001,81 +1179,254 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
         status: 'reporting',
         message: 'DeepSeek is serializing the frozen investigation into a report.',
       });
+      // Prevention (the run_01M622 failure mode): reporting is the context
+      // peak — if the investigation session is near its window, report from
+      // a fresh compacted context instead of being rejected by the provider.
+      if (
+        recoveryContext === '' &&
+        contextBudget.shouldRotate(
+          estimatePromptTokens(buildQaReportPrompt(planResult, this.observedOperations)),
+        )
+      ) {
+        await startReportContext();
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_CONTEXT_COMPACTED',
+          message:
+            'Context budget reached before reporting; reporting from a fresh session seeded with host-observed facts only.',
+        });
+      }
+      let contextReportRecovered = false;
       const reportTurns: Array<{ usage?: AgentUsage }> = [];
       let result: SentryAgentReportV2 | undefined;
       let built: BuiltReportAttempt | undefined;
       let correction: string[] | undefined;
-      for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
-        // Firewall trip fails the REPORT ATTEMPT (not the run): the
-        // correction loop tells the model to serialize without tools.
-        let reporting: CollectedTurn | undefined;
-        let errors: string[] | undefined;
+      let groundingRepairUsed = false;
+      let checkpoint: { result: SentryAgentReportV2; built: BuiltReportAttempt } | undefined;
+      let validationCleanupFailed = false;
+      const stopValidation = async (): Promise<void> => {
+        await (this.client?.close() ?? Promise.resolve());
+      };
+      for (let reportPass = 0; reportPass < (depth === undefined ? 1 : 2); reportPass += 1) {
         try {
-          reporting = await this.runTurn(
-            session,
-            reportPrompt(planResult, this.observedOperations, correction),
-            request.agentRunId,
-            'reporting',
-            true,
-          );
-        } catch (cause) {
-          if (
-            cause instanceof DeepSeekHarnessError &&
-            cause.code === 'DEEPSEEK_REPORT_TOOL_FORBIDDEN'
-          ) {
-            errors = [
-              boundCorrectionMessage(messageOf(cause)) +
-                ' The reporting stage is tool-free: ' +
-                'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
-                'Do not run commands, read files, or use any tools.',
-            ];
-          } else {
-            throw cause;
-          }
-        }
-        if (reporting !== undefined) {
-          for (const emitted of reporting.events) yield emitted;
-          reportTurns.push(reporting.usage === undefined ? {} : { usage: reporting.usage });
-          const candidate = parseReportAttempt(reporting.text, pipeline);
-          if (!candidate.ok) {
-            errors = candidate.errors;
-          } else {
+          for (let attempt = 1; attempt <= MAX_REPORT_ATTEMPTS; attempt += 1) {
+            // Firewall trip fails the REPORT ATTEMPT (not the run): the
+            // correction loop tells the model to serialize without tools.
+            let reporting: CollectedTurn | undefined;
+            let errors: string[] | undefined;
             try {
-              built = await this.buildReportAttempt(request, candidate.report, pipeline);
-              result = candidate.report;
-              break;
+              const reportText =
+                recoveryContext +
+                buildQaReportPrompt(
+                  planResult,
+                  this.observedOperations,
+                  recoveryContext ? undefined : correction,
+                );
+              recoveryContext = '';
+              reportingIssued += 1;
+              if (reportPass === 0 && depth !== undefined) {
+                reporting = yield* limitPhase(
+                  promisePhase(() =>
+                    this.runTurn(session, reportText, request.agentRunId, 'reporting', true),
+                  ),
+                  reportAttemptDeadline(depth.deadlineAt, attempt),
+                  () => this.dispose(),
+                  'Reporting',
+                );
+              } else
+                reporting =
+                  reportPass === 0
+                    ? await this.runTurn(session, reportText, request.agentRunId, 'reporting', true)
+                    : await boundedValidation(
+                        () =>
+                          this.runTurn(session, reportText, request.agentRunId, 'reporting', true),
+                        Math.max(1, depth!.deadlineAt - Date.now() - 30_000),
+                        stopValidation,
+                      );
             } catch (cause) {
-              errors = [boundCorrectionMessage(messageOf(cause))];
+              if (isContextWindowExceeded(cause) && !contextReportRecovered && !this.cancelled) {
+                // Reactive compaction: the session history itself is the
+                // overflow, so a same-session retry cannot succeed. Rotate
+                // once to a fresh report-only context and retry there.
+                contextReportRecovered = true;
+                await startReportContext();
+                if (attempt >= MAX_REPORT_ATTEMPTS) attempt -= 1;
+                errors = [
+                  'Context window exceeded. Return a shorter complete report from observed facts only.',
+                ];
+                yield event(request.agentRunId, {
+                  type: 'warning',
+                  code: 'QA_CONTEXT_COMPACTED',
+                  message:
+                    'Provider reported context overflow during reporting; retrying in a fresh session seeded with host-observed facts only.',
+                });
+              } else if (
+                cause instanceof PhaseDeadlineReached &&
+                reportPass === 0 &&
+                depth !== undefined &&
+                attempt < MAX_REPORT_ATTEMPTS &&
+                !this.cancelled
+              ) {
+                await startReportContext();
+                errors = [
+                  'Reporting time budget reached. Return a shorter complete report from observed facts only.',
+                ];
+              } else if (
+                cause instanceof DeepSeekHarnessError &&
+                cause.code === 'DEEPSEEK_REPORT_TOOL_FORBIDDEN'
+              ) {
+                errors = [
+                  boundCorrectionMessage(messageOf(cause)) +
+                    ' The reporting stage is tool-free: ' +
+                    'serialize ONLY from the investigation already completed, using ONLY the frozen ledger below. ' +
+                    'Do not run commands, read files, or use any tools.',
+                ];
+              } else {
+                throw cause;
+              }
+            }
+            if (reporting !== undefined) {
+              for (const emitted of reporting.events) yield emitted;
+              reportTurns.push(reporting.usage === undefined ? {} : { usage: reporting.usage });
+              const candidate = parseReportAttempt(reporting.text, pipeline);
+              if (!candidate.ok) {
+                errors = candidate.errors;
+              } else {
+                try {
+                  const grounded = applyUnprovenChecks(
+                    applyBlockedChecks(
+                      depth === undefined
+                        ? resolveReportChecks(planResult, candidate.report)
+                        : groundCoverage(
+                            resolveReportChecks(planResult, candidate.report),
+                            this.observedOperations,
+                          ),
+                      blockedChecks,
+                    ),
+                    unprovenChecks,
+                    redRetryChecks,
+                  );
+                  const missing = depth === undefined ? [] : coverageErrors(planResult, grounded);
+                  if (missing.length > 0) throw new Error(missing.join('\n'));
+                  built = await this.buildReportAttempt(request, grounded, pipeline);
+                  result = grounded;
+                  if (built.groundingRepairs.length > 0)
+                    yield event(request.agentRunId, {
+                      type: 'warning',
+                      code: 'QA_GROUNDING_DOWNGRADED',
+                      message:
+                        'Ungrounded confidence downgraded, findings preserved: ' +
+                        built.groundingRepairs.join('; '),
+                    });
+                  break;
+                } catch (cause) {
+                  errors = [boundCorrectionMessage(messageOf(cause))];
+                }
+              }
+            }
+            if (errors === undefined) {
+              throw new DeepSeekHarnessError(
+                'DEEPSEEK_INVALID_RESULT',
+                'DeepSeek report attempt produced no result and no error.',
+              );
+            }
+            correction = errors;
+            if (
+              attempt < MAX_REPORT_ATTEMPTS &&
+              !groundingRepairUsed &&
+              !this.cancelled &&
+              isGroundingRepairableError(errors)
+            ) {
+              // One bounded tool-enabled repair in the live session: run
+              // ONLY the missing operation so the host observes it, then
+              // retry the report against the enlarged ledger. Failure of
+              // the repair turn falls through to the normal correction.
+              groundingRepairUsed = true;
+              yield event(request.agentRunId, {
+                type: 'warning',
+                code: 'QA_GROUNDING_REPAIR',
+                message:
+                  'Report lacks observed grounding; running the single missing operation before one report retry.',
+              });
+              try {
+                const repair = await this.runTurn(
+                  session,
+                  buildGroundingRepairPrompt(errors, this.observedOperations),
+                  request.agentRunId,
+                  'investigation',
+                );
+                for (const emitted of repair.events) yield emitted;
+                reportTurns.push(repair.usage === undefined ? {} : { usage: repair.usage });
+              } catch {
+                // Fall through: the tool-free correction below still runs.
+              }
+            }
+            if (attempt < MAX_REPORT_ATTEMPTS) {
+              yield event(request.agentRunId, {
+                type: 'warning',
+                code: 'DEEPSEEK_REPORT_RETRY',
+                message:
+                  'DeepSeek report attempt ' +
+                  attempt +
+                  ' rejected; retrying report only (' +
+                  errors.length +
+                  ' issues): ' +
+                  errors
+                    .slice(0, 2)
+                    .map((issue) => issue.slice(0, 240))
+                    .join(' | '),
+              });
+            } else {
+              throw new DeepSeekHarnessError(
+                'DEEPSEEK_INVALID_RESULT',
+                'DeepSeek report failed after ' +
+                  MAX_REPORT_ATTEMPTS +
+                  ' attempts: ' +
+                  errors.map(boundCorrectionMessage).join('; '),
+              );
             }
           }
-        }
-        if (errors === undefined) {
-          throw new DeepSeekHarnessError(
-            'DEEPSEEK_INVALID_RESULT',
-            'DeepSeek report attempt produced no result and no error.',
-          );
-        }
-        correction = errors;
-        if (attempt < MAX_REPORT_ATTEMPTS) {
+        } catch (cause) {
+          if (checkpoint === undefined) throw cause;
+          try {
+            await stopValidation();
+          } catch {
+            validationCleanupFailed = true;
+          }
+          if (cause instanceof Error && cause.message === 'QA_VALIDATION_CLEANUP_FAILED')
+            validationCleanupFailed = true;
+          result = checkpoint.result;
+          built = checkpoint.built;
           yield event(request.agentRunId, {
             type: 'warning',
-            code: 'DEEPSEEK_REPORT_RETRY',
+            code: 'QA_VALIDATION_INCOMPLETE',
             message:
-              'DeepSeek report attempt ' +
-              attempt +
-              ' rejected; retrying report only (' +
-              errors.length +
-              ' issues).',
+              'Optional refinement did not complete; the validated checkpoint report is retained. Analysis is partial.',
           });
-        } else {
-          throw new DeepSeekHarnessError(
-            'DEEPSEEK_INVALID_RESULT',
-            'DeepSeek report failed after ' +
-              MAX_REPORT_ATTEMPTS +
-              ' attempts: ' +
-              errors.map(boundCorrectionMessage).join('; '),
-          );
+          break;
         }
+        if (result === undefined || built === undefined) break;
+        if (reportPass > 0 || depth === undefined) break;
+        checkpoint = { result, built };
+        yield event(request.agentRunId, {
+          type: 'report.checkpoint',
+          findings: built.findings,
+          evidence: [...built.evidenceByKey.values()],
+        });
+        yield event(request.agentRunId, {
+          type: 'agent.message',
+          message: 'QA_REPORT_CHECKPOINT_READY: valid report prepared before optional validation.',
+        });
+        // The validated checkpoint IS the final report. There is no
+        // self-challenge or refinement pass: it cost an extra model turn,
+        // could only ever re-serialize the same facts, and the checkpoint
+        // already passed grounding validation.
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_CHALLENGE_NOT_RUN',
+          message: 'Checkpoint report is final; no self-challenge stage.',
+        });
+        break;
       }
       if (result === undefined || built === undefined)
         throw new DeepSeekHarnessError('DEEPSEEK_INVALID_RESULT', 'DeepSeek produced no report.');
@@ -1109,6 +1460,15 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
         yield event(request.agentRunId, { type: 'evidence.submitted', evidence });
       for (const finding of attempt.findings)
         yield event(request.agentRunId, { type: 'finding.submitted', finding });
+      if (
+        depth !== undefined &&
+        result.checks.some((check) => ['not_run', 'inconclusive'].includes(check.status))
+      )
+        yield event(request.agentRunId, {
+          type: 'warning',
+          code: 'QA_COVERAGE_PARTIAL',
+          message: 'Analysis is partial: applicable planned checks remain unverified.',
+        });
       for (const limitation of result.limitations)
         yield event(request.agentRunId, {
           type: 'warning',
@@ -1119,35 +1479,59 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
       // `assistant/message` events sums across ALL turns. Unknown stays
       // unknown (never fabricated zero); turns count actual model turns
       // (every planning attempt + investigation + every report attempt).
-      let summed = sumUsage(planningUsage, investigation.usage ?? {});
+      let summed = sumUsage(planningUsage, investigationUsage ?? {});
       for (const turn of reportTurns) summed = sumUsage(summed, turn.usage ?? {});
       const usage: AgentUsage = {
         ...summed,
-        turns: planningTurns + 1 + reportTurns.length,
+        turns: planningTurns + investigationTurns + reportingIssued,
       };
       yield event(request.agentRunId, { type: 'usage.updated', usage });
-      yield event(request.agentRunId, {
-        type: 'run.completed',
-        usage,
-      });
+      if (validationCleanupFailed) {
+        yield event(request.agentRunId, {
+          type: 'run.failed',
+          failure: {
+            code: 'QA_VALIDATION_CLEANUP_FAILED',
+            message:
+              'Validation process cleanup could not be confirmed; checkpoint output was retained.',
+            retryable: false,
+          },
+        });
+      } else {
+        yield event(request.agentRunId, {
+          type: 'run.completed',
+          usage,
+        });
+      }
     } catch (cause) {
       const typed =
-        cause instanceof DeepSeekHarnessError
-          ? cause
-          : cause instanceof Error && cause.name === 'ZodError'
-            ? new DeepSeekHarnessError(
-                'DEEPSEEK_INVALID_RESULT',
-                'DeepSeek returned data that did not match the required schema.',
-              )
-            : new DeepSeekHarnessError(
-                /auth|credential|sign in|api key|unauthorized|401/i.test(String(cause))
-                  ? 'DEEPSEEK_AUTH_FAILED'
-                  : /sandbox/i.test(String(cause))
-                    ? 'DEEPSEEK_SANDBOX_UNAVAILABLE'
-                    : 'DEEPSEEK_START_FAILED',
-                redactDiagnostic(cause, this.secrets),
-                true,
-              );
+        cause instanceof PhaseDeadlineReached
+          ? new DeepSeekHarnessError('QA_REPORT_DEADLINE', cause.message, false)
+          : cause instanceof DeepSeekHarnessError
+            ? cause
+            : cause instanceof Error && cause.name === 'ZodError'
+              ? new DeepSeekHarnessError(
+                  'DEEPSEEK_INVALID_RESULT',
+                  'DeepSeek returned data that did not match the required schema' +
+                    (describeSchemaIssues(cause) === ''
+                      ? '.'
+                      : ': ' + describeSchemaIssues(cause) + '.'),
+                )
+              : new DeepSeekHarnessError(
+                  /auth|credential|sign in|api key|unauthorized|401/i.test(String(cause))
+                    ? 'DEEPSEEK_AUTH_FAILED'
+                    : /sandbox/i.test(String(cause))
+                      ? 'DEEPSEEK_SANDBOX_UNAVAILABLE'
+                      : 'DEEPSEEK_START_FAILED',
+                  redactDiagnostic(cause, this.secrets),
+                  true,
+                );
+      for (const [operationId, name] of this.liveOpenOperations)
+        yield event(request.agentRunId, {
+          type: 'tool.completed',
+          operationId,
+          tool: { name, errorPreview: 'Turn interrupted before a tool outcome was observed.' },
+        });
+      this.liveOpenOperations.clear();
       yield event(request.agentRunId, {
         type: 'run.failed',
         failure: {
@@ -1160,6 +1544,7 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
   }
 
   async cancel(_runId: AgentRunId): Promise<void> {
+    this.cancelled = true;
     try {
       await this.dispose();
     } catch (cause) {

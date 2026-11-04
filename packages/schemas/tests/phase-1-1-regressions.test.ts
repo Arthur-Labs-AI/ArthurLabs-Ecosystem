@@ -8,18 +8,15 @@ import {
   EvidenceSchema,
   QARUN_MODES,
   ProjectSnapshotSchema,
-  UnifiedIssueSchema,
 } from '../src/index.js';
 
 const T = '2026-09-09T19:00:00.000Z';
 const SHA = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
 describe('Phase 1.1 contract corrections', () => {
-  it('removes fix execution modes while adding retest and interruption states', () => {
+  it('removes fix execution modes while adding interruption states', () => {
     expect(QARUN_MODES).not.toContain('fix');
-    expect(QARUN_MODES).toContain('retest');
     expect(AGENT_TASK_TYPES).not.toContain('fix');
-    expect(AGENT_TASK_TYPES).toContain('retest');
     expect(AGENT_RUN_STATUSES).toContain('planning');
     expect(AGENT_RUN_STATUSES).toContain('interrupted');
   });
@@ -98,7 +95,7 @@ describe('Phase 1.1 contract corrections', () => {
     ).toBe(true);
   });
 
-  it('requires evidence environment provenance and issue agreement state', () => {
+  it('requires evidence environment provenance', () => {
     const evidence = {
       schemaVersion: 1,
       id: 'ev_01K7777777777777777777A8W8',
@@ -113,23 +110,5 @@ describe('Phase 1.1 contract corrections', () => {
     expect(EvidenceSchema.safeParse({ ...evidence, environmentState: 'baseline' }).success).toBe(
       true,
     );
-
-    const issue = {
-      schemaVersion: 1,
-      id: 'issue_01K7777777777777777777A8W9',
-      qaRunId: 'run_01K7777777777777777777A8W3',
-      title: 'Issue',
-      category: 'logic',
-      severity: 'medium',
-      status: 'probable',
-      findingIds: ['find_01K7777777777777777777A8W7'],
-      sourceAgentStackIds: ['stack_muse_main'],
-      evidenceIds: [],
-      createdAt: T,
-    };
-    expect(UnifiedIssueSchema.safeParse(issue).success).toBe(false);
-    expect(
-      UnifiedIssueSchema.safeParse({ ...issue, agreementState: 'single_source' }).success,
-    ).toBe(true);
   });
 });
