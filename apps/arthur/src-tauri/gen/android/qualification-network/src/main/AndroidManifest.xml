@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <application android:name="dev.kaloyan.arthur.security.SigningApplication" android:label="Network qualification" />
+    <!-- API37 runtime grant: dedicated qualification only, never the production manifest. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <application android:name="dev.kaloyan.arthur.security.SigningApplication" android:label="M05 Sync Lab (qualification)" android:allowBackup="false" android:usesCleartextTraffic="false" />
 </manifest>

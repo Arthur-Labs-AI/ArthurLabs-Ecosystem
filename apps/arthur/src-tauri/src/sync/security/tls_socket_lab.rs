@@ -742,6 +742,16 @@ impl Endpoint {
         })
         .await
     }
+    pub(crate) async fn step_after_work(&self, worked: bool) -> Result<()> {
+        if worked {
+            // Poll the same bounded socket once, then let the engine drain its
+            // next local batch. An idle peer must not stall productive work.
+            self.until(|| true).await
+        } else {
+            // With no local work, wait for actual IO rather than busy-spinning.
+            self.step().await
+        }
+    }
     pub(crate) async fn flush(&self) -> Result<()> {
         self.until(|| {
             let s = self.socket.borrow();
@@ -749,6 +759,65 @@ impl Endpoint {
         })
         .await
     }
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn r7_local_engine_work_does_not_wait_for_an_idle_peer() {
+    use super::tls::CertificateRole;
+    use crate::storage::security_tls_tests::Fixture;
+    native_io_lab::execute(async {
+        let a = Fixture::new().unwrap();
+        let b = Fixture::new().unwrap();
+        let ah = PeerHello {
+            network: uuid::Uuid::new_v4(),
+            session: uuid::Uuid::new_v4(),
+            local: a.public.peer_id(),
+            peer: b.public.peer_id(),
+            epoch: 1,
+        };
+        let bh = PeerHello {
+            local: ah.peer,
+            peer: ah.local,
+            ..ah.clone()
+        };
+        let (pair, _, _) = Pair::connect(
+            a.key(CertificateRole::Server).unwrap(),
+            b.key(CertificateRole::Client).unwrap(),
+            [ah, bh],
+            [&a.public, &b.public],
+        )
+        .await
+        .unwrap();
+        pair.drive_until(|| {
+            pair.sockets.iter().all(|s| {
+                let s = s.borrow();
+                s.output.is_empty() && s.ciphertext.is_empty() && !s.tls.wants_write()
+            })
+        })
+        .await
+        .unwrap();
+        let endpoint = Endpoint {
+            socket: pair.sockets[0].clone(),
+        };
+        assert!(endpoint.socket.borrow().input.is_empty());
+        let mut idle = Box::pin(endpoint.step_after_work(false));
+        let idle_poll =
+            poll_fn(|cx| Poll::Ready(std::future::Future::poll(idle.as_mut(), cx))).await;
+        assert!(idle_poll.is_pending(), "idle work must await actual IO");
+        drop(idle);
+        let mut productive = Box::pin(endpoint.step_after_work(true));
+        let productive_poll =
+            poll_fn(|cx| Poll::Ready(std::future::Future::poll(productive.as_mut(), cx))).await;
+        assert_eq!(
+            productive_poll,
+            Poll::Ready(Ok(())),
+            "productive engine work must get another bounded turn without a new peer message"
+        );
+        drop(productive);
+        pair.abort(Error::Disconnected);
+        pair.assert_closed();
+    });
 }
 impl Drop for Endpoint {
     fn drop(&mut self) {

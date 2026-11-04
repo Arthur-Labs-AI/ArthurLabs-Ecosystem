@@ -1,19 +1,29 @@
 param([Parameter(Mandatory=$true)][string]$Serial,
-    [string]$LanAddress,[string]$AndroidAddress,[ValidateRange(1024,65535)][int]$AndroidSourcePort=37432)
+    [string]$LanAddress,[string]$AndroidAddress,[ValidateRange(1024,65535)][int]$AndroidSourcePort=37432,
+    [switch]$Physical)
+$ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'qualification-common.ps1')
 # Supplying both addresses explicitly authorizes the narrow disposable LAN test.
 # ADB is control/public-results only in this mode: no reverse data connection.
 $lanMode= -not [string]::IsNullOrEmpty($LanAddress)
 if ($lanMode -ne (-not [string]::IsNullOrEmpty($AndroidAddress))) {throw 'Both LAN addresses are required'}
+if ($Physical -and -not $lanMode) { throw 'Physical mode requires both explicitly permitted LAN addresses; no ADB reverse fallback' }
 if ($lanMode) {
-    foreach ($address in @($LanAddress,$AndroidAddress)) {
-        $ip=[Net.IPAddress]::Parse($address)
-        if ($ip.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork -or $ip.ToString() -ne $address) {throw 'Explicit numeric IPv4 addresses required'}
-    }
-    if ($LanAddress -eq $AndroidAddress) {throw 'Two distinct interfaces/devices required'}
+    Assert-QualificationLanPair $LanAddress $AndroidAddress
 }
-$ErrorActionPreference='Stop'
 $repo=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../../../..'))
 $adb=Join-Path $env:ANDROID_HOME 'platform-tools/adb.exe'
+$selected=Get-QualificationTarget $(if($Physical){'aarch64'}else{'x86_64'})
+$device=Get-QualificationDevice $adb $Serial $selected -Physical:$Physical
+"Selected device: ABI $($device.Abi), API $($device.Api), emulator=$($device.Emulator)"
+'Scope: canonical Envelope events over pinned mutual TLS; per-original SignedOriginal envelopes are not exercised by this existing lab'
+if ($lanMode) {
+    $interfaces=@(Get-NetIPAddress -AddressFamily IPv4 -IPAddress $LanAddress -ErrorAction Stop)
+    if ($interfaces.Count -ne 1 -or $interfaces[0].AddressState -ne 'Preferred') {throw 'Windows LAN address must belong to exactly one preferred local interface'}
+    $lanProfile=Get-NetConnectionProfile -InterfaceIndex $interfaces[0].InterfaceIndex -ErrorAction Stop
+    if ($lanProfile.NetworkCategory -ne 'Private') {throw 'Selected Windows interface requires an explicit Private network profile; script never changes it'}
+    "Selected Windows interface index $($interfaces[0].InterfaceIndex); Private profile; native binding rechecks the route"
+}
 $base=Join-Path ([IO.Path]::GetTempPath()) ('arthur-r3-'+[Guid]::NewGuid())
 New-Item -ItemType Directory -Path $base | Out-Null
 $oldDir=$env:ARTHUR_R3_DIR; $oldCase=$env:ARTHUR_R3_CASE
@@ -24,8 +34,9 @@ $app='dev.kaloyan.arthur.identitytest'
 $deviceRoot='cache/r3-cross-device'
 $endpointClass=if($lanMode){'dev.kaloyan.arthur.security.NativeIdentityBridgeTest'}else{'dev.kaloyan.arthur.security.CrossDeviceSyncTest'}
 $runnerFlag=if($lanMode){'arthurR4Lan'}else{'arthurR3'}
+$routeArguments=if($lanMode){@('-e','arthurWindowsAddress',$LanAddress,'-e','arthurAndroidAddress',$AndroidAddress)}else{@()}
 function Android([string]$Method) {
-    $reply=@(& $adb -s $Serial shell am instrument -w -e $runnerFlag true -e class "$endpointClass#$Method" $runner 2>&1)
+    $reply=@(& $adb -s $Serial shell am instrument -w -e $runnerFlag true @routeArguments -e class "$endpointClass#$Method" $runner 2>&1)
     $reply | Write-Output
     if ($LASTEXITCODE -ne 0 -or -not ($reply -match '^OK \(1 test\)')) { throw "Android $Method failed" }
 }
@@ -48,8 +59,10 @@ function Pull([string]$Name,[string]$Destination) {
     [IO.File]::WriteAllText($Destination,$json,[Text.UTF8Encoding]::new($false))
     return $true
 }
-$bridge=$false; $process=$null; $androidProcess=$null
+$bridge=$false; $process=$null; $androidProcess=$null; $androidPrepared=$false
 try {
+    # Fails with PermissionRequired before opening a listener or creating fixture data.
+    if ($lanMode) { Android preflight }
     if ((@(& $adb -s $Serial reverse --list) -join "`n") -match 'tcp:37431') { throw 'Qualification ADB port is already in use' }
     Push-Location -LiteralPath $repo
     try {
@@ -60,6 +73,7 @@ try {
         $script:exe=$artifacts[0].executable
     } finally {Pop-Location}
     $process=Windows 43 'prepare'; Finished $process
+    $androidPrepared=$true
     Android prepare
     $androidPublic=Join-Path $base 'android-public.json'
     if (-not (Pull 'public.json' $androidPublic)) { throw 'Missing Android public fixture' }
@@ -100,13 +114,23 @@ try {
         }
         $method=if ($phase -eq 1) {'exchange'}else{'resume'}
         $androidLog=Join-Path $base "android-$phase.log"; $androidError=Join-Path $base "android-$phase.err.log"
-        $androidProcess=Start-Process -FilePath $adb -ArgumentList @('-s',$Serial,'shell','am','instrument','-w','-e',$runnerFlag,'true','-e','class',"$endpointClass#$method",$runner) `
+        $androidProcess=Start-Process -FilePath $adb -ArgumentList (@('-s',$Serial,'shell','am','instrument','-w','-e',$runnerFlag,'true') + $routeArguments + @('-e','class',"$endpointClass#$method",$runner)) `
             -WindowStyle Hidden -PassThru -RedirectStandardOutput $androidLog -RedirectStandardError $androidError
         $windowsResult=Join-Path $base "result-$phase.json"; $androidResult=Join-Path $base "android-result-$phase.json"
         $deadline=[DateTime]::UtcNow.AddSeconds(65);$pulled=$false
         while ([DateTime]::UtcNow -lt $deadline) {
             if (Test-Path -LiteralPath $windowsResult) { $pulled=Pull "result-$phase.json" $androidResult; if ($pulled) {break} }
-            if ($process.HasExited -or $androidProcess.HasExited) { throw 'Endpoint exited before durable result publication' }
+            if ($process.HasExited -or $androidProcess.HasExited) {
+                $androidFailure=Join-Path $base 'android-failure.json'
+                if (Pull 'failure.json' $androidFailure) {
+                    Get-QualificationFailureSummary (Get-Content -LiteralPath $androidFailure -Raw | ConvertFrom-Json) $phase
+                }
+                $windowsFailure=Join-Path $base 'failure.json'
+                if (Test-Path -LiteralPath $windowsFailure) {
+                    Get-QualificationFailureSummary (Get-Content -LiteralPath $windowsFailure -Raw | ConvertFrom-Json) $phase
+                }
+                throw 'Endpoint exited before durable result publication'
+            }
             Start-Sleep -Milliseconds 100
         }
         if (-not $pulled) { throw 'Cross-platform transfer timed out' }
@@ -121,8 +145,11 @@ try {
         if (($w.events | ConvertTo-Json -Depth 100 -Compress) -cne ($a.events | ConvertTo-Json -Depth 100 -Compress)) {throw 'Canonical event/row evidence differs'}
         $expectedPending=if($phase -eq 1){2}else{0}
         if ($w.outstanding.Count -ne $expectedPending -or $a.outstanding.Count -ne 0) {throw 'Incorrect durable receipt/retry state'}
+        $expectedStatus=if($phase -eq 1){'Syncing'}else{'CleanlyApplied'}
+        if ($w.status -ne $expectedStatus -or $a.status -ne 'CleanlyApplied' -or $w.needs_attention -ne $false -or $a.needs_attention -ne $false) {throw 'Incorrect native status/attention boundary'}
         $pids+=@{windows=$w.pid;android=$a.pid}
         "PASS phase $phase CNG/Keystore TLS13 exact bidirectional originals/rows; pending lost receipts $expectedPending; Windows PID $($w.pid), Android PID $($a.pid)"
+        if ($expectedPending -ne 0) { 'Delivery pending: phase 1 is NOT up-to-date; phase 2 must obtain the missing durable receipts' }
         "Endpoints Windows $($w.endpoints -join ' -> '); Android $($a.endpoints -join ' -> ')"
     }
     if ($pids[0].windows -eq $pids[1].windows -or $pids[0].android -eq $pids[1].android) {throw 'Both endpoint processes must restart'}
@@ -136,15 +163,17 @@ try {
             if (($first.$field | ConvertTo-Json -Depth 100 -Compress) -cne ($second.$field | ConvertTo-Json -Depth 100 -Compress)) {throw "Restart altered $endpoint $field"}
         }
     }
-    if ($lanMode) {'PASS direct native TCP, both process restarts, exact persisted OS public keys, no duplicate application; no ADB reverse data path'}
+    if ($Physical) {'PASS — EXECUTED ON PHYSICAL DEVICE: direct native TCP, both process restarts, exact persisted OS public keys, no duplicates; no ADB reverse data path'}
+    elseif ($lanMode) {'PASS direct native TCP; device provenance reported above; no ADB reverse data path'}
     else {'PASS both process restarts, exact persisted OS public keys, no duplicate application; ADB-mediated loopback only'}
     "Evidence: $base"
 } finally {
     if ($process -and -not $process.HasExited) { Stop-Process -Id $process.Id }
     if ($androidProcess -and -not $androidProcess.HasExited) { Stop-Process -Id $androidProcess.Id }
+    if ($androidPrepared) { & $adb -s $Serial shell am force-stop $app | Out-Null }
     if ($bridge) { & $adb -s $Serial reverse --remove tcp:37431 | Out-Null }
     # Only this explicitly-created fixture is eligible for cleanup.
     if (Test-Path -LiteralPath (Join-Path $base 'db')) { try { $p=Windows 46 'cleanup'; Finished $p } catch { Write-Warning 'Windows fixture cleanup needs inspection' } }
-    try { Android cleanup } catch { Write-Warning 'Android fixture cleanup needs inspection' }
+    if ($androidPrepared) { try { Android cleanup } catch { Write-Warning 'Android fixture cleanup needs inspection' } }
     $env:ARTHUR_R3_DIR=$oldDir;$env:ARTHUR_R3_CASE=$oldCase
 }

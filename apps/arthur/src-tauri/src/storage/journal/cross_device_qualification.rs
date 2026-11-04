@@ -99,6 +99,48 @@ fn read<T: serde::de::DeserializeOwned>(path: impl AsRef<Path>) -> T {
     assert!(bytes.len() <= 2 * 1024 * 1024);
     serde_json::from_slice(&bytes).unwrap()
 }
+fn checked_io<T>(
+    base: &Path,
+    phase: u32,
+    stage: &'static str,
+    result: std::result::Result<T, native_io_lab::Fault>,
+) -> T {
+    result.unwrap_or_else(|fault| failed(base, phase, stage, format!("{fault:?}")))
+}
+fn checked_sync<T>(base: &Path, phase: u32, stage: &'static str, result: Result<T>) -> T {
+    result.unwrap_or_else(|fault| failed(base, phase, stage, format!("{fault:?}")))
+}
+fn failed(base: &Path, phase: u32, stage: &'static str, fault: String) -> ! {
+    // Only the closed I/O/Sync error enums reach this boundary. No arbitrary
+    // panic text, event bytes, key material or endpoint configuration is logged.
+    write(
+        base.join("failure.json"),
+        &serde_json::json!({"pid":std::process::id(),"phase":phase,"stage":stage,"fault":fault}),
+    );
+    panic!("cross-device qualification failed at {stage}");
+}
+#[cfg(test)]
+#[test]
+fn r7_io_failure_survives_the_boolean_jni_boundary_without_payloads() {
+    let base = tempfile::tempdir().unwrap();
+    let result = std::panic::catch_unwind(|| {
+        checked_io::<()>(
+            base.path(),
+            1,
+            "connect",
+            Err(native_io_lab::Fault::Io(
+                std::io::ErrorKind::ConnectionRefused,
+            )),
+        )
+    });
+    assert!(result.is_err());
+    let report: serde_json::Value = read(base.path().join("failure.json"));
+    assert_eq!(report["phase"], 1);
+    assert_eq!(report["stage"], "connect");
+    assert_eq!(report["fault"], "Io(ConnectionRefused)");
+    assert_eq!(report["pid"], std::process::id());
+    assert_eq!(report.as_object().unwrap().len(), 4);
+}
 fn count(f: &Fixture, table: &str) -> i64 {
     f.owner()
         .store()
@@ -107,6 +149,87 @@ fn count(f: &Fixture, table: &str) -> i64 {
         .unwrap()
         .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
         .unwrap()
+}
+fn publication_ready(
+    lose_receipts: bool,
+    worked: bool,
+    acknowledged: bool,
+    pending: usize,
+    status: SyncStatus,
+    needs_attention: bool,
+) -> bool {
+    let receipts = if lose_receipts {
+        !acknowledged && pending == 2
+    } else {
+        acknowledged && pending == 0
+    };
+    let expected = if lose_receipts {
+        // This is an intentionally incomplete delivery phase, never convergence.
+        SyncStatus::Syncing
+    } else {
+        SyncStatus::CleanlyApplied
+    };
+    !worked && receipts && !needs_attention && status == expected
+}
+#[cfg(test)]
+#[test]
+fn r7_lost_receipt_publication_is_pending_and_resume_requires_durable_clean() {
+    assert!(publication_ready(
+        true,
+        false,
+        false,
+        2,
+        SyncStatus::Syncing,
+        false
+    ));
+    assert!(!publication_ready(
+        true,
+        false,
+        false,
+        2,
+        SyncStatus::CleanlyApplied,
+        false
+    ));
+    assert!(!publication_ready(
+        true,
+        true,
+        false,
+        2,
+        SyncStatus::Syncing,
+        false
+    ));
+    assert!(!publication_ready(
+        false,
+        false,
+        false,
+        2,
+        SyncStatus::Syncing,
+        false
+    ));
+    assert!(!publication_ready(
+        false,
+        false,
+        true,
+        0,
+        SyncStatus::Syncing,
+        false
+    ));
+    assert!(publication_ready(
+        false,
+        false,
+        true,
+        0,
+        SyncStatus::CleanlyApplied,
+        false
+    ));
+    assert!(!publication_ready(
+        false,
+        false,
+        true,
+        0,
+        SyncStatus::CleanlyApplied,
+        true
+    ));
 }
 fn prepare() {
     let base = root();
@@ -122,6 +245,7 @@ fn prepare() {
         "result-2.json",
         "finish-1",
         "finish-2",
+        "failure.json",
     ] {
         match std::fs::remove_file(base.join(name)) {
             Ok(()) => (),
@@ -204,7 +328,7 @@ fn evidence(f: &Fixture) -> serde_json::Value {
                 }
             })
             .collect::<Vec<_>>();
-        values.push(serde_json::json!({"event":event.identity.event,"hash":event.identity.hash,"bytes":event.bytes,"rows":rows}));
+        values.push(serde_json::json!({"event":event.identity.event,"origin":event.identity.origin,"incarnation":event.identity.incarnation,"seq":event.identity.seq,"hash":event.identity.hash,"bytes":event.bytes,"rows":rows}));
     }
     values.sort_by_key(|v| v["event"].as_str().unwrap().to_owned());
     assert_eq!(
@@ -324,13 +448,17 @@ async fn exchange(phase: u32) {
     #[cfg(windows)]
     let (raw, key, role) = {
         let listener = if let Some(lan) = &lan {
-            native_io_lab::listen_native_qualification(
-                (lan.android, lan.source_port).into(),
-                lan.windows.into(),
-                &permit,
-                &timer,
+            checked_io(
+                &base,
+                phase,
+                "listen",
+                native_io_lab::listen_native_qualification(
+                    (lan.android, lan.source_port).into(),
+                    lan.windows.into(),
+                    &permit,
+                    &timer,
+                ),
             )
-            .unwrap()
         } else {
             tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap()
         };
@@ -340,14 +468,18 @@ async fn exchange(phase: u32) {
         );
         (
             if let Some(lan) = &lan {
-                native_io_lab::accept_native_qualification(
-                    listener,
-                    (lan.android, lan.source_port).into(),
-                    permit,
-                    timer,
+                checked_io(
+                    &base,
+                    phase,
+                    "accept",
+                    native_io_lab::accept_native_qualification(
+                        listener,
+                        (lan.android, lan.source_port).into(),
+                        permit,
+                        timer,
+                    )
+                    .await,
                 )
-                .await
-                .unwrap()
             } else {
                 native_io_lab::accept_loopback(listener, permit, timer)
                     .await
@@ -360,15 +492,19 @@ async fn exchange(phase: u32) {
     #[cfg(target_os = "android")]
     let (raw, key, role) = (
         if let Some(lan) = &lan {
-            native_io_lab::connect_native_qualification(
-                (lan.windows, lan.server_port).into(),
-                lan.android.into(),
-                lan.source_port,
-                permit,
-                timer,
+            checked_io(
+                &base,
+                phase,
+                "connect",
+                native_io_lab::connect_native_qualification(
+                    (lan.windows, lan.server_port).into(),
+                    lan.android.into(),
+                    lan.source_port,
+                    permit,
+                    timer,
+                )
+                .await,
             )
-            .await
-            .unwrap()
         } else {
             native_io_lab::connect_loopback("127.0.0.1:37431".parse().unwrap(), permit, timer)
                 .await
@@ -377,11 +513,15 @@ async fn exchange(phase: u32) {
         f.key(CertificateRole::Client).unwrap(),
         CertificateRole::Client,
     );
-    let (wire, mut transport) = Endpoint::authenticate(raw, key, &pin, role, hello, || {
-        store.authorize(&verified, &Clock, &cancel)
-    })
-    .await
-    .unwrap();
+    let (wire, mut transport) = checked_sync(
+        &base,
+        phase,
+        "authenticate",
+        Endpoint::authenticate(raw, key, &pin, role, hello, || {
+            store.authorize(&verified, &Clock, &cancel)
+        })
+        .await,
+    );
     // Reuse the existing receipt-loss fixture AFTER encrypted transport, not a
     // substitute transport. Phase 2 must recover both persisted offers.
     transport.lose_receipts = cfg!(windows) && phase == 1;
@@ -390,7 +530,8 @@ async fn exchange(phase: u32) {
     let mut created = false;
     let mut messages = 0;
     loop {
-        if engine.tick().unwrap() {
+        let worked = checked_sync(&base, phase, "engine", engine.tick());
+        if worked {
             messages += 1;
         }
         #[cfg(target_os = "android")]
@@ -421,23 +562,25 @@ async fn exchange(phase: u32) {
         }
         let acknowledged:bool=owner.store().connection.lock().unwrap().query_row("SELECT (SELECT count(*) FROM import_sent WHERE origin=?1 AND outcome='applied')=(SELECT count(*) FROM sync_bundles)",[local.origin.to_string()],|r|r.get(0)).unwrap();
         let pending = store.outstanding(&verified, &Clock, &cancel).unwrap();
-        let receipts = if cfg!(windows) && phase == 1 {
-            !acknowledged && pending.len() == 2
-        } else {
-            acknowledged && pending.is_empty()
-        };
         if messages >= 2
-            && receipts
             && count(&f, "captures") == 2
-            && !engine.needs_attention
-            && engine.status == SyncStatus::CleanlyApplied
+            && publication_ready(
+                cfg!(windows) && phase == 1,
+                worked,
+                acknowledged,
+                pending.len(),
+                engine.status,
+                engine.needs_attention,
+            )
         {
-            wire.flush().await.unwrap();
+            checked_sync(&base, phase, "flush", wire.flush().await);
             break;
         }
-        wire.step().await.unwrap();
+        checked_sync(&base, phase, "transfer", wire.step_after_work(worked).await);
     }
     let mut result = evidence(&f);
+    result["status"] = serde_json::json!(format!("{:?}", engine.status));
+    result["needs_attention"] = serde_json::json!(engine.needs_attention);
     result["outstanding"] =
         serde_json::json!(store.outstanding(&verified, &Clock, &cancel).unwrap());
     result["endpoints"] = serde_json::json!(wire.endpoints().unwrap());

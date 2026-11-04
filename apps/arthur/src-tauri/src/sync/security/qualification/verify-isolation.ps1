@@ -6,12 +6,12 @@ $ErrorActionPreference = 'Stop'
 # Check actual resolved target graphs, including a positive control for each lab.
 # This proves dependency isolation, not binary reachability or advisory remediation.
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
-foreach ($target in @('x86_64-pc-windows-msvc','x86_64-linux-android')) {
+foreach ($target in @('x86_64-pc-windows-msvc','x86_64-linux-android','aarch64-linux-android')) {
     foreach ($lab in @($false,$true)) {
         $edges = 'normal,build'
         $extra = @()
         if ($lab) {
-            if ($target -eq 'x86_64-linux-android') { $extra = @('--features','android-identity-tests') }
+            if ($target -like '*-linux-android') { $extra = @('--features','android-identity-tests') }
             else { $edges = 'normal,build,dev' }
         }
         $graph = @(& cargo tree --manifest-path $ManifestPath --locked --offline --target $target `
