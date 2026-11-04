@@ -1,0 +1,608 @@
+{
+  "units": "mm; x east, y south, z above F.Cu plane",
+  "source_sha256": "320836d6d7798b7993a3a488d088801edb394b9cfc7bfc1a5702a065013660e1",
+  "board": {
+    "outline_bounds": [
+      0.0,
+      0.0,
+      51.3,
+      64.95
+    ],
+    "size": [
+      51.3,
+      64.95
+    ],
+    "nominal_thickness": 1.6,
+    "old_61_x_52": "superseded PCB target, not an enclosure constraint"
+  },
+  "manufacturer_catalog_nominals": {
+    "pitch": 2.0,
+    "header_width": 7.9,
+    "header_height": 5.5,
+    "header_depth": 6.0,
+    "header_tail_reference": 2.6,
+    "reinforcement_extension": 1.6,
+    "housing_width": 5.8,
+    "housing_axial": 6.85,
+    "housing_thickness": 4.5,
+    "mated_reference": 9.6
+  },
+  "design_assumptions": {
+    "withdrawal_design_travel": 7.0,
+    "clearance_proposal": 0.5,
+    "plug_z_offset": 0.5,
+    "straight_wire_example": 5.0,
+    "cable_od_example": 1.5,
+    "illustrative_bend_radii": [
+      3,
+      5,
+      8
+    ]
+  },
+  "checks": {
+    "outline_51_30_x_64_95": true,
+    "J401_part_lands_rotation_edge": true,
+    "J301_part_lands_rotation_edge": true,
+    "J201_part_lands_rotation_edge": true,
+    "J101_part_lands_rotation_edge": true,
+    "J5001_part_lands_rotation_edge": true,
+    "sampled_adjacent_header_sweeps_nonintersecting": true,
+    "swept_plugs_clear_foreign_courtyard_bounding_boxes": true
+  },
+  "connectors": [
+    {
+      "ref": "J401",
+      "at_mm_deg": [
+        6.85,
+        5.15,
+        180.0
+      ],
+      "pin1_side": "east",
+      "entry": "north / -Y",
+      "lands": [
+        {
+          "pad": "1",
+          "centre": [
+            7.85,
+            8.0
+          ],
+          "size": [
+            1.0,
+            3.5
+          ],
+          "net": "/CH4/ELEC_P"
+        },
+        {
+          "pad": "2",
+          "centre": [
+            5.85,
+            8.0
+          ],
+          "size": [
+            1.0,
+            3.5
+          ],
+          "net": "/CH4/ELEC_N"
+        },
+        {
+          "pad": "MP",
+          "centre": [
+            10.2,
+            2.2500000000000004
+          ],
+          "size": [
+            1.5,
+            3.4
+          ],
+          "net": "unconnected-(J401-PadMP)"
+        },
+        {
+          "pad": "MP",
+          "centre": [
+            3.5,
+            2.2500000000000004
+          ],
+          "size": [
+            1.5,
+            3.4
+          ],
+          "net": "unconnected-(J401-PadMP)"
+        }
+      ],
+      "copper_edge_gap_mm": 0.5499999999999998,
+      "nearest_courtyard": {
+        "ref": "R401",
+        "gap_mm": 0.11999999999999922
+      },
+      "header_main_body_xy": [
+        2.8999999999999995,
+        0.75,
+        10.8,
+        6.75
+      ],
+      "seated_housing_xy": [
+        3.9499999999999997,
+        -2.8499999999999996,
+        9.75,
+        4.0
+      ],
+      "removed_housing_xy": [
+        3.9499999999999997,
+        -9.85,
+        9.75,
+        -3.0
+      ],
+      "housing_sweep_xy": [
+        3.9499999999999997,
+        -9.85,
+        9.75,
+        4.0
+      ],
+      "signal_copper_bbox": [
+        2.75,
+        0.5499999999999998,
+        10.95,
+        9.75
+      ]
+    },
+    {
+      "ref": "J301",
+      "at_mm_deg": [
+        16.25,
+        5.15,
+        180.0
+      ],
+      "pin1_side": "east",
+      "entry": "north / -Y",
+      "lands": [
+        {
+          "pad": "1",
+          "centre": [
+            17.25,
+            8.0
+          ],
+          "size": [
+            1.0,
+            3.5
+          ],
+          "net": "/CH3/ELEC_P"
+        },
+        {
+          "pad": "2",
+          "centre": [
+            15.25,
+            8.0
+          ],
+          "size": [
+            1.0,
+            3.5
+          ],
+          "net": "/CH3/ELEC_N"
+        },
+        {
+          "pad": "MP",
+          "centre": [
+            19.6,
+            2.2500000000000004
+          ],
+          "size": [
+            1.5,
+            3.4
+          ],
+          "net": "unconnected-(J301-PadMP)"
+        },
+        {
+          "pad": "MP",
+          "centre": [
+            12.9,
+            2.2500000000000004
+          ],
+          "size": [
+            1.5,
+            3.4
+          ],
+          "net": "unconnected-(J301-PadMP)"
+        }
+      ],
+      "copper_edge_gap_mm": 0.5499999999999998,
+      "nearest_courtyard": {
+        "ref": "R301",
+        "gap_mm": 0.11999999999999922
+      },
+      "header_main_body_xy": [
+        12.3,
+        0.75,
+        20.2,
+        6.75
+      ],
+      "seated_housing_xy": [
+        13.35,
+        -2.8499999999999996,
+        19.15,
+        4.0
+      ],
+      "removed_housing_xy": [
+        13.35,
+        -9.85,
+        19.15,
+        -3.0
+      ],
+      "housing_sweep_xy": [
+        13.35,
+        -9.85,
+        19.15,
+        4.0
+      ],
+      "signal_copper_bbox": [
+        12.15,
+        0.5499999999999998,
+        20.35,
+        9.75
+      ]
+    },
+    {
+      "ref": "J201",
+      "at_mm_deg": [
+        25.65,
+        5.15,
+        180.0
+      ],
+      "pin1_side": "east",
+      "entry": "north / -Y",
+      "lands": [
+        {
+          "pad": "1",
+          "centre": [
+            26.65,
+            8.0
+          ],
+          "size": [
+            1.0,
+            3.5
+          ],
+          "net": "/CH2/ELEC_P"
+        },
+        {
+          "pad": "2",
+          "centre": [
+            24.65,
+            8.0
+          ],
+          "size": [
+            1.0,
+            3.5
+          ],
+          "net": "/CH2/ELEC_N"
+        },
+        {
+          "pad": "MP",
+          "centre": [
+            29.0,
+            2.2500000000000004
+          ],
+          "size": [
+            1.5,
+            3.4
+          ],
+          "net": "unconnected-(J201-PadMP)"
+        },
+        {
+          "pad": "MP",
+          "centre": [
+            22.299999999999997,
+            2.2500000000000004
+          ],
+          "size": [
+            1.5,
+            3.4
+          ],
+          "net": "unconnected-(J201-PadMP)"
+        }
+      ],
+      "copper_edge_gap_mm": 0.5499999999999998,
+      "nearest_courtyard": {
+        "ref": "R201",
+        "gap_mm": 0.11999999999999922
+      },
+      "header_main_body_xy": [
+        21.7,
+        0.75,
+        29.599999999999998,
+        6.75
+      ],
+      "seated_housing_xy": [
+        22.75,
+        -2.8499999999999996,
+        28.549999999999997,
+        4.0
+      ],
+      "removed_housing_xy": [
+        22.75,
+        -9.85,
+        28.549999999999997,
+        -3.0
+      ],
+      "housing_sweep_xy": [
+        22.75,
+        -9.85,
+        28.549999999999997,
+        4.0
+      ],
+      "signal_copper_bbox": [
+        21.549999999999997,
+        0.5499999999999998,
+        29.75,
+        9.75
+      ]
+    },
+    {
+      "ref": "J101",
+      "at_mm_deg": [
+        35.05,
+        5.15,
+        180.0
+      ],
+      "pin1_side": "east",
+      "entry": "north / -Y",
+      "lands": [
+        {
+          "pad": "1",
+          "centre": [
+            36.05,
+            8.0
+          ],
+          "size": [
+            1.0,
+            3.5
+          ],
+          "net": "/CH1/ELEC_P"
+        },
+        {
+          "pad": "2",
+          "centre": [
+            34.05,
+            8.0
+          ],
+          "size": [
+            1.0,
+            3.5
+          ],
+          "net": "/CH1/ELEC_N"
+        },
+        {
+          "pad": "MP",
+          "centre": [
+            38.4,
+            2.2500000000000004
+          ],
+          "size": [
+            1.5,
+            3.4
+          ],
+          "net": "unconnected-(J101-PadMP)"
+        },
+        {
+          "pad": "MP",
+          "centre": [
+            31.699999999999996,
+            2.2500000000000004
+          ],
+          "size": [
+            1.5,
+            3.4
+          ],
+          "net": "unconnected-(J101-PadMP)"
+        }
+      ],
+      "copper_edge_gap_mm": 0.5499999999999998,
+      "nearest_courtyard": {
+        "ref": "R101",
+        "gap_mm": 0.11999999999999922
+      },
+      "header_main_body_xy": [
+        31.099999999999998,
+        0.75,
+        39.0,
+        6.75
+      ],
+      "seated_housing_xy": [
+        32.15,
+        -2.8499999999999996,
+        37.949999999999996,
+        4.0
+      ],
+      "removed_housing_xy": [
+        32.15,
+        -9.85,
+        37.949999999999996,
+        -3.0
+      ],
+      "housing_sweep_xy": [
+        32.15,
+        -9.85,
+        37.949999999999996,
+        4.0
+      ],
+      "signal_copper_bbox": [
+        30.949999999999996,
+        0.5499999999999998,
+        39.15,
+        9.75
+      ]
+    },
+    {
+      "ref": "J5001",
+      "at_mm_deg": [
+        44.45,
+        5.15,
+        180.0
+      ],
+      "pin1_side": "east",
+      "entry": "north / -Y",
+      "lands": [
+        {
+          "pad": "1",
+          "centre": [
+            45.45,
+            8.0
+          ],
+          "size": [
+            1.0,
+            3.5
+          ],
+          "net": "unconnected-(J5001-Pad1)"
+        },
+        {
+          "pad": "2",
+          "centre": [
+            43.45,
+            8.0
+          ],
+          "size": [
+            1.0,
+            3.5
+          ],
+          "net": "/Reference_VCM/RLD_SAFE"
+        },
+        {
+          "pad": "MP",
+          "centre": [
+            47.800000000000004,
+            2.2500000000000004
+          ],
+          "size": [
+            1.5,
+            3.4
+          ],
+          "net": "unconnected-(J5001-PadMP)"
+        },
+        {
+          "pad": "MP",
+          "centre": [
+            41.1,
+            2.2500000000000004
+          ],
+          "size": [
+            1.5,
+            3.4
+          ],
+          "net": "unconnected-(J5001-PadMP)"
+        }
+      ],
+      "copper_edge_gap_mm": 0.5499999999999998,
+      "nearest_courtyard": {
+        "ref": "J101",
+        "gap_mm": 0.20000000000000284
+      },
+      "header_main_body_xy": [
+        40.5,
+        0.75,
+        48.400000000000006,
+        6.75
+      ],
+      "seated_housing_xy": [
+        41.550000000000004,
+        -2.8499999999999996,
+        47.35,
+        4.0
+      ],
+      "removed_housing_xy": [
+        41.550000000000004,
+        -9.85,
+        47.35,
+        -3.0
+      ],
+      "housing_sweep_xy": [
+        41.550000000000004,
+        -9.85,
+        47.35,
+        4.0
+      ],
+      "signal_copper_bbox": [
+        40.35,
+        0.5499999999999998,
+        48.550000000000004,
+        9.75
+      ]
+    }
+  ],
+  "adjacent_pairs": [
+    {
+      "left": "J401",
+      "right": "J301",
+      "pitch_mm": 9.4,
+      "header_gap_mm": 1.5,
+      "housing_gap_mm": 3.6000000000000005,
+      "housing_to_adjacent_header_x_gap_mm": 2.55,
+      "courtyard_gap_mm": 0.20000000000000107
+    },
+    {
+      "left": "J301",
+      "right": "J201",
+      "pitch_mm": 9.399999999999999,
+      "header_gap_mm": 1.4999999999999982,
+      "housing_gap_mm": 3.5999999999999988,
+      "housing_to_adjacent_header_x_gap_mm": 2.549999999999998,
+      "courtyard_gap_mm": 0.19999999999999574
+    },
+    {
+      "left": "J201",
+      "right": "J101",
+      "pitch_mm": 9.399999999999999,
+      "header_gap_mm": 1.4999999999999982,
+      "housing_gap_mm": 3.5999999999999988,
+      "housing_to_adjacent_header_x_gap_mm": 2.549999999999998,
+      "courtyard_gap_mm": 0.19999999999999574
+    },
+    {
+      "left": "J101",
+      "right": "J5001",
+      "pitch_mm": 9.400000000000006,
+      "header_gap_mm": 1.5000000000000053,
+      "housing_gap_mm": 3.600000000000006,
+      "housing_to_adjacent_header_x_gap_mm": 2.550000000000005,
+      "courtyard_gap_mm": 0.20000000000000284
+    }
+  ],
+  "sweep_checks": 1420,
+  "foreign_courtyard_sweep_checks": 630,
+  "resistor_courtyard_gaps": {
+    "J101": {
+      "R101": 0.11999999999999922,
+      "R102": 0.11999999999999922
+    },
+    "J201": {
+      "R201": 0.11999999999999922,
+      "R202": 0.11999999999999922
+    },
+    "J301": {
+      "R301": 0.11999999999999922,
+      "R302": 0.11999999999999922
+    },
+    "J401": {
+      "R401": 0.11999999999999922,
+      "R402": 0.11999999999999922
+    },
+    "J5001": {
+      "R5002": 0.2699999999999996
+    }
+  },
+  "derivations": {
+    "main_header_rear_y": 6.75,
+    "entry_face_y": 0.75,
+    "seated_wire_exit_y": -2.85,
+    "seated_housing_tip_y": 4.0,
+    "reference_overlap": 3.25,
+    "removed_wire_exit_y": -9.85,
+    "removed_housing_tip_y": -3.0,
+    "removed_to_face_gap": 3.75,
+    "reference_axial_stroke_note": "3.25 is an inference from catalog length overlap, not a manufacturer-specified disengagement stroke; use proposed 7 mm travel pending samples"
+  },
+  "limitations": [
+    "Catalog dimensions are nominal/reference, not a complete tolerance drawing.",
+    "Datum registration and housing Z placement are engineering derivations/assumptions; no qualified manufacturer assembly CAD.",
+    "No contact/cavity/key/friction-lock mechanics or physical sample force/cycle tests.",
+    "No actual enclosure, grommet, harness OD, bend radius, strain relief or strap load specified.",
+    "Nominal XY sweep checks only; own-header nesting and component 3D collisions not proven."
+  ]
+}

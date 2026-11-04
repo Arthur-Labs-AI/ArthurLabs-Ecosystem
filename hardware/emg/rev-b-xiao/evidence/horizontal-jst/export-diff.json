@@ -1,0 +1,298 @@
+{
+  "bom_ref_counts": [
+    126,
+    126
+  ],
+  "cpl_ref_counts": [
+    126,
+    126
+  ],
+  "bom_changes": {
+    "J301": {
+      "old": {
+        "Comment": "B2B-PH-SM4-TB B2B-PH-SM4-TB(LF)(SN)",
+        "Footprint": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+        "LCSC Part #": "C160352"
+      },
+      "new": {
+        "Comment": "S2B-PH-SM4-TB S2B-PH-SM4-TB(LF)(SN)",
+        "Footprint": "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+        "LCSC Part #": "C295747"
+      }
+    },
+    "J401": {
+      "old": {
+        "Comment": "B2B-PH-SM4-TB B2B-PH-SM4-TB(LF)(SN)",
+        "Footprint": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+        "LCSC Part #": "C160352"
+      },
+      "new": {
+        "Comment": "S2B-PH-SM4-TB S2B-PH-SM4-TB(LF)(SN)",
+        "Footprint": "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+        "LCSC Part #": "C295747"
+      }
+    },
+    "J5001": {
+      "old": {
+        "Comment": "B2B-PH-SM4-TB B2B-PH-SM4-TB(LF)(SN)",
+        "Footprint": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+        "LCSC Part #": "C160352"
+      },
+      "new": {
+        "Comment": "S2B-PH-SM4-TB S2B-PH-SM4-TB(LF)(SN)",
+        "Footprint": "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+        "LCSC Part #": "C295747"
+      }
+    },
+    "J101": {
+      "old": {
+        "Comment": "B2B-PH-SM4-TB B2B-PH-SM4-TB(LF)(SN)",
+        "Footprint": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+        "LCSC Part #": "C160352"
+      },
+      "new": {
+        "Comment": "S2B-PH-SM4-TB S2B-PH-SM4-TB(LF)(SN)",
+        "Footprint": "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+        "LCSC Part #": "C295747"
+      }
+    },
+    "J201": {
+      "old": {
+        "Comment": "B2B-PH-SM4-TB B2B-PH-SM4-TB(LF)(SN)",
+        "Footprint": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+        "LCSC Part #": "C160352"
+      },
+      "new": {
+        "Comment": "S2B-PH-SM4-TB S2B-PH-SM4-TB(LF)(SN)",
+        "Footprint": "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+        "LCSC Part #": "C295747"
+      }
+    }
+  },
+  "cpl_changes": {
+    "R102": {
+      "old": {
+        "Designator": "R102",
+        "Mid X": "32.7000mm",
+        "Mid Y": "-10.1000mm",
+        "Layer": "Top",
+        "Rotation": "270"
+      },
+      "new": {
+        "Designator": "R102",
+        "Mid X": "32.7000mm",
+        "Mid Y": "-11.1000mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      }
+    },
+    "R302": {
+      "old": {
+        "Designator": "R302",
+        "Mid X": "13.9000mm",
+        "Mid Y": "-10.1000mm",
+        "Layer": "Top",
+        "Rotation": "270"
+      },
+      "new": {
+        "Designator": "R302",
+        "Mid X": "13.9000mm",
+        "Mid Y": "-11.1000mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      }
+    },
+    "R301": {
+      "old": {
+        "Designator": "R301",
+        "Mid X": "18.6000mm",
+        "Mid Y": "-10.1000mm",
+        "Layer": "Top",
+        "Rotation": "270"
+      },
+      "new": {
+        "Designator": "R301",
+        "Mid X": "18.6000mm",
+        "Mid Y": "-11.1000mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      }
+    },
+    "R201": {
+      "old": {
+        "Designator": "R201",
+        "Mid X": "28.0000mm",
+        "Mid Y": "-10.1000mm",
+        "Layer": "Top",
+        "Rotation": "270"
+      },
+      "new": {
+        "Designator": "R201",
+        "Mid X": "28.0000mm",
+        "Mid Y": "-11.1000mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      }
+    },
+    "R202": {
+      "old": {
+        "Designator": "R202",
+        "Mid X": "23.3000mm",
+        "Mid Y": "-10.1000mm",
+        "Layer": "Top",
+        "Rotation": "270"
+      },
+      "new": {
+        "Designator": "R202",
+        "Mid X": "23.3000mm",
+        "Mid Y": "-11.1000mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      }
+    },
+    "J301": {
+      "old": {
+        "Designator": "J301",
+        "Mid X": "16.2500mm",
+        "Mid Y": "-3.7500mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      },
+      "new": {
+        "Designator": "J301",
+        "Mid X": "16.2500mm",
+        "Mid Y": "-5.1500mm",
+        "Layer": "Top",
+        "Rotation": "0"
+      }
+    },
+    "R101": {
+      "old": {
+        "Designator": "R101",
+        "Mid X": "37.4000mm",
+        "Mid Y": "-10.1000mm",
+        "Layer": "Top",
+        "Rotation": "270"
+      },
+      "new": {
+        "Designator": "R101",
+        "Mid X": "37.4000mm",
+        "Mid Y": "-11.1000mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      }
+    },
+    "J401": {
+      "old": {
+        "Designator": "J401",
+        "Mid X": "6.8500mm",
+        "Mid Y": "-3.7500mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      },
+      "new": {
+        "Designator": "J401",
+        "Mid X": "6.8500mm",
+        "Mid Y": "-5.1500mm",
+        "Layer": "Top",
+        "Rotation": "0"
+      }
+    },
+    "R402": {
+      "old": {
+        "Designator": "R402",
+        "Mid X": "4.5000mm",
+        "Mid Y": "-10.1000mm",
+        "Layer": "Top",
+        "Rotation": "270"
+      },
+      "new": {
+        "Designator": "R402",
+        "Mid X": "4.5000mm",
+        "Mid Y": "-11.1000mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      }
+    },
+    "R5002": {
+      "old": {
+        "Designator": "R5002",
+        "Mid X": "44.4500mm",
+        "Mid Y": "-10.3000mm",
+        "Layer": "Top",
+        "Rotation": "270"
+      },
+      "new": {
+        "Designator": "R5002",
+        "Mid X": "44.4500mm",
+        "Mid Y": "-12.2000mm",
+        "Layer": "Top",
+        "Rotation": "90"
+      }
+    },
+    "J5001": {
+      "old": {
+        "Designator": "J5001",
+        "Mid X": "44.4500mm",
+        "Mid Y": "-3.7500mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      },
+      "new": {
+        "Designator": "J5001",
+        "Mid X": "44.4500mm",
+        "Mid Y": "-5.1500mm",
+        "Layer": "Top",
+        "Rotation": "0"
+      }
+    },
+    "J101": {
+      "old": {
+        "Designator": "J101",
+        "Mid X": "35.0500mm",
+        "Mid Y": "-3.7500mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      },
+      "new": {
+        "Designator": "J101",
+        "Mid X": "35.0500mm",
+        "Mid Y": "-5.1500mm",
+        "Layer": "Top",
+        "Rotation": "0"
+      }
+    },
+    "J201": {
+      "old": {
+        "Designator": "J201",
+        "Mid X": "25.6500mm",
+        "Mid Y": "-3.7500mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      },
+      "new": {
+        "Designator": "J201",
+        "Mid X": "25.6500mm",
+        "Mid Y": "-5.1500mm",
+        "Layer": "Top",
+        "Rotation": "0"
+      }
+    },
+    "R401": {
+      "old": {
+        "Designator": "R401",
+        "Mid X": "9.2000mm",
+        "Mid Y": "-10.1000mm",
+        "Layer": "Top",
+        "Rotation": "270"
+      },
+      "new": {
+        "Designator": "R401",
+        "Mid X": "9.2000mm",
+        "Mid Y": "-11.1000mm",
+        "Layer": "Top",
+        "Rotation": "180"
+      }
+    }
+  }
+}

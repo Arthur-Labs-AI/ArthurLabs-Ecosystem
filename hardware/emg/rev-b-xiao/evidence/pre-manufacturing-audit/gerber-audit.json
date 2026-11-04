@@ -1,0 +1,216 @@
+{
+ "layers": {
+  "B_Cu.gbl": {
+   "function": "Copper,L4,Bot",
+   "flashes_by_function": {
+    "ComponentPad": 1,
+    "SMDPad": 9,
+    "ViaPad": 191
+   },
+   "flashes": 201,
+   "draw_count": 155,
+   "draw_length_mm_by_function": {
+    "Conductor": 343.52
+   },
+   "regions": 0,
+   "apertures": 9
+  },
+  "B_Mask.gbs": {
+   "function": "Soldermask,Bot",
+   "flashes_by_function": {
+    "?": 10
+   },
+   "flashes": 10,
+   "draw_count": 0,
+   "draw_length_mm_by_function": {},
+   "regions": 0,
+   "apertures": 3
+  },
+  "B_Silkscreen.gbo": {
+   "function": "Legend,Bot",
+   "flashes_by_function": {},
+   "flashes": 0,
+   "draw_count": 16,
+   "draw_length_mm_by_function": {
+    "?(arc,chord)": 30.4
+   },
+   "regions": 0,
+   "apertures": 1
+  },
+  "Edge_Cuts.gm1": {
+   "function": "Profile,NP",
+   "flashes_by_function": {},
+   "flashes": 0,
+   "draw_count": 8,
+   "draw_length_mm_by_function": {
+    "Profile(arc,chord)": 5.66,
+    "Profile": 224.5
+   },
+   "regions": 0,
+   "apertures": 1
+  },
+  "F_Cu.gtl": {
+   "function": "Copper,L1,Top",
+   "flashes_by_function": {
+    "SMDPad": 354,
+    "ComponentPad": 1,
+    "ViaPad": 191
+   },
+   "flashes": 546,
+   "draw_count": 1278,
+   "draw_length_mm_by_function": {
+    "Conductor": 1202.4
+   },
+   "regions": 0,
+   "apertures": 28
+  },
+  "F_Mask.gts": {
+   "function": "Soldermask,Top",
+   "flashes_by_function": {
+    "?": 355
+   },
+   "flashes": 355,
+   "draw_count": 0,
+   "draw_length_mm_by_function": {},
+   "regions": 0,
+   "apertures": 22
+  },
+  "F_Paste.gtp": {
+   "function": "Paste,Top",
+   "flashes_by_function": {
+    "?": 340
+   },
+   "flashes": 340,
+   "draw_count": 0,
+   "draw_length_mm_by_function": {},
+   "regions": 0,
+   "apertures": 20
+  },
+  "F_Silkscreen.gto": {
+   "function": "Legend,Top",
+   "flashes_by_function": {},
+   "flashes": 0,
+   "draw_count": 641,
+   "draw_length_mm_by_function": {
+    "?": 443.81,
+    "?(arc,chord)": 0.4
+   },
+   "regions": 22,
+   "apertures": 4
+  },
+  "In1_Cu.g1": {
+   "function": "Copper,L2,Inr",
+   "flashes_by_function": {
+    "ComponentPad": 1,
+    "ViaPad": 191
+   },
+   "flashes": 192,
+   "draw_count": 0,
+   "draw_length_mm_by_function": {},
+   "regions": 1,
+   "apertures": 2
+  },
+  "In2_Cu.g2": {
+   "function": "Copper,L3,Inr",
+   "flashes_by_function": {
+    "ComponentPad": 1,
+    "ViaPad": 191
+   },
+   "flashes": 192,
+   "draw_count": 22,
+   "draw_length_mm_by_function": {
+    "Conductor": 121.7
+   },
+   "regions": 1,
+   "apertures": 6
+  }
+ },
+ "drill_tools": {
+  "0.3": 191,
+  "1.9": 1
+ },
+ "checks": [
+  {
+   "check": "F.Cu SMD pad flashes",
+   "gerber": 354,
+   "kicad_source": 354,
+   "result": "PASS"
+  },
+  {
+   "check": "F.Cu conductor length (mm, line draws)",
+   "gerber": 1202.4,
+   "kicad_source": 1202.402,
+   "result": "PASS"
+  },
+  {
+   "check": "B.Cu conductor length (mm, line draws)",
+   "gerber": 343.52,
+   "kicad_source": 343.516,
+   "result": "PASS"
+  },
+  {
+   "check": "F.Cu via pad flashes",
+   "gerber": 191,
+   "kicad_source": 191,
+   "result": "PASS"
+  },
+  {
+   "check": "B.Cu via pad flashes",
+   "gerber": 191,
+   "kicad_source": 191,
+   "result": "PASS"
+  },
+  {
+   "check": "In1 via pad flashes (via pads on inner layers)",
+   "gerber": 191,
+   "kicad_source": 191,
+   "result": "PASS"
+  },
+  {
+   "check": "F.Mask openings = SMD+TH pads with mask",
+   "gerber": 355,
+   "kicad_source": 355,
+   "result": "PASS"
+  },
+  {
+   "check": "F.Mask via openings (tented => 0)",
+   "gerber": 0,
+   "kicad_source": 0,
+   "result": "PASS"
+  },
+  {
+   "check": "B.Mask via openings (tented => 0)",
+   "gerber": 0,
+   "kicad_source": 0,
+   "result": "PASS"
+  },
+  {
+   "check": "F.Paste apertures = SMD pads with paste",
+   "gerber": 340,
+   "kicad_source": 340,
+   "result": "PASS"
+  },
+  {
+   "check": "Drill 0.30 count = vias",
+   "gerber": 191,
+   "kicad_source": 191,
+   "result": "PASS"
+  },
+  {
+   "check": "Drill 1.90 count = PTH pads (size read from the PCB)",
+   "gerber": 1,
+   "kicad_source": 1,
+   "result": "PASS"
+  }
+ ],
+ "outline_bbox_mm": [
+  0.0,
+  -64.95,
+  51.3,
+  0.0
+ ],
+ "outline_size_mm": [
+  51.3,
+  64.95
+ ]
+}

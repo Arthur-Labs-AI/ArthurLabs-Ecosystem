@@ -1,0 +1,534 @@
+{
+  "ARTHUR_EMG_RevB.kicad_pcb": [
+    [
+      [
+        "Description",
+        "Resistor 10M 5% 0603 - Follower input DC bias IN- to VCM"
+      ],
+      [
+        "Description",
+        "Resistor 10M 1% 0603 - Follower input DC bias IN- to VCM"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "10M \u00b15% 0603 thick film, >=1/10 W"
+      ],
+      [
+        "Spec",
+        "10M \u00b11% 0603 thick film, >=1/10 W"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - VCM divider HF filter (stays at divider node)"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - VCM divider HF filter (stays at divider node)"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Resistor 10M 5% 0603 - Follower input DC bias IN- to VCM"
+      ],
+      [
+        "Description",
+        "Resistor 10M 1% 0603 - Follower input DC bias IN- to VCM"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "10M \u00b15% 0603 thick film, >=1/10 W"
+      ],
+      [
+        "Spec",
+        "10M \u00b11% 0603 thick film, >=1/10 W"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Resistor 10M 5% 0603 - Follower input DC bias IN- to VCM"
+      ],
+      [
+        "Description",
+        "Resistor 10M 1% 0603 - Follower input DC bias IN- to VCM"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "10M \u00b15% 0603 thick film, >=1/10 W"
+      ],
+      [
+        "Spec",
+        "10M \u00b11% 0603 thick film, >=1/10 W"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - U501 V+ decoupling"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - U501 V+ decoupling"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Capacitor 22uF 10V X5R 0805 - C_PRE: LDO input RC bulk (~10 uF effective at 4 V)"
+      ],
+      [
+        "Description",
+        "Capacitor 22uF 25V X5R 0805 - C_PRE: LDO input RC bulk (~10 uF effective at 4 V)"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "22uF 10V X5R 0805 MLCC"
+      ],
+      [
+        "Spec",
+        "22uF 25V X5R 0805 MLCC"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - U503 V+ decoupling"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - U503 V+ decoupling"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - C_X1: X1 VDD decoupling at pin 4"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - C_X1: X1 VDD decoupling at pin 4"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - C_VB: VBAT sense filter"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - C_VB: VBAT sense filter"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - C_DV2: DVDD_F HF"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - C_DV2: DVDD_F HF"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Resistor 10M 5% 0603 - Follower input DC bias IN+ to VCM"
+      ],
+      [
+        "Description",
+        "Resistor 10M 1% 0603 - Follower input DC bias IN+ to VCM"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "10M \u00b15% 0603 thick film, >=1/10 W"
+      ],
+      [
+        "Spec",
+        "10M \u00b11% 0603 thick film, >=1/10 W"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Resistor 10M 5% 0603 - Follower input DC bias IN- to VCM"
+      ],
+      [
+        "Description",
+        "Resistor 10M 1% 0603 - Follower input DC bias IN- to VCM"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "10M \u00b15% 0603 thick film, >=1/10 W"
+      ],
+      [
+        "Spec",
+        "10M \u00b11% 0603 thick film, >=1/10 W"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Resistor 10M 5% 0603 - Follower input DC bias IN+ to VCM"
+      ],
+      [
+        "Description",
+        "Resistor 10M 1% 0603 - Follower input DC bias IN+ to VCM"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "10M \u00b15% 0603 thick film, >=1/10 W"
+      ],
+      [
+        "Spec",
+        "10M \u00b11% 0603 thick film, >=1/10 W"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Resistor 10M 5% 0603 - Follower input DC bias IN+ to VCM"
+      ],
+      [
+        "Description",
+        "Resistor 10M 1% 0603 - Follower input DC bias IN+ to VCM"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "10M \u00b15% 0603 thick film, >=1/10 W"
+      ],
+      [
+        "Spec",
+        "10M \u00b11% 0603 thick film, >=1/10 W"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Resistor 10M 5% 0603 - Follower input DC bias IN+ to VCM"
+      ],
+      [
+        "Description",
+        "Resistor 10M 1% 0603 - Follower input DC bias IN+ to VCM"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "10M \u00b15% 0603 thick film, >=1/10 W"
+      ],
+      [
+        "Spec",
+        "10M \u00b11% 0603 thick film, >=1/10 W"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - U502 V+ decoupling"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - U502 V+ decoupling"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ]
+  ],
+  "emg_channel.kicad_sch": [
+    [
+      [
+        "Description",
+        "Resistor 10M 5% 0603 - Follower input DC bias IN+ to VCM"
+      ],
+      [
+        "Description",
+        "Resistor 10M 1% 0603 - Follower input DC bias IN+ to VCM"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "10M \u00b15% 0603 thick film, >=1/10 W"
+      ],
+      [
+        "Spec",
+        "10M \u00b11% 0603 thick film, >=1/10 W"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Resistor 10M 5% 0603 - Follower input DC bias IN- to VCM"
+      ],
+      [
+        "Description",
+        "Resistor 10M 1% 0603 - Follower input DC bias IN- to VCM"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "10M \u00b15% 0603 thick film, >=1/10 W"
+      ],
+      [
+        "Spec",
+        "10M \u00b11% 0603 thick film, >=1/10 W"
+      ]
+    ]
+  ],
+  "reference_vcm.kicad_sch": [
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - U503 V+ decoupling"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - U503 V+ decoupling"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - U501 V+ decoupling"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - U501 V+ decoupling"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - VCM divider HF filter (stays at divider node)"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - VCM divider HF filter (stays at divider node)"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - U502 V+ decoupling"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - U502 V+ decoupling"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ]
+  ],
+  "adc.kicad_sch": [
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - C_X1: X1 VDD decoupling at pin 4"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - C_X1: X1 VDD decoupling at pin 4"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ]
+  ],
+  "analog_power_interlock.kicad_sch": [
+    [
+      [
+        "Description",
+        "Capacitor 22uF 10V X5R 0805 - C_PRE: LDO input RC bulk (~10 uF effective at 4 V)"
+      ],
+      [
+        "Description",
+        "Capacitor 22uF 25V X5R 0805 - C_PRE: LDO input RC bulk (~10 uF effective at 4 V)"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "22uF 10V X5R 0805 MLCC"
+      ],
+      [
+        "Spec",
+        "22uF 25V X5R 0805 MLCC"
+      ]
+    ]
+  ],
+  "xiao_brain_interface.kicad_sch": [
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - C_VB: VBAT sense filter"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - C_VB: VBAT sense filter"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ],
+    [
+      [
+        "Description",
+        "Capacitor 100nF 16V X7R 0603 - C_DV2: DVDD_F HF"
+      ],
+      [
+        "Description",
+        "Capacitor 100nF 50V X7R 0603 - C_DV2: DVDD_F HF"
+      ]
+    ],
+    [
+      [
+        "Spec",
+        "100nF 16V X7R 0603 MLCC"
+      ],
+      [
+        "Spec",
+        "100nF 50V X7R 0603 MLCC"
+      ]
+    ]
+  ]
+}

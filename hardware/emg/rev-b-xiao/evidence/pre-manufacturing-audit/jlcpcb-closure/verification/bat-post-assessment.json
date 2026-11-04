@@ -1,0 +1,58 @@
+{
+  "source_geometry": {
+    "position_board_mm": [
+      44.635,
+      54.79
+    ],
+    "finished_hole_mm": 1.9,
+    "top_land_mm": 2.3,
+    "top_opening_mm": 1.9499999999999997,
+    "bottom_land_opening_mm": 3.0,
+    "nominal_top_annulus_mm": 0.19999999999999996,
+    "nominal_copper_edge_to_GND0_mm": 0.2470000000000001
+  },
+  "mask_candidates": [
+    {
+      "opening_mm": 1.95,
+      "nominal_radial_opening_beyond_hole_mm": 0.025,
+      "nominal_top_land_covered_radial_mm": 0.175,
+      "nominal_opening_edge_to_module_GND0_mm": 0.422,
+      "lip_sensitivity_mm": 0.165,
+      "sensitivity_basis": "Legacy+0.13diameter,+/-0.075holeposition,+/-0.05maskregistration; not a current tolerance contract"
+    },
+    {
+      "opening_mm": 2.0,
+      "nominal_radial_opening_beyond_hole_mm": 0.05,
+      "nominal_top_land_covered_radial_mm": 0.15,
+      "nominal_opening_edge_to_module_GND0_mm": 0.397,
+      "lip_sensitivity_mm": 0.14,
+      "sensitivity_basis": "Legacy+0.13diameter,+/-0.075holeposition,+/-0.05maskregistration; not a current tolerance contract"
+    },
+    {
+      "opening_mm": 2.05,
+      "nominal_radial_opening_beyond_hole_mm": 0.075,
+      "nominal_top_land_covered_radial_mm": 0.125,
+      "nominal_opening_edge_to_module_GND0_mm": 0.372,
+      "lip_sensitivity_mm": 0.115,
+      "sensitivity_basis": "Legacy+0.13diameter,+/-0.075holeposition,+/-0.05maskregistration; not a current tolerance contract"
+    }
+  ],
+  "decision": "RETAIN1.95; general2.0preference is not actual CAM approval or proof of a defect; no mask/copper/drill changes",
+  "legacy_fit_sensitivity": {
+    "classification": "ASSUMED tolerance model; not a manufacturing fit qualification",
+    "per_axis_error_budget_mm": 0.497,
+    "minimum_cone_radial_clearance_mm": 0.4099999999999999,
+    "allowed_module_shift_u_v_mm": [
+      0.513,
+      0.15
+    ],
+    "minimum_residual_after_allowed_shift_mm": 0.347,
+    "residual_clearance_margin_mm": 0.06299999999999994,
+    "one_feasible_combined_shift_u_v_mm": [
+      0.27861730837815935,
+      0.15
+    ],
+    "one_dimensional_shift_needed_mm": 0.08700000000000008,
+    "warning": "The old0.087mm figure is one-axis only. Combined two-axis errors require assessing the allowed shift rectangle; current numbers depend on unmeasured module/post tolerances. No probability or physicalPASS claim."
+  }
+}

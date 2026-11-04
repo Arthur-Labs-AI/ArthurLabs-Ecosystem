@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1280" viewBox="0 0 1500 1280">
+<rect width="1500" height="1280" fill="#101a27"/>
+<text x="36" y="43" fill="#edf5ff" font-size="25" font-family="sans-serif">Seated plug, withdrawal, and cable-bend section</text>
+<text x="36" y="72" fill="#afc9df" font-size="14" font-family="sans-serif">Section through one connector | z=0 at top PCB | same nominal geometry applies to all five</text>
+<rect x="455" y="470" width="442" height="54.400000000000006" fill="#20483b" fill-opacity="1" stroke="#81b08d" stroke-width="1.3" stroke-dasharray=""/>
+<rect x="480.5" y="283.0" width="204.0" height="187.0" fill="none" fill-opacity="1" stroke="#ffdc92" stroke-width="1.3" stroke-dasharray=""/>
+<rect x="358.1" y="300" width="232.89999999999998" height="153.0" fill="#1c95ad" fill-opacity="0.55" stroke="#8de3fa" stroke-width="1.3" stroke-dasharray=""/>
+<rect x="120.10000000000002" y="300" width="232.89999999999998" height="153.0" fill="none" fill-opacity="1" stroke="#8de3fa" stroke-width="1.3" stroke-dasharray="7,5"/>
+<path d="M120.10000000000002 376.5 L36.799999999999955 376.5" fill="none" stroke="#a6b3bf" stroke-width="3" stroke-dasharray=""/>
+<path d="M358.1 376.5 L188.10000000000002 376.5" fill="none" stroke="#ef927a" stroke-width="4" stroke-dasharray=""/>
+<path d="M480.5 238.8 L684.5 238.8" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<path d="M480.5 233.8 L480.5 243.8" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<path d="M684.5 233.8 L684.5 243.8" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<text x="547.5" y="230.8" fill="#def0ff" font-size="12" font-family="sans-serif">6.00 header</text>
+<path d="M358.1 194.60000000000002 L684.5 194.60000000000002" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<path d="M358.1 189.60000000000002 L358.1 199.60000000000002" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<path d="M684.5 189.60000000000002 L684.5 199.60000000000002" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<text x="486.29999999999995" y="186.60000000000002" fill="#def0ff" font-size="12" font-family="sans-serif">9.60 mated (reference)</text>
+<path d="M358.1 262.6 L591 262.6" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<path d="M358.1 257.6 L358.1 267.6" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<path d="M591 257.6 L591 267.6" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<text x="439.55" y="254.60000000000002" fill="#def0ff" font-size="12" font-family="sans-serif">6.85 housing</text>
+<path d="M120.10000000000002 572 L358.1 572" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<path d="M120.10000000000002 567 L120.10000000000002 577" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<path d="M358.1 567 L358.1 577" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<text x="204.10000000000002" y="564" fill="#def0ff" font-size="12" font-family="sans-serif">7.00 proposed travel</text>
+<path d="M849.4 470 L849.4 283.0" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<path d="M844.4 470 L854.4 470" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<path d="M844.4 283.0 L854.4 283.0" fill="none" stroke="#def0ff" stroke-width="1" stroke-dasharray=""/>
+<text x="857.4" y="376.5" fill="#def0ff" font-size="12" font-family="sans-serif">5.50 header height</text>
+<text x="462" y="546.4" fill="#edf5ff" font-size="13" font-family="sans-serif">PCB 1.60 nominal; north edge at y=0</text>
+<text x="55" y="115" fill="#edf5ff" font-size="15" font-family="sans-serif">GOLD = manufacturer header main-body bound; CYAN = catalog-sized plug at derived seating position.</text>
+<text x="55" y="142" fill="#ffc680" font-size="14" font-family="sans-serif">Plug lower Z=0.50 is an illustration assumption. No cavity, lock, contacts, or assembly tolerances are modeled.</text>
+<text x="55" y="635" fill="#edf5ff" font-size="20" font-family="sans-serif">Cable routing allowance — illustrative downward 90-degree bend toward the inner electrode strap</text>
+<path d="M1180 1004 L1180 806" fill="none" stroke="#c4dbe7" stroke-width="1" stroke-dasharray="5,4"/>
+<text x="1192" y="1020" fill="#edf5ff" font-size="12" font-family="sans-serif">y=0 board edge</text>
+<path d="M1117.3 899.5 L1007.3 899.5" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M1007.3 899.5 L1004.0615334943905 899.5794998904586" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M1004.0615334943905 899.5794998904586 L1000.830868738249 899.817808039635" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M1000.830868738249 899.817808039635 L997.6157886859461 900.2143503423245" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M997.6157886859461 900.2143503423245 L994.4240387469356 900.7681714933868" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M994.4240387469356 900.7681714933868 L991.2633081263846 901.4779372891601" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M991.2633081263846 901.4779372891601 L988.1412113012054 902.3419378416742" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M988.1412113012054 902.3419378416742 L985.0652696761135 903.3580916979206" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M985.0652696761135 903.3580916979206 L982.0428934639041 904.5239508542551" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M982.0428934639041 904.5239508542551 L979.0813638336014 905.8367066538527" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M979.0813638336014 905.8367066538527 L976.1878153694842 907.2931965530086" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M976.1878153694842 907.2931965530086 L973.3692188832474 908.889911739982" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M973.3692188832474 908.889911739982 L970.6323646207063 910.623005588032" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M970.6323646207063 910.623005588032 L967.9838459034994 912.4883029222774" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M967.9838459034994 912.4883029222774 L965.4300432451994 914.4813100780593" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M965.4300432451994 914.4813100780593 L962.9771089800968 916.5972257265727" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M962.9771089800968 916.5972257265727 L960.6309524416879 918.8309524416878" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M960.6309524416879 918.8309524416878 L958.3972257265727 921.1771089800968" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M958.3972257265727 921.1771089800968 L956.2813100780594 923.6300432451994" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M956.2813100780594 923.6300432451994 L954.2883029222775 926.1838459034993" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M954.2883029222775 926.1838459034993 L952.423005588032 928.8323646207062" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M952.423005588032 928.8323646207062 L950.6899117399821 931.5692188832473" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M950.6899117399821 931.5692188832473 L949.0931965530085 934.3878153694842" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M949.0931965530085 934.3878153694842 L947.6367066538528 937.2813638336014" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M947.6367066538528 937.2813638336014 L946.3239508542551 940.2428934639041" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M946.3239508542551 940.2428934639041 L945.1580916979207 943.2652696761135" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M945.1580916979207 943.2652696761135 L944.1419378416742 946.3412113012055" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M944.1419378416742 946.3412113012055 L943.2779372891601 949.4633081263846" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M943.2779372891601 949.4633081263846 L942.5681714933868 952.6240387469355" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M942.5681714933868 952.6240387469355 L942.0143503423244 955.8157886859461" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M942.0143503423244 955.8157886859461 L941.6178080396351 959.030868738249" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M941.6178080396351 959.030868738249 L941.3794998904586 962.2615334943904" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M941.3794998904586 962.2615334943904 L941.3 965.5" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<path d="M941.3 965.5 L941.3 1009.5" fill="none" stroke="#82dfc2" stroke-width="2" stroke-dasharray=""/>
+<text x="923.7" y="1035.9" fill="#82dfc2" font-size="12" font-family="sans-serif">R=3</text>
+<path d="M1117.3 899.5 L1007.3 899.5" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M1007.3 899.5 L1001.902555823984 899.632499817431" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M1001.902555823984 899.632499817431 L996.5181145637483 900.0296800660583" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M996.5181145637483 900.0296800660583 L991.1596478099102 900.6905839038741" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M991.1596478099102 900.6905839038741 L985.8400645782259 901.6136191556446" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M985.8400645782259 901.6136191556446 L980.572180210641 902.7965621486002" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M980.572180210641 902.7965621486002 L975.3686855020092 904.236563069457" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M975.3686855020092 904.236563069457 L970.2421161268558 905.9301528298677" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M970.2421161268558 905.9301528298677 L965.2048224398402 907.8732514237585" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M965.2048224398402 907.8732514237585 L960.268939722669 910.0611777564212" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M960.268939722669 910.0611777564212 L955.4463589491403 912.4886609216809" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M955.4463589491403 912.4886609216809 L950.7486981387456 915.14985289997" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M950.7486981387456 915.14985289997 L946.1872743678438 918.03834264672" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M946.1872743678438 918.03834264672 L941.7730765058323 921.147171537129" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M941.7730765058323 921.147171537129 L937.516738741999 924.468850130099" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M937.516738741999 924.468850130099 L933.428514966828 927.9953762109545" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M933.428514966828 927.9953762109545 L929.5182540694798 931.7182540694798" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M929.5182540694798 931.7182540694798 L925.7953762109545 935.628514966828" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M925.7953762109545 935.628514966828 L922.2688501300989 939.7167387419989" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M922.2688501300989 939.7167387419989 L918.9471715371291 943.9730765058323" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M918.9471715371291 943.9730765058323 L915.8383426467201 948.3872743678437" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M915.8383426467201 948.3872743678437 L912.9498528999701 952.9486981387456" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M912.9498528999701 952.9486981387456 L910.288660921681 957.6463589491402" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M910.288660921681 957.6463589491402 L907.8611777564213 962.468939722669" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M907.8611777564213 962.468939722669 L905.6732514237585 967.4048224398401" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M905.6732514237585 967.4048224398401 L903.7301528298677 972.4421161268558" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M903.7301528298677 972.4421161268558 L902.036563069457 977.5686855020092" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M902.036563069457 977.5686855020092 L900.5965621486002 982.772180210641" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M900.5965621486002 982.772180210641 L899.4136191556447 988.0400645782258" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M899.4136191556447 988.0400645782258 L898.490583903874 993.3596478099103" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M898.490583903874 993.3596478099103 L897.8296800660584 998.7181145637483" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M897.8296800660584 998.7181145637483 L897.4324998174311 1004.102555823984" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M897.4324998174311 1004.102555823984 L897.3 1009.5" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<path d="M897.3 1009.5 L897.3 1053.5" fill="none" stroke="#f2c87d" stroke-width="2" stroke-dasharray=""/>
+<text x="879.7" y="1079.9" fill="#f2c87d" font-size="12" font-family="sans-serif">R=5</text>
+<path d="M1117.3 899.5 L1007.3 899.5" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M1007.3 899.5 L998.6640893183744 899.7119997078896" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M998.6640893183744 899.7119997078896 L990.0489833019974 900.3474881056934" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M990.0489833019974 900.3474881056934 L981.4754364958563 901.4049342461985" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M981.4754364958563 901.4049342461985 L972.9641033251614 902.8817906490315" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M972.9641033251614 902.8817906490315 L964.5354883370255 904.7744994377603" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M964.5354883370255 904.7744994377603 L956.2098968032146 907.0785009111312" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M956.2098968032146 907.0785009111312 L948.0073858029693 909.7882445277884" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M948.0073858029693 909.7882445277884 L939.9477159037442 912.8972022780135" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M939.9477159037442 912.8972022780135 L932.0503035562704 916.397884410274" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M932.0503035562704 916.397884410274 L924.3341743186244 920.2818574746896" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M924.3341743186244 920.2818574746896 L916.817917021993 924.5397646399521" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M916.817917021993 924.5397646399521 L909.51963898855 929.161348234752" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M909.51963898855 929.161348234752 L902.4569224093317 934.1354744594065" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M902.4569224093317 934.1354744594065 L895.6467819871984 939.4501602081583" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M895.6467819871984 939.4501602081583 L889.1056239469249 945.0926019375272" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M889.1056239469249 945.0926019375272 L882.8492065111677 951.0492065111677" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M882.8492065111677 951.0492065111677 L876.8926019375272 957.3056239469248" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M876.8926019375272 957.3056239469248 L871.2501602081583 963.8467819871984" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M871.2501602081583 963.8467819871984 L865.9354744594066 970.6569224093317" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M865.9354744594066 970.6569224093317 L860.961348234752 977.71963898855" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M860.961348234752 977.71963898855 L856.3397646399521 985.017917021993" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M856.3397646399521 985.017917021993 L852.0818574746895 992.5341743186244" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M852.0818574746895 992.5341743186244 L848.197884410274 1000.2503035562703" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M848.197884410274 1000.2503035562703 L844.6972022780135 1008.1477159037441" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M844.6972022780135 1008.1477159037441 L841.5882445277883 1016.2073858029693" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M841.5882445277883 1016.2073858029693 L838.8785009111313 1024.4098968032147" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M838.8785009111313 1024.4098968032147 L836.5744994377603 1032.7354883370256" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M836.5744994377603 1032.7354883370256 L834.6817906490314 1041.1641033251615" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M834.6817906490314 1041.1641033251615 L833.2049342461985 1049.6754364958563" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M833.2049342461985 1049.6754364958563 L832.1474881056934 1058.2489833019972" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M832.1474881056934 1058.2489833019972 L831.5119997078897 1066.8640893183745" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M831.5119997078897 1066.8640893183745 L831.3 1075.5" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<path d="M831.3 1075.5 L831.3 1119.5" fill="none" stroke="#b6a0ed" stroke-width="2" stroke-dasharray=""/>
+<text x="813.7" y="1145.9" fill="#b6a0ed" font-size="12" font-family="sans-serif">R=8</text>
+<text x="55" y="690" fill="#edf5ff" font-size="14" font-family="sans-serif">5 mm straight lead + trial radii 3 / 5 / 8 mm;</text>
+<text x="55" y="714" fill="#edf5ff" font-size="14" font-family="sans-serif">wire OD 1.5 mm shown only as a sizing example.</text>
+<text x="55" y="748" fill="#edf5ff" font-size="14" font-family="sans-serif">Northmost wire surface, including OD/2:</text>
+<text x="75" y="780" fill="#edf5ff" font-size="14" font-family="sans-serif">R=3: y = -11.60 mm (illustrative)</text>
+<text x="75" y="805" fill="#edf5ff" font-size="14" font-family="sans-serif">R=5: y = -13.60 mm (illustrative)</text>
+<text x="75" y="830" fill="#edf5ff" font-size="14" font-family="sans-serif">R=8: y = -16.60 mm (illustrative)</text>
+<text x="55" y="900" fill="#ffc680" font-size="14" font-family="sans-serif">No bend radius is qualified for the selected harness.</text>
+<text x="55" y="926" fill="#edf5ff" font-size="14" font-family="sans-serif">Do not bend at the housing or use conductors for unplugging.</text>
+<text x="55" y="1180" fill="#edf5ff" font-size="14" font-family="sans-serif">Strap load -&gt; shell-mounted clamp -&gt; slack/service section -&gt; plug; keep the outer tightening strap load out of the PCB.</text>
+<text x="55" y="1211" fill="#edf5ff" font-size="14" font-family="sans-serif">Clamps/grommets, pull loads, fatigue cycles, and cutout tolerances require the separate enclosure/harness design.</text>
+<text x="55" y="1252" fill="#ffbf79" font-size="15" font-family="sans-serif">NOT RELEASED | nominal geometry only; no human-use, force, fatigue or full 3D clearance validation</text>
+</svg>
