@@ -3,7 +3,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { toolchainDir } from '@qa/shared';
-import { ToolchainManager, pickGoArchive, type GoRelease, type ScriptRunner } from '../src/toolchains.js';
+import {
+  ToolchainManager,
+  pickGoArchive,
+  type GoRelease,
+  type ScriptRunner,
+} from '../src/toolchains.js';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -15,7 +20,8 @@ const dataRoot = async (): Promise<string> => {
   return value;
 };
 
-const okRunner = (seen: Array<{ script: string; env: Record<string, string> }>): ScriptRunner =>
+const okRunner =
+  (seen: Array<{ script: string; env: Record<string, string> }>): ScriptRunner =>
   async (script, { cwd, env }) => {
     seen.push({ script, env: { ...env } });
     await writeFile(join(cwd, 'tool'), 'x');
@@ -28,14 +34,34 @@ const releases: GoRelease[] = [
     version: 'go1.24.2',
     stable: true,
     files: [
-      { filename: 'go1.24.2.linux-amd64.tar.gz', os: 'linux', arch: 'amd64', kind: 'archive', sha256: 'aaa' },
-      { filename: 'go1.24.2.linux-arm64.tar.gz', os: 'linux', arch: 'arm64', kind: 'archive', sha256: 'bbb' },
+      {
+        filename: 'go1.24.2.linux-amd64.tar.gz',
+        os: 'linux',
+        arch: 'amd64',
+        kind: 'archive',
+        sha256: 'aaa',
+      },
+      {
+        filename: 'go1.24.2.linux-arm64.tar.gz',
+        os: 'linux',
+        arch: 'arm64',
+        kind: 'archive',
+        sha256: 'bbb',
+      },
     ],
   },
   {
     version: 'go1.23.8',
     stable: true,
-    files: [{ filename: 'go1.23.8.linux-amd64.tar.gz', os: 'linux', arch: 'amd64', kind: 'archive', sha256: 'ccc' }],
+    files: [
+      {
+        filename: 'go1.23.8.linux-amd64.tar.gz',
+        os: 'linux',
+        arch: 'amd64',
+        kind: 'archive',
+        sha256: 'ccc',
+      },
+    ],
   },
 ];
 
@@ -116,6 +142,9 @@ describe('toolchain manager', () => {
     expect(path.some((p) => p.includes(join('python', '3.11')))).toBe(false);
     expect(path.some((p) => p.endsWith(join('jdk', 'bin')))).toBe(true);
     expect(env['JAVA_HOME']).toContain(join('java', '17'));
-    expect(JSON.parse(await readFile(join(toolchainDir(root, 'java', '17'), '.installed.json'), 'utf8')).packId).toBe('java');
+    expect(
+      JSON.parse(await readFile(join(toolchainDir(root, 'java', '17'), '.installed.json'), 'utf8'))
+        .packId,
+    ).toBe('java');
   });
 });

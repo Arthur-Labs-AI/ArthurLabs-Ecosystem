@@ -77,9 +77,11 @@ export function RunSummaryPanel({
               ? 'Project profile: used by ' +
                 profileUsage.usedAgentStackIds.length +
                 ' agent(s)' +
-                (profileUsage.staleAgentStackIds.length + profileUsage.missingAgentStackIds.length > 0
+                (profileUsage.staleAgentStackIds.length + profileUsage.missingAgentStackIds.length >
+                0
                   ? ', ' +
-                    (profileUsage.staleAgentStackIds.length + profileUsage.missingAgentStackIds.length) +
+                    (profileUsage.staleAgentStackIds.length +
+                      profileUsage.missingAgentStackIds.length) +
                     ' without (out of date or not built)'
                   : '')
               : 'Project profile: off'}

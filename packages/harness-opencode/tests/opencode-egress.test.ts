@@ -277,7 +277,7 @@ describe('tool shell wrapper egress', () => {
     expect(hide).toBeGreaterThan(-1);
     expect(bind).toBeGreaterThan(hide);
     expect(script).toContain(
-      "--setenv PATH '/home/u/.local/share/sentry/toolchains/dotnet/8.0/dotnet'\":$PATH\"",
+      '--setenv PATH \'/home/u/.local/share/sentry/toolchains/dotnet/8.0/dotnet\'":$PATH"',
     );
     expect(script).toContain('--setenv DOTNET_ROOT');
   });

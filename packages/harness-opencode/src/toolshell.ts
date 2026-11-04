@@ -134,7 +134,13 @@ export async function windowsHiddenPaths(
   const found: string[] = [];
   for (const path of [...mounts, '/mnt', '/run/WSL']) {
     if (found.includes(path)) continue;
-    if (await access(path).then(() => true, () => false)) found.push(path);
+    if (
+      await access(path).then(
+        () => true,
+        () => false,
+      )
+    )
+      found.push(path);
   }
   return found;
 }

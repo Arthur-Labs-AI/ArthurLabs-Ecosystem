@@ -68,7 +68,15 @@ export function ProjectProfilePanel({
             >
               <span style={{ minWidth: 150 }}>{stack.displayName}</span>
               <StatusPill
-                status={building ? 'running' : state === 'fresh' ? 'completed' : state === 'stale' ? 'partial' : 'cancelled'}
+                status={
+                  building
+                    ? 'running'
+                    : state === 'fresh'
+                      ? 'completed'
+                      : state === 'stale'
+                        ? 'partial'
+                        : 'cancelled'
+                }
                 label={building ? 'Writing…' : STATE_LABEL[state]}
               />
               {agent?.createdAt !== undefined ? (
@@ -77,7 +85,10 @@ export function ProjectProfilePanel({
               <button
                 disabled={building || loading}
                 onClick={() => onBuild([stack.id])}
-                aria-label={(state === 'none' ? 'Build profile for ' : 'Rebuild profile for ') + stack.displayName}
+                aria-label={
+                  (state === 'none' ? 'Build profile for ' : 'Rebuild profile for ') +
+                  stack.displayName
+                }
               >
                 {state === 'none' ? 'Build' : 'Rebuild'}
               </button>

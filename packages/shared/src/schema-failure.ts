@@ -25,5 +25,7 @@ export function describePlanRejection(cause: unknown, empty = false): string {
   const fields = describeSchemaIssues(cause);
   if (fields.length > 0) return fields;
   const message = (cause as { message?: unknown } | null | undefined)?.message;
-  return typeof message === 'string' ? message.replace(/\s+/g, ' ').trim().slice(0, 160) : 'unknown';
+  return typeof message === 'string'
+    ? message.replace(/\s+/g, ' ').trim().slice(0, 160)
+    : 'unknown';
 }

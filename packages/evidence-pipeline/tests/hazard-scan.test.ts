@@ -12,7 +12,7 @@ afterEach(async () => {
 
 describe('hazard scan', () => {
   it('flags deletes and separator rewrites, and ignores plain code', () => {
-    expect(scoreHazards("await rm(target, { recursive: true });").hazards).toEqual([
+    expect(scoreHazards('await rm(target, { recursive: true });').hazards).toEqual([
       'deletes files or directories',
     ]);
     expect(scoreHazards("p.replaceAll('\\\\', '/')").score).toBeGreaterThanOrEqual(4);
@@ -22,7 +22,8 @@ describe('hazard scan', () => {
   it('ranks product source, skipping dependencies, builds and tests', async () => {
     root = await mkdtemp(join(tmpdir(), 'hazard-'));
     const files: Record<string, string> = {
-      'packages/store/src/index.ts': "rmSync(path, { recursive: true }); name.replaceAll('\\\\', '/');",
+      'packages/store/src/index.ts':
+        "rmSync(path, { recursive: true }); name.replaceAll('\\\\', '/');",
       'packages/small/src/index.ts': "const h = createHash('sha256'); JSON.parse(text);",
       'packages/plain/src/index.ts': 'export const one = 1;',
       'packages/store/dist/index.js': 'rmSync(path);',

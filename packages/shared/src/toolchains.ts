@@ -57,7 +57,8 @@ export const TOOLCHAIN_PACKS: readonly ToolchainPackInfo[] = [
   {
     id: 'java',
     label: 'Java / Kotlin',
-    description: 'An Eclipse Temurin JDK and Apache Maven. Gradle projects bring their own wrapper.',
+    description:
+      'An Eclipse Temurin JDK and Apache Maven. Gradle projects bring their own wrapper.',
     versions: ['21', '17', '11', '8'],
     defaultVersion: '21',
     approxSizeMb: 450,
@@ -109,7 +110,10 @@ export function toolchainEnvironment(
         env: { RUSTUP_HOME: join(dir, 'rustup'), CARGO_HOME: join(dir, 'cargo') },
       };
     case 'go':
-      return { path: [join(dir, 'go', 'bin')], env: { GOROOT: join(dir, 'go'), GOTOOLCHAIN: 'local' } };
+      return {
+        path: [join(dir, 'go', 'bin')],
+        env: { GOROOT: join(dir, 'go'), GOTOOLCHAIN: 'local' },
+      };
     case 'java':
       return {
         path: [join(dir, 'jdk', 'bin'), join(dir, 'maven', 'bin')],

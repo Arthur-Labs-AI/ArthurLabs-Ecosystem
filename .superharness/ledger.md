@@ -16,40 +16,43 @@ unrelated to the committed files. Full run-engine suite likewise fails
 only on verification-trust systemd/EBUSY environment cases, recorded
 earlier as environmental. Paid comparison run remains owner's.
 shux CLI unavailable in this environment (contract command could not run).
+
 ## 2026-10-28 - Context-window compaction in all 3 harnesses (uncommitted, deployed)
 
 Owner run_01M622G8P67JCK4CCA3VG0CYXN: DeepSeek reporting died with
 CONTEXT_WINDOW_EXCEEDED (816237 message tokens + 256000 requested completion
+
 > 1048576 window) after 1231 events in ONE session; run failed, 0 findings
-from DS, GLM cancelled as a consequence. Root cause: no context budget
-anywhere - planning+per-check investigation+reporting shared one session,
-and the existing fresh report context was used only on deadline/timeout.
-Fix, identical semantics in DS/OC/GLM via shared evidence-pipeline:
-(a) new context-budget.ts: isContextWindowExceeded classifier (provider
-wordings + error codes + cause chain), ContextBudget (peak observed input
-tokens, rotate at 70% of window, reset on rotation), estimatePromptTokens.
-(b) buildInvestigationCompactionContext: host compaction seed - contract,
-frozen plan, operation receipt, bounded tool notes; model reasoning never
-crosses. (c) Each adapter: proactive rotation before a check turn and
-before reporting when budget trips; reactive rotation+one retry of the
-same check / report attempt on provider context overflow; overflow after
-retry falls back to blocked-checks + fresh report (partial, never run loss).
-Warning code QA_CONTEXT_COMPACTED in all 3. Windows: DS 1048576 (provider-
-reported), OC/GLM conservative 200000 defaults, all overridable via
-contextWindowTokens adapter option. Regression tests red-first: DS report
-recovery (was run.failed, now run.completed + 2 clients + REPORT-ONLY
-RECOVERY seed), DS proactive rotation (tiny window), OC report recovery,
-GLM report recovery, shared classifier/budget units.
-Gates: evidence 100, DS 77, OC 130, GLM 107 PASS; typecheck 37/37, lint
-20/20, build 20/20, prettier PASS. Full turbo test: only
-@qa/snapshot-engine FAIL = 5s timeout flake under parallel load (passes
-standalone 4/4 in 390ms; package does not depend on touched code) - not
-all-green, recorded honestly. Runtime redeployed 1.0.2-488602a (18 tasks,
-ENTRY_OK, SENTRY_DEPLOY_EXIT:0); Sentry reopened, Running yes. Nothing
-committed. Paid comparison run is owner's; acceptance = DS completes
-reporting on a long investigation (or emits QA_CONTEXT_COMPACTED and
-still reports) instead of CONTEXT_WINDOW_EXCEEDED run failure.
-shux CLI unavailable in this environment (contract command could not run).
+> from DS, GLM cancelled as a consequence. Root cause: no context budget
+> anywhere - planning+per-check investigation+reporting shared one session,
+> and the existing fresh report context was used only on deadline/timeout.
+> Fix, identical semantics in DS/OC/GLM via shared evidence-pipeline:
+> (a) new context-budget.ts: isContextWindowExceeded classifier (provider
+> wordings + error codes + cause chain), ContextBudget (peak observed input
+> tokens, rotate at 70% of window, reset on rotation), estimatePromptTokens.
+> (b) buildInvestigationCompactionContext: host compaction seed - contract,
+> frozen plan, operation receipt, bounded tool notes; model reasoning never
+> crosses. (c) Each adapter: proactive rotation before a check turn and
+> before reporting when budget trips; reactive rotation+one retry of the
+> same check / report attempt on provider context overflow; overflow after
+> retry falls back to blocked-checks + fresh report (partial, never run loss).
+> Warning code QA_CONTEXT_COMPACTED in all 3. Windows: DS 1048576 (provider-
+> reported), OC/GLM conservative 200000 defaults, all overridable via
+> contextWindowTokens adapter option. Regression tests red-first: DS report
+> recovery (was run.failed, now run.completed + 2 clients + REPORT-ONLY
+> RECOVERY seed), DS proactive rotation (tiny window), OC report recovery,
+> GLM report recovery, shared classifier/budget units.
+> Gates: evidence 100, DS 77, OC 130, GLM 107 PASS; typecheck 37/37, lint
+> 20/20, build 20/20, prettier PASS. Full turbo test: only
+> @qa/snapshot-engine FAIL = 5s timeout flake under parallel load (passes
+> standalone 4/4 in 390ms; package does not depend on touched code) - not
+> all-green, recorded honestly. Runtime redeployed 1.0.2-488602a (18 tasks,
+> ENTRY_OK, SENTRY_DEPLOY_EXIT:0); Sentry reopened, Running yes. Nothing
+> committed. Paid comparison run is owner's; acceptance = DS completes
+> reporting on a long investigation (or emits QA_CONTEXT_COMPACTED and
+> still reports) instead of CONTEXT_WINDOW_EXCEEDED run failure.
+> shux CLI unavailable in this environment (contract command could not run).
+
 ## 2026-10-28 — Reporting reserve COMPLETE / ACTIVATED
 
 Run_01M60MRP6TCY47QM8S1ZXF28HZ consumed30min before reports. Host phase
@@ -79,6 +82,7 @@ runtime1.0.2-df224dc native18 build tasks + hello/current symlink verified; code
 unchanged from380b7e0. Sentry reopened. No paid run, no claim of model accuracy or
 guaranteed deadline compliance; prompt behavior still needs funded comparison.
 Docs: docs/reviews/qa-stage-contracts.md. shux absent; protocol updated directly.
+
 ## Ordered compact QA stages + DeepSeek streaming — IMPLEMENTED / VERIFIED
 
 Branch renamed locally/remotely to fix/qa-stage-contracts at owner request; old
@@ -95,6 +99,7 @@ OC/DS,23% GLM (not latency/accuracy proof). Final non-engine39tasks, engine94,
 static/build60tasks PASS; DS69, GLM102 PASS, format/hygiene/diff PASS. No paid runs.
 Desktop stopped gracefully after no-active-run check. Activation/hello/native tests
 next. Details: docs/reviews/qa-stage-contracts.md. shux unavailable; direct receipts.
+
 ## Latest run 01M5ZS2 assessment — COMPLETE (investigation)
 
 New runtime workflow confirmed: all3 prep ready, OC/GLM checkpoint present, correct
@@ -109,6 +114,7 @@ No product edits/deploy/paid run. Recommended next scope: live DeepSeek event
 forwarding + interrupted-turn regression, enforce phase separation/budgets, semantic
 limitation classification. Details: docs/reviews/sentry-run-01M5ZS2-assessment.md.
 shux unavailable; direct protocol receipts updated.
+
 ## QA depth activation — COMPLETE
 
 Implementation51c3896 pushed on codex/independent-agent-depth. Active Linux runtime
@@ -120,6 +126,7 @@ non-engine39tasks PASS, combined static/build60tasks PASS. Sentry reopened from
 this checkout after graceful stop/no active QA. No paid model run/accuracy claim.
 Source tree committed; this receipt records activation. Main/dev unchanged.
 Details and new-run diagnosis: docs/reviews/qa-depth-follow-up.md. shux absent.
+
 ## QA depth follow-up — IMPLEMENTED / VERIFIED, activation pending
 
 Reviewed owner run_01M5ZNPA0HBVTQE9E42YHESM58: old workflow, all prep limited;
@@ -134,6 +141,7 @@ build/typecheck/lint60tasks PASS; adapter phase18 PASS; format/hygiene/diff PASS
 No paid run. Desktop stopped gracefully after verifying no active runs. Runtime
 activation/hello and native smoke next. No main/dev merge. shux unavailable.
 Details: docs/reviews/qa-depth-follow-up.md.
+
 ## Review of AI completion d85ca84 — COMPLETE
 
 Owner requested review, not further implementation. Full diff/callers inspected.
@@ -147,6 +155,7 @@ cache preparation/isolation/cancellation smoke PASS. No product edits, deploymen
 paid run or commit. Review: docs/reviews/qa-depth-d85ca84-review.md.
 shux unavailable; direct protocol receipts. Recommended next work: coverage
 negative fixtures and conservative classification, then deploy/hello and comparison.
+
 ## First real depth run assessment — COMPLETE
 
 Reviewed owner export run_01M5Z8X98VKXVTVJ262GB9HACH, treated as data only.
@@ -864,11 +873,9 @@ persist activation with SENTRY_OPENCODE_PROVIDER and test rendered interactions/
 The cause of the other AI stopping cannot be established from the working tree alone.
 shux contract attempted, unavailable on PATH; task status/ledger/handoff updated directly.
 
-
 ## 2026-10-28 — Protected reporting reserve (in progress)
 
 Investigating run_01M60MRP6TCY47QM8S1ZXF28HZ: all agents consumed the run deadline before a valid report. Implementing host phase deadlines, owned-process shutdown and fresh report-only recovery from each agent’s own redacted facts. OpenCode observations now stream. DeepSeek real SDK local-stub probe proves old session IDs cannot resume after process restart. Four deterministic recovery/cancellation/shutdown tests pass for DeepSeek. Remaining: parity tests, real-binary zero-credit recovery, full gates, deployment. shux contract unavailable; protocol updated directly.
-
 
 ## 2026-10-28 — Infrastructure and large-project problem document (complete)
 

@@ -55,7 +55,8 @@ const HAZARD_PATTERNS: readonly HazardPattern[] = [
   {
     label: 'rewrites path separators or names',
     weight: 4,
-    pattern: /replace(?:All)?\(\s*(?:'\\\\'|"\\\\"|\/\\\\\/|['"]\/['"])|\b(?:path\.sep|os\.sep|PATH_SEPARATOR)\b/,
+    pattern:
+      /replace(?:All)?\(\s*(?:'\\\\'|"\\\\"|\/\\\\\/|['"]\/['"])|\b(?:path\.sep|os\.sep|PATH_SEPARATOR)\b/,
   },
   {
     label: 'decides containment by prefix or relative path',

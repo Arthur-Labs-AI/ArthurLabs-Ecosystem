@@ -654,7 +654,12 @@ export class RunCoordinator {
     requested: boolean,
   ): Promise<{ usage: RunProfileUsage; texts: Map<AgentStackId, string> }> {
     const texts = new Map<AgentStackId, string>();
-    const usage = { requested, usedAgentStackIds: [] as AgentStackId[], staleAgentStackIds: [] as AgentStackId[], missingAgentStackIds: [] as AgentStackId[] };
+    const usage = {
+      requested,
+      usedAgentStackIds: [] as AgentStackId[],
+      staleAgentStackIds: [] as AgentStackId[],
+      missingAgentStackIds: [] as AgentStackId[],
+    };
     if (!requested) return { usage, texts };
     for (const { stack } of registrations) {
       const profile = await this.profiles.store.read(projectId, stack.id);

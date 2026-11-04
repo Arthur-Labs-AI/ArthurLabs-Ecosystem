@@ -188,37 +188,51 @@ describe('proof certification of output handling', () => {
 
   it('accepts an interpreter inline script whose quoted body has semicolons and newlines', () => {
     const script =
-      'node --input-type=module -e "import { rm } from \'node:fs/promises\'; const r = await rm(\'x\');\nconsole.log(r);" 2>&1';
+      "node --input-type=module -e \"import { rm } from 'node:fs/promises'; const r = await rm('x');\nconsole.log(r);\" 2>&1";
     expect(isExecutableProofOperation(withFlag(script, false))).toBe(true);
-    expect(isExecutableProofOperation(withFlag("python3 -c 'import os; print(1)'", false))).toBe(true);
+    expect(isExecutableProofOperation(withFlag("python3 -c 'import os; print(1)'", false))).toBe(
+      true,
+    );
     expect(isExecutableProofOperation(withFlag('node -e "a(); b()"', false))).toBe(true);
   });
 
   it('accepts an interpreter fed by one quoted heredoc and nothing else', () => {
     const body = "import { rm } from 'node:fs/promises';\nawait rm('x');\nconsole.log(1);";
-    expect(isExecutableProofOperation(withFlag("node --input-type=module <<'EOF'\n" + body + '\nEOF', false))).toBe(true);
-    expect(isExecutableProofOperation(withFlag('python3 - <<"PY"\nprint(1)\nPY\n', false))).toBe(true);
+    expect(
+      isExecutableProofOperation(
+        withFlag("node --input-type=module <<'EOF'\n" + body + '\nEOF', false),
+      ),
+    ).toBe(true);
+    expect(isExecutableProofOperation(withFlag('python3 - <<"PY"\nprint(1)\nPY\n', false))).toBe(
+      true,
+    );
   });
 
   it('accepts a heredoc as the adapters record it: newlines flattened, long scripts cut', () => {
-    const flat = "node --input-type=module <<'EOF' import { rm } from 'node:fs/promises'; await rm('x'); EOF";
+    const flat =
+      "node --input-type=module <<'EOF' import { rm } from 'node:fs/promises'; await rm('x'); EOF";
     expect(isExecutableProofOperation(withFlag(flat, false))).toBe(true);
-    const cut = "node --input-type=module <<'EOF' import { rm } from 'node:fs/promises'; " + 'await rm("x"); '.repeat(140);
+    const cut =
+      "node --input-type=module <<'EOF' import { rm } from 'node:fs/promises'; " +
+      'await rm("x"); '.repeat(140);
     expect(cut.length).toBeGreaterThan(1990);
     expect(isExecutableProofOperation(withFlag(cut, false))).toBe(true);
     expect(isExecutableProofOperation(withFlag(flat + ' && rm -rf x', false))).toBe(false);
-    expect(isExecutableProofOperation(withFlag("node --input-type=module <<'EOF' a(); b();", false))).toBe(false);
+    expect(
+      isExecutableProofOperation(withFlag("node --input-type=module <<'EOF' a(); b();", false)),
+    ).toBe(false);
   });
 
   it('rejects a heredoc with unquoted tag, trailing commands or a second terminator', () => {
     const rejects = [
-      "node - <<EOF\na();\nEOF",
+      'node - <<EOF\na();\nEOF',
       "node - <<'EOF'\na();\nEOF\nrm -rf x",
       "node - <<'EOF'\na();\nEOF\nrm -rf x\nEOF",
       "bash <<'EOF'\na; b\nEOF",
       "node - <<'EOF'\na();\nEOF && echo ok",
     ];
-    for (const command of rejects) expect(isExecutableProofOperation(withFlag(command, true))).toBe(false);
+    for (const command of rejects)
+      expect(isExecutableProofOperation(withFlag(command, true))).toBe(false);
   });
 
   it('still rejects what follows or hides behind an inline script', () => {
@@ -234,7 +248,8 @@ describe('proof certification of output handling', () => {
       'sh -c "a && b"',
       'node - <<EOF\na();\nEOF',
     ];
-    for (const command of rejects) expect(isExecutableProofOperation(withFlag(command, true))).toBe(false);
+    for (const command of rejects)
+      expect(isExecutableProofOperation(withFlag(command, true))).toBe(false);
   });
 });
 

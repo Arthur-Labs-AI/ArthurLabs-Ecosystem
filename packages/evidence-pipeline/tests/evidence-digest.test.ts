@@ -81,7 +81,9 @@ describe('observed tool digest', () => {
 
   it('trims long passing command output to head and tail before dropping it', () => {
     const notes = new ObservedToolNotes();
-    notes.add(message('observed tool bash output: EARLY-VERDICT ' + 'a'.repeat(3800) + ' EARLY-TAIL'));
+    notes.add(
+      message('observed tool bash output: EARLY-VERDICT ' + 'a'.repeat(3800) + ' EARLY-TAIL'),
+    );
     for (let i = 0; i < 70; i += 1)
       notes.add(message('observed tool bash output: ok ' + 'b'.repeat(3800) + i));
     const rendered = notes.render();

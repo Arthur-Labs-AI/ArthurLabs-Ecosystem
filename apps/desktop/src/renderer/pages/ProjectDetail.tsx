@@ -338,7 +338,9 @@ export function ProjectDetail(): React.JSX.Element {
           agents={profileAgents}
           loading={profile.status.isLoading}
           onBuild={(ids) => profile.build.mutate(ids)}
-          buildError={profile.build.error instanceof Error ? profile.build.error.message : undefined}
+          buildError={
+            profile.build.error instanceof Error ? profile.build.error.message : undefined
+          }
         />
       </PageSection>
       <PageSection title="Run QA">
@@ -430,7 +432,10 @@ export function ProjectDetail(): React.JSX.Element {
           <p className="metadata" style={{ margin: '0 0 6px' }}>
             {freshProfileCount === 0
               ? 'No selected agent has an up-to-date profile; runs start without one.'
-              : freshProfileCount + ' of ' + effectiveStacks.length + ' selected agents have an up-to-date profile and get it back; the others start without one.'}
+              : freshProfileCount +
+                ' of ' +
+                effectiveStacks.length +
+                ' selected agents have an up-to-date profile and get it back; the others start without one.'}
           </p>
           <label
             className="metadata"
@@ -445,10 +450,10 @@ export function ProjectDetail(): React.JSX.Element {
             Allow tool and SDK downloads
           </label>
           <p className="metadata" style={{ margin: '0 0 6px' }}>
-            Lets agents download missing compilers and SDKs from the official vendor sites (Rust, .NET,
-            Go, Python tooling, Java). Other sites stay blocked. Downloads are discarded after the run;
-            for repeated use install the toolchain under Settings, Toolchains. Applies to OpenCode
-            and Claude Code.
+            Lets agents download missing compilers and SDKs from the official vendor sites (Rust,
+            .NET, Go, Python tooling, Java). Other sites stay blocked. Downloads are discarded after
+            the run; for repeated use install the toolchain under Settings, Toolchains. Applies to
+            OpenCode and Claude Code.
           </p>
           <p className="metadata" style={{ margin: '0 0 6px' }}>
             Package installs from registries are always allowed. Web access also lets agents fetch

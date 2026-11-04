@@ -37,7 +37,9 @@ describe('describePlanRejection', () => {
     expect(
       describePlanRejection({ issues: [{ path: ['plannedChecks', 0], code: 'too_small' }] }),
     ).toBe('plannedChecks.0 [too_small]');
-    const long = describePlanRejection(new Error('planning response\nwas not   JSON ' + 'x'.repeat(400)));
+    const long = describePlanRejection(
+      new Error('planning response\nwas not   JSON ' + 'x'.repeat(400)),
+    );
     expect(long).toHaveLength(160);
     expect(long).not.toContain('\n');
     expect(describePlanRejection('boom')).toBe('unknown');

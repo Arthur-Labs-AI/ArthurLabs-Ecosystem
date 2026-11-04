@@ -740,7 +740,8 @@ export class SentryRuntimeHost {
         })
         .finally(() => {
           this.profileBuilds.delete(key);
-          if (!this.closed) this.notify('profile.updated', { projectId: id, agentStackId: stackId });
+          if (!this.closed)
+            this.notify('profile.updated', { projectId: id, agentStackId: stackId });
         });
     }
     return { projectId: id, started };
@@ -1407,10 +1408,9 @@ export class SentryRuntimeHost {
           requireString(params, 'version'),
         );
       case 'toolchains.remove':
-        return this.toolchains.remove(
-          requireString(params, 'packId'),
-          requireString(params, 'version'),
-        ).then(() => ({ removed: true }));
+        return this.toolchains
+          .remove(requireString(params, 'packId'), requireString(params, 'version'))
+          .then(() => ({ removed: true }));
       case 'projects.profile':
         return this.profileStatus(requireString(params, 'projectId'));
       case 'projects.buildProfile': {

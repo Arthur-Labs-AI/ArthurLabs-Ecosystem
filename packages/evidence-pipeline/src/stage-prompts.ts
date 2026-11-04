@@ -149,7 +149,13 @@ export function renderCheckConclusions(
   const sweep = conclusions.slice(plan.plannedChecks.length).flatMap((statement) =>
     (statement ?? '').trim().length === 0
       ? []
-      : [{ check: 'hazard-sweep', description: 'Host-flagged risky source file', statement: statement as string }],
+      : [
+          {
+            check: 'hazard-sweep',
+            description: 'Host-flagged risky source file',
+            statement: statement as string,
+          },
+        ],
   );
   const all = [...entries, ...sweep];
   return all.length === 0 ? '' : JSON.stringify(all);

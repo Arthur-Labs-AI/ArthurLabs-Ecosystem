@@ -299,7 +299,9 @@ describe('project profile methods', () => {
     try {
       await host.recover();
       const unknown = 'proj_01ARZ3NDEKTSV4RRFFQ69G5FAV';
-      await expect(host.profileStatus(unknown)).rejects.toMatchObject({ code: 'PROJECT_NOT_FOUND' });
+      await expect(host.profileStatus(unknown)).rejects.toMatchObject({
+        code: 'PROJECT_NOT_FOUND',
+      });
       expect(() => host.buildProfiles(unknown)).toThrow(/Project not found/);
     } finally {
       host.close();

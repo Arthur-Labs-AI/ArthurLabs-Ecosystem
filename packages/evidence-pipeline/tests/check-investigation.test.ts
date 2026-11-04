@@ -410,7 +410,13 @@ describe('investigateChecks second pass', () => {
           const lead = text.includes('LEAD FOLLOW-UP');
           return {
             text:
-              (lead ? 'lead looked at: ' : deepen ? 'deepened: ' : second ? 'second pass: ' : 'first pass: ') +
+              (lead
+                ? 'lead looked at: '
+                : deepen
+                  ? 'deepened: '
+                  : second
+                    ? 'second pass: '
+                    : 'first pass: ') +
               name +
               (options.leadsOnFirstPass && !deepen && !second && !lead && name === 'Check A'
                 ? '\nLeads: symlink import fails; cleanup removes the root'
@@ -489,8 +495,16 @@ describe('investigateChecks second pass', () => {
       undecided: [],
       clockPerTurnMin: 2,
       hazards: [
-        { file: 'packages/probed/src/index.ts', hazards: ['parses or deserializes text'], score: 8 },
-        { file: 'packages/fresh/src/index.ts', hazards: ['hashes or fingerprints content'], score: 4 },
+        {
+          file: 'packages/probed/src/index.ts',
+          hazards: ['parses or deserializes text'],
+          score: 8,
+        },
+        {
+          file: 'packages/fresh/src/index.ts',
+          hazards: ['hashes or fingerprints content'],
+          score: 4,
+        },
         { file: 'packages/wipe/src/index.ts', hazards: ['deletes files or directories'], score: 4 },
       ],
     });

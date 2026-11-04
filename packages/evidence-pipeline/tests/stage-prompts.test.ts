@@ -167,9 +167,8 @@ describe('falsification planning and leads', () => {
   });
 
   it('tells follow-up turns to probe every input class and not to argue a violation away', async () => {
-    const { buildLeadPrompt, buildDeepeningPrompt, buildHazardPrompt } = await import(
-      '../src/index.js'
-    );
+    const { buildLeadPrompt, buildDeepeningPrompt, buildHazardPrompt } =
+      await import('../src/index.js');
     const prompts = [
       buildLeadPrompt(plan, 0, 'x'),
       buildDeepeningPrompt(plan, 0, '', []),
@@ -177,7 +176,8 @@ describe('falsification planning and leads', () => {
       buildQaCheckInvestigationPrompt(plan, 0, new Map()),
     ];
     for (const prompt of prompts) expect(prompt).toContain('Do not argue a reproduced violation');
-    for (const prompt of prompts.slice(0, 3)) expect(prompt).toContain('the root or container itself');
+    for (const prompt of prompts.slice(0, 3))
+      expect(prompt).toContain('the root or container itself');
     expect(prompts[2]).toContain('src/a.ts');
   });
 });
@@ -195,11 +195,14 @@ describe('project profile prompts', () => {
   });
 
   it('composes bounded profile text and labels it unverified', () => {
-    const long = composeProfileText({ projectUnderstanding: 'x'.repeat(20000), criticalFlows: ['a'] });
+    const long = composeProfileText({
+      projectUnderstanding: 'x'.repeat(20000),
+      criticalFlows: ['a'],
+    });
     expect(long.length).toBeLessThanOrEqual(8000);
-    expect(composeProfileText({ projectUnderstanding: 'Notes.', criticalFlows: ['src/a.ts'] })).toBe(
-      'Notes.\n\nEntry points and flows:\n- src/a.ts',
-    );
+    expect(
+      composeProfileText({ projectUnderstanding: 'Notes.', criticalFlows: ['src/a.ts'] }),
+    ).toBe('Notes.\n\nEntry points and flows:\n- src/a.ts');
     expect(profileContextEntry('t').note).toContain('UNVERIFIED');
     expect(profileContextEntry('t').note).toContain('never evidence');
   });

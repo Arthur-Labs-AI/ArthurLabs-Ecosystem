@@ -7,8 +7,14 @@
       "title": "Sentry repository: previously reproduced, still open defects",
       "intendedBehavior": "Snapshots preserve literal filenames; workspace cleanup removes only workspace-shaped parents.",
       "clean": false,
-      "entryPoints": ["packages/persistence/src/filesystem.ts", "packages/workspace-factory/src/index.ts"],
-      "relevantPaths": ["packages/persistence/src/filesystem.ts", "packages/workspace-factory/src/index.ts"],
+      "entryPoints": [
+        "packages/persistence/src/filesystem.ts",
+        "packages/workspace-factory/src/index.ts"
+      ],
+      "relevantPaths": [
+        "packages/persistence/src/filesystem.ts",
+        "packages/workspace-factory/src/index.ts"
+      ],
       "pathBases": [""],
       "knownDefects": [
         {
@@ -32,7 +38,18 @@
                 "literal filename"
               ]
             },
-            { "id": "subject", "phrases": ["filename", "file name", "manifest", "snapshot", "relativepath", "walktree", "copytree"] }
+            {
+              "id": "subject",
+              "phrases": [
+                "filename",
+                "file name",
+                "manifest",
+                "snapshot",
+                "relativepath",
+                "walktree",
+                "copytree"
+              ]
+            }
           ],
           "minMarkers": 2,
           "requiredMarkers": ["mechanism"],
@@ -60,7 +77,16 @@
             },
             {
               "id": "effect",
-              "phrases": ["removes", "removed", "deletes", "deleted", "cleaned:true", "cleaned: true", "data root", "dataroot"]
+              "phrases": [
+                "removes",
+                "removed",
+                "deletes",
+                "deleted",
+                "cleaned:true",
+                "cleaned: true",
+                "data root",
+                "dataroot"
+              ]
             },
             { "id": "subject", "phrases": ["cleanup", "workspacefactory", "workspace factory"] }
           ],

@@ -252,7 +252,12 @@ describe('independent depth policy', () => {
     };
     const status = (ops: Array<[string, typeof probe]>) =>
       groundCoverage(report, new Map(ops)).checks[0]?.status;
-    expect(status([['op_1', probe], ['op_2', read]])).toBe('passed');
+    expect(
+      status([
+        ['op_1', probe],
+        ['op_2', read],
+      ]),
+    ).toBe('passed');
     expect(status([['op_2', read]])).toBe('inconclusive');
     expect(status([['op_1', probe]])).toBe('inconclusive');
     const why = (ops: Array<[string, typeof probe]>) =>

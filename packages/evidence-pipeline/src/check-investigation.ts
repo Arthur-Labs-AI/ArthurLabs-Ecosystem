@@ -353,7 +353,8 @@ export async function* investigateChecks<T extends InvestigationTurn>(
       })),
       ...candidates.map(({ index }) => ({
         index,
-        label: 'DEEPENING (extra angles; the first-pass verdict above stands unless this reproduced a defect)',
+        label:
+          'DEEPENING (extra angles; the first-pass verdict above stands unless this reproduced a defect)',
         prompt: () =>
           buildDeepeningPrompt(
             plan,
@@ -381,7 +382,10 @@ export async function* investigateChecks<T extends InvestigationTurn>(
         (leadTasks.length === 0
           ? ''
           : ' Leads (agent-stated): ' +
-            leadTasks.map((lead) => lead.text).join(' | ').slice(0, 700)),
+            leadTasks
+              .map((lead) => lead.text)
+              .join(' | ')
+              .slice(0, 700)),
     });
     let ran = false;
     try {

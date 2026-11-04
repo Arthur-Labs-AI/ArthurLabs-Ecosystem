@@ -76,9 +76,7 @@ export class ProjectProfileBuilder {
         return {
           agentStackId: stack.id,
           state,
-          ...(profile === undefined
-            ? {}
-            : { createdAt: profile.createdAt, text: profile.text }),
+          ...(profile === undefined ? {} : { createdAt: profile.createdAt, text: profile.text }),
         };
       }),
     );
@@ -98,10 +96,11 @@ export class ProjectProfileBuilder {
     if (!['ready', 'locked_for_run'].includes(record.managedCopy.state))
       throw new RunEngineError(
         'PROJECT_NOT_READY',
-        'The project is being changed (' + record.managedCopy.state + '); try again when it is ready.',
+        'The project is being changed (' +
+          record.managedCopy.state +
+          '); try again when it is ready.',
       );
-    const context =
-      record.context ?? this.repository.getContextForRevision(record.revision.id);
+    const context = record.context ?? this.repository.getContextForRevision(record.revision.id);
     if (context === undefined)
       throw new RunEngineError('PROJECT_NOT_FOUND', 'Project context is missing.');
     await registration.preflight?.();
@@ -110,7 +109,10 @@ export class ProjectProfileBuilder {
     const stack =
       resolvedModelId === undefined
         ? registration.stack
-        : { ...registration.stack, model: { ...registration.stack.model, modelId: resolvedModelId } };
+        : {
+            ...registration.stack,
+            model: { ...registration.stack.model, modelId: resolvedModelId },
+          };
 
     // Ids only name the private workspace and the request; no run row is ever written for them.
     const qaRunId = createQARunId();
@@ -126,7 +128,10 @@ export class ProjectProfileBuilder {
       ...(signal === undefined ? {} : { signal }),
     });
     const adapter = await registration.createAdapter({ qaRunId, agentRunId, agentIndex: 0, stack });
-    const timer = setTimeout(() => void adapter.cancel(agentRunId).catch(() => undefined), this.timeoutMs);
+    const timer = setTimeout(
+      () => void adapter.cancel(agentRunId).catch(() => undefined),
+      this.timeoutMs,
+    );
     const onAbort = () => void adapter.cancel(agentRunId).catch(() => undefined);
     signal?.addEventListener('abort', onAbort, { once: true });
     try {
@@ -161,7 +166,10 @@ export class ProjectProfileBuilder {
       if (plan === undefined)
         throw new RunEngineError(
           'PROFILE_FAILED',
-          failure ?? (signal?.aborted === true ? 'Profile building was cancelled.' : 'The agent wrote no profile.'),
+          failure ??
+            (signal?.aborted === true
+              ? 'Profile building was cancelled.'
+              : 'The agent wrote no profile.'),
         );
       // The notes describe the copy that was read: refuse them if the project moved on meanwhile.
       const after = this.projects.getProject(projectId);
@@ -188,10 +196,10 @@ export class ProjectProfileBuilder {
       await adapter.dispose().catch(() => undefined);
       await this.workspaces.cleanup(workspace);
       // The synthetic run folder exists only for this build.
-      await rm(runDataPaths(this.dataRoot, projectId, qaRunId).root, { recursive: true, force: true }).catch(
-        () => undefined,
-      );
+      await rm(runDataPaths(this.dataRoot, projectId, qaRunId).root, {
+        recursive: true,
+        force: true,
+      }).catch(() => undefined);
     }
   }
-
 }

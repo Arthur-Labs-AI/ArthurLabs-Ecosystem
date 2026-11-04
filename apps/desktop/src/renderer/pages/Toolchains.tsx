@@ -49,7 +49,13 @@ export function Toolchains(): React.JSX.Element {
     if (
       missing.length > 0 &&
       window.confirm(
-        'Install ' + missing.length + ' version(s) of ' + pack.label + '? About ' + mb + ' MB in total.',
+        'Install ' +
+          missing.length +
+          ' version(s) of ' +
+          pack.label +
+          '? About ' +
+          mb +
+          ' MB in total.',
       )
     )
       for (const v of missing) install.mutate({ packId: pack.id, version: v.version });

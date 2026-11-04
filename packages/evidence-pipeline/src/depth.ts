@@ -175,7 +175,8 @@ function withoutInlineScript(command: string): string {
   const start = head[0].length;
   const quote = command[start];
   let end = start + 1;
-  while (end < command.length && command[end] !== quote) end += quote === '"' && command[end] === '\\' ? 2 : 1;
+  while (end < command.length && command[end] !== quote)
+    end += quote === '"' && command[end] === '\\' ? 2 : 1;
   if (end >= command.length) return command;
   if (quote === '"' && /`|\$\(/.test(command.slice(start + 1, end))) return command;
   return head[0] + 'script' + command.slice(end + 1);

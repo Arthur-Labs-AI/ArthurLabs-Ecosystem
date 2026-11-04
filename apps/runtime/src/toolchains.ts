@@ -31,7 +31,11 @@ export const bashRunner: ScriptRunner = (script, { cwd, env }) =>
   new Promise((resolve) => {
     const child = spawn('bash', ['-c', 'set -euo pipefail\n' + script], {
       cwd,
-      env: { PATH: process.env['PATH'] ?? '/usr/bin:/bin', HOME: process.env['HOME'] ?? '/', ...env },
+      env: {
+        PATH: process.env['PATH'] ?? '/usr/bin:/bin',
+        HOME: process.env['HOME'] ?? '/',
+        ...env,
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';
@@ -78,7 +82,8 @@ export function pickGoArchive(
   const goArch = arch === 'aarch64' || arch === 'arm64' ? 'arm64' : 'amd64';
   for (const release of releases) {
     if (!release.stable) continue;
-    if (release.version !== 'go' + minor && !release.version.startsWith('go' + minor + '.')) continue;
+    if (release.version !== 'go' + minor && !release.version.startsWith('go' + minor + '.'))
+      continue;
     const file = release.files.find(
       (candidate) =>
         candidate.os === 'linux' && candidate.arch === goArch && candidate.kind === 'archive',
@@ -208,7 +213,9 @@ export class ToolchainManager {
   }
 
   async status(): Promise<ToolchainPackStatus[]> {
-    const installed = new Set((await this.installed()).map((item) => this.key(item.packId, item.version)));
+    const installed = new Set(
+      (await this.installed()).map((item) => this.key(item.packId, item.version)),
+    );
     return Promise.all(
       TOOLCHAIN_PACKS.map(async (pack) => ({
         id: pack.id,
@@ -242,13 +249,17 @@ export class ToolchainManager {
   install(packId: string, version: string): { started: boolean } {
     const pack = toolchainPack(packId);
     if (pack === undefined) throw new Error('Unknown toolchain: ' + packId);
-    if (!pack.versions.includes(version)) throw new Error('Unknown ' + pack.label + ' version: ' + version);
+    if (!pack.versions.includes(version))
+      throw new Error('Unknown ' + pack.label + ' version: ' + version);
     const key = this.key(pack.id, version);
     if (this.installing.has(key)) return { started: false };
     this.errors.delete(key);
     const work = this.runInstall(pack.id, version)
       .catch((error: unknown) => {
-        this.errors.set(key, (error instanceof Error ? error.message : String(error)).slice(-LOG_TAIL_CHARS));
+        this.errors.set(
+          key,
+          (error instanceof Error ? error.message : String(error)).slice(-LOG_TAIL_CHARS),
+        );
       })
       .finally(() => this.installing.delete(key));
     this.installing.set(key, work);
@@ -280,8 +291,13 @@ export class ToolchainManager {
         script = JAVA_SCRIPT;
         break;
       case 'go': {
-        const archive = pickGoArchive(await this.goReleases(), version, process.arch === 'arm64' ? 'arm64' : 'x86_64');
-        if (archive === undefined) throw new Error('No Go ' + version + ' release found for this machine.');
+        const archive = pickGoArchive(
+          await this.goReleases(),
+          version,
+          process.arch === 'arm64' ? 'arm64' : 'x86_64',
+        );
+        if (archive === undefined)
+          throw new Error('No Go ' + version + ' release found for this machine.');
         env['SENTRY_GO_FILE'] = archive.filename;
         env['SENTRY_GO_SHA'] = archive.sha256;
         script = GO_SCRIPT;
@@ -304,7 +320,8 @@ export class ToolchainManager {
     const pack = toolchainPack(packId);
     if (pack === undefined || !pack.versions.includes(version))
       throw new Error('Unknown toolchain version: ' + packId + ' ' + version);
-    if (this.installing.has(this.key(pack.id, version))) throw new Error('That install is still running.');
+    if (this.installing.has(this.key(pack.id, version)))
+      throw new Error('That install is still running.');
     await rm(toolchainDir(this.dataRoot, pack.id, version), { recursive: true, force: true });
     this.errors.delete(this.key(pack.id, version));
   }
@@ -323,9 +340,12 @@ export class ToolchainManager {
     const path: string[] = [];
     const env: Record<string, string> = {};
     const installed = await this.installed();
-    const hints = workspace === undefined ? {} : await projectToolchainHints(workspace).catch(() => ({}));
+    const hints =
+      workspace === undefined ? {} : await projectToolchainHints(workspace).catch(() => ({}));
     for (const pack of TOOLCHAIN_PACKS) {
-      const versions = installed.filter((item) => item.packId === pack.id).map((item) => item.version);
+      const versions = installed
+        .filter((item) => item.packId === pack.id)
+        .map((item) => item.version);
       const version = chooseVersion(versions, (hints as ToolchainHints)[pack.id]);
       if (version === undefined) continue;
       const setup = toolchainEnvironment(pack.id, toolchainDir(this.dataRoot, pack.id, version));

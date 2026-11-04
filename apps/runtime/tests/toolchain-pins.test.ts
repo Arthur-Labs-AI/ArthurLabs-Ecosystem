@@ -29,7 +29,11 @@ describe('toolchain hints', () => {
         { name: 'B.csproj', text: '<TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>' },
       ]).dotnet,
     ).toBe('8.0');
-    expect(toolchainHints([{ name: 'A.csproj', text: '<TargetFramework>netstandard2.0</TargetFramework>' }]).dotnet).toBeUndefined();
+    expect(
+      toolchainHints([
+        { name: 'A.csproj', text: '<TargetFramework>netstandard2.0</TargetFramework>' },
+      ]).dotnet,
+    ).toBeUndefined();
   });
 
   it('reads Python, Go, Rust and Java pins', () => {
@@ -37,7 +41,10 @@ describe('toolchain hints', () => {
       { name: '.python-version', text: '3.11.4\n' },
       { name: 'go.mod', text: 'module x\n\ngo 1.22.3\n' },
       { name: 'rust-toolchain.toml', text: '[toolchain]\nchannel = "nightly-2024-01-01"\n' },
-      { name: 'pom.xml', text: '<properties><maven.compiler.release>17</maven.compiler.release></properties>' },
+      {
+        name: 'pom.xml',
+        text: '<properties><maven.compiler.release>17</maven.compiler.release></properties>',
+      },
     ]);
     expect(hints).toEqual({ python: '3.11', go: '1.22', rust: 'nightly', java: '17' });
     expect(toolchainHints([{ name: '.java-version', text: '1.8' }]).java).toBe('8');
@@ -55,7 +62,10 @@ describe('toolchain hints', () => {
     const workspace = await temp();
     await mkdir(join(workspace, 'project', 'App', 'App'), { recursive: true });
     await mkdir(join(workspace, 'project', 'node_modules', 'x'), { recursive: true });
-    await writeFile(join(workspace, 'project', 'App', 'App', 'App.csproj'), '<TargetFramework>net8.0</TargetFramework>');
+    await writeFile(
+      join(workspace, 'project', 'App', 'App', 'App.csproj'),
+      '<TargetFramework>net8.0</TargetFramework>',
+    );
     await writeFile(join(workspace, 'project', 'node_modules', 'x', 'go.mod'), 'go 1.10');
     const files = await readPinFiles(workspace);
     expect(files.map((f) => f.name)).toEqual(['App.csproj']);

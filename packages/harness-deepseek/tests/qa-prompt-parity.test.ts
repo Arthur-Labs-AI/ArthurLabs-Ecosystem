@@ -268,7 +268,9 @@ describe('DeepSeek QA prompt parity', () => {
         ).toBe(true);
       const usageEvent = events.find((e) => e.type === 'usage.updated');
       // No self-challenge or refinement turn: plan, investigation, report.
-      expect(usageEvent?.type === 'usage.updated' ? usageEvent.usage.turns : undefined).toBe(depth === true ? 4 : 3);
+      expect(usageEvent?.type === 'usage.updated' ? usageEvent.usage.turns : undefined).toBe(
+        depth === true ? 4 : 3,
+      );
       expect(events.filter((e) => e.type === 'finding.submitted')).toHaveLength(1);
       if (depth)
         expect(events.some((e) => e.type === 'warning' && e.code === 'QA_CHALLENGE_NOT_RUN')).toBe(

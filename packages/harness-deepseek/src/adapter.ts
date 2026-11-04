@@ -1098,7 +1098,12 @@ export class DeepSeekHarnessAdapter implements HarnessAdapter {
           yield event(request.agentRunId, {
             type: 'warning',
             code: 'DEEPSEEK_PLANNING_RETRY',
-            message: 'DeepSeek planning attempt ' + attempt + ' rejected (' + planRejection + '); retrying planning only.',
+            message:
+              'DeepSeek planning attempt ' +
+              attempt +
+              ' rejected (' +
+              planRejection +
+              '); retrying planning only.',
           });
         } else {
           throw new DeepSeekHarnessError(

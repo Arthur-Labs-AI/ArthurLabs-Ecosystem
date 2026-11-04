@@ -11,7 +11,9 @@ export function composeProfileText(plan: {
   readonly projectUnderstanding: string;
   readonly criticalFlows?: readonly string[] | undefined;
 }): string {
-  const flows = (plan.criticalFlows ?? []).map((line) => '- ' + line.trim()).filter((l) => l.length > 2);
+  const flows = (plan.criticalFlows ?? [])
+    .map((line) => '- ' + line.trim())
+    .filter((l) => l.length > 2);
   const text =
     plan.projectUnderstanding.trim() +
     (flows.length === 0 ? '' : '\n\nEntry points and flows:\n' + flows.join('\n'));

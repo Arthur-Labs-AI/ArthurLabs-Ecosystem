@@ -27,7 +27,8 @@ const evidence = [
 /** The two findings run_01M6BV04 reported, as the report agent worded them. */
 const REAL_FINDINGS = [
   {
-    title: 'Snapshot backslash filenames collapse into slash paths causing manifest collision and wrong restore',
+    title:
+      'Snapshot backslash filenames collapse into slash paths causing manifest collision and wrong restore',
     category: 'logic',
     severity: 'medium',
     confidence: 'confirmed',
@@ -38,7 +39,8 @@ const REAL_FINDINGS = [
     reproductionSteps: ['run walkTree probe'],
   },
   {
-    title: 'Workspace cleanup deletes arbitrary inside-root paths instead of refusing non-workspace shapes',
+    title:
+      'Workspace cleanup deletes arbitrary inside-root paths instead of refusing non-workspace shapes',
     category: 'security',
     severity: 'medium',
     confidence: 'confirmed',
@@ -56,7 +58,10 @@ describe('recall against the Sentry self-test manifest', () => {
       { findings: REAL_FINDINGS, evidence, checks: [], limitations: [] } as never,
       await selfFixture(),
     );
-    expect(result.detected.sort()).toEqual(['S1-backslash-filename-collapse', 'S2-cleanup-no-shape-check']);
+    expect(result.detected.sort()).toEqual([
+      'S1-backslash-filename-collapse',
+      'S2-cleanup-no-shape-check',
+    ]);
     expect(result.missed).toEqual([]);
   });
 
@@ -66,7 +71,10 @@ describe('recall against the Sentry self-test manifest', () => {
       await selfFixture(),
     );
     expect(result.detected).toEqual([]);
-    expect(result.missed.sort()).toEqual(['S1-backslash-filename-collapse', 'S2-cleanup-no-shape-check']);
+    expect(result.missed.sort()).toEqual([
+      'S1-backslash-filename-collapse',
+      'S2-cleanup-no-shape-check',
+    ]);
   });
 
   it('does not credit a finding that only mentions the file', async () => {

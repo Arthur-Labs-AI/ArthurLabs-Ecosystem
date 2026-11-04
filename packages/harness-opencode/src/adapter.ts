@@ -744,7 +744,9 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     let socketPath = join(scope.directory, 'egress.sock');
     if (Buffer.byteLength(socketPath) > 100)
       socketPath = join(tmpdir(), 'sentry-eg-' + randomBytes(6).toString('hex') + '.sock');
-    entry.egress = await startEgressProxy({ socketPath, allowedHosts: entry.allowedHosts ?? PACKAGE_REGISTRY_HOSTS,
+    entry.egress = await startEgressProxy({
+      socketPath,
+      allowedHosts: entry.allowedHosts ?? PACKAGE_REGISTRY_HOSTS,
     });
     return { socketPath, socat, port: TOOL_SHELL_EGRESS_PORT };
   }
@@ -1165,7 +1167,12 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
           yield event(request.agentRunId, {
             type: 'warning',
             code: 'OPENCODE_PLANNING_RETRY',
-            message: 'OpenCode planning attempt ' + attempt + ' rejected (' + planRejection + '); retrying planning only.',
+            message:
+              'OpenCode planning attempt ' +
+              attempt +
+              ' rejected (' +
+              planRejection +
+              '); retrying planning only.',
           });
         } else {
           throw new OpenCodeHarnessError(
