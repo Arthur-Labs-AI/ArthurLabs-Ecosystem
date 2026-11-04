@@ -1,0 +1,60 @@
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+auth.json
+**/.credentials.yaml
+
+# Installed/generated runtime
+app/
+runtime/node/
+node_modules/
+
+# Local AI Harness state
+data/
+logs/
+_tmp_ws/
+
+# Test/build output
+coverage/
+dist/
+build/
+tmp/
+*.log
+*.tmp
+
+# Editors and operating systems
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Nexus / AI Harness runtime data
+.ai-harness/runs/
+.ai-harness/state/
+
+# Test-generated harness runtime
+tests/.ai-harness/runs/
+tests/.ai-harness/state/
+
+.ai-harness/state/
+.ai-harness/runs/
+
+# A5.4 isolated dev instance and generated credential artifacts
+.nexus-a54/
+credentials.json
+.credentials.*.tmp
+route-verification-authorization*.json
+live-authorization*.json
+live-session-authorization*.json
+engine-image/out/
+engine-image/stage/
+engine-vm/build/
