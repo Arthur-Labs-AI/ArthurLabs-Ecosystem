@@ -1,0 +1,288 @@
+{
+  "method": "All installed line/poly/circle silk against all same-side mask pads; conservative rectangular bounds for roundrects, exact circles. No text-font tessellation; native DRC plus visual check cover text.",
+  "primitive_count": 441,
+  "mask_shapes": 365,
+  "violations_below_0_15": [],
+  "minima": [
+    {
+      "silk": "R5002",
+      "type": "fp_line",
+      "mask": "R5002.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160007
+    },
+    {
+      "silk": "R5002",
+      "type": "fp_line",
+      "mask": "R5002.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160007
+    },
+    {
+      "silk": "R5002",
+      "type": "fp_line",
+      "mask": "R5002.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160007
+    },
+    {
+      "silk": "R5002",
+      "type": "fp_line",
+      "mask": "R5002.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160007
+    },
+    {
+      "silk": "C5001",
+      "type": "fp_line",
+      "mask": "C5001.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C5001",
+      "type": "fp_line",
+      "mask": "C5001.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C5001",
+      "type": "fp_line",
+      "mask": "C5001.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C5001",
+      "type": "fp_line",
+      "mask": "C5001.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C5002",
+      "type": "fp_line",
+      "mask": "C5002.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C5002",
+      "type": "fp_line",
+      "mask": "C5002.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C5002",
+      "type": "fp_line",
+      "mask": "C5002.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C5002",
+      "type": "fp_line",
+      "mask": "C5002.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C304",
+      "type": "fp_line",
+      "mask": "C304.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C304",
+      "type": "fp_line",
+      "mask": "C304.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C304",
+      "type": "fp_line",
+      "mask": "C304.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C304",
+      "type": "fp_line",
+      "mask": "C304.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C4006",
+      "type": "fp_line",
+      "mask": "C4006.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C4006",
+      "type": "fp_line",
+      "mask": "C4006.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C4006",
+      "type": "fp_line",
+      "mask": "C4006.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C4006",
+      "type": "fp_line",
+      "mask": "C4006.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C202",
+      "type": "fp_line",
+      "mask": "C202.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C202",
+      "type": "fp_line",
+      "mask": "C202.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C202",
+      "type": "fp_line",
+      "mask": "C202.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C202",
+      "type": "fp_line",
+      "mask": "C202.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C501",
+      "type": "fp_line",
+      "mask": "C501.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C501",
+      "type": "fp_line",
+      "mask": "C501.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C501",
+      "type": "fp_line",
+      "mask": "C501.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C501",
+      "type": "fp_line",
+      "mask": "C501.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C101",
+      "type": "fp_line",
+      "mask": "C101.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C101",
+      "type": "fp_line",
+      "mask": "C101.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C101",
+      "type": "fp_line",
+      "mask": "C101.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C101",
+      "type": "fp_line",
+      "mask": "C101.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C405",
+      "type": "fp_line",
+      "mask": "C405.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C405",
+      "type": "fp_line",
+      "mask": "C405.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C405",
+      "type": "fp_line",
+      "mask": "C405.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C405",
+      "type": "fp_line",
+      "mask": "C405.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C303",
+      "type": "fp_line",
+      "mask": "C303.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C303",
+      "type": "fp_line",
+      "mask": "C303.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C303",
+      "type": "fp_line",
+      "mask": "C303.1",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    },
+    {
+      "silk": "C303",
+      "type": "fp_line",
+      "mask": "C303.2",
+      "side": "F",
+      "conservative_gap_mm": 0.160024
+    }
+  ]
+}
