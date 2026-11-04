@@ -377,7 +377,8 @@ def d06(n):
         for k in (1, 2, 3, 4):
             want(f"D{c}0{k}", "BAV199", "Package_TO_SOT_SMD:SOT-23", mfr="Nexperia")
     for j in ("J101", "J201", "J301", "J401", "J5001"):
-        want(j, "B2B-PH-SM4-TB(LF)(SN)", "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical", "C160352", "JST")
+        # Horizontal JST ECO (2026-10-19); pin/net oracle is unchanged.
+        want(j, "S2B-PH-SM4-TB(LF)(SN)", "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal", "C295747", "JST")
     want("J1", "S2B-PH-SM4-TB(LF)(SN)", "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal", "C295747", "JST")
     want("X1", "SX3M8.192M20F30TNN", "ARTHUR:OSC_SCTF_SX3M_SMD3225-4P", "C2901557", "SCTF")
     if n.val("X1") != "SX3M8.192M20F30TNN":

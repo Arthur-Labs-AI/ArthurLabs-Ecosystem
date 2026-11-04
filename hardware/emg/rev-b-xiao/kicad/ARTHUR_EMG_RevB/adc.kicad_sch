@@ -2355,7 +2355,7 @@
 				)
 			)
 		)
-		(property "Description" "Capacitor 100nF 16V X7R 0603 - C_X1: X1 VDD decoupling at pin 4"
+		(property "Description" "Capacitor 100nF 50V X7R 0603 - C_X1: X1 VDD decoupling at pin 4"
 			(at 223.52 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2388,7 +2388,7 @@
 				)
 			)
 		)
-		(property "Spec" "100nF 16V X7R 0603 MLCC"
+		(property "Spec" "100nF 50V X7R 0603 MLCC"
 			(at 223.52 71.12 0)
 			(hide yes)
 			(show_name no)

@@ -2420,7 +2420,7 @@
 				)
 			)
 		)
-		(property "Description" "Capacitor 100nF 16V X7R 0603 - U503 V+ decoupling"
+		(property "Description" "Capacitor 100nF 50V X7R 0603 - U503 V+ decoupling"
 			(at 363.22 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -2453,7 +2453,7 @@
 				)
 			)
 		)
-		(property "Spec" "100nF 16V X7R 0603 MLCC"
+		(property "Spec" "100nF 50V X7R 0603 MLCC"
 			(at 363.22 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -3510,7 +3510,7 @@
 				)
 			)
 		)
-		(property "Description" "Capacitor 100nF 16V X7R 0603 - U501 V+ decoupling"
+		(property "Description" "Capacitor 100nF 50V X7R 0603 - U501 V+ decoupling"
 			(at 302.26 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -3543,7 +3543,7 @@
 				)
 			)
 		)
-		(property "Spec" "100nF 16V X7R 0603 MLCC"
+		(property "Spec" "100nF 50V X7R 0603 MLCC"
 			(at 302.26 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -3635,7 +3635,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "B2B-PH-SM4-TB"
+		(property "Value" "S2B-PH-SM4-TB"
 			(at 246.38 83.82 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3646,7 +3646,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical"
+		(property "Footprint" "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal"
 			(at 248.92 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -3657,7 +3657,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/C160352.pdf"
+		(property "Datasheet" "https://www.jst.com/wp-content/uploads/2025/06/ePH.pdf"
 			(at 248.92 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -3668,7 +3668,7 @@
 				)
 			)
 		)
-		(property "Description" "Reference / bias electrode connector, JST PH 2p vertical SMD"
+		(property "Description" "Reference / bias electrode connector, JST PH 2p horizontal side-entry SMD"
 			(at 248.92 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -3679,7 +3679,7 @@
 				)
 			)
 		)
-		(property "MPN" "B2B-PH-SM4-TB(LF)(SN)"
+		(property "MPN" "S2B-PH-SM4-TB(LF)(SN)"
 			(at 248.92 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -3690,7 +3690,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C160352"
+		(property "LCSC" "C295747"
 			(at 248.92 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -3712,7 +3712,7 @@
 				)
 			)
 		)
-		(property "Spec" "JST PH 2.0 mm 2-pin vertical SMD, 2 retention pads"
+		(property "Spec" "JST PH 2.0 mm 2-pin horizontal side-entry SMT, PHR-2 housing + SPH-002T-P0.5S contacts; two isolated retention pads"
 			(at 248.92 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -4023,7 +4023,7 @@
 				)
 			)
 		)
-		(property "Description" "Capacitor 100nF 16V X7R 0603 - VCM divider HF filter (stays at divider node)"
+		(property "Description" "Capacitor 100nF 50V X7R 0603 - VCM divider HF filter (stays at divider node)"
 			(at 93.98 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -4056,7 +4056,7 @@
 				)
 			)
 		)
-		(property "Spec" "100nF 16V X7R 0603 MLCC"
+		(property "Spec" "100nF 50V X7R 0603 MLCC"
 			(at 93.98 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -6349,7 +6349,7 @@
 				)
 			)
 		)
-		(property "Description" "Capacitor 100nF 16V X7R 0603 - U502 V+ decoupling"
+		(property "Description" "Capacitor 100nF 50V X7R 0603 - U502 V+ decoupling"
 			(at 332.74 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -6382,7 +6382,7 @@
 				)
 			)
 		)
-		(property "Spec" "100nF 16V X7R 0603 MLCC"
+		(property "Spec" "100nF 50V X7R 0603 MLCC"
 			(at 332.74 177.8 0)
 			(hide yes)
 			(show_name no)

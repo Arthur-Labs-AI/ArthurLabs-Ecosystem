@@ -2654,7 +2654,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "B2B-PH-SM4-TB"
+		(property "Value" "S2B-PH-SM4-TB"
 			(at 35.56 121.92 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2665,7 +2665,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical"
+		(property "Footprint" "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal"
 			(at 38.1 114.3 0)
 			(hide yes)
 			(show_name no)
@@ -2676,7 +2676,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.lcsc.com/datasheet/C160352.pdf"
+		(property "Datasheet" "https://www.jst.com/wp-content/uploads/2025/06/ePH.pdf"
 			(at 38.1 114.3 0)
 			(hide yes)
 			(show_name no)
@@ -2687,7 +2687,7 @@
 				)
 			)
 		)
-		(property "Description" "Bipolar EMG electrode connector, JST PH 2p vertical SMD"
+		(property "Description" "Bipolar EMG electrode connector, JST PH 2p horizontal side-entry SMD"
 			(at 38.1 114.3 0)
 			(hide yes)
 			(show_name no)
@@ -2698,7 +2698,7 @@
 				)
 			)
 		)
-		(property "MPN" "B2B-PH-SM4-TB(LF)(SN)"
+		(property "MPN" "S2B-PH-SM4-TB(LF)(SN)"
 			(at 38.1 114.3 0)
 			(hide yes)
 			(show_name no)
@@ -2709,7 +2709,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C160352"
+		(property "LCSC" "C295747"
 			(at 38.1 114.3 0)
 			(hide yes)
 			(show_name no)
@@ -2731,7 +2731,7 @@
 				)
 			)
 		)
-		(property "Spec" "JST PH 2.0 mm 2-pin vertical SMD, 2 retention pads"
+		(property "Spec" "JST PH 2.0 mm 2-pin horizontal side-entry SMT, PHR-2 housing + SPH-002T-P0.5S contacts; two isolated retention pads"
 			(at 38.1 114.3 0)
 			(hide yes)
 			(show_name no)
@@ -2860,7 +2860,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor 10M 5% 0603 - Follower input DC bias IN+ to VCM"
+		(property "Description" "Resistor 10M 1% 0603 - Follower input DC bias IN+ to VCM"
 			(at 132.08 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -2893,7 +2893,7 @@
 				)
 			)
 		)
-		(property "Spec" "10M ±5% 0603 thick film, >=1/10 W"
+		(property "Spec" "10M ±1% 0603 thick film, >=1/10 W"
 			(at 132.08 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -6635,7 +6635,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor 10M 5% 0603 - Follower input DC bias IN- to VCM"
+		(property "Description" "Resistor 10M 1% 0603 - Follower input DC bias IN- to VCM"
 			(at 132.08 152.4 0)
 			(hide yes)
 			(show_name no)
@@ -6668,7 +6668,7 @@
 				)
 			)
 		)
-		(property "Spec" "10M ±5% 0603 thick film, >=1/10 W"
+		(property "Spec" "10M ±1% 0603 thick film, >=1/10 W"
 			(at 132.08 152.4 0)
 			(hide yes)
 			(show_name no)
