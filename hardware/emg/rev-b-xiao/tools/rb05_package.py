@@ -27,11 +27,9 @@ names = sorted(p for p in gd.iterdir() if p.suffix != ".gbrjob")
 zp = O / "ARTHUR_EMG_RevB_Gerbers.zip"
 with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
     for p in names: z.write(p, p.name)
-# ---- CPL
+# ---- CPL: reference-specific north JST override remains pending factory preview.
 pos = list(csv.DictReader(open(W / "pos.csv")))
-CORR = [(r"^SOT-23", 180), (r"^TSSOP-", 270), (r"^SOIC-", 270), (r"^JST_PH_S", 180)]
-def corr(pk):
-    return next((c for r, c in CORR if re.match(r, pk)), 0)
+from jlc_rotations import factory_rotation
 rows_p, rows_r = [], []
 for r in sorted(pos, key=lambda r: (re.sub(r"\d", "", r["Ref"]), int(re.sub(r"\D", "", r["Ref"])))):
     assert r["Side"] == "top", r
@@ -39,7 +37,7 @@ for r in sorted(pos, key=lambda r: (re.sub(r"\d", "", r["Ref"]), int(re.sub(r"\D
     x, y = float(r["PosX"]), float(r["PosY"])
     base = [r["Ref"], f"{x:.4f}mm", f"{y:.4f}mm", "Top"]
     rows_r.append(base + [f"{rot:g}"])
-    rows_p.append(base + [f"{(rot + corr(r['Package'])) % 360:g}"])
+    rows_p.append(base + [f"{factory_rotation(r['Ref'], r['Package'], rot):g}"])
 hdr = ["Designator", "Mid X", "Mid Y", "Layer", "Rotation"]
 for fn, rows in (("ARTHUR_EMG_RevB_CPL.csv", rows_p), ("ARTHUR_EMG_RevB_CPL_raw_KiCad_rotation.csv", rows_r)):
     with open(O / fn, "w", newline="") as f:

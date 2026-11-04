@@ -1,0 +1,213 @@
+{
+  "status": "NOT RELEASED \u2014 BLOCKED PENDING PREVIEW VERIFICATION",
+  "candidate_revision": "HJ-JLC-RC2-ORIENTATION-2026-10-20",
+  "board_revision": "RevB",
+  "branch": "hardware/revb-horizontal-jst",
+  "git_HEAD": "6ffc4cdfbab20e75a0479d48282f053992091eb5",
+  "working_tree": "Uncommitted exporter correction and RC2 orientation evidence; PCB/schematic/library unchanged",
+  "review_readiness": "BLOCKED: five-header assembly preview unverified; J1 orientation unresolved",
+  "production_approved": false,
+  "human_contact_approved": false,
+  "externally_submitted": false,
+  "email_sent": false,
+  "order_or_payment_performed": false,
+  "nominal_board_mm": [
+    51.3,
+    64.95
+  ],
+  "requested_settings": {
+    "layers": 4,
+    "thickness_mm": 1.6,
+    "finish": "ENIG",
+    "solder_mask": "Green",
+    "silkscreen": "White",
+    "fabricated_quantity": 5,
+    "assembled_quantity": 2,
+    "assembly_side": "Top",
+    "service": "Economic requested; exactcomponenteligibility and5/2split requireconfirmation",
+    "panelization": "Factory plan pending; single-boardoutlinepreserved",
+    "ReviewBeforePayment": true,
+    "ConfirmProductionFile": true
+  },
+  "special_BAT_component_hole": {
+    "finished_diameter_mm": 1.9,
+    "top_land_mm": 2.3,
+    "top_mask_opening_mm": 1.95,
+    "bottom_land_mask_union_mm": 3.0,
+    "board_center_mm": [
+      44.635,
+      54.79
+    ],
+    "instruction": "OPEN PLATED COMPONENT HOLE; no tent/plug/fill/cover or dimensionalchanges without EQ/customer approval"
+  },
+  "counts": {
+    "SMT_references": 126,
+    "BOM_groups": 28,
+    "horizontal_JSTs": 6,
+    "vias": 191,
+    "component_PTHs": 1
+  },
+  "factory_exclusions": [
+    "U1:manualXIAOassembly,do notsource/place",
+    "TP1-TP8:coppertestfeatures,notpurchasedparts"
+  ],
+  "source_root": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB",
+  "source_files_sha256": {
+    "ARTHUR_EMG_RevB.kicad_dru": "21c0e80350f66cac29bd8dca1b4f562997b66288776b39d838a0c812d51ea1c0",
+    "ARTHUR_EMG_RevB.kicad_pcb": "f520aa99c4b628969668b3081001378df26c54faacd3e49b434ea802a4bbdc0e",
+    "ARTHUR_EMG_RevB.kicad_pro": "ba3f3c36297e079341127a1d4a122eaa4b76979a9bc81286e58e7c5332a5b383",
+    "ARTHUR_EMG_RevB.kicad_sch": "427a55517e233e27ce1116ce04e3861a8772bcb57cb9a14dfea20baab0b0ba9a",
+    "ARTHUR_RevB.kicad_sym": "85e722d9c7617f377c5cc0823d960241a1efa3ffddb814730bf801e52148084b",
+    "adc.kicad_sch": "382034adaa879142a35047f5eb7b4eeeeafc2ef207c01cb7fc878151f906e9d7",
+    "analog_power_interlock.kicad_sch": "17445ddfae7db28a920b1d951a2071135a0bedf5dacd5673fd8785bee569fdaf",
+    "emg_channel.kicad_sch": "f5d4e5ada7807383736b581ee12fceb957b657ae11a69b08471fa207c437184f",
+    "fp-lib-table": "eced61d33d29b1d3098799d1d6ea25131439ed638760f6dc98e4e6855d29943e",
+    "fp-libs/ARTHUR.pretty/OSC_SCTF_SX3M_SMD3225-4P.kicad_mod": "ee7cf1921675216962273ebd0774aec1c1b5b3dd9f75facb6c3fc1f00bba436d",
+    "fp-libs/ARTHUR.pretty/XIAO_ESP32S3_HANDSOLDER.kicad_mod": "c8703292766625345f78a221ab7682acadf4131a4296d330a8a2671e67d7a36e",
+    "fp-libs/Capacitor_SMD.pretty/C_0603_1608Metric.kicad_mod": "0fc6d5da5b04714c37537931e035d9b6d1df8fdf3609b0a122d5521e37c7b7ba",
+    "fp-libs/Capacitor_SMD.pretty/C_0805_2012Metric.kicad_mod": "cc8657834ba381314195c294a98cd732dc54c379a83720250bc18a70b93ccb49",
+    "fp-libs/Connector_JST.pretty/JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical.kicad_mod": "a56b5bd30ebe49d006ab78823913bb8a2016bd9f95ec4d3af6f67fe2347f872f",
+    "fp-libs/Connector_JST.pretty/JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal.kicad_mod": "47c7b317c6e5f13694f33abcd6383353999e07e54c02739b006a9a771f436e3c",
+    "fp-libs/Inductor_SMD.pretty/L_0603_1608Metric.kicad_mod": "7b0040268d5166f0ea917b964dca9070a27c399fccd5a31ce46e7168e19614db",
+    "fp-libs/Package_SO.pretty/TSSOP-14_4.4x5mm_P0.65mm.kicad_mod": "e4bf82cea6d3b3259ddf42469b1407628ad1181a28ae6f3f340190c0cca31ccd",
+    "fp-libs/Package_SO.pretty/TSSOP-20_4.4x6.5mm_P0.65mm.kicad_mod": "b7ca3a31dd45c1225609f9b94e8ba1534bd16edd193628c8d67a8ea669b26b72",
+    "fp-libs/Package_TO_SOT_SMD.pretty/SOT-23-5.kicad_mod": "455a3f7c3e5eb5b8847eaa5df23e18651e78ab9f75afd09a0883758a0d901761",
+    "fp-libs/Package_TO_SOT_SMD.pretty/SOT-23.kicad_mod": "0d88c86c1b6d8c1aae4aa8c09386264c089d4451a128b6ccd63ed253f4300b15",
+    "fp-libs/README.md": "eef1a41728c2cb73da056e1f87715b75607342528f03be7c1e8fe6ca362768cd",
+    "fp-libs/Resistor_SMD.pretty/R_0603_1608Metric.kicad_mod": "e3316f6cbb94042f4ffc9938fc994b90483c96a54ae16ee01335d45de5d82999",
+    "fp-libs/Resistor_SMD.pretty/R_0805_2012Metric.kicad_mod": "87a6229f800ff68a57b66de87fed884fc717e6e5970a425777d761b19d2813bf",
+    "fp-libs/TestPoint.pretty/TestPoint_Pad_D1.5mm.kicad_mod": "9758c3b55d89a2263720410079b5232a96f2160a2cafcc3b5203f040a658d3b5",
+    "reference_vcm.kicad_sch": "ee59fff43df3f0774c720cc9932e5964609cafd3f91cd037b33213678c2eebed",
+    "sym-lib-table": "fd599146dee6f251c34a74b1e975c3660c69e331696478fd32c1b04946127b02",
+    "xiao_brain_interface.kicad_sch": "ba190de1aa44bc0d2688d3ca9e080184b69ee7edb0cd5604104818e9450ebaff"
+  },
+  "factory_review_files": [
+    {
+      "path": "NOT_RELEASED_PENDING_PREVIEW_VERIFICATION/ARTHUR_Neuron_RevB_HJ_JLC_RC2_NOT_RELEASED_BOM.csv",
+      "sha256": "d65684f9c3a2eeddaed7f4c90b4e91ab6a1e90eb3b5a96a63b3f48e09e3f231e",
+      "bytes": 2124,
+      "role": "preview_only_NOT_RELEASED"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_PREVIEW_VERIFICATION/ARTHUR_Neuron_RevB_HJ_JLC_RC2_NOT_RELEASED_CPL.csv",
+      "sha256": "8f0df3d673b0335c098ecd15cf2c46ecf1b3d8eb2ad19f7a9da91385fe286712",
+      "bytes": 4360,
+      "role": "preview_only_NOT_RELEASED"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_PREVIEW_VERIFICATION/ARTHUR_Neuron_RevB_HJ_JLC_RC2_NOT_RELEASED_CPL_raw_KiCad_rotation.csv",
+      "sha256": "f31ac0889e40c899bb10f31690c2813450911b9a6b56a41510ac98e7793b4259",
+      "bytes": 4356,
+      "role": "preview_only_NOT_RELEASED"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_PREVIEW_VERIFICATION/ARTHUR_Neuron_RevB_HJ_JLC_RC2_NOT_RELEASED_Gerbers.zip",
+      "sha256": "2dba5ebe1220329af378240519455e628f2672eb88e753b587c8c0f893d82dfd",
+      "bytes": 70524,
+      "role": "preview_only_NOT_RELEASED"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_PREVIEW_VERIFICATION/COMPONENT_REVIEW_REQUEST.csv",
+      "sha256": "3b220fdacc5d45bfb2c0206dd0e6f2009ed9e8a42222795008ac0eb87ad032c9",
+      "bytes": 6924,
+      "role": "preview_only_NOT_RELEASED"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_PREVIEW_VERIFICATION/MANUAL_XIAO_ASSEMBLY.md",
+      "sha256": "f6b6ecaf45fc9841faa9f090cd0308725fe754333c0c6c877cd4d87e1327fec0",
+      "bytes": 3238,
+      "role": "preview_only_NOT_RELEASED"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_PREVIEW_VERIFICATION/MANUFACTURING_REMARKS.txt",
+      "sha256": "1db4ed05b5289b28eb74ce7dece5a6532199fad2ab590ca6d296c1b724465769",
+      "bytes": 3245,
+      "role": "preview_only_NOT_RELEASED"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_PREVIEW_VERIFICATION/POLARITY_ORIENTATION_REVIEW.md",
+      "sha256": "eae9d120f70fffc7736a3c3e6905c4fe47ee7c3f8caa979c8d821b0f30e733b2",
+      "bytes": 1475,
+      "role": "preview_only_NOT_RELEASED"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_PREVIEW_VERIFICATION/README.md",
+      "sha256": "769d05f51fbc9307ce130804ed7b12341336a2e08e69c95484ad48dff3e2bba5",
+      "bytes": 840,
+      "role": "preview_only_NOT_RELEASED"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_PREVIEW_VERIFICATION/placement-review.csv",
+      "sha256": "e5b8de0529cc39d3e18e97da970bc1038c77f3051912f360137752448f9b2027",
+      "bytes": 3580,
+      "role": "preview_only_NOT_RELEASED"
+    }
+  ],
+  "closure_documents_sha256": {},
+  "verification_files_sha256": {
+    "BUILD_VERIFICATION.json": "d07d8367f58bab6841e26dab98b552a56f45199a16bdd32d1b14dd7798c090a1",
+    "drc.json": "cb8fa2b926381f00bfd7e4e27e8d4d582d4b8c335009afd9db4addd5dc76dc31",
+    "erc.json": "9d1f6257d06e2eecf85e010db3868179934c9556d698309c3946b758aaa48df2",
+    "local-3d-model-inspection.json": "ddb34e2247a7c9689a9e1098c5895c446fe7e815e1440abd76f472e0e0a23a2f",
+    "mechanical-proofs.json": "a701211e697d3ec9b1c2ad6cdc2f458c8077fb9eedb51b00a1d6d69fa6cc91eb",
+    "polarized-pad-analysis.json": "ad1fba95d04f6b3866196be38065f42fad2dfdf674c84752122a2c9be17f9830"
+  },
+  "explicitly_excluded_packages": [
+    "hardware/emg/rev-b-xiao/manufacturing-release/R1b_PROTOTYPE_ORDER_2026-10-13/",
+    "hardware/emg/rev-b-xiao/european-quote/companion/",
+    "hardware/emg/rev-b-xiao/quote-package/",
+    "hardware/emg/rev-b-xiao/evidence/horizontal-jst/NOT_RELEASED_fabrication/",
+    "Any pre-ECO verticalB2B-PH/C160352manufacturingpackage",
+    "baseline/ is preservation evidence,notcurrentupload"
+  ],
+  "remaining_approvals": [
+    "Factorypanel/rails/fiducials/tooling/depaneldrawing",
+    "Fivefabricated/twoassembledquantityconfirmation",
+    "Exact28groupeligibility,stock,identity andX1controlledspec",
+    "Factoryreel/polarityplacementpreview",
+    "ActualCAM/finishedhole/mask/stackacceptance",
+    "Explicitownerproductionauthorization",
+    "Physicalmodule/post/jigandbenchqualification",
+    "Separatequalifiedbody-contactsafetyassessment"
+  ],
+  "hash_scope": "Manifest does not hash itself. Separate SHA256SUMS covers this manifest andselectedreviewfiles. Final bundle hashes are recorded separately to avoidcircularhashing.",
+  "generated_local_date": "2026-10-20 Europe/Sofia",
+  "assembly_preview_verified": false,
+  "public_library_evidence": "sources/JLC_C*_footprint.svg; independent numbered-pad analysis, not factory 3D preview",
+  "upstream_manifest_sha256": "843972bfd3ac9abe66231d1b6ad58b531ec19849fbc05a2aa5fcef6429e6694d",
+  "J1_disposition": "PRESERVED 270; public 2D suggests 90; HOLD",
+  "changed_CPL_refs": [
+    "J101",
+    "J201",
+    "J301",
+    "J401",
+    "J5001"
+  ],
+  "alternate_preview_files": [
+    {
+      "path": "ALTERNATE_J1_TEST_ONLY/ARTHUR_Neuron_RevB_HJ_JLC_RC2_J1_90_TEST_ONLY_NOT_RELEASED_CPL.csv",
+      "sha256": "9d02a38bd547f721dbbed1a7a397f77d950696768dbd9f68b68cd877bcc7e192",
+      "role": "J1_90_TEST_ONLY; mutually exclusive with main CPL; not approved"
+    }
+  ],
+  "orientation_tools_sha256": {
+    "tools/rb05_package.py": "d0eab9640584d67a10ed3de00d9caf52e0add79b79fa15a8e518ab3c2b2f86a5",
+    "tools/jlc_rotations.py": "bc2228bdaf34c6711831e9c346f1fc0c303503a914b49386dcb6923c5449c81c",
+    "tools/test_jlc_rotations.py": "5338f399ff757a398d8f4706f178289095e526b422373d4c899d51a472068a9a",
+    "tools/audit_factory_orientation.py": "7cefca30a55e3fd5953cd6ab4e67d9d8f8bc684c6c7a18629c332c474a056c5d",
+    "tools/build_orientation_candidate.py": "e3b45bfe5cd8fcef63aa699af4f97329e283eb37a1b3df9528f33142b1b38a77",
+    "tools/draw_jst_orientation.py": "4dd40b0ef3b21ff4c73dadaca12b0be3137cabb7c0348a3e90673dd7ea88820f"
+  },
+  "public_library_sources_sha256": {
+    "sources/JLC_C2862562_footprint.svg": "53022d1d69d141f32665ed3775eba5f3e6c335ab8c198efa9535deea97bcf772",
+    "sources/JLC_C2901557_footprint.svg": "6dc943119eeb38e36c5bebcea643ec3d44b4d5305291c077e3a2951dcf468977",
+    "sources/JLC_C295747_footprint.jpg": "8563f2e6b6e8cf1cdf8178d79a717c75fc79778f9bf78ac5f6af67fcc08b0a2b",
+    "sources/JLC_C295747_footprint.svg": "70ed42163735ea5a459c38477072c9fd097d39b83a0acbe013f1f9d5c36eefa6",
+    "sources/JLC_C40919_footprint.svg": "de1cb9e3eddc310c57ee0faf1cba2ccb66790618a5d4b6910771e2fdaad15ab7",
+    "sources/JLC_C779410_footprint.svg": "696851bedad96678559bb9ea6f7e8a03d38932473ba0d1c64c6832ec112b699a",
+    "sources/JLC_C8545_footprint.svg": "afc514ae791aa530b72274c82b47b827ef490ea6c3ad5c3c5335fb6460d2cf96",
+    "sources/JLC_C963429_footprint.svg": "466160ba374566fe766167aa82264052352519549a3168bdcf7f80d353d4bbbd",
+    "sources/JST_PH_current_2026-10-20.pdf": "447624f4f2f7d37c58c1eaa7ee314ad757fe7aff48f6186491ef6f69fbc00b96",
+    "sources/provenance.json": "eed9eb4485d786d635eb99f06b149cfb5c04ab1b25e3c46dad635cb7c3fbff3b"
+  }
+}
