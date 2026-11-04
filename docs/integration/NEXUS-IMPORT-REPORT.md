@@ -1,8 +1,10 @@
 # Phase A1: Complete Nexus import
 
-**Delivery status: local only.** The Rust workspace built, but critical
-execution and sandbox integration tests did not pass in Linux validation.
-The integration branch was not pushed and no pull request was opened.
+**Delivery status — local only.** Phase A1.1 reproduced all 355 strict Linux
+failures by test name on pinned Nexus and the import. The Ubuntu guest
+blocked sandbox startup before the original Phase A1 execution scenarios
+could be compared with real receipts. That comparison is still required
+before pushing the branch.
 
 The Nexus `main` snapshot is at `systems/nexus/`. This is a source and
 history import; it does not wire Nexus into the monorepo website or start a
@@ -129,6 +131,82 @@ OpenSSL CLI that supports the test fixtures. Compare any remaining failing
 tests against the pinned source standalone and resolve critical failures
 upstream before reimporting. Retain the website baseline evidence rather
 than editing the website in Phase A1.
+
+## Phase A1.1 paired validation
+
+Tested the standalone pinned source at
+`b58aeef8724e5645c68169d81d9525431fbb2de7` and the monorepo checkout at
+`9bee6d8542a660c2f09fca23302afc845fd51d6c`. The website baseline was
+`b91a3ea839e4256c5c9397766425c4a9973d016e`. Both Linux checkouts were
+detached and verified against the recorded trees. The import still has
+1,569 tracked paths, zero missing source commits and the original website
+tree. The only change outside the subtree is this report. Phase A1's
+history and archive credential scan remains applicable to the identical
+Nexus tree, and no test outputs were staged.
+
+### Linux environment
+
+Both runs used the same Ubuntu 24.04.5 ARM64 Lima guest, kernel
+6.8.0-142-generic, Rust 1.99.1, systemd 255.4, Bubblewrap 0.9.0, Node
+24.18.1 and OpenSSL 3.0.13. Checkouts and ancestors used standard
+non-group-writable modes. `/usr/bin/node` is root-owned, mode 0755,
+and works with an empty environment. The user systemd manager was running
+and a delegated cgroup-v2 scope could create and remove a child cgroup.
+
+The kernel exposes user namespaces, seccomp filters and Landlock. Direct
+seccomp architecture checks passed in both runs. Landlock reported ABI 4,
+which is below the ABI 6 requirement for scoped networking and signals.
+The guest's stock AppArmor user-namespace restriction was active. A direct
+namespace probe failed on the UID map and Bubblewrap failed setting up
+loopback with `RTM_NEWADDR: Operation not permitted`. No sandbox protection
+or test was changed in the paired run.
+
+The M4.7 verification report records a 1,806-pass Fedora workspace run
+before the final hysteresis and default changes, followed by targeted
+sandbox reruns on the final code. The ARM64 port report records a Fedora
+environment with Landlock ABI 7 and newer Bubblewrap and OpenSSL. Those
+historical runs are not a paired validation of the pinned release and
+this import. The pre-existing Fedora VM was stopped and was not used.
+
+### Source versus import matrix
+
+Commands ran sequentially, from the respective Nexus roots, with
+`umask 022`, the same Cargo target directory, incremental compilation
+disabled, and dev/test debug info disabled.
+
+```sh
+cargo build --locked --workspace --manifest-path native/Cargo.toml
+NEXUS_REQUIRE_SANDBOX=1 systemd-run --user --scope -p Delegate=yes -- \
+  cargo test --locked --workspace --manifest-path native/Cargo.toml \
+    --no-fail-fast -- --test-threads=4
+```
+
+| Check | Standalone source | Imported tree | Assessment |
+| --- | --- | --- | --- |
+| Locked Linux workspace build | Passed | Passed | Equivalent |
+| Strict workspace suite | 1,451 passed, 355 failed, 65 ignored | 1,451 passed, 355 failed, 65 ignored | Same 355 failing test names and nine failing test targets. Exit 101 on both. |
+| Hostile-build isolation and sandboxed edit/test/approval flow (`code_a56`) | Same Bubblewrap loopback preflight refusal | Same preflight refusal | Environment blocker. Neither test reached command execution or emitted a successful execution receipt in this run. |
+| Expired TLS fixture (`tls_a52`) | OpenSSL rejected `-not_before/-not_after` | Same CLI error | Environment dependency. The fixture could not generate the certificate. |
+| Same-size snapshot modification (`process_a34`) | Expected error, received `StageReport` | Same result and digest | Reproduces upstream. The ARM64 report also records timing-sensitive snapshot detection. |
+| Busy runtime restart (`lifecycle_a614`) | Broker timed out waiting for daemon. Socket missing. | Broker timed out waiting for daemon. Connection reset. | Same failing assertion and startup phase. The terminal socket errors differ, so the diagnostics are not identical. No execution receipt. |
+| Website 390×667 Playwright assertion | Failed, overlap 34.83607805427164 against threshold < 1 | Same assertion and measured overlap | Independently served static exports confirm a destination baseline failure. |
+| macOS desktop Rust tests | Historical M4.7 evidence only | 54 passed, 0 failed, 21 ignored | Current run covered the supported Tauri crate on Apple Silicon. Live cases stayed ignored. |
+| macOS desktop app build | Historical evidence only | `npm run tauri -- build --bundles app -- --locked` produced an arm64 `Nexus.app` | Bundle creation passed. Strict codesign verification found the linker-only signature did not seal app resources. Signing, notarization and live engine connection were not verified. |
+
+For 354 failures, diagnostics matched after removing run-specific PIDs,
+ports, paths, load averages and Rust's one-time backtrace hint. The only
+remaining diagnostic difference is the busy-runtime socket error above.
+There were zero import-only failing tests in the paired run.
+
+This establishes that the stock-guest failure set is shared, including the
+absence of receipts where the sandbox probe refuses to start. It does not
+reproduce the original Phase A1 receipt-level failures under a guest where
+the sandbox actually launches. The next check is to run the two critical
+`code_a56` cases in both checkouts on a Linux guest with functioning
+Bubblewrap and the required kernel features, with
+`NEXUS_REQUIRE_SANDBOX=1`. Compare their command exit classifications and
+execution receipts before delivery. No integration-only code fix is
+supported by the evidence so far.
 
 ## Synchronizing future Nexus changes
 
