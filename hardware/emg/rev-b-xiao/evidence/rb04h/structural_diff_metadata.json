@@ -1,0 +1,166 @@
+{
+ "segment": {
+  "count_old": 1518,
+  "count_new": 1518,
+  "identical": true
+ },
+ "via": {
+  "count_old": 201,
+  "count_new": 201,
+  "identical": true
+ },
+ "gr_line": {
+  "count_old": 4,
+  "count_new": 4,
+  "identical": true
+ },
+ "gr_arc": {
+  "count_old": 4,
+  "count_new": 4,
+  "identical": true
+ },
+ "gr_rect": {
+  "count_old": 0,
+  "count_new": 0,
+  "identical": true
+ },
+ "gr_circle": {
+  "count_old": 0,
+  "count_new": 0,
+  "identical": true
+ },
+ "gr_poly": {
+  "count_old": 0,
+  "count_new": 0,
+  "identical": true
+ },
+ "gr_text": {
+  "count_old": 0,
+  "count_new": 0,
+  "identical": true
+ },
+ "net": {
+  "count_old": 0,
+  "count_new": 0,
+  "identical": true
+ },
+ "dimension": {
+  "count_old": 0,
+  "count_new": 0,
+  "identical": true
+ },
+ "group": {
+  "count_old": 0,
+  "count_new": 0,
+  "identical": true
+ },
+ "general": {
+  "identical": true
+ },
+ "layers": {
+  "identical": true
+ },
+ "setup": {
+  "identical": true
+ },
+ "title_block": {
+  "identical": true
+ },
+ "paper": {
+  "identical": true
+ },
+ "version": {
+  "identical": true
+ },
+ "footprints": {
+  "old": 135,
+  "new": 135,
+  "same_refs": true
+ },
+ "U1_other_content_identical": true,
+ "U1_pad23_old": {
+  "at": [
+   "at",
+   "-4.445",
+   "-0.4075",
+   "180"
+  ],
+  "size": [
+   "size",
+   "2.3",
+   "2.3"
+  ],
+  "drill": [
+   "drill",
+   "1.9"
+  ],
+  "layers": [
+   "layers",
+   "*.Cu",
+   "*.Mask"
+  ],
+  "net": [
+   "net",
+   "VBAT"
+  ],
+  "solder_mask_margin": [
+   "solder_mask_margin",
+   "-0.175"
+  ]
+ },
+ "U1_pad23_new": {
+  "at": [
+   "at",
+   "-4.445",
+   "-0.4075",
+   "180"
+  ],
+  "size": [
+   "size",
+   "2.3",
+   "2.3"
+  ],
+  "drill": [
+   "drill",
+   "1.9"
+  ],
+  "layers": [
+   "layers",
+   "*.Cu",
+   "*.Mask"
+  ],
+  "net": [
+   "net",
+   "VBAT"
+  ],
+  "solder_mask_margin": [
+   "solder_mask_margin",
+   "-0.175"
+  ]
+ },
+ "U1_bcu_pad23_identical": true,
+ "footprints_changed_other_than_U1_pad23": [],
+ "positions_and_layers_identical": true,
+ "zone_definitions_identical": true,
+ "fill_area_mm2_old": {
+  "In1.Cu": 3055.41,
+  "In2.Cu": 2313.58
+ },
+ "fill_area_mm2_new": {
+  "In1.Cu": 3055.41,
+  "In2.Cu": 2313.58
+ },
+ "outline_old": [
+  0.0,
+  0.0,
+  51.3,
+  64.95
+ ],
+ "outline_new": [
+  0.0,
+  0.0,
+  51.3,
+  64.95
+ ],
+ "unexpected": []
+}

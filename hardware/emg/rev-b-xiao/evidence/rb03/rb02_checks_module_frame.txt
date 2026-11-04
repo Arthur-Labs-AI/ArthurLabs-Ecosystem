@@ -1,0 +1,62 @@
+PASS        C29 XIAO USB end sits on the south board edge (translation-independent)
+            USB end y 62.450, outline south 62.450
+PASS        C30 J1 mating-plug corridor (7 x 9 mm in front of the opening) free of components
+            opening direction (+1,-0); blocked by []
+PASS        C01 PCB/schematic reference sync
+            135 footprints; missing []; extra []
+PASS        C02 footprint library ids equal the schematic Footprint field
+            []
+PASS        C03 pad nets equal the netlist; every netlist pin has a pad
+            364 pad-net checks; mismatches []; pins without pad []
+PASS        C04 DNP set equals {U1}
+            ['U1']
+PASS        C05 single-side assembly: every assembled part on F.Cu, TP1-TP8 bare pads on B.Cu
+            wrong side: []
+FAIL        C06 board size
+            51.30 x 62.45 mm (RB-00.6 estimate 75 x 32; Zone A extended by 22 mm)
+PASS        C07 no courtyard overlaps
+            []
+PASS        C08 courtyards inside the board outline (U1 may cross the south edge by the USB-C overhang)
+            [('U1', [75.2, 10.36, 96.58, 33.61])]
+PASS        C09 pad copper >= 0.5 mm from the board edge (JLC minimum 0.2, project margin 0.5)
+            []
+PASS        C10 XIAO placement: rotation 180, USB end edge on the south board edge
+            at (85.890, 21.433) rot 180.0
+PASS        C11 XIAO castellation pads equal the RB-02A CAD positions (14 pads, board frame)
+            max deviation 0.0000 mm
+PASS        C12 castellation host pads 2.90 x 1.50 (toe 1.30 + inner 1.60)
+            {(2.9, 1.5)}
+PASS        C13 pad numbering 1..14 unique + post pad 23
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]; post pads: [('thru_hole', 1.9), ('smd', 3.0)]
+PASS        C14 BAT+ post hole: drill 1.40 at the RB-00.6 position, offset from the CAD BAT+ pad centre
+            (90.335, 21.840) d=(+0.000,+0.000) drill 1.4
+PASS        C15 no other pad within 3 mm of the post (hand access from both sides)
+            nearest J1.MP at 11.71 mm
+PASS        C16 XIAO underside keep-outs present as board-level rule areas (pads 15-22, 25, GND0, 4 shell ovals, via limits)
+            11/11 found; rule areas total 12
+PASS        C17 no component within 1.5 mm west of the toe ends (iron access)
+            []
+PASS        C18 components 1.5-4.0 mm west of the toes are <= 1.2 mm tall; nothing taller east of x'=49.7 outside the north strip
+            [] []
+PASS        C19 east toes: no component outside the module east edge
+            []
+PASS        C20 USB-C: receptacle (9.0 wide, 1.508 overhang) and plug overmold (12.4) outside the board; no part within 2 mm of the USB end within +/-6.2 mm
+            parts near the USB end: []
+PASS        C21 U.FL cable corridor east of the connector (4 mm wide) free of components
+            blocked by []
+PASS        C22 X1 OUT pad (pin 3) within 5 mm of ADC CLKIN (pin 17): clock net length proxy
+            OUT pad to CLKIN 3.61 mm; X1 centre to CLKIN 4.96 mm
+PASS        C23 decoupling / filter parts near their pins (distance from nearest pad centre to the pin)
+            C6007 (AVDD pin 1) 2.1; C6008 (DVDD pin 20) 1.5; C6009 (CAP pin 18) 2.2; C501 (U501 V+) 2.5; C502 (U502 V+) 2.5; C503 (U503 V+) 2.5; C6010 (X1 VDD) 3.3; C4005 (U4002 IN) 2.4; C4006 (U4002 OUT) 2.5; FB1 to XIAO 3V3 pad 3.7
+PASS        C24 analog input legs: P/N parts share rotation/row; Rs-to-clamp hi-Z length equal across the 8 legs
+            rotation mismatches []; Rs->clamp pin 3 {'CH1P': 3.21, 'CH1N': 3.21, 'CH2P': 3.21, 'CH2N': 3.21, 'CH3P': 3.21, 'CH3N': 3.21, 'CH4P': 3.21, 'CH4N': 3.21}
+PASS        C25 ADC input network: 1 nF within 4 mm of its AIN pin, BAV199 clamp within 13.5 mm (8 legs)
+            caps {'CH1P': 3.6, 'CH1N': 3.0, 'CH2N': 2.4, 'CH2P': 2.1, 'CH3P': 2.1, 'CH3N': 2.4, 'CH4N': 3.0, 'CH4P': 3.6}; clamps {'CH1P': 6.8, 'CH1N': 10.5, 'CH2N': 5.7, 'CH2P': 9.6, 'CH3P': 5.4, 'CH3N': 9.3, 'CH4N': 6.0, 'CH4P': 9.5}
+CONDITIONAL C26 JLC: parts within 3 mm of the long edges (JLC adds process rails; connectors excluded)
+            71 parts, e.g. ['R104', 'R203', 'R404', 'R204', 'R201', 'R5005', 'R307', 'C404']
+PASS        C27 single-side SMT: F.Cu only, no THT except the DNP XIAO post hole
+            13 package types: OSC_SCTF_SX3M_SMD3225-4P, XIAO_ESP32S3_HANDSOLDER, C_0603_1608Metric, C_0805_2012Metric, JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical, JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal, L_0603_1608Metric, TSSOP-14_4.4x5mm_P0.65mm, TSSOP-20_4
+INFO        C28 copper zone outlines (unfilled, defined for RB-03)
+            [('In1 GND plane', '', ['In1.Cu']), ('In2 GND zones A/B', '', ['In2.Cu'])]
+
+30 checks: 27 PASS, 1 FAIL, 1 CONDITIONAL

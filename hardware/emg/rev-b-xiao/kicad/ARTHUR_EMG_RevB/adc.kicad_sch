@@ -6,11 +6,11 @@
 	(paper "A3")
 	(title_block
 		(title "ADS131M04 ADC + local 8.192 MHz clock")
-		(date "2026-09-28")
-		(rev "B / RB-01")
+		(date "2026-10-11")
+		(rev "B / RB-04A")
 		(company "A.R.T.H.U.R EMG")
 		(comment 1 "Architecture frozen: RB-00 + RB-00.5 + RB-00.6")
-		(comment 2 "RB-01 schematic only - no PCB, placement or routing")
+		(comment 2 "RB-04A: BOM fields filled (MPN/LCSC); 2.2 uF 16 V X7R line pending approval; manufacturing BLOCKED")
 	)
 	(lib_symbols
 		(symbol "ARTHUR_RevB:ADS131M04"
@@ -960,7 +960,7 @@
 					)
 				)
 			)
-			(property "Value" "OT2JI-111-8.192M"
+			(property "Value" "SX3M8.192M20F30TNN"
 				(at 1.27 -6.35 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -970,7 +970,7 @@
 					)
 				)
 			)
-			(property "Footprint" "ARTHUR:OSC_YXC_SMD3225-4P"
+			(property "Footprint" "ARTHUR:OSC_SCTF_SX3M_SMD3225-4P"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -981,7 +981,7 @@
 					)
 				)
 			)
-			(property "Datasheet" "https://www.lcsc.com/product-detail/C7425393.html"
+			(property "Datasheet" "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2110091030_Shenzhen-SCTF-Elec-SX3M8-192M20F30TNN_C2901557.pdf"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -992,7 +992,7 @@
 					)
 				)
 			)
-			(property "Description" "8.192 MHz CMOS clock oscillator 1.8-3.3 V, SMD3225-4P (YXC OT2JI-111-8.192M, LCSC C7425393). 1 = OE (high/float = enable), 2 = GND, 3 = OUT, 4 = VDD"
+			(property "Description" "8.192 MHz CMOS clock oscillator 1.62-3.63 V, SMD3225-4P 3.2x2.5x0.95 (SCTF SX3M8.192M20F30TNN, LCSC C2901557). 1 = OE (high/float = enable), 2 = GND, 3 = OUT, 4 = VDD"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
@@ -1212,7 +1212,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "DESIGN INTENT (this sheet):\n- AVDD = AFE_3V0, DVDD = DVDD_F (2.7-3.6 V internal-LDO mode), CAP = 220 nF, single GND (AGND/DGND joined).\n- CLKIN only from X1 (YXC OT2JI-111-8.192M, C7425393) via R6001 33 ohm source series. No clock from the XIAO.\n- R6002 33 ohm at DOUT (MISO source term), R6003 100 ohm at DRDY (GPIO2 boot-glitch contention limit)."
+	(text "DESIGN INTENT (this sheet):\n- AVDD = AFE_3V0, DVDD = DVDD_F (2.7-3.6 V internal-LDO mode), CAP = 220 nF, single GND (AGND/DGND joined).\n- CLKIN only from X1 (SCTF SX3M8.192M20F30TNN, C2901557) via R6001 33 ohm source series. No clock from the XIAO.\n- R6002 33 ohm at DOUT (MISO source term), R6003 100 ohm at DRDY (GPIO2 boot-glitch contention limit)."
 		(exclude_from_sim no)
 		(at 25.4 256.54 0)
 		(effects
@@ -1912,7 +1912,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "OT2JI-111-8.192M"
+		(property "Value" "SX3M8.192M20F30TNN"
 			(at 250.19 77.47 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1923,7 +1923,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "ARTHUR:OSC_YXC_SMD3225-4P"
+		(property "Footprint" "ARTHUR:OSC_SCTF_SX3M_SMD3225-4P"
 			(at 248.92 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -1934,7 +1934,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.lcsc.com/product-detail/C7425393.html"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C2901557.pdf"
 			(at 248.92 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -1945,7 +1945,7 @@
 				)
 			)
 		)
-		(property "Description" "8.192 MHz CMOS clock oscillator 1.8-3.3 V, SMD3225-4P (YXC OT2JI-111-8.192M, LCSC C7425393). 1 = OE (high/float = enable), 2 = GND, 3 = OUT, 4 = VDD"
+		(property "Description" "8.192 MHz CMOS clock oscillator 1.62-3.63 V, SMD3225-4P 3.2x2.5x0.95 (SCTF SX3M8.192M20F30TNN, LCSC C2901557). 1 = OE (high/float = enable), 2 = GND, 3 = OUT, 4 = VDD"
 			(at 248.92 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -1956,7 +1956,7 @@
 				)
 			)
 		)
-		(property "MPN" "OT2JI-111-8.192M"
+		(property "MPN" "SX3M8.192M20F30TNN"
 			(at 248.92 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -1967,7 +1967,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "YXC"
+		(property "Manufacturer" "SCTF (Asian Brands)"
 			(at 248.92 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -1978,7 +1978,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C7425393"
+		(property "LCSC" "C2901557"
 			(at 248.92 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -1989,7 +1989,7 @@
 				)
 			)
 		)
-		(property "Spec" "8.192 MHz CMOS XO, 1.8-3.3 V, +/-20 ppm, 45-55 % duty, <= 5 mA, SMD3225-4P"
+		(property "Spec" "8.192 MHz CMOS XO, 1.62-3.63 V, +/-20 ppm @25C, +/-30 ppm -40..85C, 45-55 % duty, Icc <= 10 mA (15 pF), tstart <= 5 ms, SMD3225-4P"
 			(at 248.92 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2000,7 +2000,18 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Extended (expected), Economic PCBA eligible"
+		(property "BOM_Status" "QUALIFIED"
+			(at 248.92 71.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "Extended (per project field)"
 			(at 248.92 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2022,7 +2033,7 @@
 				)
 			)
 		)
-		(property "Status" "Frozen RB-00.5 R4 (CLOSED). Residuals: family datasheet (YSO110TR) only; 3.3 V = top of stated VDD range; CPL rotation check"
+		(property "Status" "Frozen RB-01R (SCTF 3CM family datasheet rev 05/12/2026, exact code decoded). Residuals: no absolute-max table published; 8.192 MHz not in the datasheet standard-frequency list (catalogue line C2901557); verify marking/frequency on first reel; CPL rotation check"
 			(at 248.92 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2175,7 +2186,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C23140.pdf"
 			(at 284.48 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2197,7 +2208,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "0603WAF330JT5E"
 			(at 284.48 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2208,7 +2219,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "UNI-ROYAL"
 			(at 284.48 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2241,7 +2252,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C23140"
+			(at 284.48 71.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 284.48 71.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "not stated on page"
 			(at 284.48 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2311,7 +2344,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C14663.pdf"
 			(at 223.52 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2322,7 +2355,7 @@
 				)
 			)
 		)
-		(property "Description" "Capacitor 100nF 16V X7R 0603 - C_X1: X1 VDD decoupling at pin 4"
+		(property "Description" "Capacitor 100nF 50V X7R 0603 - C_X1: X1 VDD decoupling at pin 4"
 			(at 223.52 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2333,7 +2366,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "CC0603KRX7R9BB104"
 			(at 223.52 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2344,7 +2377,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "YAGEO"
 			(at 223.52 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2355,7 +2388,7 @@
 				)
 			)
 		)
-		(property "Spec" "100nF 16V X7R 0603 MLCC"
+		(property "Spec" "100nF 50V X7R 0603 MLCC"
 			(at 223.52 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2377,7 +2410,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C14663"
+			(at 223.52 71.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 223.52 71.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "Basic (page)"
 			(at 223.52 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -2447,7 +2502,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C59782.pdf"
 			(at 139.7 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -2469,7 +2524,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "CL10B105KO8NNNC"
 			(at 139.7 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -2480,7 +2535,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "Samsung Electro-Mechanics"
 			(at 139.7 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -2513,7 +2568,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C59782"
+			(at 139.7 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 139.7 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "Extended Parts"
 			(at 139.7 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -2583,7 +2660,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C59782.pdf"
 			(at 116.84 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -2605,7 +2682,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "CL10B105KO8NNNC"
 			(at 116.84 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -2616,7 +2693,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "Samsung Electro-Mechanics"
 			(at 116.84 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -2649,7 +2726,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C59782"
+			(at 116.84 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 116.84 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "Extended Parts"
 			(at 116.84 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -2796,7 +2895,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/ads131m04.pdf"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C2862562.pdf"
 			(at 157.48 127 0)
 			(hide yes)
 			(show_name no)
@@ -2851,7 +2950,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Extended (expected)"
+		(property "LCSC" "C2862562"
+			(at 157.48 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 157.48 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "Extended"
 			(at 157.48 127 0)
 			(hide yes)
 			(show_name no)
@@ -3140,7 +3261,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C160828.pdf"
 			(at 162.56 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -3162,7 +3283,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "CL10B224KO8NNNC"
 			(at 162.56 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -3173,7 +3294,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "Samsung Electro-Mechanics"
 			(at 162.56 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -3206,7 +3327,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C160828"
+			(at 162.56 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 162.56 177.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "not stated on page"
 			(at 162.56 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -3276,7 +3419,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C23140.pdf"
 			(at 238.76 139.7 0)
 			(hide yes)
 			(show_name no)
@@ -3298,7 +3441,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "0603WAF330JT5E"
 			(at 238.76 139.7 0)
 			(hide yes)
 			(show_name no)
@@ -3309,7 +3452,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "UNI-ROYAL"
 			(at 238.76 139.7 0)
 			(hide yes)
 			(show_name no)
@@ -3342,7 +3485,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C23140"
+			(at 238.76 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 238.76 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "not stated on page"
 			(at 238.76 139.7 0)
 			(hide yes)
 			(show_name no)
@@ -3874,7 +4039,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C22775.pdf"
 			(at 264.16 139.7 0)
 			(hide yes)
 			(show_name no)
@@ -3896,7 +4061,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "0603WAF1000T5E"
 			(at 264.16 139.7 0)
 			(hide yes)
 			(show_name no)
@@ -3907,7 +4072,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "UNI-ROYAL"
 			(at 264.16 139.7 0)
 			(hide yes)
 			(show_name no)
@@ -3940,7 +4105,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C22775"
+			(at 264.16 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 264.16 139.7 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "not stated on page"
 			(at 264.16 139.7 0)
 			(hide yes)
 			(show_name no)

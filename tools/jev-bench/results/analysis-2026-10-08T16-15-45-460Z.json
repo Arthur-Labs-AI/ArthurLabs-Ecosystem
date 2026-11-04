@@ -1,0 +1,6013 @@
+{
+ "meta": {
+  "run_id": "2026-10-08T16-15-45-460Z",
+  "model": "jev-1.13.0",
+  "runs": 3,
+  "orders": [
+   "A",
+   "B"
+  ],
+  "endpoint": "https://api.typesafe.ai/v1/systemone",
+  "corpus_sha256": "3d00ce38bafcf9b638a8d6f693cae50b0cc0c49c724aec6ab9e069255e16d001"
+ },
+ "rows": [
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "N01",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.09
+   ],
+   "noul_max": 0.09,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.96,
+   "choice_probs": {
+    "REVISE": 0.03,
+    "NEW": 0.97,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 573,
+   "output_tokens": 62,
+   "latency_ms": 300,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "N02",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.06
+   ],
+   "noul_max": 0.06,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 0,
+    "NEW": 1,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 573,
+   "output_tokens": 62,
+   "latency_ms": 435,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "N03",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.03
+   ],
+   "noul_max": 0.03,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 0,
+    "NEW": 1,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 582,
+   "output_tokens": 62,
+   "latency_ms": 251,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "N04",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.18
+   ],
+   "noul_max": 0.18,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.97,
+   "choice_probs": {
+    "REVISE": 0.02,
+    "NEW": 0.98,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 580,
+   "output_tokens": 62,
+   "latency_ms": 277,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "N05",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.26
+   ],
+   "noul_max": 0.26,
+   "choice": "NEW",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.39,
+   "choice_probs": {
+    "REVISE": 0.4,
+    "NEW": 0.6,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 587,
+   "output_tokens": 62,
+   "latency_ms": 272,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "N06",
+   "expected": "NEW",
+   "lang": "bg",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.19
+   ],
+   "noul_max": 0.19,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.66,
+   "choice_probs": {
+    "REVISE": 0.22,
+    "NEW": 0.77,
+    "UNCERTAIN": 0.01
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 634,
+   "output_tokens": 62,
+   "latency_ms": 366,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "N07",
+   "expected": "NEW",
+   "lang": "bg",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.05
+   ],
+   "noul_max": 0.05,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 0,
+    "NEW": 1,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 608,
+   "output_tokens": 62,
+   "latency_ms": 258,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "N08",
+   "expected": "NEW",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.09
+   ],
+   "noul_max": 0.09,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "REVISE": 0.01,
+    "NEW": 0.99
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 606,
+   "output_tokens": 62,
+   "latency_ms": 259,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "N09",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.04
+   ],
+   "noul_max": 0.04,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 0.01,
+    "NEW": 0.99,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 583,
+   "output_tokens": 62,
+   "latency_ms": 276,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "N10",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.1
+   ],
+   "noul_max": 0.1,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "REVISE": 0.01,
+    "NEW": 0.99,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 580,
+   "output_tokens": 62,
+   "latency_ms": 314,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "R01",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.9
+   ],
+   "noul_max": 0.9,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.85,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "REVISE": 0.9,
+    "NEW": 0.1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 575,
+   "output_tokens": 64,
+   "latency_ms": 1057,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "R02",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.98
+   ],
+   "noul_max": 0.98,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "UNCERTAIN": 0,
+    "NEW": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 591,
+   "output_tokens": 64,
+   "latency_ms": 1011,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "R03",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.93
+   ],
+   "noul_max": 0.93,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 589,
+   "output_tokens": 64,
+   "latency_ms": 1011,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "R04",
+   "expected": "REVISE",
+   "lang": "bg",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.91
+   ],
+   "noul_max": 0.91,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.94,
+   "choice_probs": {
+    "REVISE": 0.96,
+    "NEW": 0.04,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 617,
+   "output_tokens": 64,
+   "latency_ms": 1005,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "R05",
+   "expected": "REVISE",
+   "lang": "bg",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.98
+   ],
+   "noul_max": 0.98,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 640,
+   "output_tokens": 64,
+   "latency_ms": 296,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "R06",
+   "expected": "REVISE",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 623,
+   "output_tokens": 64,
+   "latency_ms": 293,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "R07",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 588,
+   "output_tokens": 64,
+   "latency_ms": 292,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "R08",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.93
+   ],
+   "noul_max": 0.93,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 582,
+   "output_tokens": 64,
+   "latency_ms": 288,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "R09",
+   "expected": "REVISE",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.95
+   ],
+   "noul_max": 0.95,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "NEW": 0.01,
+    "REVISE": 0.99,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 606,
+   "output_tokens": 64,
+   "latency_ms": 302,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "R10",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "REVISE": 1,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 585,
+   "output_tokens": 64,
+   "latency_ms": 301,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "U01",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.05,
+    0.03,
+    0.26
+   ],
+   "noul_max": 0.26,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.76,
+   "choice_probs": {
+    "REVISE": 0.11,
+    "NEW": 0.84,
+    "UNCERTAIN": 0.05
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 830,
+   "output_tokens": 102,
+   "latency_ms": 307,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "U02",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.58
+   ],
+   "noul_max": 0.58,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.42,
+   "choice_probs": {
+    "REVISE": 0.23,
+    "NEW": 0.15,
+    "UNCERTAIN": 0.62
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 578,
+   "output_tokens": 64,
+   "latency_ms": 284,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "U03",
+   "expected": "UNCERTAIN",
+   "lang": "bg",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.37,
+    0.32
+   ],
+   "noul_max": 0.37,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.89,
+   "choice_probs": {
+    "NEW": 0.06,
+    "REVISE": 0.01,
+    "UNCERTAIN": 0.93
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 770,
+   "output_tokens": 84,
+   "latency_ms": 267,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "U04",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.18
+   ],
+   "noul_max": 0.18,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.91,
+   "choice_probs": {
+    "REVISE": 0.06,
+    "UNCERTAIN": 0,
+    "NEW": 0.94
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 579,
+   "output_tokens": 62,
+   "latency_ms": 251,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "U05",
+   "expected": "UNCERTAIN",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.26,
+    0.46
+   ],
+   "noul_max": 0.46,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.94,
+   "choice_probs": {
+    "REVISE": 0.01,
+    "UNCERTAIN": 0.96,
+    "NEW": 0.03
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 713,
+   "output_tokens": 84,
+   "latency_ms": 286,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "U06",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.78,
+    0.16
+   ],
+   "noul_max": 0.78,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.47,
+   "choice_probs": {
+    "REVISE": 0.35,
+    "NEW": 0.01,
+    "UNCERTAIN": 0.64
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 702,
+   "output_tokens": 84,
+   "latency_ms": 290,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.9
+   ],
+   "noul_max": 0.9,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 579,
+   "output_tokens": 64,
+   "latency_ms": 264,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.4
+   ],
+   "noul_max": 0.4,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.53,
+   "choice_probs": {
+    "REVISE": 0.69,
+    "UNCERTAIN": 0,
+    "NEW": 0.31
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 578,
+   "output_tokens": 64,
+   "latency_ms": 358,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "U09",
+   "expected": "UNCERTAIN",
+   "lang": "bg",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.49
+   ],
+   "noul_max": 0.49,
+   "choice": "NEW",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.38,
+   "choice_probs": {
+    "REVISE": 0.41,
+    "UNCERTAIN": 0,
+    "NEW": 0.59
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 618,
+   "output_tokens": 62,
+   "latency_ms": 342,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "A",
+   "case_id": "U10",
+   "expected": "UNCERTAIN",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.42,
+    0.45
+   ],
+   "noul_max": 0.45,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.8,
+   "choice_probs": {
+    "REVISE": 0.04,
+    "NEW": 0.09,
+    "UNCERTAIN": 0.87
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 711,
+   "output_tokens": 84,
+   "latency_ms": 324,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "N01",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.09
+   ],
+   "noul_max": 0.09,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.86,
+   "choice_probs": {
+    "NEW": 0.91,
+    "UNCERTAIN": 0,
+    "REVISE": 0.09
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 573,
+   "output_tokens": 62,
+   "latency_ms": 240,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "N02",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.06
+   ],
+   "noul_max": 0.06,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "NEW": 0.99,
+    "UNCERTAIN": 0,
+    "REVISE": 0.01
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 573,
+   "output_tokens": 62,
+   "latency_ms": 251,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "N03",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.03
+   ],
+   "noul_max": 0.03,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 1,
+    "UNCERTAIN": 0,
+    "REVISE": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 582,
+   "output_tokens": 62,
+   "latency_ms": 258,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "N04",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.18
+   ],
+   "noul_max": 0.18,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.97,
+   "choice_probs": {
+    "NEW": 0.98,
+    "UNCERTAIN": 0,
+    "REVISE": 0.02
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 580,
+   "output_tokens": 62,
+   "latency_ms": 252,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "N05",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.29
+   ],
+   "noul_max": 0.29,
+   "choice": "NEW",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.3,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "NEW": 0.53,
+    "REVISE": 0.47
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 587,
+   "output_tokens": 62,
+   "latency_ms": 251,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "N06",
+   "expected": "NEW",
+   "lang": "bg",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.25
+   ],
+   "noul_max": 0.25,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.51,
+   "choice_probs": {
+    "REVISE": 0.32,
+    "UNCERTAIN": 0.01,
+    "NEW": 0.67
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 634,
+   "output_tokens": 62,
+   "latency_ms": 265,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "N07",
+   "expected": "NEW",
+   "lang": "bg",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.05
+   ],
+   "noul_max": 0.05,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "NEW": 0.99,
+    "UNCERTAIN": 0,
+    "REVISE": 0.01
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 608,
+   "output_tokens": 62,
+   "latency_ms": 232,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "N08",
+   "expected": "NEW",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.09
+   ],
+   "noul_max": 0.09,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "REVISE": 0.01,
+    "UNCERTAIN": 0,
+    "NEW": 0.99
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 606,
+   "output_tokens": 62,
+   "latency_ms": 296,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "N09",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.04
+   ],
+   "noul_max": 0.04,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 0,
+    "NEW": 1,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 583,
+   "output_tokens": 62,
+   "latency_ms": 293,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "N10",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.1
+   ],
+   "noul_max": 0.1,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.95,
+   "choice_probs": {
+    "NEW": 0.97,
+    "UNCERTAIN": 0,
+    "REVISE": 0.03
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 580,
+   "output_tokens": 62,
+   "latency_ms": 251,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "R01",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.91
+   ],
+   "noul_max": 0.91,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.9,
+   "choice_probs": {
+    "NEW": 0.07,
+    "UNCERTAIN": 0,
+    "REVISE": 0.93
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 575,
+   "output_tokens": 64,
+   "latency_ms": 318,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "R02",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.98
+   ],
+   "noul_max": 0.98,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 591,
+   "output_tokens": 64,
+   "latency_ms": 304,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "R03",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.93
+   ],
+   "noul_max": 0.93,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 589,
+   "output_tokens": 64,
+   "latency_ms": 305,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "R04",
+   "expected": "REVISE",
+   "lang": "bg",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.91
+   ],
+   "noul_max": 0.91,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.95,
+   "choice_probs": {
+    "NEW": 0.03,
+    "UNCERTAIN": 0,
+    "REVISE": 0.97
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 617,
+   "output_tokens": 64,
+   "latency_ms": 334,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "R05",
+   "expected": "REVISE",
+   "lang": "bg",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.98
+   ],
+   "noul_max": 0.98,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 640,
+   "output_tokens": 64,
+   "latency_ms": 302,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "R06",
+   "expected": "REVISE",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "UNCERTAIN": 0,
+    "NEW": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 623,
+   "output_tokens": 64,
+   "latency_ms": 283,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "R07",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 588,
+   "output_tokens": 64,
+   "latency_ms": 232,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "R08",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.92
+   ],
+   "noul_max": 0.92,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 582,
+   "output_tokens": 64,
+   "latency_ms": 229,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "R09",
+   "expected": "REVISE",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.95
+   ],
+   "noul_max": 0.95,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 606,
+   "output_tokens": 64,
+   "latency_ms": 277,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "R10",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "REVISE": 1,
+    "NEW": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 585,
+   "output_tokens": 64,
+   "latency_ms": 260,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "U01",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.05,
+    0.03,
+    0.21
+   ],
+   "noul_max": 0.21,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.82,
+   "choice_probs": {
+    "REVISE": 0.07,
+    "NEW": 0.88,
+    "UNCERTAIN": 0.05
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 830,
+   "output_tokens": 102,
+   "latency_ms": 253,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "U02",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.56
+   ],
+   "noul_max": 0.56,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.59,
+   "choice_probs": {
+    "NEW": 0.09,
+    "UNCERTAIN": 0.73,
+    "REVISE": 0.18
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 578,
+   "output_tokens": 64,
+   "latency_ms": 465,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "U03",
+   "expected": "UNCERTAIN",
+   "lang": "bg",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.39,
+    0.34
+   ],
+   "noul_max": 0.39,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.92,
+   "choice_probs": {
+    "NEW": 0.03,
+    "UNCERTAIN": 0.95,
+    "REVISE": 0.02
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 770,
+   "output_tokens": 84,
+   "latency_ms": 452,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "U04",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.18
+   ],
+   "noul_max": 0.18,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.83,
+   "choice_probs": {
+    "NEW": 0.89,
+    "REVISE": 0.11,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 579,
+   "output_tokens": 62,
+   "latency_ms": 456,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "U05",
+   "expected": "UNCERTAIN",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.28,
+    0.5
+   ],
+   "noul_max": 0.5,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.96,
+   "choice_probs": {
+    "NEW": 0.02,
+    "UNCERTAIN": 0.97,
+    "REVISE": 0.01
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 713,
+   "output_tokens": 84,
+   "latency_ms": 434,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "U06",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.74,
+    0.2
+   ],
+   "noul_max": 0.74,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.73,
+   "choice_probs": {
+    "REVISE": 0.18,
+    "UNCERTAIN": 0.82,
+    "NEW": 0
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 702,
+   "output_tokens": 84,
+   "latency_ms": 292,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.88
+   ],
+   "noul_max": 0.88,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 579,
+   "output_tokens": 64,
+   "latency_ms": 296,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.45
+   ],
+   "noul_max": 0.45,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.7,
+   "choice_probs": {
+    "NEW": 0.2,
+    "UNCERTAIN": 0,
+    "REVISE": 0.8
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 578,
+   "output_tokens": 64,
+   "latency_ms": 263,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "U09",
+   "expected": "UNCERTAIN",
+   "lang": "bg",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.51
+   ],
+   "noul_max": 0.51,
+   "choice": "REVISE",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.3,
+   "choice_probs": {
+    "NEW": 0.46,
+    "UNCERTAIN": 0.01,
+    "REVISE": 0.53
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 618,
+   "output_tokens": 64,
+   "latency_ms": 257,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 1,
+   "order": "B",
+   "case_id": "U10",
+   "expected": "UNCERTAIN",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.46,
+    0.5
+   ],
+   "noul_max": 0.5,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.88,
+   "choice_probs": {
+    "NEW": 0.04,
+    "UNCERTAIN": 0.92,
+    "REVISE": 0.04
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 711,
+   "output_tokens": 84,
+   "latency_ms": 290,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "N01",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.09
+   ],
+   "noul_max": 0.09,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.94,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "REVISE": 0.04,
+    "NEW": 0.96
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 573,
+   "output_tokens": 62,
+   "latency_ms": 284,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "N02",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.06
+   ],
+   "noul_max": 0.06,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 0,
+    "NEW": 1,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 573,
+   "output_tokens": 62,
+   "latency_ms": 353,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "N03",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.03
+   ],
+   "noul_max": 0.03,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 0,
+    "NEW": 1,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 582,
+   "output_tokens": 62,
+   "latency_ms": 348,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "N04",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.17
+   ],
+   "noul_max": 0.17,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "NEW": 0.99,
+    "REVISE": 0.01
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 580,
+   "output_tokens": 62,
+   "latency_ms": 330,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "N05",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.26
+   ],
+   "noul_max": 0.26,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.51,
+   "choice_probs": {
+    "REVISE": 0.32,
+    "NEW": 0.68,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 587,
+   "output_tokens": 62,
+   "latency_ms": 324,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "N06",
+   "expected": "NEW",
+   "lang": "bg",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.23
+   ],
+   "noul_max": 0.23,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.63,
+   "choice_probs": {
+    "REVISE": 0.24,
+    "NEW": 0.75,
+    "UNCERTAIN": 0.01
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 634,
+   "output_tokens": 62,
+   "latency_ms": 306,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "N07",
+   "expected": "NEW",
+   "lang": "bg",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.05
+   ],
+   "noul_max": 0.05,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 1,
+    "UNCERTAIN": 0,
+    "REVISE": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 608,
+   "output_tokens": 62,
+   "latency_ms": 304,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "N08",
+   "expected": "NEW",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.09
+   ],
+   "noul_max": 0.09,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 0.01,
+    "NEW": 0.99,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 606,
+   "output_tokens": 62,
+   "latency_ms": 303,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "N09",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.04
+   ],
+   "noul_max": 0.04,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 1,
+    "REVISE": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 583,
+   "output_tokens": 62,
+   "latency_ms": 303,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "N10",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.09
+   ],
+   "noul_max": 0.09,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 0.01,
+    "NEW": 0.99,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 580,
+   "output_tokens": 62,
+   "latency_ms": 1028,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "R01",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.9
+   ],
+   "noul_max": 0.9,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.83,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "REVISE": 0.89,
+    "NEW": 0.11
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 575,
+   "output_tokens": 64,
+   "latency_ms": 280,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "R02",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.98
+   ],
+   "noul_max": 0.98,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 591,
+   "output_tokens": 64,
+   "latency_ms": 262,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "R03",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.93
+   ],
+   "noul_max": 0.93,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 589,
+   "output_tokens": 64,
+   "latency_ms": 280,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "R04",
+   "expected": "REVISE",
+   "lang": "bg",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.91
+   ],
+   "noul_max": 0.91,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.95,
+   "choice_probs": {
+    "REVISE": 0.97,
+    "NEW": 0.03,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 617,
+   "output_tokens": 64,
+   "latency_ms": 303,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "R05",
+   "expected": "REVISE",
+   "lang": "bg",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.98
+   ],
+   "noul_max": 0.98,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "UNCERTAIN": 0,
+    "NEW": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 640,
+   "output_tokens": 64,
+   "latency_ms": 305,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "R06",
+   "expected": "REVISE",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "REVISE": 1,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 623,
+   "output_tokens": 64,
+   "latency_ms": 302,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "R07",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 588,
+   "output_tokens": 64,
+   "latency_ms": 282,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "R08",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.93
+   ],
+   "noul_max": 0.93,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 582,
+   "output_tokens": 64,
+   "latency_ms": 256,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "R09",
+   "expected": "REVISE",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.94
+   ],
+   "noul_max": 0.94,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "REVISE": 0.99,
+    "UNCERTAIN": 0,
+    "NEW": 0.01
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 606,
+   "output_tokens": 64,
+   "latency_ms": 280,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "R10",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 585,
+   "output_tokens": 64,
+   "latency_ms": 261,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "U01",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.04,
+    0.03,
+    0.24
+   ],
+   "noul_max": 0.24,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.81,
+   "choice_probs": {
+    "REVISE": 0.09,
+    "NEW": 0.87,
+    "UNCERTAIN": 0.04
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 830,
+   "output_tokens": 102,
+   "latency_ms": 1328,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "U02",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.53
+   ],
+   "noul_max": 0.53,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.41,
+   "choice_probs": {
+    "NEW": 0.16,
+    "UNCERTAIN": 0.61,
+    "REVISE": 0.23
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 578,
+   "output_tokens": 64,
+   "latency_ms": 1325,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "U03",
+   "expected": "UNCERTAIN",
+   "lang": "bg",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.35,
+    0.33
+   ],
+   "noul_max": 0.35,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.89,
+   "choice_probs": {
+    "NEW": 0.05,
+    "UNCERTAIN": 0.93,
+    "REVISE": 0.01
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 770,
+   "output_tokens": 84,
+   "latency_ms": 1325,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "U04",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.18
+   ],
+   "noul_max": 0.18,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.92,
+   "choice_probs": {
+    "NEW": 0.95,
+    "UNCERTAIN": 0,
+    "REVISE": 0.05
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 579,
+   "output_tokens": 62,
+   "latency_ms": 316,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "U05",
+   "expected": "UNCERTAIN",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.3,
+    0.44
+   ],
+   "noul_max": 0.44,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.97,
+   "choice_probs": {
+    "NEW": 0.02,
+    "UNCERTAIN": 0.98,
+    "REVISE": 0
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 713,
+   "output_tokens": 84,
+   "latency_ms": 336,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "U06",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.76,
+    0.2
+   ],
+   "noul_max": 0.76,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.7,
+   "choice_probs": {
+    "REVISE": 0.19,
+    "UNCERTAIN": 0.8,
+    "NEW": 0.01
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 702,
+   "output_tokens": 84,
+   "latency_ms": 304,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.89
+   ],
+   "noul_max": 0.89,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 0.99,
+    "NEW": 0.01,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 579,
+   "output_tokens": 64,
+   "latency_ms": 311,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.41
+   ],
+   "noul_max": 0.41,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.57,
+   "choice_probs": {
+    "REVISE": 0.71,
+    "NEW": 0.29,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 578,
+   "output_tokens": 64,
+   "latency_ms": 319,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "U09",
+   "expected": "UNCERTAIN",
+   "lang": "bg",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.48
+   ],
+   "noul_max": 0.48,
+   "choice": "NEW",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.27,
+   "choice_probs": {
+    "REVISE": 0.49,
+    "NEW": 0.51,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 618,
+   "output_tokens": 62,
+   "latency_ms": 409,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "A",
+   "case_id": "U10",
+   "expected": "UNCERTAIN",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.43,
+    0.45
+   ],
+   "noul_max": 0.45,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.79,
+   "choice_probs": {
+    "REVISE": 0.04,
+    "NEW": 0.1,
+    "UNCERTAIN": 0.86
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 711,
+   "output_tokens": 84,
+   "latency_ms": 401,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "N01",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.09
+   ],
+   "noul_max": 0.09,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.91,
+   "choice_probs": {
+    "NEW": 0.94,
+    "UNCERTAIN": 0,
+    "REVISE": 0.06
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 573,
+   "output_tokens": 62,
+   "latency_ms": 298,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "N02",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.05
+   ],
+   "noul_max": 0.05,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "NEW": 0.99,
+    "UNCERTAIN": 0,
+    "REVISE": 0.01
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 573,
+   "output_tokens": 62,
+   "latency_ms": 261,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "N03",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.03
+   ],
+   "noul_max": 0.03,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 1,
+    "UNCERTAIN": 0,
+    "REVISE": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 582,
+   "output_tokens": 62,
+   "latency_ms": 255,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "N04",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.16
+   ],
+   "noul_max": 0.16,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.97,
+   "choice_probs": {
+    "NEW": 0.98,
+    "UNCERTAIN": 0,
+    "REVISE": 0.02
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 580,
+   "output_tokens": 62,
+   "latency_ms": 247,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "N05",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.26
+   ],
+   "noul_max": 0.26,
+   "choice": "NEW",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.27,
+   "choice_probs": {
+    "NEW": 0.51,
+    "UNCERTAIN": 0,
+    "REVISE": 0.49
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 587,
+   "output_tokens": 62,
+   "latency_ms": 296,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "N06",
+   "expected": "NEW",
+   "lang": "bg",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.2
+   ],
+   "noul_max": 0.2,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.62,
+   "choice_probs": {
+    "REVISE": 0.24,
+    "UNCERTAIN": 0.01,
+    "NEW": 0.75
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 634,
+   "output_tokens": 62,
+   "latency_ms": 295,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "N07",
+   "expected": "NEW",
+   "lang": "bg",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.05
+   ],
+   "noul_max": 0.05,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "NEW": 0.99,
+    "UNCERTAIN": 0,
+    "REVISE": 0.01
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 608,
+   "output_tokens": 62,
+   "latency_ms": 292,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "N08",
+   "expected": "NEW",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.09
+   ],
+   "noul_max": 0.09,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "NEW": 1,
+    "UNCERTAIN": 0,
+    "REVISE": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 606,
+   "output_tokens": 62,
+   "latency_ms": 291,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "N09",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.04
+   ],
+   "noul_max": 0.04,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 1,
+    "UNCERTAIN": 0,
+    "REVISE": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 583,
+   "output_tokens": 62,
+   "latency_ms": 306,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "N10",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.1
+   ],
+   "noul_max": 0.1,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.94,
+   "choice_probs": {
+    "NEW": 0.96,
+    "UNCERTAIN": 0,
+    "REVISE": 0.04
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 580,
+   "output_tokens": 62,
+   "latency_ms": 305,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "R01",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.91
+   ],
+   "noul_max": 0.91,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.92,
+   "choice_probs": {
+    "NEW": 0.05,
+    "UNCERTAIN": 0,
+    "REVISE": 0.95
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 575,
+   "output_tokens": 64,
+   "latency_ms": 378,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "R02",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.98
+   ],
+   "noul_max": 0.98,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 591,
+   "output_tokens": 64,
+   "latency_ms": 378,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "R03",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.93
+   ],
+   "noul_max": 0.93,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 589,
+   "output_tokens": 64,
+   "latency_ms": 291,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "R04",
+   "expected": "REVISE",
+   "lang": "bg",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.91
+   ],
+   "noul_max": 0.91,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.95,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "NEW": 0.03,
+    "REVISE": 0.97
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 617,
+   "output_tokens": 64,
+   "latency_ms": 333,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "R05",
+   "expected": "REVISE",
+   "lang": "bg",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.98
+   ],
+   "noul_max": 0.98,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 640,
+   "output_tokens": 64,
+   "latency_ms": 322,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "R06",
+   "expected": "REVISE",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "UNCERTAIN": 0,
+    "NEW": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 623,
+   "output_tokens": 64,
+   "latency_ms": 274,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "R07",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 588,
+   "output_tokens": 64,
+   "latency_ms": 599,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "R08",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.93
+   ],
+   "noul_max": 0.93,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 582,
+   "output_tokens": 64,
+   "latency_ms": 580,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "R09",
+   "expected": "REVISE",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.94
+   ],
+   "noul_max": 0.94,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "REVISE": 0.99,
+    "UNCERTAIN": 0,
+    "NEW": 0.01
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 606,
+   "output_tokens": 64,
+   "latency_ms": 508,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "R10",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 585,
+   "output_tokens": 64,
+   "latency_ms": 552,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "U01",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.05,
+    0.03,
+    0.24
+   ],
+   "noul_max": 0.24,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.8,
+   "choice_probs": {
+    "NEW": 0.87,
+    "UNCERTAIN": 0.04,
+    "REVISE": 0.09
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 830,
+   "output_tokens": 102,
+   "latency_ms": 304,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "U02",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.58
+   ],
+   "noul_max": 0.58,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.58,
+   "choice_probs": {
+    "NEW": 0.09,
+    "UNCERTAIN": 0.72,
+    "REVISE": 0.19
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 578,
+   "output_tokens": 64,
+   "latency_ms": 306,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "U03",
+   "expected": "UNCERTAIN",
+   "lang": "bg",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.36,
+    0.32
+   ],
+   "noul_max": 0.36,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.94,
+   "choice_probs": {
+    "REVISE": 0.01,
+    "NEW": 0.03,
+    "UNCERTAIN": 0.96
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 770,
+   "output_tokens": 84,
+   "latency_ms": 281,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "U04",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.17
+   ],
+   "noul_max": 0.17,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.89,
+   "choice_probs": {
+    "NEW": 0.93,
+    "UNCERTAIN": 0,
+    "REVISE": 0.07
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 579,
+   "output_tokens": 62,
+   "latency_ms": 282,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "U05",
+   "expected": "UNCERTAIN",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.27,
+    0.49
+   ],
+   "noul_max": 0.49,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.97,
+   "choice_probs": {
+    "REVISE": 0,
+    "NEW": 0.02,
+    "UNCERTAIN": 0.98
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 713,
+   "output_tokens": 84,
+   "latency_ms": 264,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "U06",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.77,
+    0.17
+   ],
+   "noul_max": 0.77,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.6,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0.74,
+    "REVISE": 0.26
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 702,
+   "output_tokens": 84,
+   "latency_ms": 268,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.87
+   ],
+   "noul_max": 0.87,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 579,
+   "output_tokens": 64,
+   "latency_ms": 262,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.42
+   ],
+   "noul_max": 0.42,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.69,
+   "choice_probs": {
+    "NEW": 0.2,
+    "UNCERTAIN": 0,
+    "REVISE": 0.8
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 578,
+   "output_tokens": 64,
+   "latency_ms": 254,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "U09",
+   "expected": "UNCERTAIN",
+   "lang": "bg",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.5
+   ],
+   "noul_max": 0.5,
+   "choice": "REVISE",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.39,
+   "choice_probs": {
+    "NEW": 0.4,
+    "UNCERTAIN": 0.01,
+    "REVISE": 0.59
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 618,
+   "output_tokens": 64,
+   "latency_ms": 235,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 2,
+   "order": "B",
+   "case_id": "U10",
+   "expected": "UNCERTAIN",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.41,
+    0.42
+   ],
+   "noul_max": 0.42,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.84,
+   "choice_probs": {
+    "NEW": 0.06,
+    "UNCERTAIN": 0.9,
+    "REVISE": 0.04
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 711,
+   "output_tokens": 84,
+   "latency_ms": 240,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "N01",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.08
+   ],
+   "noul_max": 0.08,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.97,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "NEW": 0.98,
+    "REVISE": 0.02
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 573,
+   "output_tokens": 62,
+   "latency_ms": 286,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "N02",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.06
+   ],
+   "noul_max": 0.06,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 0,
+    "NEW": 1,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 573,
+   "output_tokens": 62,
+   "latency_ms": 250,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "N03",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.03
+   ],
+   "noul_max": 0.03,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 0,
+    "NEW": 1,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 582,
+   "output_tokens": 62,
+   "latency_ms": 348,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "N04",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.16
+   ],
+   "noul_max": 0.16,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.97,
+   "choice_probs": {
+    "REVISE": 0.02,
+    "NEW": 0.98,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 580,
+   "output_tokens": 62,
+   "latency_ms": 250,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "N05",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.26
+   ],
+   "noul_max": 0.26,
+   "choice": "NEW",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.4,
+   "choice_probs": {
+    "REVISE": 0.4,
+    "NEW": 0.6,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 587,
+   "output_tokens": 62,
+   "latency_ms": 256,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "N06",
+   "expected": "NEW",
+   "lang": "bg",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.2
+   ],
+   "noul_max": 0.2,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.71,
+   "choice_probs": {
+    "REVISE": 0.19,
+    "NEW": 0.8,
+    "UNCERTAIN": 0.01
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 634,
+   "output_tokens": 62,
+   "latency_ms": 272,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "N07",
+   "expected": "NEW",
+   "lang": "bg",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.05
+   ],
+   "noul_max": 0.05,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 0,
+    "NEW": 1,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 608,
+   "output_tokens": 62,
+   "latency_ms": 356,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "N08",
+   "expected": "NEW",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.09
+   ],
+   "noul_max": 0.09,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 0.01,
+    "NEW": 0.99,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 606,
+   "output_tokens": 62,
+   "latency_ms": 333,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "N09",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.04
+   ],
+   "noul_max": 0.04,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 0,
+    "NEW": 1,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 583,
+   "output_tokens": 62,
+   "latency_ms": 284,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "N10",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.1
+   ],
+   "noul_max": 0.1,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "REVISE": 0.01,
+    "NEW": 0.99,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 580,
+   "output_tokens": 62,
+   "latency_ms": 263,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "R01",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.91
+   ],
+   "noul_max": 0.91,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.81,
+   "choice_probs": {
+    "REVISE": 0.88,
+    "NEW": 0.12,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 575,
+   "output_tokens": 64,
+   "latency_ms": 298,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "R02",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.98
+   ],
+   "noul_max": 0.98,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 591,
+   "output_tokens": 64,
+   "latency_ms": 291,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "R03",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.93
+   ],
+   "noul_max": 0.93,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 589,
+   "output_tokens": 64,
+   "latency_ms": 289,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "R04",
+   "expected": "REVISE",
+   "lang": "bg",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.91
+   ],
+   "noul_max": 0.91,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.94,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "REVISE": 0.96,
+    "NEW": 0.04
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 617,
+   "output_tokens": 64,
+   "latency_ms": 288,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "R05",
+   "expected": "REVISE",
+   "lang": "bg",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.98
+   ],
+   "noul_max": 0.98,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 640,
+   "output_tokens": 64,
+   "latency_ms": 260,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "R06",
+   "expected": "REVISE",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 623,
+   "output_tokens": 64,
+   "latency_ms": 275,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "R07",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "UNCERTAIN": 0,
+    "NEW": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 588,
+   "output_tokens": 64,
+   "latency_ms": 280,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "R08",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.93
+   ],
+   "noul_max": 0.93,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 582,
+   "output_tokens": 64,
+   "latency_ms": 281,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "R09",
+   "expected": "REVISE",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.94
+   ],
+   "noul_max": 0.94,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "REVISE": 0.99,
+    "NEW": 0.01
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 606,
+   "output_tokens": 64,
+   "latency_ms": 255,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "R10",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "UNCERTAIN": 0,
+    "NEW": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 585,
+   "output_tokens": 64,
+   "latency_ms": 237,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "U01",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.05,
+    0.03,
+    0.24
+   ],
+   "noul_max": 0.24,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.77,
+   "choice_probs": {
+    "NEW": 0.85,
+    "UNCERTAIN": 0.05,
+    "REVISE": 0.1
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 830,
+   "output_tokens": 102,
+   "latency_ms": 250,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "U02",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.53
+   ],
+   "noul_max": 0.53,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.4,
+   "choice_probs": {
+    "REVISE": 0.24,
+    "NEW": 0.16,
+    "UNCERTAIN": 0.6
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 578,
+   "output_tokens": 64,
+   "latency_ms": 302,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "U03",
+   "expected": "UNCERTAIN",
+   "lang": "bg",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.37,
+    0.31
+   ],
+   "noul_max": 0.37,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.88,
+   "choice_probs": {
+    "UNCERTAIN": 0.92,
+    "NEW": 0.07,
+    "REVISE": 0.01
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 770,
+   "output_tokens": 84,
+   "latency_ms": 278,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "U04",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.17
+   ],
+   "noul_max": 0.17,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.92,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "REVISE": 0.05,
+    "NEW": 0.95
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 579,
+   "output_tokens": 62,
+   "latency_ms": 287,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "U05",
+   "expected": "UNCERTAIN",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.28,
+    0.45
+   ],
+   "noul_max": 0.45,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.96,
+   "choice_probs": {
+    "REVISE": 0.01,
+    "NEW": 0.02,
+    "UNCERTAIN": 0.97
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 713,
+   "output_tokens": 84,
+   "latency_ms": 258,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "U06",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.78,
+    0.17
+   ],
+   "noul_max": 0.78,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.5,
+   "choice_probs": {
+    "REVISE": 0.32,
+    "NEW": 0.01,
+    "UNCERTAIN": 0.67
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 702,
+   "output_tokens": 84,
+   "latency_ms": 266,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.88
+   ],
+   "noul_max": 0.88,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "REVISE": 0.99,
+    "NEW": 0.01,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 579,
+   "output_tokens": 64,
+   "latency_ms": 241,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.42
+   ],
+   "noul_max": 0.42,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.53,
+   "choice_probs": {
+    "NEW": 0.31,
+    "UNCERTAIN": 0,
+    "REVISE": 0.69
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 578,
+   "output_tokens": 64,
+   "latency_ms": 262,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "U09",
+   "expected": "UNCERTAIN",
+   "lang": "bg",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.46
+   ],
+   "noul_max": 0.46,
+   "choice": "NEW",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.27,
+   "choice_probs": {
+    "REVISE": 0.49,
+    "NEW": 0.51,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 618,
+   "output_tokens": 62,
+   "latency_ms": 308,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "A",
+   "case_id": "U10",
+   "expected": "UNCERTAIN",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.45,
+    0.41
+   ],
+   "noul_max": 0.45,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.81,
+   "choice_probs": {
+    "REVISE": 0.04,
+    "NEW": 0.09,
+    "UNCERTAIN": 0.87
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 711,
+   "output_tokens": 84,
+   "latency_ms": 284,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "N01",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.08
+   ],
+   "noul_max": 0.08,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.92,
+   "choice_probs": {
+    "NEW": 0.95,
+    "UNCERTAIN": 0,
+    "REVISE": 0.05
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 573,
+   "output_tokens": 62,
+   "latency_ms": 250,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "N02",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.06
+   ],
+   "noul_max": 0.06,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "NEW": 0.99,
+    "UNCERTAIN": 0,
+    "REVISE": 0.01
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 573,
+   "output_tokens": 62,
+   "latency_ms": 271,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "N03",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.02
+   ],
+   "noul_max": 0.02,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 1,
+    "UNCERTAIN": 0,
+    "REVISE": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 582,
+   "output_tokens": 62,
+   "latency_ms": 268,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "N04",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.17
+   ],
+   "noul_max": 0.17,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.97,
+   "choice_probs": {
+    "NEW": 0.98,
+    "UNCERTAIN": 0,
+    "REVISE": 0.02
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 580,
+   "output_tokens": 62,
+   "latency_ms": 253,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "N05",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.28
+   ],
+   "noul_max": 0.28,
+   "choice": "REVISE",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.34,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "NEW": 0.44,
+    "REVISE": 0.56
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 587,
+   "output_tokens": 64,
+   "latency_ms": 263,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "N06",
+   "expected": "NEW",
+   "lang": "bg",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.22
+   ],
+   "noul_max": 0.22,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.62,
+   "choice_probs": {
+    "NEW": 0.75,
+    "UNCERTAIN": 0.01,
+    "REVISE": 0.24
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 634,
+   "output_tokens": 62,
+   "latency_ms": 266,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "N07",
+   "expected": "NEW",
+   "lang": "bg",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.04
+   ],
+   "noul_max": 0.04,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "NEW": 0.99,
+    "REVISE": 0.01,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 608,
+   "output_tokens": 62,
+   "latency_ms": 255,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "N08",
+   "expected": "NEW",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.09
+   ],
+   "noul_max": 0.09,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "NEW": 0.99,
+    "UNCERTAIN": 0,
+    "REVISE": 0.01
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 606,
+   "output_tokens": 62,
+   "latency_ms": 279,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "N09",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.04
+   ],
+   "noul_max": 0.04,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 1,
+    "UNCERTAIN": 0,
+    "REVISE": 0
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 583,
+   "output_tokens": 62,
+   "latency_ms": 302,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "N10",
+   "expected": "NEW",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.1
+   ],
+   "noul_max": 0.1,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.94,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "REVISE": 0.04,
+    "NEW": 0.96
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 580,
+   "output_tokens": 62,
+   "latency_ms": 303,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "R01",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.91
+   ],
+   "noul_max": 0.91,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.89,
+   "choice_probs": {
+    "REVISE": 0.93,
+    "NEW": 0.07,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 575,
+   "output_tokens": 64,
+   "latency_ms": 271,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "R02",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.98
+   ],
+   "noul_max": 0.98,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 591,
+   "output_tokens": 64,
+   "latency_ms": 251,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "R03",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.94
+   ],
+   "noul_max": 0.94,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 589,
+   "output_tokens": 64,
+   "latency_ms": 309,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "R04",
+   "expected": "REVISE",
+   "lang": "bg",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.91
+   ],
+   "noul_max": 0.91,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.95,
+   "choice_probs": {
+    "NEW": 0.03,
+    "UNCERTAIN": 0,
+    "REVISE": 0.97
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 617,
+   "output_tokens": 64,
+   "latency_ms": 309,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "R05",
+   "expected": "REVISE",
+   "lang": "bg",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.98
+   ],
+   "noul_max": 0.98,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 640,
+   "output_tokens": 64,
+   "latency_ms": 309,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "R06",
+   "expected": "REVISE",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "NEW": 0,
+    "UNCERTAIN": 0,
+    "REVISE": 1
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 623,
+   "output_tokens": 64,
+   "latency_ms": 310,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "R07",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 588,
+   "output_tokens": 64,
+   "latency_ms": 297,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "R08",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.93
+   ],
+   "noul_max": 0.93,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.99,
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 582,
+   "output_tokens": 64,
+   "latency_ms": 298,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "R09",
+   "expected": "REVISE",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.94
+   ],
+   "noul_max": 0.94,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 606,
+   "output_tokens": 64,
+   "latency_ms": 297,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "R10",
+   "expected": "REVISE",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.97
+   ],
+   "noul_max": 0.97,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 1,
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "REVISE": 1,
+    "NEW": 0
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 585,
+   "output_tokens": 64,
+   "latency_ms": 296,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "U01",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.04,
+    0.03,
+    0.23
+   ],
+   "noul_max": 0.23,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.77,
+   "choice_probs": {
+    "NEW": 0.84,
+    "UNCERTAIN": 0.06,
+    "REVISE": 0.1
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 830,
+   "output_tokens": 102,
+   "latency_ms": 256,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "U02",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.55
+   ],
+   "noul_max": 0.55,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.54,
+   "choice_probs": {
+    "NEW": 0.11,
+    "UNCERTAIN": 0.69,
+    "REVISE": 0.2
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 578,
+   "output_tokens": 64,
+   "latency_ms": 244,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "U03",
+   "expected": "UNCERTAIN",
+   "lang": "bg",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.38,
+    0.33
+   ],
+   "noul_max": 0.38,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.92,
+   "choice_probs": {
+    "UNCERTAIN": 0.95,
+    "REVISE": 0.02,
+    "NEW": 0.03
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 770,
+   "output_tokens": 84,
+   "latency_ms": 267,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "U04",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "NEW",
+   "noul_scores": [
+    0.17
+   ],
+   "noul_max": 0.17,
+   "choice": "NEW",
+   "choice_gated": "NEW",
+   "choice_conf": 0.87,
+   "choice_probs": {
+    "NEW": 0.92,
+    "UNCERTAIN": 0,
+    "REVISE": 0.08
+   },
+   "hybrid": "NEW",
+   "model": "jev-1.13.0",
+   "input_tokens": 579,
+   "output_tokens": 62,
+   "latency_ms": 999,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "U05",
+   "expected": "UNCERTAIN",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.28,
+    0.45
+   ],
+   "noul_max": 0.45,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.96,
+   "choice_probs": {
+    "NEW": 0.02,
+    "UNCERTAIN": 0.98,
+    "REVISE": 0
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 713,
+   "output_tokens": 84,
+   "latency_ms": 1010,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "U06",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.76,
+    0.21
+   ],
+   "noul_max": 0.76,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.69,
+   "choice_probs": {
+    "UNCERTAIN": 0.79,
+    "REVISE": 0.21,
+    "NEW": 0
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 702,
+   "output_tokens": 84,
+   "latency_ms": 972,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "REVISE",
+   "noul_scores": [
+    0.89
+   ],
+   "noul_max": 0.89,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.98,
+   "choice_probs": {
+    "REVISE": 0.99,
+    "UNCERTAIN": 0,
+    "NEW": 0.01
+   },
+   "hybrid": "REVISE",
+   "model": "jev-1.13.0",
+   "input_tokens": 579,
+   "output_tokens": 64,
+   "latency_ms": 747,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "lang": "en",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.39
+   ],
+   "noul_max": 0.39,
+   "choice": "REVISE",
+   "choice_gated": "REVISE",
+   "choice_conf": 0.59,
+   "choice_probs": {
+    "NEW": 0.27,
+    "UNCERTAIN": 0,
+    "REVISE": 0.73
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 578,
+   "output_tokens": 64,
+   "latency_ms": 275,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "U09",
+   "expected": "UNCERTAIN",
+   "lang": "bg",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.49
+   ],
+   "noul_max": 0.49,
+   "choice": "REVISE",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.33,
+   "choice_probs": {
+    "REVISE": 0.55,
+    "UNCERTAIN": 0.01,
+    "NEW": 0.44
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 618,
+   "output_tokens": 64,
+   "latency_ms": 248,
+   "attempts": 1,
+   "error": null
+  },
+  {
+   "run": 3,
+   "order": "B",
+   "case_id": "U10",
+   "expected": "UNCERTAIN",
+   "lang": "mixed",
+   "ok": true,
+   "noul": "UNCERTAIN",
+   "noul_scores": [
+    0.45,
+    0.41
+   ],
+   "noul_max": 0.45,
+   "choice": "UNCERTAIN",
+   "choice_gated": "UNCERTAIN",
+   "choice_conf": 0.86,
+   "choice_probs": {
+    "UNCERTAIN": 0.91,
+    "REVISE": 0.03,
+    "NEW": 0.06
+   },
+   "hybrid": "UNCERTAIN",
+   "model": "jev-1.13.0",
+   "input_tokens": 711,
+   "output_tokens": 84,
+   "latency_ms": 274,
+   "attempts": 1,
+   "error": null
+  }
+ ],
+ "mechanisms": {
+  "noul": {
+   "n": 180,
+   "confusion": {
+    "REVISE": {
+     "REVISE": 60,
+     "NEW": 0,
+     "UNCERTAIN": 0,
+     "ERROR": 0
+    },
+    "NEW": {
+     "REVISE": 0,
+     "NEW": 60,
+     "UNCERTAIN": 0,
+     "ERROR": 0
+    },
+    "UNCERTAIN": {
+     "REVISE": 6,
+     "NEW": 12,
+     "UNCERTAIN": 42,
+     "ERROR": 0
+    }
+   },
+   "revise_precision": 0.9090909090909091,
+   "revise_recall": 1,
+   "new_precision": 0.8333333333333334,
+   "new_recall": 1,
+   "uncertain_precision": 1,
+   "uncertain_recall": 0.7,
+   "false_merges": 6,
+   "false_merge_rate": 0.05,
+   "false_merge_on_new": 0,
+   "false_merge_on_uncertain": 6,
+   "errors": 0,
+   "accuracy": 0.9
+  },
+  "choice": {
+   "n": 180,
+   "confusion": {
+    "REVISE": {
+     "REVISE": 60,
+     "NEW": 0,
+     "UNCERTAIN": 0,
+     "ERROR": 0
+    },
+    "NEW": {
+     "REVISE": 1,
+     "NEW": 59,
+     "UNCERTAIN": 0,
+     "ERROR": 0
+    },
+    "UNCERTAIN": {
+     "REVISE": 15,
+     "NEW": 15,
+     "UNCERTAIN": 30,
+     "ERROR": 0
+    }
+   },
+   "revise_precision": 0.7894736842105263,
+   "revise_recall": 1,
+   "new_precision": 0.7972972972972973,
+   "new_recall": 0.9833333333333333,
+   "uncertain_precision": 1,
+   "uncertain_recall": 0.5,
+   "false_merges": 16,
+   "false_merge_rate": 0.13333333333333333,
+   "false_merge_on_new": 1,
+   "false_merge_on_uncertain": 15,
+   "errors": 0,
+   "accuracy": 0.8277777777777777
+  },
+  "choice_gated": {
+   "n": 180,
+   "confusion": {
+    "REVISE": {
+     "REVISE": 60,
+     "NEW": 0,
+     "UNCERTAIN": 0,
+     "ERROR": 0
+    },
+    "NEW": {
+     "REVISE": 0,
+     "NEW": 55,
+     "UNCERTAIN": 5,
+     "ERROR": 0
+    },
+    "UNCERTAIN": {
+     "REVISE": 12,
+     "NEW": 12,
+     "UNCERTAIN": 36,
+     "ERROR": 0
+    }
+   },
+   "revise_precision": 0.8333333333333334,
+   "revise_recall": 1,
+   "new_precision": 0.8208955223880597,
+   "new_recall": 0.9166666666666666,
+   "uncertain_precision": 0.8780487804878049,
+   "uncertain_recall": 0.6,
+   "false_merges": 12,
+   "false_merge_rate": 0.1,
+   "false_merge_on_new": 0,
+   "false_merge_on_uncertain": 12,
+   "errors": 0,
+   "accuracy": 0.8388888888888889
+  },
+  "hybrid": {
+   "n": 180,
+   "confusion": {
+    "REVISE": {
+     "REVISE": 60,
+     "NEW": 0,
+     "UNCERTAIN": 0,
+     "ERROR": 0
+    },
+    "NEW": {
+     "REVISE": 0,
+     "NEW": 59,
+     "UNCERTAIN": 1,
+     "ERROR": 0
+    },
+    "UNCERTAIN": {
+     "REVISE": 6,
+     "NEW": 12,
+     "UNCERTAIN": 42,
+     "ERROR": 0
+    }
+   },
+   "revise_precision": 0.9090909090909091,
+   "revise_recall": 1,
+   "new_precision": 0.8309859154929577,
+   "new_recall": 0.9833333333333333,
+   "uncertain_precision": 0.9767441860465116,
+   "uncertain_recall": 0.7,
+   "false_merges": 6,
+   "false_merge_rate": 0.05,
+   "false_merge_on_new": 0,
+   "false_merge_on_uncertain": 6,
+   "errors": 0,
+   "accuracy": 0.8944444444444445
+  }
+ },
+ "by_language": {
+  "noul": {
+   "en": {
+    "n": 114,
+    "accuracy": 0.8421052631578947,
+    "false_merges": 6
+   },
+   "bg": {
+    "n": 36,
+    "accuracy": 1,
+    "false_merges": 0
+   },
+   "mixed": {
+    "n": 30,
+    "accuracy": 1,
+    "false_merges": 0
+   }
+  },
+  "choice": {
+   "en": {
+    "n": 114,
+    "accuracy": 0.7807017543859649,
+    "false_merges": 13
+   },
+   "bg": {
+    "n": 36,
+    "accuracy": 0.8333333333333334,
+    "false_merges": 3
+   },
+   "mixed": {
+    "n": 30,
+    "accuracy": 1,
+    "false_merges": 0
+   }
+  },
+  "choice_gated": {
+   "en": {
+    "n": 114,
+    "accuracy": 0.7456140350877193,
+    "false_merges": 12
+   },
+   "bg": {
+    "n": 36,
+    "accuracy": 1,
+    "false_merges": 0
+   },
+   "mixed": {
+    "n": 30,
+    "accuracy": 1,
+    "false_merges": 0
+   }
+  },
+  "hybrid": {
+   "en": {
+    "n": 114,
+    "accuracy": 0.8333333333333334,
+    "false_merges": 6
+   },
+   "bg": {
+    "n": 36,
+    "accuracy": 1,
+    "false_merges": 0
+   },
+   "mixed": {
+    "n": 30,
+    "accuracy": 1,
+    "false_merges": 0
+   }
+  }
+ },
+ "consistency": {
+  "noul": {
+   "groups": 60,
+   "identical_decision": 60,
+   "max_noul_range": 0.09000000000000002,
+   "bit_identical_groups": 4
+  },
+  "choice": {
+   "groups": 60,
+   "identical_decision": 59,
+   "max_prob_range": 0.16000000000000003,
+   "bit_identical_groups": 4
+  }
+ },
+ "agreement": {
+  "choice_order_AB": {
+   "pairs": 90,
+   "same": 86,
+   "flipped_cases": [
+    "U09",
+    "N05"
+   ]
+  },
+  "noul_vs_choice": {
+   "n": 180,
+   "same": 167,
+   "disagreements": {
+    "U08": [
+     "1A:noul=UNCERTAIN/choice=REVISE",
+     "1B:noul=UNCERTAIN/choice=REVISE",
+     "2A:noul=UNCERTAIN/choice=REVISE",
+     "2B:noul=UNCERTAIN/choice=REVISE",
+     "3A:noul=UNCERTAIN/choice=REVISE",
+     "3B:noul=UNCERTAIN/choice=REVISE"
+    ],
+    "U09": [
+     "1A:noul=UNCERTAIN/choice=NEW",
+     "1B:noul=UNCERTAIN/choice=REVISE",
+     "2A:noul=UNCERTAIN/choice=NEW",
+     "2B:noul=UNCERTAIN/choice=REVISE",
+     "3A:noul=UNCERTAIN/choice=NEW",
+     "3B:noul=UNCERTAIN/choice=REVISE"
+    ],
+    "N05": [
+     "3B:noul=NEW/choice=REVISE"
+    ]
+   }
+  }
+ },
+ "ops": {
+  "requests": 180,
+  "ok": 180,
+  "failed": 0,
+  "errors": [],
+  "retried_requests": 0,
+  "models": [
+   "jev-1.13.0"
+  ],
+  "latency_ms": {
+   "p50": 291,
+   "p95": 1005,
+   "max": 1328,
+   "mean": 349.3888888888889
+  },
+  "input_tokens": 111360,
+  "output_tokens": 12092,
+  "cost_usd": 0.004677120000000001
+ },
+ "false_merge_cases": [
+  {
+   "mech": "noul",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "A",
+   "noul_scores": [
+    0.9
+   ],
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 1
+  },
+  {
+   "mech": "noul",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "B",
+   "noul_scores": [
+    0.88
+   ],
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "noul",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "A",
+   "noul_scores": [
+    0.89
+   ],
+   "choice_probs": {
+    "REVISE": 0.99,
+    "NEW": 0.01,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "noul",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "B",
+   "noul_scores": [
+    0.87
+   ],
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "noul",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "A",
+   "noul_scores": [
+    0.88
+   ],
+   "choice_probs": {
+    "REVISE": 0.99,
+    "NEW": 0.01,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "noul",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "B",
+   "noul_scores": [
+    0.89
+   ],
+   "choice_probs": {
+    "REVISE": 0.99,
+    "UNCERTAIN": 0,
+    "NEW": 0.01
+   },
+   "choice_conf": 0.98
+  },
+  {
+   "mech": "choice",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "A",
+   "noul_scores": [
+    0.9
+   ],
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 1
+  },
+  {
+   "mech": "choice",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "A",
+   "noul_scores": [
+    0.4
+   ],
+   "choice_probs": {
+    "REVISE": 0.69,
+    "UNCERTAIN": 0,
+    "NEW": 0.31
+   },
+   "choice_conf": 0.53
+  },
+  {
+   "mech": "choice",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "B",
+   "noul_scores": [
+    0.88
+   ],
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "choice",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "B",
+   "noul_scores": [
+    0.45
+   ],
+   "choice_probs": {
+    "NEW": 0.2,
+    "UNCERTAIN": 0,
+    "REVISE": 0.8
+   },
+   "choice_conf": 0.7
+  },
+  {
+   "mech": "choice",
+   "case_id": "U09",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "B",
+   "noul_scores": [
+    0.51
+   ],
+   "choice_probs": {
+    "NEW": 0.46,
+    "UNCERTAIN": 0.01,
+    "REVISE": 0.53
+   },
+   "choice_conf": 0.3
+  },
+  {
+   "mech": "choice",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "A",
+   "noul_scores": [
+    0.89
+   ],
+   "choice_probs": {
+    "REVISE": 0.99,
+    "NEW": 0.01,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "choice",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "A",
+   "noul_scores": [
+    0.41
+   ],
+   "choice_probs": {
+    "REVISE": 0.71,
+    "NEW": 0.29,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 0.57
+  },
+  {
+   "mech": "choice",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "B",
+   "noul_scores": [
+    0.87
+   ],
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "choice",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "B",
+   "noul_scores": [
+    0.42
+   ],
+   "choice_probs": {
+    "NEW": 0.2,
+    "UNCERTAIN": 0,
+    "REVISE": 0.8
+   },
+   "choice_conf": 0.69
+  },
+  {
+   "mech": "choice",
+   "case_id": "U09",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "B",
+   "noul_scores": [
+    0.5
+   ],
+   "choice_probs": {
+    "NEW": 0.4,
+    "UNCERTAIN": 0.01,
+    "REVISE": 0.59
+   },
+   "choice_conf": 0.39
+  },
+  {
+   "mech": "choice",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "A",
+   "noul_scores": [
+    0.88
+   ],
+   "choice_probs": {
+    "REVISE": 0.99,
+    "NEW": 0.01,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "choice",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "A",
+   "noul_scores": [
+    0.42
+   ],
+   "choice_probs": {
+    "NEW": 0.31,
+    "UNCERTAIN": 0,
+    "REVISE": 0.69
+   },
+   "choice_conf": 0.53
+  },
+  {
+   "mech": "choice",
+   "case_id": "N05",
+   "expected": "NEW",
+   "run": 3,
+   "order": "B",
+   "noul_scores": [
+    0.28
+   ],
+   "choice_probs": {
+    "UNCERTAIN": 0,
+    "NEW": 0.44,
+    "REVISE": 0.56
+   },
+   "choice_conf": 0.34
+  },
+  {
+   "mech": "choice",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "B",
+   "noul_scores": [
+    0.89
+   ],
+   "choice_probs": {
+    "REVISE": 0.99,
+    "UNCERTAIN": 0,
+    "NEW": 0.01
+   },
+   "choice_conf": 0.98
+  },
+  {
+   "mech": "choice",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "B",
+   "noul_scores": [
+    0.39
+   ],
+   "choice_probs": {
+    "NEW": 0.27,
+    "UNCERTAIN": 0,
+    "REVISE": 0.73
+   },
+   "choice_conf": 0.59
+  },
+  {
+   "mech": "choice",
+   "case_id": "U09",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "B",
+   "noul_scores": [
+    0.49
+   ],
+   "choice_probs": {
+    "REVISE": 0.55,
+    "UNCERTAIN": 0.01,
+    "NEW": 0.44
+   },
+   "choice_conf": 0.33
+  },
+  {
+   "mech": "choice_gated",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "A",
+   "noul_scores": [
+    0.9
+   ],
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 1
+  },
+  {
+   "mech": "choice_gated",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "A",
+   "noul_scores": [
+    0.4
+   ],
+   "choice_probs": {
+    "REVISE": 0.69,
+    "UNCERTAIN": 0,
+    "NEW": 0.31
+   },
+   "choice_conf": 0.53
+  },
+  {
+   "mech": "choice_gated",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "B",
+   "noul_scores": [
+    0.88
+   ],
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "choice_gated",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "B",
+   "noul_scores": [
+    0.45
+   ],
+   "choice_probs": {
+    "NEW": 0.2,
+    "UNCERTAIN": 0,
+    "REVISE": 0.8
+   },
+   "choice_conf": 0.7
+  },
+  {
+   "mech": "choice_gated",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "A",
+   "noul_scores": [
+    0.89
+   ],
+   "choice_probs": {
+    "REVISE": 0.99,
+    "NEW": 0.01,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "choice_gated",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "A",
+   "noul_scores": [
+    0.41
+   ],
+   "choice_probs": {
+    "REVISE": 0.71,
+    "NEW": 0.29,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 0.57
+  },
+  {
+   "mech": "choice_gated",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "B",
+   "noul_scores": [
+    0.87
+   ],
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "choice_gated",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "B",
+   "noul_scores": [
+    0.42
+   ],
+   "choice_probs": {
+    "NEW": 0.2,
+    "UNCERTAIN": 0,
+    "REVISE": 0.8
+   },
+   "choice_conf": 0.69
+  },
+  {
+   "mech": "choice_gated",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "A",
+   "noul_scores": [
+    0.88
+   ],
+   "choice_probs": {
+    "REVISE": 0.99,
+    "NEW": 0.01,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "choice_gated",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "A",
+   "noul_scores": [
+    0.42
+   ],
+   "choice_probs": {
+    "NEW": 0.31,
+    "UNCERTAIN": 0,
+    "REVISE": 0.69
+   },
+   "choice_conf": 0.53
+  },
+  {
+   "mech": "choice_gated",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "B",
+   "noul_scores": [
+    0.89
+   ],
+   "choice_probs": {
+    "REVISE": 0.99,
+    "UNCERTAIN": 0,
+    "NEW": 0.01
+   },
+   "choice_conf": 0.98
+  },
+  {
+   "mech": "choice_gated",
+   "case_id": "U08",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "B",
+   "noul_scores": [
+    0.39
+   ],
+   "choice_probs": {
+    "NEW": 0.27,
+    "UNCERTAIN": 0,
+    "REVISE": 0.73
+   },
+   "choice_conf": 0.59
+  },
+  {
+   "mech": "hybrid",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "A",
+   "noul_scores": [
+    0.9
+   ],
+   "choice_probs": {
+    "REVISE": 1,
+    "NEW": 0,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 1
+  },
+  {
+   "mech": "hybrid",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 1,
+   "order": "B",
+   "noul_scores": [
+    0.88
+   ],
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "hybrid",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "A",
+   "noul_scores": [
+    0.89
+   ],
+   "choice_probs": {
+    "REVISE": 0.99,
+    "NEW": 0.01,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "hybrid",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 2,
+   "order": "B",
+   "noul_scores": [
+    0.87
+   ],
+   "choice_probs": {
+    "NEW": 0.01,
+    "UNCERTAIN": 0,
+    "REVISE": 0.99
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "hybrid",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "A",
+   "noul_scores": [
+    0.88
+   ],
+   "choice_probs": {
+    "REVISE": 0.99,
+    "NEW": 0.01,
+    "UNCERTAIN": 0
+   },
+   "choice_conf": 0.99
+  },
+  {
+   "mech": "hybrid",
+   "case_id": "U07",
+   "expected": "UNCERTAIN",
+   "run": 3,
+   "order": "B",
+   "noul_scores": [
+    0.89
+   ],
+   "choice_probs": {
+    "REVISE": 0.99,
+    "UNCERTAIN": 0,
+    "NEW": 0.01
+   },
+   "choice_conf": 0.98
+  }
+ ]
+}

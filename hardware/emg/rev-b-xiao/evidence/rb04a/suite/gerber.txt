@@ -1,0 +1,15 @@
+PASS F.Cu SMD pad flashes 354 354
+PASS F.Cu conductor length (mm, line draws) 1235.18 1235.183
+PASS B.Cu conductor length (mm, line draws) 361.1 361.1
+PASS F.Cu via pad flashes 201 201
+PASS B.Cu via pad flashes 201 201
+PASS In1 via pad flashes (via pads on inner layers) 201 201
+PASS F.Mask openings = SMD+TH pads with mask 355 355
+PASS F.Mask via openings (tented => 0) 0 0
+PASS B.Mask via openings (tented => 0) 0 0
+PASS F.Paste apertures = SMD pads with paste 340 340
+PASS Drill 0.30 count = vias 201 201
+PASS Drill 1.40 count = PTH pads 1 1
+PASS CPL rows = top SMT parts 126 126
+PASS BOM quantity sum = assembled SMT parts 126 126
+outline [51.3, 64.95] drill {0.3: 201, 1.4: 1}

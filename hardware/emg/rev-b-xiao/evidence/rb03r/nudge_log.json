@@ -1,0 +1,24 @@
+{
+ "moved": [
+  {
+   "net": "/XIAO_Brain_Interface/SCLK_MCU",
+   "from": [
+    30.3,
+    48.3
+   ],
+   "to": [
+    30.3,
+    50.5
+   ],
+   "moved_mm": 2.2,
+   "w": 0.2,
+   "existing_via": false,
+   "pads": [
+    "U1.9"
+   ]
+  }
+ ],
+ "failed": [],
+ "gnd_spurs_pruned": 8,
+ "remaining": []
+}

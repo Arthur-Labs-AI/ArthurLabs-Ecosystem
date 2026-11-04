@@ -1,0 +1,68 @@
+{
+ "U501": {
+  "area": [
+   25.25,
+   20.0,
+   35.45,
+   25.2
+  ],
+  "ic_nets": [
+   "/CH1/BUF_N",
+   "/CH1/BUF_P",
+   "/CH1/HIZ_N",
+   "/CH1/HIZ_P",
+   "/CH2/BUF_N",
+   "/CH2/BUF_P",
+   "/CH2/HIZ_N",
+   "/CH2/HIZ_P",
+   "AFE_3V0",
+   "GND"
+  ],
+  "tracks_inside": 38,
+  "vias_inside": 4,
+  "foreign_non_gnd_items": []
+ },
+ "U502": {
+  "area": [
+   6.45,
+   20.0,
+   16.65,
+   25.2
+  ],
+  "ic_nets": [
+   "/CH3/BUF_N",
+   "/CH3/BUF_P",
+   "/CH3/HIZ_N",
+   "/CH3/HIZ_P",
+   "/CH4/BUF_N",
+   "/CH4/BUF_P",
+   "/CH4/HIZ_N",
+   "/CH4/HIZ_P",
+   "AFE_3V0",
+   "GND"
+  ],
+  "tracks_inside": 39,
+  "vias_inside": 2,
+  "foreign_non_gnd_items": []
+ },
+ "U503": {
+  "area": [
+   36.35,
+   20.0,
+   46.55,
+   25.2
+  ],
+  "ic_nets": [
+   "/Reference_VCM/U503B_OUT",
+   "/Reference_VCM/U503C_OUT",
+   "/Reference_VCM/U503D_OUT",
+   "/Reference_VCM/VCM_BUF_IN",
+   "/VCM",
+   "AFE_3V0",
+   "GND"
+  ],
+  "tracks_inside": 42,
+  "vias_inside": 4,
+  "foreign_non_gnd_items": []
+ }
+}

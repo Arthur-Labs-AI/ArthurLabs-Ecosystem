@@ -24,7 +24,7 @@ These rules are defined **from scratch**. None of the Rev A `.kicad_pro` netclas
 | Sides | **Single-side (top) SMT only**. B.Cu carries only bare test pads (no components) |
 | THT | **None** on the EMG board |
 | Smallest package | 0603 passives, SOT-23, TSSOP-14/20 0.65 mm. **No 0402, no QFN, no BGA** |
-| Parts library | Prefer JLC *Basic* parts for all passives. Target **≤ 7 extended lines**: ADS131M04, TLV9064, TPS7A2030P, X1 **C7425393**, BAV199 (now 16 pcs, still one line), JST-PH, [2N7002 if not basic]. The XIAO is not a JLC line (DNP) |
+| Parts library | Prefer JLC *Basic* parts for all passives. Target **≤ 7 extended lines**: ADS131M04, TLV9064, TPS7A2030P, X1 **C2901557** (SCTF SX3M8.192M20F30TNN), BAV199 (now 16 pcs, still one line), JST-PH, [2N7002 if not basic]. The XIAO is not a JLC line (DNP) |
 | Fiducials | 3 global fiducials (1 mm Cu, 2 mm mask opening) on F.Cu |
 | Tooling | JLC adds rails if needed; keep ≥ 3 mm component-free along the long edges except the connectors, or accept JLC edge rails |
 | USB | None on our board. **No manual USB connector process** |
@@ -51,7 +51,7 @@ These rules are defined **from scratch**. None of the Rev A `.kicad_pro` netclas
 | Netclass | Nets | Width | Clearance | Via | Layer rule |
 |---|---|---|---|---|---|
 | `EMG_ELECTRODE` | J1x1.1/.2 … J4x1 → series 10 k | 0.25 | 0.30 | **none allowed** | F.Cu only |
-| `EMG_HIZ` | hi-Z nodes: 10 k/BAV199/100 pF/10 M/follower +IN (`Net-(Dx0x-COM)`) | 0.20 | **0.40** to non-GND | **none allowed** | F.Cu only, GND guard pour both sides, ≥ 2 mm from `SPI_*`/`CLK` on any layer |
+| `EMG_HIZ` | hi-Z nodes: 10 k/BAV199/100 pF/10 M/follower +IN (`/CHn/HIZ_*`) | 0.20 | **0.40** to non-GND **for tracks, vias and zones [RB-02: the netclass clearance itself is 0.20 because the TLV9064 TSSOP pad gap is 0.25 mm; 0.40 is enforced by the custom rule `hiz_leakage`]** | **none allowed** | F.Cu only, GND guard pour both sides, ≥ 2 mm from `SPI_*`/`CLK` on any layer |
 | `EMG_BUF` | follower out → 2.2 µF → 100 k → 1 k → `CHx_P/N` | 0.20 | 0.20 | ≤ 1 per net, outside pads | F.Cu preferred. P/N legs length-matched ±0.5 mm. Symmetric placement |
 | `ANALOG_REF` | VCM, VCM_DIV (U503 +IN), RLD_SAFE | 0.20 | 0.25 | allowed, outside pads | L1/L4 only |
 | `ADC_CAP` | AFE_CAP (pin 18) | 0.25 | 0.20 | **none** | F.Cu, ≤ 2 mm |
@@ -64,7 +64,7 @@ These rules are defined **from scratch**. None of the Rev A `.kicad_pro` netclas
 | `GND` | GND | 0.30 min; pours | 0.20 | stitching ≤ 3 mm pitch at boundaries | — |
 | `Default` | — | 0.20 | 0.20 | — | **Must be empty at RB-03 DRC**. Every net is explicitly classed; no net may fall back to Default |
 
-### 3.1 Custom rules (to author in the Rev B `.kicad_dru` at RB-02)
+### 3.1 Custom rules (authored in `ARTHUR_EMG_RevB.kicad_dru` at RB-02; **all eight proven to fire** by `tools/rb02_seed_drc_rules.py`; KiCad applies the LAST matching rule, so `hiz_leakage` precedes the stricter SPI rules, and it is restricted to track/via/zone items so that it does not flag the 0.25 mm IC pad pitch)
 
 ```
 (version 1)

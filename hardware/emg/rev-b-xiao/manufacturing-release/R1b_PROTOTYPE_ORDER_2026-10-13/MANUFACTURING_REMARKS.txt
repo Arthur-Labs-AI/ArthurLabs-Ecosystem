@@ -1,0 +1,15 @@
+A.R.T.H.U.R EMG Rev B (R1b) - MANUFACTURING REMARKS FOR JLCPCB
+(paste into the PCB order remark / "Special requirements" and the PCBA remark)
+
+1. *** BAT+ COMPONENT HOLE - OPEN, PLATED. DO NOT TENT, PLUG, FILL OR COVER WITH SOLDER MASK. ***
+   One plated through-hole, drill T2 = 1.90 mm (Excellon tool attribute ComponentDrill), position X 44.635 mm / Y -54.790 mm in the Gerber frame
+   (KiCad 44.635 / 54.790). Copper: 2.30 mm land on F.Cu / In1 / In2, 3.00 mm bare land on B.Cu. Solder-mask openings: 1.95 mm on top, 1.95 mm
+   and 3.00 mm on bottom. It receives a hand-fitted 0.5 mm copper post and must remain a fully open, plated, solderable hole.
+   If your CAM would treat it as a via, shrink/enlarge its mask opening, plug or tent it, or if the hole/mask relation raises any engineering
+   question: DO NOT PROCEED - contact me before production.
+2. All 0.30 mm drill / 0.60 mm pad vias are tented on both sides (the mask Gerbers contain no apertures for them). Keep them tented.
+3. Annular ring of the 1.90 mm hole is 0.20 mm (component PTH). Please keep the Gerber geometry as supplied; no automatic ring or hole enlargement.
+4. Surface finish ENIG.  Green solder mask, white silkscreen.  Please do not add or move silkscreen other than the order number.
+5. PCBA: Economic, TOP side only, 2 boards. The XIAO ESP32-S3 module (reference U1) is NOT part of the assembly - it is hand-soldered later.
+   Do not place, source or populate U1; there are no through-hole parts for PCBA. Test pads TP1-TP8 (bare B.Cu) are not components.
+6. Please send the CAM/engineering preview or any engineering question BEFORE production.

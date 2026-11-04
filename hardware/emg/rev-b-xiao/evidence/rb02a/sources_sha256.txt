@@ -1,0 +1,10 @@
+# RB-02A source files, downloaded 2026-10-10 (plain HTTPS GET, no login). SHA-256 of the exact bytes analysed.
+a82247725c8a8bcd8cac81a7acbd126396217e5b680f6dfe28958851e02d5cdb  202003751_XIAO ESP32S3_v1.4_SCH&PCB_260226.zip   (https://files.seeedstudio.com/wiki/SeeedStudio-XIAO-ESP32S3/new-res/202003751_XIAO%20ESP32S3_v1.4_SCH%26PCB_260226.zip)
+a82247725c8a8bcd8cac81a7acbd126396217e5b680f6dfe28958851e02d5cdb  202003753_XIAO ESP32S3 Sense_v1.5_SCH&PCB_260226.zip   (same URL pattern, /new-res/202003753_...Sense_v1.5_SCH%26PCB_260226.zip)  <- BYTE-IDENTICAL to the "v1.4 plain" archive
+d20724aa7198a897871cc1ce87f1a322d0b9cf77521fd2fc4ccda61bc5e4af6c  XIAO ESP32S3_V1.5.kicad_pcb   (inside the archive; folder "202003753_XIAO ESP32S3 Sense_v1.5_SCH&PCB_260226")
+15993097cd695d177af352f4664ca91290a99c833f51d122d1165ef222f9923c  202003751_XIAO ESP32S3_v1.4_SCH_260226.pdf.pdf   == 202003753 ... Sense_v1.5_SCH_260226.pdf.pdf (byte-identical; title block "XIAO ESP32-S3-Sense")
+5fd32e3ba7a4bd85b8cc0f5d9413e26dd947e84e27b2d0f03350a7d367903f23  XIAO_ESP32S3_v1.1_Dimensioning.dxf   (plain v1.1 bottom-side artwork)
+0d552ed2cc7359ea132601f4f7fe2c9d816e2dfe4f58f6463e83f84a901d3650  seeed-studio-xiao-esp32s3-3d_model.zip   (plain 3D model, 2023-05-27)
+773c16cb7518a3a18df926979f24c7e224f19309aad69962ec8a54454e288c59  seeed-studio-xiao-esp32s3-sense-3d_model.zip
+# secondary PCB (cross-check): github.com/Seeed-Studio/OPL_Kicad_Library commit b0035c51eb0348bb3e165fdb2f2765fa3d1d17bd (2026-06-23)
+#   "Seeed Studio XIAO ESP32S3/ESP32S3.kicad_pcb" (KiCad 9.0 file, 2 signal layers, 72 footprints)

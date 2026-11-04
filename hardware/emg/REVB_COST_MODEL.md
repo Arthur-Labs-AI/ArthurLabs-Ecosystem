@@ -12,7 +12,7 @@
 | ADC | ADS131M04IPWR | 1 | 4.69 (V) / 4.18 @10 (V) | 3.54 (V) | Extended |
 | Op-amps | TLV9064IPWR | 3 | 0.22 | 0.199 (V) | Extended |
 | AFE LDO | TPS7A2030PDBVR | 1 | 0.12 | 0.091 (V) | Extended |
-| Clock | YXC OT2JI-111-8.192M (C7425393), 3225 | 1 | 0.70 | 0.45 | Extended (price not captured in RB-00.5; estimate) |
+| Clock | SCTF SX3M8.192M20F30TNN (C2901557), 3225 | 1 | 0.35 (LCSC 2026-10-10, 1+) | 0.27 (100+) | Extended (JLC library type expand; Economic + Standard PCBA) |
 | Clamps | BAV199 SOT-23 (8 input + **8 ADC-input**, RB-00.5) | 16 | 0.03 | 0.02 | Extended (likely), one line |
 | Connectors | JST-PH 2p SMD (5 electrode + 1 battery) | 6 | 0.12 | 0.08 | Extended |
 | FET | 2N7002 | 1 | 0.02 | 0.01 | Basic |

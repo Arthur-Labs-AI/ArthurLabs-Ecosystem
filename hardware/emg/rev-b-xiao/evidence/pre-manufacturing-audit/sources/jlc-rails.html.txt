@@ -1,0 +1,241 @@
+ 
+ 
+    (function(w,i,g){w[g]=w[g]||[];if(typeof w[g].push=='function')w[g].push(i)})(window,'GTM-W8FT5ZR','google_tags_first_party');  (function(w,d,s,l){w[l]=w[l]||[];(function(){w[l].push(arguments);})('set','developer_id.dNmEwOT',true);var f=d.getElementsByTagName(s)[0],j=d.createElement(s);j.async=true;j.src='/iqfd/';f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer');  
+     How to Add Edge Rails and Fiducials for PCB Assembly Orders                                     window.__apmbl = {
+        url: 'https://overseas-datasink.jlcpcb.com/monitor/logs',
+        bid:'overseas-pcb',
+        siteId:'ov-pcb',
+        appId: 'overseas-pcb-pc',
+        appName: 'overseas-web-app',
+        env: 'prd',
+        apmConfig: '/monitor-config.json',
+        domains: [],
+        getUserId: function() {
+          try {
+            var store = window.$nuxt && window.$nuxt.$store
+            if (store && store.getters['user/info'] && store.getters['user/info'].casAccountCode) {
+              return store.getters['user/info'].casAccountCode
+            }
+          } catch(e) {}
+          return ''
+        },
+        autoInstrument: false
+      }      
+      window.dataLayer = window.dataLayer || []
+      function gtag() {
+        dataLayer.push(arguments)
+      }
+
+      gtag('consent', 'default', {
+        analytics_storage: 'denied',
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        wait_for_update: 500,
+        region: ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'GB']
+      })
+
+      gtag('set', 'ads_data_redaction', true)  
+      try {
+        var cc = document.cookie.match(/(?:^|;\s*)jlcpcb_consent=([^;]*)/)
+        if (cc && cc[1]) {
+          var data = JSON.parse(decodeURIComponent(cc[1]))
+          if (data && data.preferences) {
+            var p = data.preferences
+            if (p.analytics) { gtag('consent', 'update', { analytics_storage: 'granted' }) }
+            if (p.targeting) {
+              gtag('consent', 'update', {
+                ad_storage: 'granted',
+                ad_user_data: 'granted',
+                ad_personalization: 'granted'
+              })
+            }
+          }
+        }
+      } catch(e) {}  window.__deferred_gtm_scripts = ["\n      (function (w, d, s, l, i) {\n        w[l] = w[l] || [];\n        w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });\n        var f = d.getElementsByTagName(s)[0],\n            j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : '';\n        j.async = true;\n        j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;\n        f.parentNode.insertBefore(j, f);\n      })(window, document, 'script', 'dataLayer', 'GTM-W8FT5ZR');\n    ","\n      if (typeof gtag === 'function') { gtag('config', 'G-XDWD4D52RC'); }\n      else { window.dataLayer = window.dataLayer || []; function gtag() { window.dataLayer.push(arguments); } gtag('js', new Date()); gtag('config', 'G-XDWD4D52RC'); }\n      (function (w, d, s, l, i) { w[l] = w[l] || []; var f = d.getElementsByTagName(s)[0], j = d.createElement(s); j.async = true; j.src = 'https://www.googletagmanager.com/gtag/js?id=' + i; f.parentNode.insertBefore(j, f); })(window, document, 'script', 'dataLayer', 'G-XDWD4D52RC');\n    "];  window.__deferred_ad_scripts = ["\n      !function(f,b,e,v,n,t,s)\n      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?\n      n.callMethod.apply(n,arguments):n.queue.push(arguments)};\n      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';\n      n.queue=[];t=b.createElement(e);t.async=!0;\n      t.src=v;s=b.getElementsByTagName(e)[0];\n      s.parentNode.insertBefore(t,s)}(window, document,'script',\n      'https://connect.facebook.net/en_US/fbevents.js');\n      fbq('init', '372009521450686');\n      fbq('track', 'PageView');\n    ","\n      !function (w, d, t) {\n        w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=[\"page\",\"track\",\"identify\",\"instances\",\"debug\",\"on\",\"off\",\"once\",\"ready\",\"alias\",\"group\",\"enableCookie\",\"disableCookie\",\"holdConsent\",\"revokeConsent\",\"grantConsent\"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i  (function(){if(navigator.userAgent.indexOf('Electron')>-1){document.documentElement.classList.add('is-helper-env')}})()  This website requires JavaScript.                           
+   function reportJlcApmError(e,t){var n=new XMLHttpRequest;n.open("POST","https://overseas-datasink.jlcpcb.com/datacollect/dataAccess/logs"),n.setRequestHeader("Content-Type","application/json"),n.send(JSON.stringify({data_type:"error",event_type:e,page_url:location.href,os:navigator.platform,user_agent:navigator.userAgent,screen_height:window.screen.height.toString(),screen_width:window.screen.width.toString(),lib_type:"Js",timezone_offset:(new Date).getTimezoneOffset().toString(),app_id:"overseas-pcb-pc",event_time:Date.now(),event_detail:JSON.stringify(t)}))}function reportJlcApmInitError(e){!1===window.jlcTrack.init&&reportJlcApmError("js",{msg:"初始化APM失败",target:e.getAttribute("src")})}function reportJlcApmLoadError(e){reportJlcApmError("resource",{msg:"加载APM失败",target:e.getAttribute("src")})}window.jlcTrack={cacheData:[],init:!1,client:{bindUser:function(e){window.jlcTrack.cacheData.push({key:"bindUser",value:e})},notify:function(e){window.jlcTrack.cacheData.push({key:"report",value:e})},startTrack:function(){},finishTrack:function(){},use:function(){},updateOptions:function(){},unBindUser:function(){},enableLogger:function(){},disableLogger:function(){}},bindUser:function(e){window.jlcTrack.cacheData.push({key:"bindUser",value:e})},report:function(e){window.jlcTrack.cacheData.push({key:"report",value:e})},exposePlugin:function(){window.jlcTrack.cacheData.push({key:"exposePlugin"})},setJlcModuleName:function(e){window.jlcTrack.cacheData.push({key:"setJlcModuleName",value:e})},setJlcPageTitle:function(e){window.jlcTrack.cacheData.push({key:"setJlcPageTitle",value:e})},getJlcPageTitle:function(){},getJlcModuleName:function(){},reportReactError:function(){},reportVueError:function(){}}   
+    
+                                 !function(e){var n="https://s.go-mpulse.net/boomerang/";if("False"=="True")e.BOOMR_config=e.BOOMR_config||{},e.BOOMR_config.PageParams=e.BOOMR_config.PageParams||{},e.BOOMR_config.PageParams.pci=!0,n="https://s2.go-mpulse.net/boomerang/";if(window.BOOMR_API_key="D86U4-B3EEY-9JJXJ-9CUJW-GTXG9",function(){function e(){if(!i){var e=document.createElement("script");e.id="boomr-scr-as",e.src=window.BOOMR.url,e.async=!0,o.parentNode.appendChild(e),i=!0}}function t(e){i=!0;var n,t,a,r,d=document,O=window;if(window.BOOMR.snippetMethod=e?"if":"i",t=function(e,n){var t=d.createElement("script");t.id=n||"boomr-if-as",t.src=window.BOOMR.url,BOOMR_lstart=(new Date).getTime(),e=e||d.body,e.appendChild(t)},!window.addEventListener&&window.attachEvent&&navigator.userAgent.match(/MSIE [67]\./))return window.BOOMR.snippetMethod="s",void t(o.parentNode,"boomr-async");a=document.createElement("IFRAME"),a.src="about:blank",a.title="",a.role="presentation",a.loading="eager",r=(a.frameElement||a).style,r.width=0,r.height=0,r.border=0,r.display="none",o.parentNode.appendChild(a);try{O=a.contentWindow,d=O.document.open()}catch(_){n=document.domain,a.src="javascript:var d=document.open();d.domain='"+n+"';void(0);",O=a.contentWindow,d=O.document.open()}if(n)d._boomrl=function(){this.domain=n,t()},d.write(" ");else if(O._boomrl=function(){t()},O.addEventListener)O.addEventListener("load",O._boomrl,!1);else if(O.attachEvent)O.attachEvent("onload",O._boomrl);d.close()}function a(e){window.BOOMR_onload=e&&e.timeStamp||(new Date).getTime()}if(!window.BOOMR||!window.BOOMR.version&&!window.BOOMR.snippetExecuted){window.BOOMR=window.BOOMR||{},window.BOOMR.snippetStart=(new Date).getTime(),window.BOOMR.snippetExecuted=!0,window.BOOMR.snippetVersion=12,window.BOOMR.url=n+"D86U4-B3EEY-9JJXJ-9CUJW-GTXG9";var o=document.currentScript||document.getElementsByTagName("script")[0],i=!1,r=document.createElement("link");if(r.relList&&"function"==typeof r.relList.supports&&r.relList.supports("preload")&&"as"in r)window.BOOMR.snippetMethod="p",r.href=window.BOOMR.url,r.rel="preload",r.as="script",r.addEventListener("load",e),r.addEventListener("error",function(){t(!0)}),setTimeout(function(){if(!i)t(!0)},3e3),BOOMR_lstart=(new Date).getTime(),o.parentNode.appendChild(r);else t(!1);if(window.addEventListener)window.addEventListener("load",a,!1);else if(window.attachEvent)window.attachEvent("onload",a)}}(),"".length>0)if(e&&"performance"in e&&e.performance&&"function"==typeof e.performance.setResourceTimingBufferSize)e.performance.setResourceTimingBufferSize();!function(){if(BOOMR=e.BOOMR||{},BOOMR.plugins=BOOMR.plugins||{},!BOOMR.plugins.AK){var n=""=="true"?1:0,t="",a="l6pka3iccabdc2wwg3ia-f-f19e1e01b-clientnsv4-s.akamaihd.net",o="false"=="true"?2:1,i={"ak.v":"41","ak.cp":"1928250","ak.ai":parseInt("1292509",10),"ak.ol":"0","ak.cr":56,"ak.ipv":4,"ak.proto":"http/1.1","ak.rid":"d4563a4","ak.r":38755,"ak.a2":n,"ak.m":"","ak.n":"ff","ak.cport":34884,"ak.gh":"2.16.2.45","ak.quicv":"","ak.tlsv":"tls1.3","ak.0rtt":"","ak.0rtt.ed":"","ak.csrc":"-","ak.acc":"bbr","ak.t":"1792423632","ak.ak":"hOBiQwZUYzCg5VSAfCLimQ==Jyxx0SOMhz1SuMcAw7zopiGO7sExn94xqE6GAVERVsRD9hwwpaIgxZWU/aXcVrsgsHehPHhOsniHncSb7knU++EMqLgVB5ERWePJII94wMDREObcX5rp2JaAX9rp/DY6PkEcSDzs3ZhgbGGl5qg+pZVV6w8OI+VkTppg7nw2PGi3MRBR+6QJ3AEkygPx2Ya8Rzlcc+kc05q+gykGMP7wBZE8S8X5DvMRFmjo7qubtXlYiD5hSy5A5UsO21A0ihdSJtgjh9gsnpdgldoJXaXnqCL11EpkqvlqgbMoB4Y3e4LgYuxPDOH0pVRqUo4RXWIcXB3S3h6GrhxaJUugZuM9783Fzjz0KmO9mzHEGNwwQQp3Q5E4ijS+3gRfVjENKAvlOlBL+YytVS8LwUNF9Np6WquVHnaWsqzmTYHeQ5ZnXpA=","ak.pv":"23","ak.dpoabenc":"","ak.tf":o};if(""!==t)i["ak.ruds"]=t;var r={i:!1,av:function(n){var t="http.initiator";if(n&&(!n[t]||"spa_hard"===n[t]))i["ak.feo"]=void 0!==e.aFeoApplied?1:0,BOOMR.addVar(i)},rv:function(){var e=["ak.cport","ak.cr","ak.csrc","ak.gh","ak.ipv","ak.m","ak.n","ak.ol","ak.proto","ak.quicv","ak.tlsv","ak.0rtt","ak.0rtt.ed","ak.r","ak.acc","ak.t","ak.tf"];BOOMR.removeVar(e)}};BOOMR.plugins.AK={akVars:i,akDNSPreFetchDomain:a,init:function(){if(!r.i){var e=BOOMR.subscribe;e("before_beacon",r.av,null,null),e("onbeacon",r.rv,null,null),r.i=!0}return this},is_complete:function(){return!0}}}}()}(window);  
+   
+            Account Restriction Notice                    
+          
+               Get Coupon Here        
+                Coupons
+                           Country / Region                                           Language      undefined              Currency      USD $              The currency you select is for reference only, payments must be made in US dollars.       
+      Save
+            Language Coming Soon                 Ship to                             JLCPCB            PCB Service          FR-4 PCBs          Flexible PCBs          Metal Core PCBs          High-Frequency PCBs       PCBA Service          PCB Assembly          Parts Library       More          SMT Stencil          PCB Layout             Mechanical Services      JLC3DP - 3D Printing      JLCCNC - CNC Machining      JLCCNC - Sheet Metal      JLCMC - Mechanical Components       Tools      EasyEDA - PCB Design Tool      JLCDFM -  DFM Check      Impedance Calculator      PI Stiffener Calculator       More      OSHWLAB - Open Source Hardware      JLCPCB - Flexible Heater                
+    Products
+           Capabilities          Contact Us           
+                Online Chat&gt;
+                 Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8           
+                Email Us&gt;
+                 Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8           
+                WhatsApp&gt;
+                 Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8             Support      Help Center    Get instant answers. 24/7 Available.     Blog        Community             
+    Support
+                  About Us   JLCPCB delivers one-stop electronic and mechanical manufacturing solutions to empower hardware innovators worldwide.      Explore Us      Why JLCPCB?      Quality Assurance      How We Work      Certifications      Company News             
+    About Us
+                              
+    Search
+                         0     Order Now              
+            Sign In
+                 
+              Sign In
+                                           Help Center        
+        Help Center
+               
+        PCBA Technical Guidelines
+               
+        How to Add Edge Rails and Fiducials for PCB Assembly Orders
+                 Help Center                         
+        Get Started
+            
+            Register
+              
+            Know Before Ordering
+              
+            Account Setting
+                        
+        Ordering
+            
+            PCB Ordering
+              
+            PCB Assembly Ordering
+              
+            PCB Stencil Ordering
+                        
+        PCB Manufacturing
+            
+            PCB Files Preparation
+              
+            PCB Capabilities &amp; Instructions
+              
+            PCB Technical Guidelines
+                        
+        PCB Assembly
+            
+            PCB Assembly FAQs
+              
+            PCBA Price Details
+              
+            PCBA Parts Sourcing
+              
+            PCBA Capabilities &amp; Instructions
+              
+            PCBA Technical Guidelines
+              
+            PCBA Files Preparation
+              
+            PCBA Lead Time
+              
+            PCBA After-Sale
+                        
+        FPC Manufacturing
+            
+            FPC Materials &amp; Options
+              
+            FPC Design Guidelines
+                        
+        SMT Stencil
+            
+            Stencil Ordering
+              
+            Stencil Technical Guidelines
+                        
+        PCB Layout
+            
+            PCB Layout Ordering
+              
+            PCB Layout FAQs
+                        
+        JLCDFM Tool
+            
+            DFM Tool Help
+              
+            DFM FAQs
+                        
+        JLCONE
+            
+            JLCONE FAQs
+              
+            JLCONE Download and Installation
+                        
+        Shipping &amp; Delivery
+            
+            Shipping Policies
+              
+            Shipping Instructions
+                        
+        Payment &amp; Invoice
+            
+            Payments
+                        
+        Collab &amp; Activities
+            
+            JLCPCB API
+              
+            Coupons &amp; Promotions
+                        
+        Policies &amp; Certifications
+            
+            Policies
+              
+            Certifications
+                        
+        Information
+            
+            Notice
+                        
+        Flexible Heater
+            
+            Flexible Heater Ordering
+                      
+              How to Add Edge Rails and Fiducials for PCB Assembly Orders
+                 
+              Last updated on Sep 09, 2026
+                      
+
+
+ 
+
+ 
+
+  Overview   Edge rails and fiducials are required for standard PCB assembly at JLCPCB.  Edge rails are added to increase the clearance between components and the board edges. Fiducials are small reference pads placed on a PCB to assist Pick &amp; Place machines in accurate component placement. They are often added on edge rails as well.  To achieve optimal assembly results, we recommend following the guidelines below when adding edge rails and fiducials to your PCB design.   Edge Rails   Edge rails are added to increase the distance between components and the board edge. The minimum width of edge rails should be  at least 5 mm . 
+
+ 
+   Note 
+   By default, assembled PCBs will be delivered with edge rails attached. If you would like us to remove the edge rails after assembly, please inform us when placing your order. Additional post-processing fees will apply. 
+
+ 
+
+
+
+     Fiducials    1. Fiducial markers are created by placing an un-drilled circular copper pad on the PCB. The fiducial area must be free of solder mask.    2. The recommended diameter of a fiducial marker is    1 mm   . The solder mask opening should be    twice the diameter    of the exposed copper pad.       3.    Three to four fiducial markers    should be placed along the board edges to ensure optimal placement accuracy.    4. Fiducial markers must maintain a minimum clearance of    3.35 mm    from the board edge, including the fiducial keep-out area.                                           
+          Online Chat &gt;
+           Chat with our live agent for fast reply.   Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8      
+          Email Us &gt;
+           Contact us at support  jlcpcb.com   Typically reply within hours.      
+          Help Center &gt;
+           Get instant answers.   24/7 Available.               Products      FR-4 PCBs      Flexible PCBs      Metal Core PCBs      High-Frequency PCBs      PCBA Service      PCB Layout      SMT Stencil      Flex Heater       Support      Help Center      Contact Us      Community      Shipping &amp; Delivery      Payment Methods      How to Order      How to Track      After-Sales Service      Blog       Company      About Us      Quality Assurance      How We Work      Certifications      Security      Environment      JLCAPI      News      Cooperation       Electronics      EasyEDA      JLCPCB      JLCDFM      LCSC      OSHWLAB       Mechanical      JLC3DP      JLCCNC      JLCMC              CONNECT WITH US                                   © 2026 JLCPCB.COM All Rights Reserved.   
+        Privacy Policy
+         
+        Terms &amp; Conditions
+         
+        Cookies Policy
+                               
+        Get Coupon &gt;
+               
+        Live Chat &gt;
+                  
+          Home
+                 
+          Cart
+                 
+          Files
+                 
+          Message
+                 
+          Me
+                   window.__NUXT__=(function(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,_,$,aa,ab,ac,ad,ae,af,ag,ah,ai,aj,ak,al,am,an,ao,ap,aq,ar,as,at,au,av,aw,ax,ay,az,aA,aB,aC,aD,aE,aF,aG,aH,aI,aJ,aK,aL,aM,aN,aO,aP,aQ,aR,aS,aT,aU,aV){return {layout:"default",data:[{articleDetail:{cmsCategoryAccessId:v,cmsCategoryKeyId:w,cmsHelpDocRecordAccessId:"0445c2deb79941f7b2d81d735f61edda",cmsHelpDocRecordKeyId:"542927100590116865",title:R,status:g,sort:d,content:"\u003Cdiv class=\"jlc-article-page-container\"\u003E\u003Ca href=\"https:\u002F\u002Fjlcpcb.com\u002Fsolutions\u002Fpcb-prototype-assembly?from=STQJZF\"\u003E\n\n\n\u003Cimg src=\"https:\u002F\u002Frs.jlcpcb.com\u002Fstatic\u002Fimage\u002Fblog\u002Fpcb-assembly\u002Fpcb-prototype-assembly-banner-2.webp\" width=\"693\" height=\"363\" alt=\"pcb prototype assembly banner 2\" \u002F\u003E\n\n\u003C\u002Fa\u003E\n\n\u003Ch2\u003E\u003Cstrong\u003EOverview\u003C\u002Fstrong\u003E\u003C\u002Fh2\u003E\u003Cp\u003EEdge rails and fiducials are required for standard PCB assembly at JLCPCB.\u003C\u002Fp\u003E\u003Cp\u003EEdge rails are added to increase the clearance between components and the board edges. Fiducials are small reference pads placed on a PCB to assist Pick &amp; Place machines in accurate component placement. They are often added on edge rails as well.\u003C\u002Fp\u003E\u003Cp\u003ETo achieve optimal assembly results, we recommend following the guidelines below when adding edge rails and fiducials to your PCB design.\u003C\u002Fp\u003E\u003Ch2\u003E\u003Cstrong\u003EEdge Rails\u003C\u002Fstrong\u003E\u003C\u002Fh2\u003E\u003Cp\u003EEdge rails are added to increase the distance between components and the board edge. The minimum width of edge rails should be \u003Cstrong\u003Eat least 5 mm\u003C\u002Fstrong\u003E.\u003C\u002Fp\u003E\n\n\u003Cdiv class=\"jlc-note\"\u003E\n  \u003Ch3\u003ENote\u003C\u002Fh3\u003E\n  \u003Cp\u003EBy default, assembled PCBs will be delivered with edge rails attached. If you would like us to remove the edge rails after assembly, please inform us when placing your order. Additional post-processing fees will apply.\u003C\u002Fp\u003E\n\n\u003C\u002Fdiv\u003E\n\n\n\n\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Frs.jlcpcb.com\u002Fstatic\u002Fimage\u002F8708357626615009280-6daa073f3db54bb1832244bbdcd92961.png\" width=\"562\" height=\"562\" alt=\"pcb edge rails\"\u003E\u003C\u002Fp\u003E\u003Ch2\u003E\u003Cstrong\u003EFiducials\u003C\u002Fstrong\u003E\u003C\u002Fh2\u003E\u003Cp\u003E\u003Cspan\u003E1. Fiducial markers are created by placing an un-drilled circular copper pad on the PCB. The fiducial area must be free of solder mask.\u003C\u002Fspan\u003E\u003C\u002Fp\u003E\u003Cp\u003E\u003Cspan\u003E2. The recommended diameter of a fiducial marker is \u003C\u002Fspan\u003E\u003Cspan\u003E\u003Cstrong\u003E1 mm\u003C\u002Fstrong\u003E\u003C\u002Fspan\u003E\u003Cspan\u003E. The solder mask opening should be \u003C\u002Fspan\u003E\u003Cspan\u003E\u003Cstrong\u003Etwice the diameter\u003C\u002Fstrong\u003E\u003C\u002Fspan\u003E\u003Cspan\u003E of the exposed copper pad.\u003C\u002Fspan\u003E\u003C\u002Fp\u003E\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Frs.jlcpcb.com\u002Fstatic\u002Fimage\u002F8708359994425716736-5487cf13c20c4f08a3fe48d0158e4bb6.png\" alt=\"2 mm Solder Mask Opening\"\u003E\u003C\u002Fp\u003E\u003Cp\u003E\u003Cspan\u003E3. \u003C\u002Fspan\u003E\u003Cspan\u003E\u003Cstrong\u003EThree to four fiducial markers\u003C\u002Fstrong\u003E\u003C\u002Fspan\u003E\u003Cspan\u003E should be placed along the board edges to ensure optimal placement accuracy.\u003C\u002Fspan\u003E\u003C\u002Fp\u003E\u003Cp\u003E\u003Cspan\u003E4. Fiducial markers must maintain a minimum clearance of \u003C\u002Fspan\u003E\u003Cspan\u003E\u003Cstrong\u003E3.35 mm\u003C\u002Fstrong\u003E\u003C\u002Fspan\u003E\u003Cspan\u003E from the board edge, including the fiducial keep-out area.\u003C\u002Fspan\u003E\u003C\u002Fp\u003E\u003Cp\u003E\u003Cimg src=\"https:\u002F\u002Frs.jlcpcb.com\u002Fstatic\u002Fimage\u002F8708360189976481792-d5c2c44b2c224fa09ee3baebc73726b3.png\" width=\"454\" height=\"454\" alt=\"3.35mm Distance From Fiducial Marker To The Board\"\u003E\u003C\u002Fp\u003E\u003C\u002Fdiv\u003E",relationHelpDocs:[],hasFeedback:e,hasClickYes:e,updateTime:1788932942000,previewContent:"Overview Edge rails and fiducials are required for standard PCB assembly at JLCPCB. Edge rails are added to increase the clearance between components and the board edges. Fiducials are small reference pads placed on a PCB to assist Pick & Place machines i......",tdkTitle:R,tdkKeywords:"Fiducial",tdkDesc:"Follow JLCPCB’s guidelines for adding edge rails and fiducials to your PCB design to ensure proper assembly in our PCB assembly service.",locationUri:S,languageList:[T,"pt","fr","es","jp","hk",n]},categoryList:[{children:[{children:[],cmsCategoryKeyId:174,cmsCategoryAccessId:"e9867f7ed6a34504a8fac3fc10a76fb8",parentCateAccessId:r,parentId:h,categoryName:U,enableFlag:c,sort:d,count:f,description:a,longDescription:b,categoryUrl:"register",categoryHtmlName:U,docRecordPageVos:a},{children:[],cmsCategoryKeyId:x,cmsCategoryAccessId:"ae05ad11d6684b23946ec984c438ec72",parentCateAccessId:r,parentId:h,categoryName:V,enableFlag:c,sort:d,count:13,description:a,longDescription:b,categoryUrl:"know-before-ordering",categoryHtmlName:V,docRecordPageVos:a},{children:[],cmsCategoryKeyId:2491,cmsCategoryAccessId:"d167408f06e447de9bbac6e27d3d1845",parentCateAccessId:r,parentId:h,categoryName:W,enableFlag:c,sort:m,count:f,description:a,longDescription:b,categoryUrl:"account-setting",categoryHtmlName:W,docRecordPageVos:a}],cmsCategoryKeyId:h,cmsCategoryAccessId:r,parentCateAccessId:a,parentId:d,categoryName:X,enableFlag:c,sort:d,count:15,description:a,longDescription:b,categoryUrl:"get-started",categoryHtmlName:X,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:p,cmsCategoryAccessId:"e583c2c009fc40869bd1b1e790f15181",parentCateAccessId:s,parentId:m,categoryName:Y,enableFlag:c,sort:d,count:m,description:a,longDescription:b,categoryUrl:"pcb-ordering",categoryHtmlName:Y,docRecordPageVos:a},{children:[],cmsCategoryKeyId:223,cmsCategoryAccessId:"547be68953b74d38aa41d73cf5f170d8",parentCateAccessId:s,parentId:m,categoryName:Z,enableFlag:c,sort:g,count:o,description:a,longDescription:b,categoryUrl:"pcb-assembly-ordering",categoryHtmlName:Z,docRecordPageVos:a},{children:[],cmsCategoryKeyId:2614,cmsCategoryAccessId:"0ab9d93882c845fbbdb0811ea12e213c",parentCateAccessId:s,parentId:m,categoryName:_,enableFlag:c,sort:k,count:q,description:a,longDescription:b,categoryUrl:"pcb-stencil-ordering",categoryHtmlName:_,docRecordPageVos:a}],cmsCategoryKeyId:m,cmsCategoryAccessId:s,parentCateAccessId:a,parentId:d,categoryName:$,enableFlag:c,sort:f,count:y,description:a,longDescription:b,categoryUrl:"ordering",categoryHtmlName:$,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:180,cmsCategoryAccessId:"6ad0eb8a10a646c29b6f30b103acacbb",parentCateAccessId:t,parentId:u,categoryName:aa,enableFlag:c,sort:d,count:23,description:a,longDescription:b,categoryUrl:"pcb-files-preparation",categoryHtmlName:aa,docRecordPageVos:a},{children:[],cmsCategoryKeyId:187,cmsCategoryAccessId:"98909406736c414ebf2a45553d6dc0e5",parentCateAccessId:t,parentId:u,categoryName:ab,enableFlag:c,sort:f,count:z,description:a,longDescription:b,categoryUrl:"pcb-capabilities-&-instructions",categoryHtmlName:ab,docRecordPageVos:a},{children:[],cmsCategoryKeyId:186,cmsCategoryAccessId:"e1e25fdb94504410b88f7f3cd8403925",parentCateAccessId:t,parentId:u,categoryName:ac,enableFlag:c,sort:g,count:y,description:a,longDescription:b,categoryUrl:"pcb-technical-guidelines",categoryHtmlName:ac,docRecordPageVos:a}],cmsCategoryKeyId:u,cmsCategoryAccessId:t,parentCateAccessId:a,parentId:d,categoryName:ad,enableFlag:c,sort:g,count:58,description:a,longDescription:b,categoryUrl:"pcb-manufacturing",categoryHtmlName:ad,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:212,cmsCategoryAccessId:"aae1413e4410464daf9c666b8d0c6fc2",parentCateAccessId:i,parentId:j,categoryName:ae,enableFlag:c,sort:d,count:l,description:a,longDescription:b,categoryUrl:"pcb-assembly-faqs",categoryHtmlName:ae,docRecordPageVos:a},{children:[],cmsCategoryKeyId:202,cmsCategoryAccessId:"6924413b1311487a876df34a79049c43",parentCateAccessId:i,parentId:j,categoryName:af,enableFlag:c,sort:d,count:f,description:a,longDescription:b,categoryUrl:"pcba-price-details",categoryHtmlName:af,docRecordPageVos:a},{children:[],cmsCategoryKeyId:191,cmsCategoryAccessId:"1f61e73678284b55aa27989f0fe3c3f1",parentCateAccessId:i,parentId:j,categoryName:ag,enableFlag:c,sort:d,count:ah,description:a,longDescription:b,categoryUrl:"pcba-parts-sourcing",categoryHtmlName:ag,docRecordPageVos:a},{children:[],cmsCategoryKeyId:192,cmsCategoryAccessId:"b178f9b2e2144be08d7efdb8631ae933",parentCateAccessId:i,parentId:j,categoryName:ai,enableFlag:c,sort:d,count:x,description:a,longDescription:b,categoryUrl:"pcba-capabilities-&-instructions",categoryHtmlName:ai,docRecordPageVos:a},{children:[],cmsCategoryKeyId:w,cmsCategoryAccessId:v,parentCateAccessId:i,parentId:j,categoryName:A,enableFlag:c,sort:d,count:p,description:a,longDescription:b,categoryUrl:aj,categoryHtmlName:A,docRecordPageVos:a},{children:[],cmsCategoryKeyId:190,cmsCategoryAccessId:"351efc160cfd42ba81bc264b08e371dd",parentCateAccessId:i,parentId:j,categoryName:ak,enableFlag:c,sort:d,count:17,description:a,longDescription:b,categoryUrl:"pcba-files-preparation",categoryHtmlName:ak,docRecordPageVos:a},{children:[],cmsCategoryKeyId:4303,cmsCategoryAccessId:"9f17b56b996c4b729d21233d06c544dc",parentCateAccessId:i,parentId:j,categoryName:"PCBA Lead Time",enableFlag:c,sort:f,count:f,description:a,longDescription:b,categoryUrl:"pcba-lead-time",categoryHtmlName:b,docRecordPageVos:a},{children:[],cmsCategoryKeyId:3509,cmsCategoryAccessId:"d66b8f3d15474db7b01babd5f350a272",parentCateAccessId:i,parentId:j,categoryName:"PCBA After-Sale",enableFlag:c,sort:f,count:l,description:a,longDescription:b,categoryUrl:"pcba-after-sale",categoryHtmlName:b,docRecordPageVos:a}],cmsCategoryKeyId:j,cmsCategoryAccessId:i,parentCateAccessId:a,parentId:d,categoryName:al,enableFlag:c,sort:k,count:67,description:a,longDescription:b,categoryUrl:"pcb-assembly",categoryHtmlName:al,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:4702,cmsCategoryAccessId:"0afe029c857048b58434ec3e968b4272",parentCateAccessId:B,parentId:C,categoryName:"FPC Materials & Options",enableFlag:c,sort:k,count:o,description:a,longDescription:b,categoryUrl:"fpc-materials-options",categoryHtmlName:b,docRecordPageVos:a},{children:[],cmsCategoryKeyId:4712,cmsCategoryAccessId:"7433ef25c0a5491294ac102e0304149d",parentCateAccessId:B,parentId:C,categoryName:"FPC Design Guidelines",enableFlag:c,sort:am,count:g,description:a,longDescription:b,categoryUrl:"fpc-design-guidelines",categoryHtmlName:b,docRecordPageVos:a}],cmsCategoryKeyId:C,cmsCategoryAccessId:B,parentCateAccessId:a,parentId:d,categoryName:"FPC Manufacturing",enableFlag:c,sort:o,count:l,description:a,longDescription:b,categoryUrl:"fpc-manufacturing",categoryHtmlName:b,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:2554,cmsCategoryAccessId:"2059078ef25e452798279fed989b5f96",parentCateAccessId:D,parentId:E,categoryName:an,enableFlag:c,sort:f,count:o,description:a,longDescription:b,categoryUrl:"stencil-ordering",categoryHtmlName:an,docRecordPageVos:a},{children:[],cmsCategoryKeyId:2555,cmsCategoryAccessId:"19a44c0769924837a39c10856e258742",parentCateAccessId:D,parentId:E,categoryName:ao,enableFlag:c,sort:g,count:q,description:a,longDescription:b,categoryUrl:"stencil-technical-guidelines",categoryHtmlName:ao,docRecordPageVos:a}],cmsCategoryKeyId:E,cmsCategoryAccessId:D,parentCateAccessId:a,parentId:d,categoryName:ap,enableFlag:c,sort:am,count:p,description:a,longDescription:b,categoryUrl:"smt-stencil",categoryHtmlName:ap,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:2011,cmsCategoryAccessId:"e8c1c2a517df48e5af9491deb025acc1",parentCateAccessId:F,parentId:G,categoryName:aq,enableFlag:c,sort:d,count:g,description:a,longDescription:b,categoryUrl:"pcb-layout-ordering",categoryHtmlName:aq,docRecordPageVos:a},{children:[],cmsCategoryKeyId:2002,cmsCategoryAccessId:"52917af0a83a483685480e85a7f64867",parentCateAccessId:F,parentId:G,categoryName:ar,enableFlag:c,sort:f,count:l,description:a,longDescription:b,categoryUrl:"pcb-layout-faqs",categoryHtmlName:ar,docRecordPageVos:a}],cmsCategoryKeyId:G,cmsCategoryAccessId:F,parentCateAccessId:a,parentId:d,categoryName:as,enableFlag:c,sort:l,count:h,description:a,longDescription:b,categoryUrl:"pcb-layout",categoryHtmlName:as,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:2061,cmsCategoryAccessId:"25334630a59e4ccda46392c0d0e33ec2",parentCateAccessId:H,parentId:I,categoryName:at,enableFlag:c,sort:d,count:k,description:a,longDescription:b,categoryUrl:"dfm-tool-help",categoryHtmlName:at,docRecordPageVos:a},{children:[],cmsCategoryKeyId:2071,cmsCategoryAccessId:"4e74288acd17436d8d31dfda9fb6797b",parentCateAccessId:H,parentId:I,categoryName:au,enableFlag:c,sort:f,count:k,description:a,longDescription:b,categoryUrl:"dfm-faqs",categoryHtmlName:au,docRecordPageVos:a}],cmsCategoryKeyId:I,cmsCategoryAccessId:H,parentCateAccessId:a,parentId:d,categoryName:av,enableFlag:c,sort:q,count:l,description:a,longDescription:b,categoryUrl:"jlcdfm-tool",categoryHtmlName:av,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:5021,cmsCategoryAccessId:"f18b5b41edf3428fad8457f9f2bada7e",parentCateAccessId:J,parentId:K,categoryName:"JLCONE FAQs",enableFlag:c,sort:d,count:f,description:a,longDescription:b,categoryUrl:"jlcone-faqs",categoryHtmlName:b,docRecordPageVos:a},{children:[],cmsCategoryKeyId:3099,cmsCategoryAccessId:"1f2cb7e2811049a5a155063300963ad7",parentCateAccessId:J,parentId:K,categoryName:aw,enableFlag:c,sort:f,count:f,description:a,longDescription:b,categoryUrl:"jlcone-download-and-installation",categoryHtmlName:aw,docRecordPageVos:a}],cmsCategoryKeyId:K,cmsCategoryAccessId:J,parentCateAccessId:a,parentId:d,categoryName:ax,enableFlag:c,sort:h,count:g,description:a,longDescription:b,categoryUrl:"jlcone",categoryHtmlName:ax,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:ay,cmsCategoryAccessId:"7d4e34cafc0f4c25a278b8a90b8a01b8",parentCateAccessId:L,parentId:M,categoryName:az,enableFlag:c,sort:d,count:h,description:a,longDescription:b,categoryUrl:"shipping-policies",categoryHtmlName:az,docRecordPageVos:a},{children:[],cmsCategoryKeyId:19,cmsCategoryAccessId:"988f16917f694e8dbdb9073835514218",parentCateAccessId:L,parentId:M,categoryName:aA,enableFlag:c,sort:d,count:aB,description:a,longDescription:b,categoryUrl:"shipping-instructions",categoryHtmlName:aA,docRecordPageVos:a}],cmsCategoryKeyId:M,cmsCategoryAccessId:L,parentCateAccessId:a,parentId:d,categoryName:aC,enableFlag:c,sort:x,count:ay,description:a,longDescription:b,categoryUrl:"shipping-&-delivery",categoryHtmlName:aC,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:30,cmsCategoryAccessId:"9961727b672b47c09b9c5509b8c4bb90",parentCateAccessId:aD,parentId:aE,categoryName:aF,enableFlag:c,sort:d,count:h,description:a,longDescription:b,categoryUrl:"payments",categoryHtmlName:aF,docRecordPageVos:a}],cmsCategoryKeyId:aE,cmsCategoryAccessId:aD,parentCateAccessId:a,parentId:d,categoryName:aG,enableFlag:c,sort:m,count:h,description:a,longDescription:b,categoryUrl:"payment-&-invoice",categoryHtmlName:aG,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:213,cmsCategoryAccessId:"170adc5686f546fcae70adc21ca7a475",parentCateAccessId:N,parentId:O,categoryName:aH,enableFlag:c,sort:d,count:f,description:a,longDescription:b,categoryUrl:"jlcpcb-api",categoryHtmlName:aH,docRecordPageVos:a},{children:[],cmsCategoryKeyId:64,cmsCategoryAccessId:"be0bbc78e2cf4ba7afce6e658e263b6e",parentCateAccessId:N,parentId:O,categoryName:aI,enableFlag:c,sort:d,count:l,description:a,longDescription:b,categoryUrl:"coupons-&-promotions",categoryHtmlName:aI,docRecordPageVos:a}],cmsCategoryKeyId:O,cmsCategoryAccessId:N,parentCateAccessId:a,parentId:d,categoryName:aJ,enableFlag:c,sort:p,count:q,description:a,longDescription:b,categoryUrl:"collab-&-activities",categoryHtmlName:aJ,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:y,cmsCategoryAccessId:"d8551030fea0406a8aa3fafdd0c156d2",parentCateAccessId:P,parentId:Q,categoryName:aK,enableFlag:c,sort:f,count:p,description:a,longDescription:b,categoryUrl:"policies",categoryHtmlName:aK,docRecordPageVos:a},{children:[],cmsCategoryKeyId:2556,cmsCategoryAccessId:"daa2448f6a2047ce88b443a288cc29d9",parentCateAccessId:P,parentId:Q,categoryName:aL,enableFlag:c,sort:g,count:k,description:a,longDescription:b,categoryUrl:"certifications",categoryHtmlName:aL,docRecordPageVos:a}],cmsCategoryKeyId:Q,cmsCategoryAccessId:P,parentCateAccessId:a,parentId:d,categoryName:aM,enableFlag:c,sort:aB,count:z,description:a,longDescription:b,categoryUrl:"policies-&-certifications",categoryHtmlName:aM,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:2451,cmsCategoryAccessId:"86da02bd15084f1b879d8b56997a417a",parentCateAccessId:aN,parentId:aO,categoryName:aP,enableFlag:c,sort:d,count:o,description:a,longDescription:b,categoryUrl:"notice",categoryHtmlName:aP,docRecordPageVos:a}],cmsCategoryKeyId:aO,cmsCategoryAccessId:aN,parentCateAccessId:a,parentId:d,categoryName:aQ,enableFlag:c,sort:z,count:o,description:a,longDescription:b,categoryUrl:"information",categoryHtmlName:aQ,docRecordPageVos:a},{children:[{children:[],cmsCategoryKeyId:3152,cmsCategoryAccessId:"e369dba30f67436ea23216cf62eea1e5",parentCateAccessId:aR,parentId:aS,categoryName:aT,enableFlag:c,sort:d,count:k,description:a,longDescription:b,categoryUrl:"flexible-heater-ordering",categoryHtmlName:aT,docRecordPageVos:a}],cmsCategoryKeyId:aS,cmsCategoryAccessId:aR,parentCateAccessId:a,parentId:d,categoryName:aU,enableFlag:c,sort:ah,count:k,description:a,longDescription:b,categoryUrl:"flexible-heater",categoryHtmlName:aU,docRecordPageVos:a}],selectedCateItem:{categoryName:A,cmsCategoryKeyId:w,cmsCategoryAccessId:v,categoryUrl:aj},locationUri:S,seoInfo:{overseasPageTdkKeyId:a,overseasPageTdkBizKey:a,languageCode:a,site:a,pageType:a,pageUrl:a,pageTitle:a,pageKeyword:a,operator:a,pageDescription:a,structuredCode:a,dbUpdateTime:a,deleteFlag:a}}],fetch:{},error:a,state:{isHelperEnv:e,host:"jlcpcb.com",locales:[n,"zh",T,"jpn","jpv"],locale:n,country:a,countryList:[],language:n,languageList:[],languageLoaded:e,rate:{uuid:"36812d96-3345-471a-bb59-c0143dfa8836",afterCountryCode:"USD",afterCountryName:"$",rate:f},rateList:[],noticeList:[{noticeRecordBizKey:"552370912810979369",noticeType:l,languageCode:n,noticeName:"商城导流文案(支付成功)",startTime:aV,endTime:1875290139000,backGroundColor:b,noticeContent:b,contentMd5:a},{noticeRecordBizKey:"552370912810979377",noticeType:q,languageCode:n,noticeName:"商城导流文案(邮件)",startTime:aV,endTime:1875290154000,backGroundColor:b,noticeContent:b,contentMd5:a}],smtSwitch:c,blackCountryCode:[],isRegisteredWangEditor:e,userCollectList:[],partsCompareList:[],idleStockBuyAuthority:e,componentSearchKeyword:b,up_spm:b,spm:b,purchaseOrderWhiteListFlag:e,jcAbBucketId:b,isSpmSend:e,isCountryLoaded:e,smtCartInfo:{goodsResultVOList:[],totalPrice:d,totalSize:d},instockComponentNum:a,checkComponentsPartList:[],isShowImChat:e,isShowDownloadFlag:e,commonWhiteListConfig:{},homeNavBgLock:e,homeNavTransFlag:e,mouseOverHomeNavFlag:e,headNavIsFixed:e,isJlcMobileApp:e,couponDrawer:{couponOrderRules:{orderType:f},couponCenterList:[],myCouponList:[]},todos:{list:[]},user:{isLogin:e,isImBlackList:e,info:{},shopcartList:[]}},serverRendered:c,routePath:"\u002Fhelp\u002Farticle\u002Fhow-to-add-edge-rails-fiducials-for-pcb-assembly-order",config:{_app:{basePath:"\u002F",assetsPath:"\u002Fssr\u002F",cdnURL:a}}}}(null,"",true,0,false,1,2,8,"a5c9ed605fbd4799b034cdf30a7ba631",189,3,6,10,"en",4,11,7,"e7ccde0006444082a050f19894ffef52","a415dd549c2646e99d09e1875d632e65","8e41ed82bc8446748f24081474b85091",179,"2e7d974dc1a24160aee173763f46b8b8",181,9,21,14,"PCBA Technical Guidelines","03991998f6bf43b281cfd5c83184e7a9",4691,"2faa9f3f7d89468081e747206dd7b40a",2549,"bdc3c99486f14c3c9edfc5406e2440f1",2001,"9a17d78139c543789f263695f3f1ba4e",2051,"97fa2c5cca5d4e8ba023026422b4a77e",3102,"e27ffb62605d44368310f24f0be854c4",28,"bd793ed2776f471d834e648d19ce08d9",62,"25fe75479dc6461b929335f95aafbb10",35,"How to Add Edge Rails and Fiducials for PCB Assembly Orders","how-to-add-edge-rails-fiducials-for-pcb-assembly-order","kr","Register","Know Before Ordering","Account Setting","Get Started","PCB Ordering","PCB Assembly Ordering","PCB Stencil Ordering","Ordering","PCB Files Preparation","PCB Capabilities & Instructions","PCB Technical Guidelines","PCB Manufacturing","PCB Assembly FAQs","PCBA Price Details","PCBA Parts Sourcing",16,"PCBA Capabilities & Instructions","pcba-technical-guidelines","PCBA Files Preparation","PCB Assembly",5,"Stencil Ordering","Stencil Technical Guidelines","SMT Stencil","PCB Layout Ordering","PCB Layout FAQs","PCB Layout","DFM Tool Help","DFM FAQs","JLCDFM Tool","JLCONE Download and Installation","JLCONE",20,"Shipping Policies","Shipping Instructions",12,"Shipping & Delivery","8d6716f395474e2bb835b25e580d45a2",29,"Payments","Payment & Invoice","JLCPCB API","Coupons & Promotions","Collab & Activities","Policies","Certifications","Policies & Certifications","054e622dbe764148a6383e803e05d908",2442,"Notice","Information","856ea1febb844e87887b4a0239341910",3130,"Flexible Heater Ordering","Flexible Heater",1559145600000));                     
+   
+ 

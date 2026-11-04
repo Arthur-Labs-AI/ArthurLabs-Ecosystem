@@ -1,0 +1,6 @@
+AFE_3V0                                  U4002.5 max 140.8 mOhm @ U502.4  13.8 mA -> 1.943 mV  unreached []
+DVDD_F                                   FB1.2 max 47.4 mOhm @ C6010.1  11.4 mA -> 0.54 mV  unreached []
+VBAT                                     J1.1 max 14.3 mOhm @ U1.23  500.0 mA -> 7.15 mV  unreached []
+/Analog_Power_Interlock/VBAT_AFE         R4001.2 max 17.0 mOhm @ C4005.1  14.8 mA -> 0.252 mV  unreached []
+/XIAO_Brain_Interface/XIAO_3V3           U1.12 max 7.2 mOhm @ FB1.1  11.4 mA -> 0.082 mV  unreached []
+/XIAO_5V                                 U1.14 max 57.8 mOhm @ R3006.1  20.0 mA -> 1.156 mV  unreached []

@@ -1,0 +1,1586 @@
+[
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/ARTHUR.pretty/OSC_SCTF_SX3M_SMD3225-4P.kicad_mod",
+    "detail": {
+      "kind": "silk outward move",
+      "old": [
+        "fp_line",
+        [
+          "start",
+          "-1.1",
+          "1.5"
+        ],
+        [
+          "end",
+          "1.1",
+          "1.5"
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ],
+      "new": [
+        "fp_line",
+        [
+          "start",
+          -1.1,
+          1.571
+        ],
+        [
+          "end",
+          1.1,
+          1.571
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ]
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/ARTHUR.pretty/OSC_SCTF_SX3M_SMD3225-4P.kicad_mod",
+    "detail": {
+      "kind": "silk outward move",
+      "old": [
+        "fp_line",
+        [
+          "start",
+          "-1.1",
+          "-1.5"
+        ],
+        [
+          "end",
+          "1.1",
+          "-1.5"
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ],
+      "new": [
+        "fp_line",
+        [
+          "start",
+          -1.1,
+          -1.571
+        ],
+        [
+          "end",
+          1.1,
+          -1.571
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ]
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Capacitor_SMD.pretty/C_0603_1608Metric.kicad_mod",
+    "detail": {
+      "kind": "silk outward move",
+      "old": [
+        "fp_line",
+        [
+          "start",
+          "-0.14058",
+          "0.51"
+        ],
+        [
+          "end",
+          "0.14058",
+          "0.51"
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ],
+      "new": [
+        "fp_line",
+        [
+          "start",
+          -0.14058,
+          0.595
+        ],
+        [
+          "end",
+          0.14058,
+          0.595
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ]
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Capacitor_SMD.pretty/C_0603_1608Metric.kicad_mod",
+    "detail": {
+      "kind": "silk outward move",
+      "old": [
+        "fp_line",
+        [
+          "start",
+          "-0.14058",
+          "-0.51"
+        ],
+        [
+          "end",
+          "0.14058",
+          "-0.51"
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ],
+      "new": [
+        "fp_line",
+        [
+          "start",
+          -0.14058,
+          -0.595
+        ],
+        [
+          "end",
+          0.14058,
+          -0.595
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ]
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Capacitor_SMD.pretty/C_0805_2012Metric.kicad_mod",
+    "detail": {
+      "kind": "silk outward move",
+      "old": [
+        "fp_line",
+        [
+          "start",
+          "-0.261252",
+          "0.735"
+        ],
+        [
+          "end",
+          "0.261252",
+          "0.735"
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ],
+      "new": [
+        "fp_line",
+        [
+          "start",
+          -0.261252,
+          0.839
+        ],
+        [
+          "end",
+          0.261252,
+          0.839
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ]
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Capacitor_SMD.pretty/C_0805_2012Metric.kicad_mod",
+    "detail": {
+      "kind": "silk outward move",
+      "old": [
+        "fp_line",
+        [
+          "start",
+          "-0.261252",
+          "-0.735"
+        ],
+        [
+          "end",
+          "0.261252",
+          "-0.735"
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ],
+      "new": [
+        "fp_line",
+        [
+          "start",
+          -0.261252,
+          -0.839
+        ],
+        [
+          "end",
+          0.261252,
+          -0.839
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ]
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Inductor_SMD.pretty/L_0603_1608Metric.kicad_mod",
+    "detail": {
+      "kind": "silk outward move",
+      "old": [
+        "fp_line",
+        [
+          "start",
+          "-0.162779",
+          "0.51"
+        ],
+        [
+          "end",
+          "0.162779",
+          "0.51"
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ],
+      "new": [
+        "fp_line",
+        [
+          "start",
+          -0.162779,
+          0.591
+        ],
+        [
+          "end",
+          0.162779,
+          0.591
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ]
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Inductor_SMD.pretty/L_0603_1608Metric.kicad_mod",
+    "detail": {
+      "kind": "silk outward move",
+      "old": [
+        "fp_line",
+        [
+          "start",
+          "-0.162779",
+          "-0.51"
+        ],
+        [
+          "end",
+          "0.162779",
+          "-0.51"
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ],
+      "new": [
+        "fp_line",
+        [
+          "start",
+          -0.162779,
+          -0.591
+        ],
+        [
+          "end",
+          0.162779,
+          -0.591
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ]
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Resistor_SMD.pretty/R_0603_1608Metric.kicad_mod",
+    "detail": {
+      "kind": "silk outward move",
+      "old": [
+        "fp_line",
+        [
+          "start",
+          "-0.237258",
+          "0.5225"
+        ],
+        [
+          "end",
+          "0.237258",
+          "0.5225"
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ],
+      "new": [
+        "fp_line",
+        [
+          "start",
+          -0.237258,
+          0.5905
+        ],
+        [
+          "end",
+          0.237258,
+          0.5905
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ]
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Resistor_SMD.pretty/R_0603_1608Metric.kicad_mod",
+    "detail": {
+      "kind": "silk outward move",
+      "old": [
+        "fp_line",
+        [
+          "start",
+          "-0.237258",
+          "-0.5225"
+        ],
+        [
+          "end",
+          "0.237258",
+          "-0.5225"
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ],
+      "new": [
+        "fp_line",
+        [
+          "start",
+          -0.237258,
+          -0.5905
+        ],
+        [
+          "end",
+          0.237258,
+          -0.5905
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ]
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Resistor_SMD.pretty/R_0805_2012Metric.kicad_mod",
+    "detail": {
+      "kind": "silk outward move",
+      "old": [
+        "fp_line",
+        [
+          "start",
+          "-0.227064",
+          "0.735"
+        ],
+        [
+          "end",
+          "0.227064",
+          "0.735"
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ],
+      "new": [
+        "fp_line",
+        [
+          "start",
+          -0.227064,
+          0.836
+        ],
+        [
+          "end",
+          0.227064,
+          0.836
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ]
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Resistor_SMD.pretty/R_0805_2012Metric.kicad_mod",
+    "detail": {
+      "kind": "silk outward move",
+      "old": [
+        "fp_line",
+        [
+          "start",
+          "-0.227064",
+          "-0.735"
+        ],
+        [
+          "end",
+          "0.227064",
+          "-0.735"
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ],
+      "new": [
+        "fp_line",
+        [
+          "start",
+          -0.227064,
+          -0.836
+        ],
+        [
+          "end",
+          0.227064,
+          -0.836
+        ],
+        [
+          "stroke",
+          [
+            "width",
+            "0.12"
+          ],
+          [
+            "type",
+            "solid"
+          ]
+        ],
+        [
+          "layer",
+          "F.SilkS"
+        ]
+      ]
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "ARTHUR:OSC_SCTF_SX3M_SMD3225-4P",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0805_2012Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Inductor_SMD:L_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0805_2012Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Capacitor_SMD:C_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "board silk outward move",
+      "lib": "Resistor_SMD:R_0603_1608Metric",
+      "lines": 2
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "TP board silk radius",
+      "after": 0.98
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "TP board silk radius",
+      "after": 0.98
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "TP board silk radius",
+      "after": 0.98
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "TP board silk radius",
+      "after": 0.98
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "TP board silk radius",
+      "after": 0.98
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "TP board silk radius",
+      "after": 0.98
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "TP board silk radius",
+      "after": 0.98
+    }
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb",
+    "detail": {
+      "kind": "TP board silk radius",
+      "after": 0.98
+    }
+  }
+]

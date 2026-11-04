@@ -1,0 +1,21 @@
+** Drc report for ARTHUR_EMG_RevB.kicad_pcb **
+** Created on 2026-10-11T15:04:28 **
+** Report includes: Errors, Warnings, Exclusions **
+
+** Found 1 DRC violations **
+[lib_footprint_mismatch]: Footprint 'XIAO_ESP32S3_HANDSOLDER' does not match copy in library 'ARTHUR'
+    Local override; warning
+    @(40.1900 mm, 54.3825 mm): Footprint U1
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** Ignored checks **
+    - Footprint has no courtyard defined
+    - Track endpoint not centered on via
+    - Tuning profile track geometries
+    - Footprint doesn't match symbol's footprint filters
+    - Footprint component type doesn't match footprint pads
+
+** End of Report **

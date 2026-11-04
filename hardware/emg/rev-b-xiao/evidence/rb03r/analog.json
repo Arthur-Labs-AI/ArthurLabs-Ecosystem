@@ -1,0 +1,221 @@
+{
+ "channels": {
+  "CH1": {
+   "ELEC": {
+    "P_mm": 7.38,
+    "N_mm": 7.37,
+    "diff_mm": 0.01,
+    "diff_pF": 0.001,
+    "vias": 0,
+    "layers": [
+     "F.Cu"
+    ]
+   },
+   "HIZ": {
+    "P_mm": 18.3,
+    "N_mm": 15.73,
+    "diff_mm": 2.57,
+    "diff_pF": 0.226,
+    "vias": 0,
+    "layers": [
+     "F.Cu"
+    ],
+    "max_distance_to_GND_via_mm": 4.74,
+    "min_to_spi_mm": 25.12
+   },
+   "BUF": {
+    "P_mm": 10.25,
+    "N_mm": 14.19,
+    "diff_mm": 3.94,
+    "vias": 2
+   },
+   "ACN": {
+    "P_mm": 6.82,
+    "N_mm": 6.82,
+    "diff_mm": 0.0,
+    "vias": 0
+   },
+   "ADCIN": {
+    "P_mm": 56.55,
+    "N_mm": 55.55,
+    "diff_mm": 1.0,
+    "vias": 7,
+    "mean_separation_mm": 1.57,
+    "share_of_P_within_1mm_of_N": 0.36,
+    "min_to_spi_mm": 2.91,
+    "min_to_ctrl_mm": 1.07
+   }
+  },
+  "CH2": {
+   "ELEC": {
+    "P_mm": 7.38,
+    "N_mm": 7.37,
+    "diff_mm": 0.01,
+    "diff_pF": 0.001,
+    "vias": 0,
+    "layers": [
+     "F.Cu"
+    ]
+   },
+   "HIZ": {
+    "P_mm": 15.65,
+    "N_mm": 19.85,
+    "diff_mm": 4.2,
+    "diff_pF": 0.37,
+    "vias": 0,
+    "layers": [
+     "F.Cu"
+    ],
+    "max_distance_to_GND_via_mm": 4.74,
+    "min_to_spi_mm": 24.76
+   },
+   "BUF": {
+    "P_mm": 9.4,
+    "N_mm": 7.1,
+    "diff_mm": 2.3,
+    "vias": 0
+   },
+   "ACN": {
+    "P_mm": 6.83,
+    "N_mm": 6.83,
+    "diff_mm": 0.0,
+    "vias": 0
+   },
+   "ADCIN": {
+    "P_mm": 53.37,
+    "N_mm": 42.77,
+    "diff_mm": 10.6,
+    "vias": 10,
+    "mean_separation_mm": 1.4,
+    "share_of_P_within_1mm_of_N": 0.53,
+    "min_to_spi_mm": 2.12,
+    "min_to_ctrl_mm": 3.59
+   }
+  },
+  "CH3": {
+   "ELEC": {
+    "P_mm": 7.38,
+    "N_mm": 7.38,
+    "diff_mm": 0.0,
+    "diff_pF": 0.0,
+    "vias": 0,
+    "layers": [
+     "F.Cu"
+    ]
+   },
+   "HIZ": {
+    "P_mm": 18.45,
+    "N_mm": 16.52,
+    "diff_mm": 1.93,
+    "diff_pF": 0.17,
+    "vias": 0,
+    "layers": [
+     "F.Cu"
+    ],
+    "max_distance_to_GND_via_mm": 4.74,
+    "min_to_spi_mm": 25.79
+   },
+   "BUF": {
+    "P_mm": 10.25,
+    "N_mm": 10.16,
+    "diff_mm": 0.09,
+    "vias": 2
+   },
+   "ACN": {
+    "P_mm": 6.82,
+    "N_mm": 6.83,
+    "diff_mm": 0.01,
+    "vias": 0
+   },
+   "ADCIN": {
+    "P_mm": 53.65,
+    "N_mm": 51.38,
+    "diff_mm": 2.27,
+    "vias": 11,
+    "mean_separation_mm": 1.91,
+    "share_of_P_within_1mm_of_N": 0.3,
+    "min_to_spi_mm": 3.01,
+    "min_to_ctrl_mm": 4.28
+   }
+  },
+  "CH4": {
+   "ELEC": {
+    "P_mm": 7.38,
+    "N_mm": 7.38,
+    "diff_mm": 0.0,
+    "diff_pF": 0.0,
+    "vias": 0,
+    "layers": [
+     "F.Cu"
+    ]
+   },
+   "HIZ": {
+    "P_mm": 15.65,
+    "N_mm": 19.85,
+    "diff_mm": 4.2,
+    "diff_pF": 0.37,
+    "vias": 0,
+    "layers": [
+     "F.Cu"
+    ],
+    "max_distance_to_GND_via_mm": 4.74,
+    "min_to_spi_mm": 28.5
+   },
+   "BUF": {
+    "P_mm": 9.4,
+    "N_mm": 7.1,
+    "diff_mm": 2.3,
+    "vias": 0
+   },
+   "ACN": {
+    "P_mm": 6.83,
+    "N_mm": 6.83,
+    "diff_mm": 0.0,
+    "vias": 0
+   },
+   "ADCIN": {
+    "P_mm": 52.0,
+    "N_mm": 54.98,
+    "diff_mm": 2.98,
+    "vias": 10,
+    "mean_separation_mm": 1.94,
+    "share_of_P_within_1mm_of_N": 0.22,
+    "min_to_spi_mm": 3.52,
+    "min_to_ctrl_mm": 4.46
+   }
+  }
+ },
+ "c_per_mm_pF_0p2_over_In1": 0.088,
+ "clock": {
+  "X1_OUT_mm": 4.65,
+  "ADC_CLKIN_mm": 9.76,
+  "X1_OUT_min_to_hiz_or_buf_mm": 5.44,
+  "vias": 0
+ },
+ "spi_nets_mm": {
+  "/XIAO_Brain_Interface/SCLK_MCU": 12.1,
+  "/MISO": 8.96,
+  "/XIAO_Brain_Interface/MOSI_MCU": 7.52,
+  "/SCLK": 12.91,
+  "/ADC/X1_OUT": 4.65,
+  "/ADC/ADC_CLKIN": 9.76,
+  "/ADC/ADC_DOUT": 2.29,
+  "/MOSI": 11.91
+ },
+ "totals": {
+  "EMG_ELECTRODE": 59.0,
+  "EMG_HIZ": 140.0,
+  "EMG_BUF": 552.7,
+  "SPI_FAST": 70.1,
+  "CTRL_SLOW": 262.0,
+  "ANALOG_REF": 112.3
+ },
+ "vias_on": {
+  "EMG_HIZ": 0,
+  "EMG_ELECTRODE": 0,
+  "EMG_BUF": 42,
+  "ADC_CAP": 0,
+  "ANALOG_REF": 17,
+  "SPI_FAST": 12
+ }
+}

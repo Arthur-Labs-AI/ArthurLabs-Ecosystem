@@ -1,0 +1,29 @@
+{
+  "status": "PASS",
+  "design_hashes_unchanged": 27,
+  "PCB_footprints": 135,
+  "schematic_net_nodes_compared_to_PCB_pads": 364,
+  "pad_net_mismatches": [],
+  "KiCad_escaped_unconnected_name_equivalences": [
+    [
+      "U1",
+      "5",
+      "unconnected-(U1-D4{slash}GPIO5{slash}SDA-Pad5)",
+      "unconnected-(U1-D4/GPIO5/SDA-Pad5)"
+    ],
+    [
+      "U1",
+      "6",
+      "unconnected-(U1-D5{slash}GPIO6{slash}SCL-Pad6)",
+      "unconnected-(U1-D5/GPIO6/SCL-Pad6)"
+    ]
+  ],
+  "BOM_groups": 28,
+  "factory_refs": 126,
+  "factory_U1_DNP": true,
+  "factory_exclusions": [
+    "U1 manual module; TP1-TP8 copper features"
+  ],
+  "physical_functional_test": "UNVERIFIED",
+  "firmware_on_target_hardware": "UNVERIFIED"
+}

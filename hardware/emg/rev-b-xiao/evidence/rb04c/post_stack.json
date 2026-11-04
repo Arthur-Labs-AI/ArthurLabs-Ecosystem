@@ -1,0 +1,98 @@
+{
+ "cone_in_hole": {
+  "R_hole_min": 0.6599999999999999,
+  "rho_linear": 0.447,
+  "rho_rss": 0.28,
+  "by_cone_diameter": {
+   "0.8": {
+    "radial_margin_centred": 0.26,
+    "shift_needed_linear": 0.187,
+    "shift_needed_rss": 0.02
+   },
+   "1.0": {
+    "radial_margin_centred": 0.16,
+    "shift_needed_linear": 0.287,
+    "shift_needed_rss": 0.12
+   },
+   "1.1": {
+    "radial_margin_centred": 0.11,
+    "shift_needed_linear": 0.337,
+    "shift_needed_rss": 0.17
+   },
+   "1.2": {
+    "radial_margin_centred": 0.06,
+    "shift_needed_linear": 0.387,
+    "shift_needed_rss": 0.22
+   }
+  }
+ },
+ "available_shift": {
+  "along_edge": 0.513,
+  "normal_toe_ge_1p0": 0.2,
+  "normal_toe_ge_0p75": 0.45
+ },
+ "gnd0": {
+  "pad_edge_from_bat_centre": 1.397,
+  "cone_edge_to_gnd0_edge_worst": 0.594,
+  "host_ring_to_gnd0_edge_nominal": 0.447,
+  "host_mask_opening_to_gnd0_edge_nominal": 0.672,
+  "gnd0_over_mask_covered_ring_at_shift": -0.003,
+  "gnd0_to_mask_opening_at_shift_0p45": 0.222
+ },
+ "castellation": {
+  "shift_0.0": {
+   "overlap_along": 1.563,
+   "toe_min": 1.2,
+   "toe_max": 1.4,
+   "neighbour_cu_gap": 0.977
+  },
+  "shift_0.2": {
+   "overlap_along": 1.363,
+   "toe_min": 1.0,
+   "toe_max": 1.6,
+   "neighbour_cu_gap": 0.777
+  },
+  "shift_0.45": {
+   "overlap_along": 1.113,
+   "toe_min": 0.75,
+   "toe_max": 1.85,
+   "neighbour_cu_gap": 0.527
+  },
+  "shift_0.6": {
+   "overlap_along": 0.963,
+   "toe_min": 0.6,
+   "toe_max": 2.0,
+   "neighbour_cu_gap": 0.377
+  }
+ },
+ "usb_end": {
+  "nominal_inset_from_board_edge": 0.0,
+  "range": [
+   -0.3,
+   0.3
+  ],
+  "note": "negative = module end beyond the board edge; receptacle overhang 1.508 beyond the module end"
+ },
+ "assumptions": {
+  "hole_nom": 1.4,
+  "hole_tol_lo": 0.08,
+  "hole_tol_hi": 0.13,
+  "hole_pos": 0.075,
+  "datum": 0.022,
+  "pad_reg": 0.1,
+  "post_on_pad": 0.25,
+  "place": 0.2,
+  "outline": 0.2,
+  "post_d": 0.511,
+  "pad_w": 2.032,
+  "pad_h": 1.016,
+  "gnd0_pitch": 1.905,
+  "ring_d": 1.9,
+  "mask_open": 1.45,
+  "host_pad_w": 1.5,
+  "host_pad_len": 2.9,
+  "toe_nom": 1.3,
+  "inner_nom": 1.6,
+  "mod_cu": 1.626
+ }
+}

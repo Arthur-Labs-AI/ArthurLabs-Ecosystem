@@ -1,0 +1,11 @@
+{
+  "electrical_partition_unchanged": true,
+  "component_values_MPNs_footprints_unchanged": true,
+  "no_vertical_JST": true,
+  "silk_clearance_0_15": true,
+  "all_BOM_rows_match_fresh_XML": true,
+  "28_groups126refs_top_CPL": true,
+  "U1_TPs_excluded": true,
+  "CPL_arithmetic": true,
+  "metadata_corrected": true
+}

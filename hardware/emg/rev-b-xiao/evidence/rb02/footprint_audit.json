@@ -1,0 +1,92 @@
+[
+ {
+  "id": "F01",
+  "status": "PASS",
+  "title": "ARTHUR.pretty loads in KiCad 10 and plots (kicad-cli fp export svg)",
+  "detail": "DER' to '/tmp/tmp01y336w2/XIAO_ESP32S3_HANDSOLDER.svg'\nPlotted to '/tmp/tmp01y336w2/XIAO_ESP32S3_HANDSOLDER.svg'.\nDone."
+ },
+ {
+  "id": "F02",
+  "status": "PASS",
+  "title": "XIAO: 14 castellation SMD pads numbered 1..14",
+  "detail": "['1', '10', '11', '12', '13', '14', '2', '3', '4', '5', '6', '7', '8', '9']"
+ },
+ {
+  "id": "F03",
+  "status": "PASS",
+  "title": "XIAO: BAT+ post = one plated hole pad + one B.Cu exposed pad, both numbered 23, and no other pad (15-22, 24, 25 not soldered)",
+  "detail": "[('thru_hole', 1.9, 1.4), ('smd', 3.0, None)]"
+ },
+ {
+  "id": "F04",
+  "status": "PASS",
+  "title": "XIAO: castellation pad centres equal the Seeed PCB half-hole positions (RB-02A extraction), toe 1.30 outside",
+  "detail": "max deviation 0.0001 mm"
+ },
+ {
+  "id": "F05",
+  "status": "PASS",
+  "title": "XIAO: host pad 2.90 x 1.50 (toe 1.30, inner 1.60)",
+  "detail": "{(2.9, 1.5)}"
+ },
+ {
+  "id": "F06",
+  "status": "PASS",
+  "title": "XIAO: castellation pads F.Cu + F.Mask only (no paste), mask expansion +0.05 mm",
+  "detail": "{('F.Cu', 'F.Mask')}"
+ },
+ {
+  "id": "F07",
+  "status": "PASS",
+  "title": "XIAO: post pad at the CAD BAT+ pad centre; drill 1.40, ring 1.90, mask opening 1.45 (margin -0.225), bottom pad 3.00 on B.Cu",
+  "detail": "hole (-4.445,-0.407) vs CAD (-4.445,-0.407); mask margin -0.225"
+ },
+ {
+  "id": "F08",
+  "status": "PASS",
+  "title": "XIAO: underside keep-out rule areas (pads 15-22, 25, GND0, 4 USB shell ovals, via limits)",
+  "detail": "11 zones"
+ },
+ {
+  "id": "F09",
+  "status": "PASS",
+  "title": "XIAO: courtyard encloses the pads, module outline and the USB-C overhang",
+  "detail": "x -10.69..10.69, y -12.18..11.07"
+ },
+ {
+  "id": "F10",
+  "status": "PASS",
+  "title": "XIAO: documents USB-C envelope, plug overmold, U.FL cable corridor and underside features",
+  "detail": "['B.Fab', 'Cmts.User', 'Dwgs.User', 'F.CrtYd', 'F.Fab', 'F.SilkS']"
+ },
+ {
+  "id": "F11",
+  "status": "PASS",
+  "title": "XIAO: footprint pad numbers = schematic symbol pin numbers/functions (1-14 + 23)",
+  "detail": "15 mapped; mismatches []"
+ },
+ {
+  "id": "F12",
+  "status": "PASS",
+  "title": "SCTF: pads 1.20 x 0.95 at c-c 2.20 x 1.75 (manufacturer land); pin 1 bottom-left, counter-clockwise",
+  "detail": "{'1': (-1.1, 0.875), '2': (1.1, 0.875), '3': (1.1, -0.875), '4': (-1.1, -0.875)}"
+ },
+ {
+  "id": "F13",
+  "status": "PASS",
+  "title": "SCTF: footprint pad numbers = symbol pins (1 OE, 2 GND, 3 OUT, 4 VDD)",
+  "detail": "{'3': 'OUT_3', '1': 'OE_1', '4': 'VDD_4', '2': 'GND_2'}"
+ },
+ {
+  "id": "F14",
+  "status": "PASS",
+  "title": "SCTF: paste on all pads (JLC reflow)",
+  "detail": ""
+ },
+ {
+  "id": "F15",
+  "status": "PASS",
+  "title": "all 135 components: every schematic pin exists as a pad in the linked footprint",
+  "detail": "[]"
+ }
+]

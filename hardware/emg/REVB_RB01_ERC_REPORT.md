@@ -1,5 +1,7 @@
 # A.R.T.H.U.R EMG Rev B — RB-01 ERC Report
 
+> **RB-01R (2026-10-10):** historical RB-01 ERC. Re-run in RB-01R with the vendored footprint libraries: 0 errors, 2 warnings (both `footprint_link_issues`: X1 and U1 custom footprints, authored at RB-02). The 79 stock-footprint warnings are cleared by `fp-lib-table`; see REVB_RB01R_INDEPENDENT_REVIEW.md §3.
+
 Command (run in `hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/`):
 
 ```

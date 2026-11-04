@@ -1,0 +1,38 @@
+ARTHUR NEURON RevB horizontal-JST / HJ-JLC-RC1 / 2026-10-19
+NOT RELEASED - PENDING FACTORY APPROVAL. REVIEW ONLY; NO PRODUCTION AUTHORIZATION.
+
+1. Requested final board: 51.30 x 64.95 mm, existing rounded outline, 4 layers,
+   1.6 mm nominal, ENIG, green solder mask, white silkscreen. Keep the final
+   outline and supplied copper/drill geometry. Return proposed stack and
+   panel/rails/fiducial/tooling/depanel drawing for customer review.
+2. Requested quantity: FIVE fabricated boards, TWO top-side SMT-assembled and
+   THREE unassembled. Economic PCBA requested subject to exact BOM eligibility.
+   Quantity/service/price are requests, not previously approved configuration.
+3. U1 XIAO ESP32-S3 is FACTORY DNP: do not source or populate it. Its castellation
+   lands and post are for later manual assembly and have no top paste. TP1-TP8
+   are copper test features, not purchased components. Factory BOM/CPL: 126 refs,
+   28 groups, all Top. No substitutions or extra placements without approval.
+4. BAT+ COMPONENT HOLE: one OPEN PLATED FINISHED diameter 1.90 mm at
+   X44.635/Y54.790 mm board frame (Gerber Y -54.790). Top/inner copper land 2.30 mm;
+   top mask opening 1.95 mm (negative margin is intentional); bottom copper and
+   mask union 3.00 mm. Keep this hole open and solderable. DO NOT TENT, PLUG, FILL,
+   COVER, or change hole/land/mask dimensions without an Engineering Question.
+   Factory applies its own drill/plating compensation to meet finished size.
+   Return the actual CAM rendering and finished-hole tolerance before approval.
+5. 191 other holes are 0.30 mm vias with 0.60 mm lands, tented both sides. Current
+   mask layers have no via apertures. Prior discussion of 201 vias is superseded
+   by these files; evaluate current proximity cases, not a count-based waiver.
+6. Six exact JST S2B-PH-SM4-TB(LF)(SN), C295747: five electrode sockets face NORTH;
+   battery J1 faces EAST. Preserve and solder both retention pads per header.
+   Retention pads are on isolated MP nets, not signals or GND.
+7. Use the factory CPL for placement. Raw KiCad CPL is reference only, not an
+   additional set of parts or a second correction. Return placement preview,
+   pin-1/polarity and exact supplier-reel orientation for customer confirmation.
+   X1 exact oscillator/source/land/tape specification still needs confirmation.
+8. Silk-to-pad 0.09 mm cases were corrected. New independent source minimum is
+   0.160 mm for line/poly/circle features. Flag any remaining CAM issue or
+   polarity-mark clipping before changing files. Preserve all pin-1 cues.
+9. Review Before Payment and Confirm Production File are both required review
+   controls. Final CAM/panel/drill and placement files require separate customer
+   approval. Do not infer production authorization from this review candidate.
+10. Bench prototype only. Factory approval is not body-contact safety approval.

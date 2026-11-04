@@ -1,0 +1,4088 @@
+{
+ "via_count": 201,
+ "mask_expansion_global_mm": 0.0,
+ "class_counts": {
+  "1": 179,
+  "2": 12,
+  "3": 10,
+  "4": 0
+ },
+ "min_hole_to_opening": 0.1009,
+ "max_annulus_overlap_mm": -0.0491,
+ "bridge_below_0.10": [],
+ "opening_to_foreign_track_below_0.09": [],
+ "via_hole_to_foreign_track_below_0.20": [],
+ "via_hole_to_hole_below_0.20": [],
+ "pth_holes": [
+  [
+   "U1.23",
+   1.4,
+   1.165,
+   "/XIAO_Brain_Interface/VBAT_SENSE"
+  ]
+ ],
+ "vias": [
+  {
+   "x": 17.4,
+   "y": 16.3,
+   "net": "/VCM",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R305.1",
+     "same_net": true,
+     "centre_to_opening": 0.475,
+     "hole_to_opening": 0.325,
+     "annulus_to_opening": 0.175
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 30.5,
+   "y": 16.7,
+   "net": "/VCM",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R106.1",
+     "same_net": true,
+     "centre_to_opening": 0.5755,
+     "hole_to_opening": 0.4255,
+     "annulus_to_opening": 0.2755
+    },
+    {
+     "pad": "C203.1",
+     "same_net": false,
+     "centre_to_opening": 0.8689,
+     "hole_to_opening": 0.7189,
+     "annulus_to_opening": 0.5689
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 35.2,
+   "y": 16.5,
+   "net": "/VCM",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R105.1",
+     "same_net": true,
+     "centre_to_opening": 0.6706,
+     "hole_to_opening": 0.5206,
+     "annulus_to_opening": 0.3706
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 22.0,
+   "y": 16.3,
+   "net": "/VCM",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R206.1",
+     "same_net": true,
+     "centre_to_opening": 0.475,
+     "hole_to_opening": 0.325,
+     "annulus_to_opening": 0.175
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 36.4,
+   "y": 16.5,
+   "net": "/VCM",
+   "class": 3,
+   "why": "annulus overlaps an opening",
+   "records": [
+    {
+     "pad": "R105.1",
+     "same_net": true,
+     "centre_to_opening": 0.275,
+     "hole_to_opening": 0.125,
+     "annulus_to_opening": -0.025
+    }
+   ],
+   "fix": {
+    "pad": "R105.1",
+    "move_part": "R105",
+    "axis": "y",
+    "direction": 1,
+    "shift_needed_mm": 0.13,
+    "courtyard_slack_mm": 1.55,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 27.9,
+   "y": 16.7,
+   "net": "/VCM",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C203.1",
+     "same_net": false,
+     "centre_to_opening": 0.8689,
+     "hole_to_opening": 0.7189,
+     "annulus_to_opening": 0.5689
+    },
+    {
+     "pad": "R205.1",
+     "same_net": true,
+     "centre_to_opening": 0.6703,
+     "hole_to_opening": 0.5203,
+     "annulus_to_opening": 0.3703
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 3.2,
+   "y": 16.3,
+   "net": "/VCM",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R406.1",
+     "same_net": true,
+     "centre_to_opening": 0.475,
+     "hole_to_opening": 0.325,
+     "annulus_to_opening": 0.175
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 47.1,
+   "y": 20.5,
+   "net": "/VCM",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C503.1",
+     "same_net": false,
+     "centre_to_opening": 0.8972,
+     "hole_to_opening": 0.7472,
+     "annulus_to_opening": 0.5972
+    },
+    {
+     "pad": "TP4.1",
+     "same_net": true,
+     "centre_to_opening": 0.415,
+     "hole_to_opening": 0.265,
+     "annulus_to_opening": 0.115
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 31.7,
+   "y": 16.5,
+   "net": "/VCM",
+   "class": 3,
+   "why": "annulus overlaps an opening",
+   "records": [
+    {
+     "pad": "R106.1",
+     "same_net": true,
+     "centre_to_opening": 0.275,
+     "hole_to_opening": 0.125,
+     "annulus_to_opening": -0.025
+    }
+   ],
+   "fix": {
+    "pad": "R106.1",
+    "move_part": "R106",
+    "axis": "y",
+    "direction": 1,
+    "shift_needed_mm": 0.13,
+    "courtyard_slack_mm": 0.28,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 36.7,
+   "y": 20.0,
+   "net": "/VCM",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R105.2",
+     "same_net": false,
+     "centre_to_opening": 0.804,
+     "hole_to_opening": 0.654,
+     "annulus_to_opening": 0.504
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 7.0,
+   "y": 16.5,
+   "net": "/VCM",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R405.1",
+     "same_net": true,
+     "centre_to_opening": 0.6706,
+     "hole_to_opening": 0.5206,
+     "annulus_to_opening": 0.3706
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 25.8,
+   "y": 16.5,
+   "net": "/VCM",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R205.1",
+     "same_net": true,
+     "centre_to_opening": 0.6706,
+     "hole_to_opening": 0.5206,
+     "annulus_to_opening": 0.3706
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 9.1,
+   "y": 16.5,
+   "net": "/VCM",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R405.1",
+     "same_net": true,
+     "centre_to_opening": 0.7541,
+     "hole_to_opening": 0.6041,
+     "annulus_to_opening": 0.4541
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 13.9,
+   "y": 16.5,
+   "net": "/VCM",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C304.1",
+     "same_net": false,
+     "centre_to_opening": 0.8497,
+     "hole_to_opening": 0.6997,
+     "annulus_to_opening": 0.5497
+    },
+    {
+     "pad": "R306.1",
+     "same_net": true,
+     "centre_to_opening": 0.4316,
+     "hole_to_opening": 0.2816,
+     "annulus_to_opening": 0.1316
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 6.0,
+   "y": 50.6,
+   "net": "/CH3_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D203.3",
+     "same_net": false,
+     "centre_to_opening": 0.55,
+     "hole_to_opening": 0.4,
+     "annulus_to_opening": 0.25
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 10.9,
+   "y": 55.3,
+   "net": "/CH3_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C307.1",
+     "same_net": true,
+     "centre_to_opening": 0.5051,
+     "hole_to_opening": 0.3551,
+     "annulus_to_opening": 0.2051
+    },
+    {
+     "pad": "C407.1",
+     "same_net": false,
+     "centre_to_opening": 0.8386,
+     "hole_to_opening": 0.6886,
+     "annulus_to_opening": 0.5386
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 14.4,
+   "y": 55.7,
+   "net": "/CH3_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C307.2",
+     "same_net": false,
+     "centre_to_opening": 0.7779,
+     "hole_to_opening": 0.6279,
+     "annulus_to_opening": 0.4779
+    },
+    {
+     "pad": "C407.2",
+     "same_net": false,
+     "centre_to_opening": 0.6702,
+     "hole_to_opening": 0.5202,
+     "annulus_to_opening": 0.3702
+    },
+    {
+     "pad": "U6001.10",
+     "same_net": false,
+     "centre_to_opening": 0.7287,
+     "hole_to_opening": 0.5787,
+     "annulus_to_opening": 0.4287
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 6.8,
+   "y": 56.1,
+   "net": "/CH3_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D403.3",
+     "same_net": false,
+     "centre_to_opening": 0.5551,
+     "hole_to_opening": 0.4051,
+     "annulus_to_opening": 0.2551
+    },
+    {
+     "pad": "D404.1",
+     "same_net": false,
+     "centre_to_opening": 0.625,
+     "hole_to_opening": 0.475,
+     "annulus_to_opening": 0.325
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 6.8,
+   "y": 57.8,
+   "net": "/CH3_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D403.3",
+     "same_net": false,
+     "centre_to_opening": 0.5551,
+     "hole_to_opening": 0.4051,
+     "annulus_to_opening": 0.2551
+    },
+    {
+     "pad": "D404.2",
+     "same_net": false,
+     "centre_to_opening": 0.625,
+     "hole_to_opening": 0.475,
+     "annulus_to_opening": 0.325
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 6.0,
+   "y": 41.7,
+   "net": "/CH3_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C105.1",
+     "same_net": false,
+     "centre_to_opening": 0.5836,
+     "hole_to_opening": 0.4336,
+     "annulus_to_opening": 0.2836
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 39.4,
+   "y": 37.1,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "J1.2",
+     "same_net": true,
+     "centre_to_opening": 0.4,
+     "hole_to_opening": 0.25,
+     "annulus_to_opening": 0.1
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 13.6,
+   "y": 33.5,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R304.2",
+     "same_net": true,
+     "centre_to_opening": 0.4757,
+     "hole_to_opening": 0.3257,
+     "annulus_to_opening": 0.1757
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 26.6,
+   "y": 37.1,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C4006.2",
+     "same_net": true,
+     "centre_to_opening": 0.4363,
+     "hole_to_opening": 0.2863,
+     "annulus_to_opening": 0.1363
+    },
+    {
+     "pad": "Q3001.1",
+     "same_net": false,
+     "centre_to_opening": 0.5442,
+     "hole_to_opening": 0.3942,
+     "annulus_to_opening": 0.2442
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 28.8,
+   "y": 22.6,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U501.10",
+     "same_net": false,
+     "centre_to_opening": 0.7713,
+     "hole_to_opening": 0.6213,
+     "annulus_to_opening": 0.4713
+    },
+    {
+     "pad": "U501.11",
+     "same_net": true,
+     "centre_to_opening": 0.575,
+     "hole_to_opening": 0.425,
+     "annulus_to_opening": 0.275
+    },
+    {
+     "pad": "U501.12",
+     "same_net": false,
+     "centre_to_opening": 0.7713,
+     "hole_to_opening": 0.6213,
+     "annulus_to_opening": 0.4713
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 4.2,
+   "y": 33.5,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R404.2",
+     "same_net": true,
+     "centre_to_opening": 0.4757,
+     "hole_to_opening": 0.3257,
+     "annulus_to_opening": 0.1757
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 28.9,
+   "y": 19.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C203.2",
+     "same_net": true,
+     "centre_to_opening": 0.4776,
+     "hole_to_opening": 0.3276,
+     "annulus_to_opening": 0.1776
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 3.8,
+   "y": 53.1,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D304.1",
+     "same_net": true,
+     "centre_to_opening": 0.4,
+     "hole_to_opening": 0.25,
+     "annulus_to_opening": 0.1
+    },
+    {
+     "pad": "D304.2",
+     "same_net": false,
+     "centre_to_opening": 0.9,
+     "hole_to_opening": 0.75,
+     "annulus_to_opening": 0.6
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 8.2,
+   "y": 45.9,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D103.1",
+     "same_net": true,
+     "centre_to_opening": 0.4,
+     "hole_to_opening": 0.25,
+     "annulus_to_opening": 0.1
+    },
+    {
+     "pad": "D103.2",
+     "same_net": false,
+     "centre_to_opening": 0.9,
+     "hole_to_opening": 0.75,
+     "annulus_to_opening": 0.6
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 36.5,
+   "y": 32.3,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R103.2",
+     "same_net": true,
+     "centre_to_opening": 0.4412,
+     "hole_to_opening": 0.2912,
+     "annulus_to_opening": 0.1412
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 34.5,
+   "y": 39.7,
+   "net": "GND",
+   "class": 2,
+   "why": "annulus outside the opening, dam 0.00-0.09 mm",
+   "records": [
+    {
+     "pad": "R7108.2",
+     "same_net": true,
+     "centre_to_opening": 0.3758,
+     "hole_to_opening": 0.2258,
+     "annulus_to_opening": 0.0758
+    },
+    {
+     "pad": "C4007.2",
+     "same_net": true,
+     "centre_to_opening": 0.4363,
+     "hole_to_opening": 0.2863,
+     "annulus_to_opening": 0.1363
+    }
+   ],
+   "fix": {
+    "pad": "R7108.2",
+    "move_part": "R7108",
+    "axis": "y",
+    "direction": 1,
+    "shift_needed_mm": 0.026,
+    "courtyard_slack_mm": 0.445,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 46.1,
+   "y": 30.5,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R5004.2",
+     "same_net": true,
+     "centre_to_opening": 0.4809,
+     "hole_to_opening": 0.3309,
+     "annulus_to_opening": 0.1809
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 27.9,
+   "y": 62.9,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R3009.2",
+     "same_net": true,
+     "centre_to_opening": 0.435,
+     "hole_to_opening": 0.285,
+     "annulus_to_opening": 0.135
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 24.1,
+   "y": 15.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D202.1",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 33.5,
+   "y": 15.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D102.1",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 16.8,
+   "y": 49.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U6001.1",
+     "same_net": false,
+     "centre_to_opening": 0.8261,
+     "hole_to_opening": 0.6761,
+     "annulus_to_opening": 0.5261
+    },
+    {
+     "pad": "U6001.2",
+     "same_net": true,
+     "centre_to_opening": 0.625,
+     "hole_to_opening": 0.475,
+     "annulus_to_opening": 0.325
+    },
+    {
+     "pad": "U6001.3",
+     "same_net": false,
+     "centre_to_opening": 0.7965,
+     "hole_to_opening": 0.6465,
+     "annulus_to_opening": 0.4965
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 19.8,
+   "y": 49.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U6001.18",
+     "same_net": false,
+     "centre_to_opening": 0.7965,
+     "hole_to_opening": 0.6465,
+     "annulus_to_opening": 0.4965
+    },
+    {
+     "pad": "U6001.19",
+     "same_net": true,
+     "centre_to_opening": 0.625,
+     "hole_to_opening": 0.475,
+     "annulus_to_opening": 0.325
+    },
+    {
+     "pad": "U6001.20",
+     "same_net": false,
+     "centre_to_opening": 0.8261,
+     "hole_to_opening": 0.6761,
+     "annulus_to_opening": 0.5261
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 25.2,
+   "y": 49.1,
+   "net": "GND",
+   "class": 3,
+   "why": "annulus overlaps an opening",
+   "records": [
+    {
+     "pad": "R7101.1",
+     "same_net": false,
+     "centre_to_opening": 0.5883,
+     "hole_to_opening": 0.4383,
+     "annulus_to_opening": 0.2883
+    },
+    {
+     "pad": "C6009.2",
+     "same_net": true,
+     "centre_to_opening": 0.2599,
+     "hole_to_opening": 0.1099,
+     "annulus_to_opening": -0.0401
+    },
+    {
+     "pad": "X1.4",
+     "same_net": false,
+     "centre_to_opening": 0.7,
+     "hole_to_opening": 0.55,
+     "annulus_to_opening": 0.4
+    }
+   ],
+   "fix": {
+    "pad": "C6009.2",
+    "move_part": "C6009",
+    "axis": "x",
+    "direction": -1,
+    "shift_needed_mm": 0.152,
+    "courtyard_slack_mm": 0.0,
+    "feasible_without_moving_neighbours": false
+   }
+  },
+  {
+   "x": 3.8,
+   "y": 45.9,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D104.1",
+     "same_net": true,
+     "centre_to_opening": 0.4,
+     "hole_to_opening": 0.25,
+     "annulus_to_opening": 0.1
+    },
+    {
+     "pad": "D104.2",
+     "same_net": false,
+     "centre_to_opening": 0.9,
+     "hole_to_opening": 0.75,
+     "annulus_to_opening": 0.6
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 31.8,
+   "y": 32.3,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R104.2",
+     "same_net": true,
+     "centre_to_opening": 0.4412,
+     "hole_to_opening": 0.2912,
+     "annulus_to_opening": 0.1412
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 22.1,
+   "y": 46.0,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "X1.2",
+     "same_net": true,
+     "centre_to_opening": 0.4,
+     "hole_to_opening": 0.25,
+     "annulus_to_opening": 0.1
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 19.5,
+   "y": 19.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C303.2",
+     "same_net": true,
+     "centre_to_opening": 0.4776,
+     "hole_to_opening": 0.3276,
+     "annulus_to_opening": 0.1776
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 26.7,
+   "y": 38.6,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C4006.1",
+     "same_net": false,
+     "centre_to_opening": 0.5274,
+     "hole_to_opening": 0.3774,
+     "annulus_to_opening": 0.2274
+    },
+    {
+     "pad": "Q3001.2",
+     "same_net": true,
+     "centre_to_opening": 0.425,
+     "hole_to_opening": 0.275,
+     "annulus_to_opening": 0.125
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 28.6,
+   "y": 58.9,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C7101.2",
+     "same_net": true,
+     "centre_to_opening": 0.3971,
+     "hole_to_opening": 0.2471,
+     "annulus_to_opening": 0.0971
+    },
+    {
+     "pad": "C7102.2",
+     "same_net": true,
+     "centre_to_opening": 0.861,
+     "hole_to_opening": 0.711,
+     "annulus_to_opening": 0.561
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 24.2,
+   "y": 19.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C204.2",
+     "same_net": true,
+     "centre_to_opening": 0.4776,
+     "hole_to_opening": 0.3276,
+     "annulus_to_opening": 0.1776
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 11.4,
+   "y": 18.5,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C403.2",
+     "same_net": true,
+     "centre_to_opening": 0.5274,
+     "hole_to_opening": 0.3774,
+     "annulus_to_opening": 0.2274
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 36.5,
+   "y": 23.5,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C501.2",
+     "same_net": true,
+     "centre_to_opening": 0.475,
+     "hole_to_opening": 0.325,
+     "annulus_to_opening": 0.175
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 13.1,
+   "y": 45.9,
+   "net": "GND",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 9.6,
+   "y": 25.3,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U502.14",
+     "same_net": false,
+     "centre_to_opening": 0.6058,
+     "hole_to_opening": 0.4558,
+     "annulus_to_opening": 0.3058
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 9.3,
+   "y": 55.8,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D404.1",
+     "same_net": true,
+     "centre_to_opening": 0.4031,
+     "hole_to_opening": 0.2531,
+     "annulus_to_opening": 0.1031
+    },
+    {
+     "pad": "D404.3",
+     "same_net": false,
+     "centre_to_opening": 0.8631,
+     "hole_to_opening": 0.7131,
+     "annulus_to_opening": 0.5631
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 24.2,
+   "y": 32.5,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R204.2",
+     "same_net": true,
+     "centre_to_opening": 0.425,
+     "hole_to_opening": 0.275,
+     "annulus_to_opening": 0.125
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 46.4,
+   "y": 24.3,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C503.2",
+     "same_net": true,
+     "centre_to_opening": 0.475,
+     "hole_to_opening": 0.325,
+     "annulus_to_opening": 0.175
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 33.7,
+   "y": 19.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C104.2",
+     "same_net": true,
+     "centre_to_opening": 0.475,
+     "hole_to_opening": 0.325,
+     "annulus_to_opening": 0.175
+    },
+    {
+     "pad": "U501.7",
+     "same_net": false,
+     "centre_to_opening": 0.75,
+     "hole_to_opening": 0.6,
+     "annulus_to_opening": 0.45
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 3.8,
+   "y": 49.5,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D203.1",
+     "same_net": true,
+     "centre_to_opening": 0.4,
+     "hole_to_opening": 0.25,
+     "annulus_to_opening": 0.1
+    },
+    {
+     "pad": "D203.2",
+     "same_net": false,
+     "centre_to_opening": 0.9,
+     "hole_to_opening": 0.75,
+     "annulus_to_opening": 0.6
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 5.3,
+   "y": 15.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D402.1",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 7.2,
+   "y": 36.7,
+   "net": "GND",
+   "class": 2,
+   "why": "annulus outside the opening, dam 0.00-0.09 mm",
+   "records": [
+    {
+     "pad": "TP8.1",
+     "same_net": true,
+     "centre_to_opening": 0.3812,
+     "hole_to_opening": 0.2312,
+     "annulus_to_opening": 0.0812
+    }
+   ],
+   "fix": {
+    "pad": "TP8.1",
+    "move_part": "TP8",
+    "axis": "x",
+    "direction": 1,
+    "shift_needed_mm": 0.019,
+    "courtyard_slack_mm": null,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 24.1,
+   "y": 46.6,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "X1.1",
+     "same_net": false,
+     "centre_to_opening": 0.6251,
+     "hole_to_opening": 0.4751,
+     "annulus_to_opening": 0.3251
+    },
+    {
+     "pad": "X1.2",
+     "same_net": true,
+     "centre_to_opening": 0.4291,
+     "hole_to_opening": 0.2791,
+     "annulus_to_opening": 0.1291
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 35.7,
+   "y": 35.8,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R4001.2",
+     "same_net": false,
+     "centre_to_opening": 0.575,
+     "hole_to_opening": 0.425,
+     "annulus_to_opening": 0.275
+    },
+    {
+     "pad": "C7103.2",
+     "same_net": true,
+     "centre_to_opening": 0.4461,
+     "hole_to_opening": 0.2961,
+     "annulus_to_opening": 0.1461
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 38.3,
+   "y": 19.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U503.8",
+     "same_net": false,
+     "centre_to_opening": 0.75,
+     "hole_to_opening": 0.6,
+     "annulus_to_opening": 0.45
+    },
+    {
+     "pad": "C103.2",
+     "same_net": true,
+     "centre_to_opening": 0.4776,
+     "hole_to_opening": 0.3276,
+     "annulus_to_opening": 0.1776
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 27.1,
+   "y": 32.3,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R203.2",
+     "same_net": true,
+     "centre_to_opening": 0.4412,
+     "hole_to_opening": 0.2912,
+     "annulus_to_opening": 0.1412
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 8.9,
+   "y": 33.5,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R403.2",
+     "same_net": true,
+     "centre_to_opening": 0.4757,
+     "hole_to_opening": 0.3257,
+     "annulus_to_opening": 0.1757
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 14.2,
+   "y": 57.5,
+   "net": "GND",
+   "class": 2,
+   "why": "annulus outside the opening, dam 0.00-0.09 mm",
+   "records": [
+    {
+     "pad": "C407.2",
+     "same_net": true,
+     "centre_to_opening": 0.861,
+     "hole_to_opening": 0.711,
+     "annulus_to_opening": 0.561
+    },
+    {
+     "pad": "C406.2",
+     "same_net": true,
+     "centre_to_opening": 0.3873,
+     "hole_to_opening": 0.2373,
+     "annulus_to_opening": 0.0873
+    }
+   ],
+   "fix": {
+    "pad": "C406.2",
+    "move_part": "C406",
+    "axis": "x",
+    "direction": -1,
+    "shift_needed_mm": 0.014,
+    "courtyard_slack_mm": 0.0,
+    "feasible_without_moving_neighbours": false
+   }
+  },
+  {
+   "x": 6.8,
+   "y": 48.8,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D204.1",
+     "same_net": true,
+     "centre_to_opening": 0.625,
+     "hole_to_opening": 0.475,
+     "annulus_to_opening": 0.325
+    },
+    {
+     "pad": "D203.3",
+     "same_net": false,
+     "centre_to_opening": 0.6543,
+     "hole_to_opening": 0.5043,
+     "annulus_to_opening": 0.3543
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 40.7,
+   "y": 29.3,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C5002.2",
+     "same_net": true,
+     "centre_to_opening": 0.4776,
+     "hole_to_opening": 0.3276,
+     "annulus_to_opening": 0.1776
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 23.0,
+   "y": 40.5,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R3004.1",
+     "same_net": false,
+     "centre_to_opening": 0.7121,
+     "hole_to_opening": 0.5621,
+     "annulus_to_opening": 0.4121
+    },
+    {
+     "pad": "R3008.2",
+     "same_net": true,
+     "centre_to_opening": 0.8283,
+     "hole_to_opening": 0.6783,
+     "annulus_to_opening": 0.5283
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 40.0,
+   "y": 23.0,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U503.11",
+     "same_net": true,
+     "centre_to_opening": 0.7311,
+     "hole_to_opening": 0.5811,
+     "annulus_to_opening": 0.4311
+    },
+    {
+     "pad": "U503.12",
+     "same_net": false,
+     "centre_to_opening": 0.6913,
+     "hole_to_opening": 0.5413,
+     "annulus_to_opening": 0.3913
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 14.3,
+   "y": 18.7,
+   "net": "GND",
+   "class": 2,
+   "why": "annulus outside the opening, dam 0.00-0.09 mm",
+   "records": [
+    {
+     "pad": "C304.2",
+     "same_net": true,
+     "centre_to_opening": 0.325,
+     "hole_to_opening": 0.175,
+     "annulus_to_opening": 0.025
+    },
+    {
+     "pad": "R306.2",
+     "same_net": false,
+     "centre_to_opening": 0.8284,
+     "hole_to_opening": 0.6784,
+     "annulus_to_opening": 0.5284
+    }
+   ],
+   "fix": {
+    "pad": "C304.2",
+    "move_part": "C304",
+    "axis": "x",
+    "direction": 1,
+    "shift_needed_mm": 0.075,
+    "courtyard_slack_mm": 0.75,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 8.2,
+   "y": 51.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D204.2",
+     "same_net": false,
+     "centre_to_opening": 0.7,
+     "hole_to_opening": 0.55,
+     "annulus_to_opening": 0.4
+    },
+    {
+     "pad": "D303.1",
+     "same_net": true,
+     "centre_to_opening": 0.4,
+     "hole_to_opening": 0.25,
+     "annulus_to_opening": 0.1
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 14.8,
+   "y": 15.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D302.1",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 27.3,
+   "y": 64.1,
+   "net": "GND",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 23.0,
+   "y": 37.6,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U4002.4",
+     "same_net": false,
+     "centre_to_opening": 0.6129,
+     "hole_to_opening": 0.4629,
+     "annulus_to_opening": 0.3129
+    },
+    {
+     "pad": "U4002.5",
+     "same_net": false,
+     "centre_to_opening": 0.7111,
+     "hole_to_opening": 0.5611,
+     "annulus_to_opening": 0.4111
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 9.8,
+   "y": 14.2,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D401.1",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    },
+    {
+     "pad": "D401.2",
+     "same_net": false,
+     "centre_to_opening": 0.85,
+     "hole_to_opening": 0.7,
+     "annulus_to_opening": 0.55
+    },
+    {
+     "pad": "D401.3",
+     "same_net": false,
+     "centre_to_opening": 0.8016,
+     "hole_to_opening": 0.6516,
+     "annulus_to_opening": 0.5016
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 43.0,
+   "y": 30.5,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C5001.2",
+     "same_net": true,
+     "centre_to_opening": 0.475,
+     "hole_to_opening": 0.325,
+     "annulus_to_opening": 0.175
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 16.9,
+   "y": 45.3,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C6007.2",
+     "same_net": true,
+     "centre_to_opening": 0.525,
+     "hole_to_opening": 0.375,
+     "annulus_to_opening": 0.225
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 5.4,
+   "y": 19.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C404.2",
+     "same_net": true,
+     "centre_to_opening": 0.4776,
+     "hole_to_opening": 0.3276,
+     "annulus_to_opening": 0.1776
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 24.7,
+   "y": 43.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C6010.2",
+     "same_net": true,
+     "centre_to_opening": 0.4776,
+     "hole_to_opening": 0.3276,
+     "annulus_to_opening": 0.1776
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 3.8,
+   "y": 56.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D403.1",
+     "same_net": true,
+     "centre_to_opening": 0.4,
+     "hole_to_opening": 0.25,
+     "annulus_to_opening": 0.1
+    },
+    {
+     "pad": "D403.2",
+     "same_net": false,
+     "centre_to_opening": 0.9,
+     "hole_to_opening": 0.75,
+     "annulus_to_opening": 0.6
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 10.1,
+   "y": 19.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C403.2",
+     "same_net": true,
+     "centre_to_opening": 0.4776,
+     "hole_to_opening": 0.3276,
+     "annulus_to_opening": 0.1776
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 17.9,
+   "y": 36.4,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C4005.2",
+     "same_net": true,
+     "centre_to_opening": 0.4461,
+     "hole_to_opening": 0.2961,
+     "annulus_to_opening": 0.1461
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 38.2,
+   "y": 15.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D101.1",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 28.6,
+   "y": 14.2,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D201.1",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    },
+    {
+     "pad": "D201.2",
+     "same_net": false,
+     "centre_to_opening": 0.85,
+     "hole_to_opening": 0.7,
+     "annulus_to_opening": 0.55
+    },
+    {
+     "pad": "D201.3",
+     "same_net": false,
+     "centre_to_opening": 0.8016,
+     "hole_to_opening": 0.6516,
+     "annulus_to_opening": 0.5016
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 17.7,
+   "y": 23.1,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C502.2",
+     "same_net": true,
+     "centre_to_opening": 0.4776,
+     "hole_to_opening": 0.3276,
+     "annulus_to_opening": 0.1776
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 19.6,
+   "y": 15.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D301.1",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 13.4,
+   "y": 36.7,
+   "net": "GND",
+   "class": 2,
+   "why": "annulus outside the opening, dam 0.00-0.09 mm",
+   "records": [
+    {
+     "pad": "TP7.1",
+     "same_net": true,
+     "centre_to_opening": 0.3812,
+     "hole_to_opening": 0.2312,
+     "annulus_to_opening": 0.0812
+    }
+   ],
+   "fix": {
+    "pad": "TP7.1",
+    "move_part": "TP7",
+    "axis": "x",
+    "direction": -1,
+    "shift_needed_mm": 0.019,
+    "courtyard_slack_mm": null,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 19.8,
+   "y": 45.7,
+   "net": "GND",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C6008.2",
+     "same_net": true,
+     "centre_to_opening": 0.4461,
+     "hole_to_opening": 0.2961,
+     "annulus_to_opening": 0.1461
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 37.7,
+   "y": 35.0,
+   "net": "VBAT",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C7103.2",
+     "same_net": false,
+     "centre_to_opening": 0.652,
+     "hole_to_opening": 0.502,
+     "annulus_to_opening": 0.352
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 33.3,
+   "y": 34.8,
+   "net": "VBAT",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R4001.1",
+     "same_net": true,
+     "centre_to_opening": 0.4757,
+     "hole_to_opening": 0.3257,
+     "annulus_to_opening": 0.1757
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 37.5,
+   "y": 40.7,
+   "net": "VBAT",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R7107.1",
+     "same_net": true,
+     "centre_to_opening": 0.4511,
+     "hole_to_opening": 0.3011,
+     "annulus_to_opening": 0.1511
+    },
+    {
+     "pad": "TP1.1",
+     "same_net": true,
+     "centre_to_opening": 0.683,
+     "hole_to_opening": 0.533,
+     "annulus_to_opening": 0.383
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 44.0,
+   "y": 49.8,
+   "net": "/XIAO_Brain_Interface/VBAT_SENSE",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 35.1,
+   "y": 49.8,
+   "net": "/XIAO_Brain_Interface/VBAT_SENSE",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 28.2,
+   "y": 47.5,
+   "net": "/XIAO_5V",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 26.5,
+   "y": 62.9,
+   "net": "/XIAO_5V",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R3009.1",
+     "same_net": true,
+     "centre_to_opening": 0.451,
+     "hole_to_opening": 0.301,
+     "annulus_to_opening": 0.151
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 28.9,
+   "y": 61.7,
+   "net": "/XIAO_5V",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R3009.2",
+     "same_net": false,
+     "centre_to_opening": 0.6752,
+     "hole_to_opening": 0.5252,
+     "annulus_to_opening": 0.3752
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 28.2,
+   "y": 50.7,
+   "net": "/XIAO_5V",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R7101.2",
+     "same_net": false,
+     "centre_to_opening": 0.7452,
+     "hole_to_opening": 0.5952,
+     "annulus_to_opening": 0.4452
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 36.1,
+   "y": 12.4,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 23.8,
+   "y": 12.3,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D202.2",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 16.1,
+   "y": 19.4,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C304.2",
+     "same_net": false,
+     "centre_to_opening": 0.6264,
+     "hole_to_opening": 0.4764,
+     "annulus_to_opening": 0.3264
+    },
+    {
+     "pad": "R305.2",
+     "same_net": false,
+     "centre_to_opening": 0.8917,
+     "hole_to_opening": 0.7417,
+     "annulus_to_opening": 0.5917
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 17.7,
+   "y": 21.7,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C502.1",
+     "same_net": true,
+     "centre_to_opening": 0.475,
+     "hole_to_opening": 0.325,
+     "annulus_to_opening": 0.175
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 12.6,
+   "y": 12.4,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 30.2,
+   "y": 18.5,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R106.2",
+     "same_net": false,
+     "centre_to_opening": 0.8344,
+     "hole_to_opening": 0.6844,
+     "annulus_to_opening": 0.5344
+    },
+    {
+     "pad": "C203.2",
+     "same_net": false,
+     "centre_to_opening": 0.5274,
+     "hole_to_opening": 0.3774,
+     "annulus_to_opening": 0.2274
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 47.6,
+   "y": 22.3,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C503.1",
+     "same_net": true,
+     "centre_to_opening": 0.5187,
+     "hole_to_opening": 0.3687,
+     "annulus_to_opening": 0.2187
+    },
+    {
+     "pad": "C503.2",
+     "same_net": false,
+     "centre_to_opening": 0.8774,
+     "hole_to_opening": 0.7274,
+     "annulus_to_opening": 0.5774
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 27.8,
+   "y": 37.7,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "Q3001.1",
+     "same_net": false,
+     "centre_to_opening": 0.6,
+     "hole_to_opening": 0.45,
+     "annulus_to_opening": 0.3
+    },
+    {
+     "pad": "Q3001.2",
+     "same_net": false,
+     "centre_to_opening": 0.7,
+     "hole_to_opening": 0.55,
+     "annulus_to_opening": 0.4
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 37.9,
+   "y": 12.3,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D101.2",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 36.6,
+   "y": 22.6,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C501.1",
+     "same_net": true,
+     "centre_to_opening": 0.7501,
+     "hole_to_opening": 0.6001,
+     "annulus_to_opening": 0.4501
+    },
+    {
+     "pad": "C501.2",
+     "same_net": false,
+     "centre_to_opening": 0.7501,
+     "hole_to_opening": 0.6001,
+     "annulus_to_opening": 0.4501
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 7.9,
+   "y": 12.4,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 31.4,
+   "y": 12.4,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 12.9,
+   "y": 22.8,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U502.3",
+     "same_net": false,
+     "centre_to_opening": 0.8424,
+     "hole_to_opening": 0.6924,
+     "annulus_to_opening": 0.5424
+    },
+    {
+     "pad": "U502.4",
+     "same_net": true,
+     "centre_to_opening": 0.7814,
+     "hole_to_opening": 0.6314,
+     "annulus_to_opening": 0.4814
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 19.1,
+   "y": 12.3,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D301.2",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 17.3,
+   "y": 12.4,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 33.2,
+   "y": 12.3,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D102.2",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 28.5,
+   "y": 12.3,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D201.2",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 9.7,
+   "y": 12.3,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D401.2",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 26.7,
+   "y": 12.4,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 22.0,
+   "y": 12.4,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 14.4,
+   "y": 12.3,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D302.2",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 30.5,
+   "y": 22.8,
+   "net": "AFE_3V0",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 26.3,
+   "y": 43.0,
+   "net": "/AFE_EN_REQ",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 47.1,
+   "y": 43.0,
+   "net": "/AFE_EN_REQ",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "J1.MP",
+     "same_net": false,
+     "centre_to_opening": 0.6,
+     "hole_to_opening": 0.45,
+     "annulus_to_opening": 0.3
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 17.4,
+   "y": 43.0,
+   "net": "/AFE_EN_REQ",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 18.8,
+   "y": 43.0,
+   "net": "/AFE_EN_REQ",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 20.7,
+   "y": 40.5,
+   "net": "/Analog_Power_Interlock/AFE_EN",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R3008.1",
+     "same_net": true,
+     "centre_to_opening": 0.5755,
+     "hole_to_opening": 0.4255,
+     "annulus_to_opening": 0.2755
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 20.2,
+   "y": 39.1,
+   "net": "/Analog_Power_Interlock/AFE_EN",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U4002.3",
+     "same_net": true,
+     "centre_to_opening": 0.6433,
+     "hole_to_opening": 0.4933,
+     "annulus_to_opening": 0.3433
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 18.8,
+   "y": 40.6,
+   "net": "/Analog_Power_Interlock/AFE_EN",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R3007.2",
+     "same_net": true,
+     "centre_to_opening": 0.475,
+     "hole_to_opening": 0.325,
+     "annulus_to_opening": 0.175
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 28.7,
+   "y": 37.8,
+   "net": "/Analog_Power_Interlock/AFE_EN",
+   "class": 2,
+   "why": "annulus outside the opening, dam 0.00-0.09 mm",
+   "records": [
+    {
+     "pad": "Q3001.1",
+     "same_net": false,
+     "centre_to_opening": 0.737,
+     "hole_to_opening": 0.587,
+     "annulus_to_opening": 0.437
+    },
+    {
+     "pad": "Q3001.2",
+     "same_net": false,
+     "centre_to_opening": 0.641,
+     "hole_to_opening": 0.491,
+     "annulus_to_opening": 0.341
+    },
+    {
+     "pad": "Q3001.3",
+     "same_net": true,
+     "centre_to_opening": 0.3,
+     "hole_to_opening": 0.15,
+     "annulus_to_opening": 0.0
+    }
+   ],
+   "fix": {
+    "pad": "Q3001.3",
+    "move_part": "Q3001",
+    "axis": "x",
+    "direction": 1,
+    "shift_needed_mm": 0.1,
+    "courtyard_slack_mm": 1.38,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 22.4,
+   "y": 39.1,
+   "net": "/Analog_Power_Interlock/AFE_EN",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U4002.3",
+     "same_net": true,
+     "centre_to_opening": 0.542,
+     "hole_to_opening": 0.392,
+     "annulus_to_opening": 0.242
+    },
+    {
+     "pad": "U4002.4",
+     "same_net": false,
+     "centre_to_opening": 0.7057,
+     "hole_to_opening": 0.5557,
+     "annulus_to_opening": 0.4057
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 45.0,
+   "y": 13.9,
+   "net": "/Reference_VCM/RLD_SAFE",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "TP5.1",
+     "same_net": true,
+     "centre_to_opening": 0.7039,
+     "hole_to_opening": 0.5539,
+     "annulus_to_opening": 0.4039
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 11.1,
+   "y": 49.9,
+   "net": "/CH2_N",
+   "class": 2,
+   "why": "annulus outside the opening, dam 0.00-0.09 mm",
+   "records": [
+    {
+     "pad": "D204.3",
+     "same_net": true,
+     "centre_to_opening": 0.325,
+     "hole_to_opening": 0.175,
+     "annulus_to_opening": 0.025
+    },
+    {
+     "pad": "C207.1",
+     "same_net": true,
+     "centre_to_opening": 0.3135,
+     "hole_to_opening": 0.1635,
+     "annulus_to_opening": 0.0135
+    },
+    {
+     "pad": "C107.1",
+     "same_net": false,
+     "centre_to_opening": 0.7223,
+     "hole_to_opening": 0.5723,
+     "annulus_to_opening": 0.4223
+    }
+   ],
+   "fix": {
+    "pad": "C207.1",
+    "move_part": "C207",
+    "axis": "x",
+    "direction": 1,
+    "shift_needed_mm": 0.102,
+    "courtyard_slack_mm": 0.28,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 10.4,
+   "y": 45.3,
+   "net": "/CH2_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D103.3",
+     "same_net": false,
+     "centre_to_opening": 0.55,
+     "hole_to_opening": 0.4,
+     "annulus_to_opening": 0.25
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 16.8,
+   "y": 51.6,
+   "net": "/CH2_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U6001.4",
+     "same_net": false,
+     "centre_to_opening": 0.7965,
+     "hole_to_opening": 0.6465,
+     "annulus_to_opening": 0.4965
+    },
+    {
+     "pad": "U6001.5",
+     "same_net": true,
+     "centre_to_opening": 0.625,
+     "hole_to_opening": 0.475,
+     "annulus_to_opening": 0.325
+    },
+    {
+     "pad": "U6001.6",
+     "same_net": false,
+     "centre_to_opening": 0.8261,
+     "hole_to_opening": 0.6761,
+     "annulus_to_opening": 0.5261
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 23.0,
+   "y": 56.4,
+   "net": "DVDD_F",
+   "class": 3,
+   "why": "annulus overlaps an opening",
+   "records": [
+    {
+     "pad": "R7103.1",
+     "same_net": true,
+     "centre_to_opening": 0.325,
+     "hole_to_opening": 0.175,
+     "annulus_to_opening": 0.025
+    },
+    {
+     "pad": "R7104.1",
+     "same_net": true,
+     "centre_to_opening": 0.275,
+     "hole_to_opening": 0.125,
+     "annulus_to_opening": -0.025
+    }
+   ],
+   "fix": {
+    "pad": "R7104.1",
+    "move_part": "R7104",
+    "axis": "y",
+    "direction": 1,
+    "shift_needed_mm": 0.126,
+    "courtyard_slack_mm": 0.85,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 21.1,
+   "y": 56.4,
+   "net": "DVDD_F",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 26.3,
+   "y": 59.3,
+   "net": "DVDD_F",
+   "class": 3,
+   "why": "annulus overlaps an opening",
+   "records": [
+    {
+     "pad": "C7101.1",
+     "same_net": true,
+     "centre_to_opening": 0.325,
+     "hole_to_opening": 0.175,
+     "annulus_to_opening": 0.025
+    },
+    {
+     "pad": "C7102.1",
+     "same_net": true,
+     "centre_to_opening": 0.275,
+     "hole_to_opening": 0.125,
+     "annulus_to_opening": -0.025
+    }
+   ],
+   "fix": {
+    "pad": "C7102.1",
+    "move_part": "C7102",
+    "axis": "y",
+    "direction": 1,
+    "shift_needed_mm": 0.126,
+    "courtyard_slack_mm": 0.39,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 24.3,
+   "y": 47.5,
+   "net": "DVDD_F",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "X1.3",
+     "same_net": false,
+     "centre_to_opening": 0.6251,
+     "hole_to_opening": 0.4751,
+     "annulus_to_opening": 0.3251
+    },
+    {
+     "pad": "X1.4",
+     "same_net": true,
+     "centre_to_opening": 0.4291,
+     "hole_to_opening": 0.2791,
+     "annulus_to_opening": 0.1291
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 21.9,
+   "y": 47.5,
+   "net": "DVDD_F",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C6008.1",
+     "same_net": true,
+     "centre_to_opening": 0.725,
+     "hole_to_opening": 0.575,
+     "annulus_to_opening": 0.425
+    },
+    {
+     "pad": "X1.3",
+     "same_net": false,
+     "centre_to_opening": 0.6251,
+     "hole_to_opening": 0.4751,
+     "annulus_to_opening": 0.3251
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 28.5,
+   "y": 56.7,
+   "net": "DVDD_F",
+   "class": 3,
+   "why": "annulus overlaps an opening",
+   "records": [
+    {
+     "pad": "FB1.2",
+     "same_net": true,
+     "centre_to_opening": 0.275,
+     "hole_to_opening": 0.125,
+     "annulus_to_opening": -0.025
+    }
+   ],
+   "fix": {
+    "pad": "FB1.2",
+    "move_part": "FB1",
+    "axis": "x",
+    "direction": -1,
+    "shift_needed_mm": 0.132,
+    "courtyard_slack_mm": 0.05,
+    "feasible_without_moving_neighbours": false
+   }
+  },
+  {
+   "x": 37.2,
+   "y": 4.2,
+   "net": "unconnected-(J101-PadMP)",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "J101.1",
+     "same_net": false,
+     "centre_to_opening": 0.65,
+     "hole_to_opening": 0.5,
+     "annulus_to_opening": 0.35
+    },
+    {
+     "pad": "J101.MP",
+     "same_net": true,
+     "centre_to_opening": 0.4528,
+     "hole_to_opening": 0.3028,
+     "annulus_to_opening": 0.1528
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 32.9,
+   "y": 4.2,
+   "net": "unconnected-(J101-PadMP)",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "J101.2",
+     "same_net": false,
+     "centre_to_opening": 0.65,
+     "hole_to_opening": 0.5,
+     "annulus_to_opening": 0.35
+    },
+    {
+     "pad": "J101.MP",
+     "same_net": true,
+     "centre_to_opening": 0.4528,
+     "hole_to_opening": 0.3028,
+     "annulus_to_opening": 0.1528
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 5.8,
+   "y": 60.0,
+   "net": "/CH4_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C305.1",
+     "same_net": false,
+     "centre_to_opening": 0.7244,
+     "hole_to_opening": 0.5744,
+     "annulus_to_opening": 0.4244
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 10.4,
+   "y": 56.2,
+   "net": "/CH4_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D404.3",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 8.2,
+   "y": 60.0,
+   "net": "/CH4_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C305.2",
+     "same_net": false,
+     "centre_to_opening": 0.6824,
+     "hole_to_opening": 0.5324,
+     "annulus_to_opening": 0.3824
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 14.4,
+   "y": 56.6,
+   "net": "/CH4_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C407.2",
+     "same_net": false,
+     "centre_to_opening": 0.575,
+     "hole_to_opening": 0.425,
+     "annulus_to_opening": 0.275
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 42.6,
+   "y": 6.7,
+   "net": "unconnected-(J5001-PadMP)",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "J5001.MP",
+     "same_net": true,
+     "centre_to_opening": 0.75,
+     "hole_to_opening": 0.6,
+     "annulus_to_opening": 0.45
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 44.0,
+   "y": 6.7,
+   "net": "unconnected-(J5001-PadMP)",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 8.9,
+   "y": 60.9,
+   "net": "/CH4_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C405.1",
+     "same_net": true,
+     "centre_to_opening": 0.775,
+     "hole_to_opening": 0.625,
+     "annulus_to_opening": 0.475
+    },
+    {
+     "pad": "C305.2",
+     "same_net": false,
+     "centre_to_opening": 0.575,
+     "hole_to_opening": 0.425,
+     "annulus_to_opening": 0.275
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 15.3,
+   "y": 55.9,
+   "net": "/CH4_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U6001.10",
+     "same_net": true,
+     "centre_to_opening": 0.825,
+     "hole_to_opening": 0.675,
+     "annulus_to_opening": 0.525
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 5.6,
+   "y": 54.2,
+   "net": "/CH4_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D304.2",
+     "same_net": false,
+     "centre_to_opening": 0.6,
+     "hole_to_opening": 0.45,
+     "annulus_to_opening": 0.3
+    },
+    {
+     "pad": "D304.3",
+     "same_net": false,
+     "centre_to_opening": 0.55,
+     "hole_to_opening": 0.4,
+     "annulus_to_opening": 0.25
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 15.3,
+   "y": 57.3,
+   "net": "/CH4_P",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 5.3,
+   "y": 44.3,
+   "net": "/CH4_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D104.1",
+     "same_net": false,
+     "centre_to_opening": 0.7266,
+     "hole_to_opening": 0.5766,
+     "annulus_to_opening": 0.4266
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 8.7,
+   "y": 57.0,
+   "net": "/CH4_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D404.1",
+     "same_net": false,
+     "centre_to_opening": 0.7,
+     "hole_to_opening": 0.55,
+     "annulus_to_opening": 0.4
+    },
+    {
+     "pad": "D404.2",
+     "same_net": false,
+     "centre_to_opening": 0.6,
+     "hole_to_opening": 0.45,
+     "annulus_to_opening": 0.3
+    },
+    {
+     "pad": "D404.3",
+     "same_net": false,
+     "centre_to_opening": 0.6,
+     "hole_to_opening": 0.45,
+     "annulus_to_opening": 0.3
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 10.0,
+   "y": 44.4,
+   "net": "/CH2_P",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 11.4,
+   "y": 32.5,
+   "net": "/CH2_P",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 9.7,
+   "y": 50.6,
+   "net": "/CH2_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D204.2",
+     "same_net": false,
+     "centre_to_opening": 0.8,
+     "hole_to_opening": 0.65,
+     "annulus_to_opening": 0.5
+    },
+    {
+     "pad": "D204.3",
+     "same_net": false,
+     "centre_to_opening": 0.55,
+     "hole_to_opening": 0.4,
+     "annulus_to_opening": 0.25
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 8.5,
+   "y": 49.7,
+   "net": "/CH2_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D204.1",
+     "same_net": false,
+     "centre_to_opening": 0.6,
+     "hole_to_opening": 0.45,
+     "annulus_to_opening": 0.3
+    },
+    {
+     "pad": "D204.2",
+     "same_net": false,
+     "centre_to_opening": 0.7,
+     "hole_to_opening": 0.55,
+     "annulus_to_opening": 0.4
+    },
+    {
+     "pad": "D204.3",
+     "same_net": false,
+     "centre_to_opening": 0.8,
+     "hole_to_opening": 0.65,
+     "annulus_to_opening": 0.5
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 17.7,
+   "y": 52.3,
+   "net": "/CH2_P",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 19.7,
+   "y": 32.5,
+   "net": "/CH2_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R303.2",
+     "same_net": false,
+     "centre_to_opening": 0.625,
+     "hole_to_opening": 0.475,
+     "annulus_to_opening": 0.325
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 10.9,
+   "y": 52.3,
+   "net": "/CH2_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C206.1",
+     "same_net": true,
+     "centre_to_opening": 0.5051,
+     "hole_to_opening": 0.3551,
+     "annulus_to_opening": 0.2051
+    },
+    {
+     "pad": "D303.3",
+     "same_net": false,
+     "centre_to_opening": 0.7919,
+     "hole_to_opening": 0.6419,
+     "annulus_to_opening": 0.4919
+    },
+    {
+     "pad": "C306.1",
+     "same_net": false,
+     "centre_to_opening": 0.8386,
+     "hole_to_opening": 0.6886,
+     "annulus_to_opening": 0.5386
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 29.4,
+   "y": 57.1,
+   "net": "/DRDY_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U1.12",
+     "same_net": false,
+     "centre_to_opening": 0.55,
+     "hole_to_opening": 0.4,
+     "annulus_to_opening": 0.25
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 24.1,
+   "y": 54.5,
+   "net": "/DRDY_N",
+   "class": 3,
+   "why": "annulus overlaps an opening",
+   "records": [
+    {
+     "pad": "R7103.2",
+     "same_net": false,
+     "centre_to_opening": 0.7289,
+     "hole_to_opening": 0.5789,
+     "annulus_to_opening": 0.4289
+    },
+    {
+     "pad": "R6003.1",
+     "same_net": false,
+     "centre_to_opening": 0.6471,
+     "hole_to_opening": 0.4971,
+     "annulus_to_opening": 0.3471
+    },
+    {
+     "pad": "R6003.2",
+     "same_net": true,
+     "centre_to_opening": 0.2596,
+     "hole_to_opening": 0.1096,
+     "annulus_to_opening": -0.0404
+    }
+   ],
+   "fix": {
+    "pad": "R6003.2",
+    "move_part": "R6003",
+    "axis": "x",
+    "direction": 1,
+    "shift_needed_mm": 0.173,
+    "courtyard_slack_mm": 4.03,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 50.3,
+   "y": 58.3,
+   "net": "/DRDY_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U1.2",
+     "same_net": true,
+     "centre_to_opening": 0.3953,
+     "hole_to_opening": 0.2453,
+     "annulus_to_opening": 0.0953
+    },
+    {
+     "pad": "U1.3",
+     "same_net": false,
+     "centre_to_opening": 0.5553,
+     "hole_to_opening": 0.4053,
+     "annulus_to_opening": 0.2553
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 24.7,
+   "y": 58.1,
+   "net": "/SYNC_RESET_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R7104.2",
+     "same_net": true,
+     "centre_to_opening": 0.475,
+     "hole_to_opening": 0.325,
+     "annulus_to_opening": 0.175
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 28.8,
+   "y": 58.0,
+   "net": "/SYNC_RESET_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C7101.2",
+     "same_net": false,
+     "centre_to_opening": 0.6144,
+     "hole_to_opening": 0.4644,
+     "annulus_to_opening": 0.3144
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 49.4,
+   "y": 58.0,
+   "net": "/SYNC_RESET_N",
+   "class": 3,
+   "why": "annulus overlaps an opening",
+   "records": [
+    {
+     "pad": "U1.2",
+     "same_net": false,
+     "centre_to_opening": 0.6891,
+     "hole_to_opening": 0.5391,
+     "annulus_to_opening": 0.3891
+    },
+    {
+     "pad": "U1.3",
+     "same_net": true,
+     "centre_to_opening": 0.2509,
+     "hole_to_opening": 0.1009,
+     "annulus_to_opening": -0.0491
+    }
+   ],
+   "fix": {
+    "pad": "U1.3",
+    "move_part": "U1",
+    "axis": "y",
+    "direction": -1,
+    "shift_needed_mm": 0.163,
+    "courtyard_slack_mm": 0.325,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 49.4,
+   "y": 48.0,
+   "net": "/XIAO_Brain_Interface/USB_PRESENT",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U1.6",
+     "same_net": false,
+     "centre_to_opening": 0.5291,
+     "hole_to_opening": 0.3791,
+     "annulus_to_opening": 0.2291
+    },
+    {
+     "pad": "U1.7",
+     "same_net": true,
+     "centre_to_opening": 0.4109,
+     "hole_to_opening": 0.2609,
+     "annulus_to_opening": 0.1109
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 22.4,
+   "y": 60.7,
+   "net": "/XIAO_Brain_Interface/USB_PRESENT",
+   "class": 2,
+   "why": "annulus outside the opening, dam 0.00-0.09 mm",
+   "records": [
+    {
+     "pad": "R7106.1",
+     "same_net": true,
+     "centre_to_opening": 0.3065,
+     "hole_to_opening": 0.1565,
+     "annulus_to_opening": 0.0065
+    },
+    {
+     "pad": "R7105.1",
+     "same_net": false,
+     "centre_to_opening": 0.797,
+     "hole_to_opening": 0.647,
+     "annulus_to_opening": 0.497
+    }
+   ],
+   "fix": {
+    "pad": "R7106.1",
+    "move_part": "R7106",
+    "axis": "x",
+    "direction": 1,
+    "shift_needed_mm": 0.112,
+    "courtyard_slack_mm": 0.05,
+    "feasible_without_moving_neighbours": false
+   }
+  },
+  {
+   "x": 34.3,
+   "y": 48.0,
+   "net": "/XIAO_Brain_Interface/USB_PRESENT",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 28.8,
+   "y": 60.7,
+   "net": "/XIAO_Brain_Interface/USB_PRESENT",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C7102.2",
+     "same_net": false,
+     "centre_to_opening": 0.6702,
+     "hole_to_opening": 0.5202,
+     "annulus_to_opening": 0.3702
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 30.3,
+   "y": 48.2,
+   "net": "/XIAO_Brain_Interface/SCLK_MCU",
+   "class": 2,
+   "why": "annulus outside the opening, dam 0.00-0.09 mm",
+   "records": [
+    {
+     "pad": "U1.8",
+     "same_net": false,
+     "centre_to_opening": 0.6109,
+     "hole_to_opening": 0.4609,
+     "annulus_to_opening": 0.3109
+    },
+    {
+     "pad": "U1.9",
+     "same_net": true,
+     "centre_to_opening": 0.3291,
+     "hole_to_opening": 0.1791,
+     "annulus_to_opening": 0.0291
+    }
+   ],
+   "fix": {
+    "pad": "U1.9",
+    "move_part": "U1",
+    "axis": "x",
+    "direction": 1,
+    "shift_needed_mm": 0.099,
+    "courtyard_slack_mm": null,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 26.8,
+   "y": 48.3,
+   "net": "/XIAO_Brain_Interface/SCLK_MCU",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R7101.1",
+     "same_net": true,
+     "centre_to_opening": 0.8181,
+     "hole_to_opening": 0.6681,
+     "annulus_to_opening": 0.5181
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 26.8,
+   "y": 53.3,
+   "net": "/MISO",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R7102.1",
+     "same_net": false,
+     "centre_to_opening": 0.8231,
+     "hole_to_opening": 0.6731,
+     "annulus_to_opening": 0.5231
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 30.3,
+   "y": 53.1,
+   "net": "/MISO",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U1.10",
+     "same_net": true,
+     "centre_to_opening": 0.4309,
+     "hole_to_opening": 0.2809,
+     "annulus_to_opening": 0.1309
+    },
+    {
+     "pad": "U1.11",
+     "same_net": false,
+     "centre_to_opening": 0.5091,
+     "hole_to_opening": 0.3591,
+     "annulus_to_opening": 0.2091
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 26.8,
+   "y": 54.6,
+   "net": "/XIAO_Brain_Interface/MOSI_MCU",
+   "class": 2,
+   "why": "annulus outside the opening, dam 0.00-0.09 mm",
+   "records": [
+    {
+     "pad": "R7102.1",
+     "same_net": true,
+     "centre_to_opening": 0.325,
+     "hole_to_opening": 0.175,
+     "annulus_to_opening": 0.025
+    },
+    {
+     "pad": "R7102.2",
+     "same_net": false,
+     "centre_to_opening": 0.525,
+     "hole_to_opening": 0.375,
+     "annulus_to_opening": 0.225
+    }
+   ],
+   "fix": {
+    "pad": "R7102.1",
+    "move_part": "R7102",
+    "axis": "x",
+    "direction": -1,
+    "shift_needed_mm": 0.077,
+    "courtyard_slack_mm": 3.18,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 30.3,
+   "y": 55.5,
+   "net": "/XIAO_Brain_Interface/MOSI_MCU",
+   "class": 3,
+   "why": "annulus overlaps an opening",
+   "records": [
+    {
+     "pad": "U1.11",
+     "same_net": true,
+     "centre_to_opening": 0.2909,
+     "hole_to_opening": 0.1409,
+     "annulus_to_opening": -0.0091
+    },
+    {
+     "pad": "U1.12",
+     "same_net": false,
+     "centre_to_opening": 0.6491,
+     "hole_to_opening": 0.4991,
+     "annulus_to_opening": 0.3491
+    }
+   ],
+   "fix": {
+    "pad": "U1.11",
+    "move_part": "U1",
+    "axis": "x",
+    "direction": 1,
+    "shift_needed_mm": 0.15,
+    "courtyard_slack_mm": null,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 6.7,
+   "y": 43.8,
+   "net": "/CH1_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C105.1",
+     "same_net": true,
+     "centre_to_opening": 0.5932,
+     "hole_to_opening": 0.4432,
+     "annulus_to_opening": 0.2932
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 8.2,
+   "y": 43.8,
+   "net": "/CH1_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C105.2",
+     "same_net": false,
+     "centre_to_opening": 0.5836,
+     "hole_to_opening": 0.4336,
+     "annulus_to_opening": 0.2836
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 12.2,
+   "y": 46.4,
+   "net": "/CH1_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C106.1",
+     "same_net": true,
+     "centre_to_opening": 0.4951,
+     "hole_to_opening": 0.3451,
+     "annulus_to_opening": 0.1951
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 16.8,
+   "y": 50.6,
+   "net": "/CH1_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U6001.3",
+     "same_net": true,
+     "centre_to_opening": 0.6472,
+     "hole_to_opening": 0.4972,
+     "annulus_to_opening": 0.3472
+    },
+    {
+     "pad": "U6001.4",
+     "same_net": false,
+     "centre_to_opening": 0.6755,
+     "hole_to_opening": 0.5255,
+     "annulus_to_opening": 0.3755
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 16.1,
+   "y": 44.4,
+   "net": "/CH1_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C6007.2",
+     "same_net": false,
+     "centre_to_opening": 0.625,
+     "hole_to_opening": 0.475,
+     "annulus_to_opening": 0.325
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 11.1,
+   "y": 48.4,
+   "net": "/CH1_N",
+   "class": 2,
+   "why": "annulus outside the opening, dam 0.00-0.09 mm",
+   "records": [
+    {
+     "pad": "C106.1",
+     "same_net": false,
+     "centre_to_opening": 0.7223,
+     "hole_to_opening": 0.5723,
+     "annulus_to_opening": 0.4223
+    },
+    {
+     "pad": "C107.1",
+     "same_net": true,
+     "centre_to_opening": 0.3135,
+     "hole_to_opening": 0.1635,
+     "annulus_to_opening": 0.0135
+    }
+   ],
+   "fix": {
+    "pad": "C107.1",
+    "move_part": "C107",
+    "axis": "x",
+    "direction": 1,
+    "shift_needed_mm": 0.102,
+    "courtyard_slack_mm": 0.28,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 14.4,
+   "y": 48.2,
+   "net": "/CH1_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "C106.2",
+     "same_net": false,
+     "centre_to_opening": 0.7779,
+     "hole_to_opening": 0.6279,
+     "annulus_to_opening": 0.4779
+    },
+    {
+     "pad": "C107.2",
+     "same_net": false,
+     "centre_to_opening": 0.6702,
+     "hole_to_opening": 0.5202,
+     "annulus_to_opening": 0.3702
+    },
+    {
+     "pad": "U6001.1",
+     "same_net": false,
+     "centre_to_opening": 0.7287,
+     "hole_to_opening": 0.5787,
+     "annulus_to_opening": 0.4287
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 11.1,
+   "y": 53.2,
+   "net": "/CH3_P",
+   "class": 3,
+   "why": "annulus overlaps an opening",
+   "records": [
+    {
+     "pad": "D303.3",
+     "same_net": true,
+     "centre_to_opening": 0.325,
+     "hole_to_opening": 0.175,
+     "annulus_to_opening": 0.025
+    },
+    {
+     "pad": "C306.1",
+     "same_net": true,
+     "centre_to_opening": 0.275,
+     "hole_to_opening": 0.125,
+     "annulus_to_opening": -0.025
+    }
+   ],
+   "fix": {
+    "pad": "C306.1",
+    "move_part": "C306",
+    "axis": "x",
+    "direction": 1,
+    "shift_needed_mm": 0.128,
+    "courtyard_slack_mm": 0.28,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 7.5,
+   "y": 53.4,
+   "net": "/CH3_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "D304.3",
+     "same_net": false,
+     "centre_to_opening": 0.625,
+     "hole_to_opening": 0.475,
+     "annulus_to_opening": 0.325
+    },
+    {
+     "pad": "D303.1",
+     "same_net": false,
+     "centre_to_opening": 0.704,
+     "hole_to_opening": 0.554,
+     "annulus_to_opening": 0.404
+    },
+    {
+     "pad": "D303.2",
+     "same_net": false,
+     "centre_to_opening": 0.6047,
+     "hole_to_opening": 0.4547,
+     "annulus_to_opening": 0.3047
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 15.7,
+   "y": 31.1,
+   "net": "/CH3_P",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 6.7,
+   "y": 59.3,
+   "net": "/CH3_P",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 16.8,
+   "y": 53.2,
+   "net": "/CH3_P",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U6001.7",
+     "same_net": true,
+     "centre_to_opening": 0.6472,
+     "hole_to_opening": 0.4972,
+     "annulus_to_opening": 0.3472
+    },
+    {
+     "pad": "U6001.8",
+     "same_net": false,
+     "centre_to_opening": 0.6755,
+     "hole_to_opening": 0.5255,
+     "annulus_to_opening": 0.3755
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 27.2,
+   "y": 51.0,
+   "net": "/SCLK",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 19.9,
+   "y": 52.6,
+   "net": "/SCLK",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U6001.14",
+     "same_net": true,
+     "centre_to_opening": 0.5644,
+     "hole_to_opening": 0.4144,
+     "annulus_to_opening": 0.2644
+    },
+    {
+     "pad": "U6001.15",
+     "same_net": false,
+     "centre_to_opening": 0.5644,
+     "hole_to_opening": 0.4144,
+     "annulus_to_opening": 0.2644
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 14.6,
+   "y": 20.1,
+   "net": "/CH3/BUF_N",
+   "class": 2,
+   "why": "annulus outside the opening, dam 0.00-0.09 mm",
+   "records": [
+    {
+     "pad": "U502.7",
+     "same_net": true,
+     "centre_to_opening": 0.35,
+     "hole_to_opening": 0.2,
+     "annulus_to_opening": 0.05
+    }
+   ],
+   "fix": {
+    "pad": "U502.7",
+    "move_part": "U502",
+    "axis": "y",
+    "direction": 1,
+    "shift_needed_mm": 0.053,
+    "courtyard_slack_mm": 1.88,
+    "feasible_without_moving_neighbours": true
+   }
+  },
+  {
+   "x": 14.6,
+   "y": 25.4,
+   "net": "/CH3/BUF_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U502.1",
+     "same_net": false,
+     "centre_to_opening": 0.65,
+     "hole_to_opening": 0.5,
+     "annulus_to_opening": 0.35
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 9.0,
+   "y": 4.2,
+   "net": "unconnected-(J401-PadMP)",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "J401.1",
+     "same_net": false,
+     "centre_to_opening": 0.65,
+     "hole_to_opening": 0.5,
+     "annulus_to_opening": 0.35
+    },
+    {
+     "pad": "J401.MP",
+     "same_net": true,
+     "centre_to_opening": 0.4528,
+     "hole_to_opening": 0.3028,
+     "annulus_to_opening": 0.1528
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 4.7,
+   "y": 4.2,
+   "net": "unconnected-(J401-PadMP)",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "J401.2",
+     "same_net": false,
+     "centre_to_opening": 0.65,
+     "hole_to_opening": 0.5,
+     "annulus_to_opening": 0.35
+    },
+    {
+     "pad": "J401.MP",
+     "same_net": true,
+     "centre_to_opening": 0.4528,
+     "hole_to_opening": 0.3028,
+     "annulus_to_opening": 0.1528
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 27.8,
+   "y": 4.2,
+   "net": "unconnected-(J201-PadMP)",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "J201.1",
+     "same_net": false,
+     "centre_to_opening": 0.65,
+     "hole_to_opening": 0.5,
+     "annulus_to_opening": 0.35
+    },
+    {
+     "pad": "J201.MP",
+     "same_net": true,
+     "centre_to_opening": 0.4528,
+     "hole_to_opening": 0.3028,
+     "annulus_to_opening": 0.1528
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 23.5,
+   "y": 4.2,
+   "net": "unconnected-(J201-PadMP)",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "J201.2",
+     "same_net": false,
+     "centre_to_opening": 0.65,
+     "hole_to_opening": 0.5,
+     "annulus_to_opening": 0.35
+    },
+    {
+     "pad": "J201.MP",
+     "same_net": true,
+     "centre_to_opening": 0.4528,
+     "hole_to_opening": 0.3028,
+     "annulus_to_opening": 0.1528
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 32.8,
+   "y": 20.0,
+   "net": "/CH1/BUF_N",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U501.7",
+     "same_net": true,
+     "centre_to_opening": 0.45,
+     "hole_to_opening": 0.3,
+     "annulus_to_opening": 0.15
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 31.2,
+   "y": 23.7,
+   "net": "/CH1/BUF_N",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  },
+  {
+   "x": 18.4,
+   "y": 4.2,
+   "net": "unconnected-(J301-PadMP)",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "J301.1",
+     "same_net": false,
+     "centre_to_opening": 0.65,
+     "hole_to_opening": 0.5,
+     "annulus_to_opening": 0.35
+    },
+    {
+     "pad": "J301.MP",
+     "same_net": true,
+     "centre_to_opening": 0.4528,
+     "hole_to_opening": 0.3028,
+     "annulus_to_opening": 0.1528
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 14.1,
+   "y": 4.2,
+   "net": "unconnected-(J301-PadMP)",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "J301.2",
+     "same_net": false,
+     "centre_to_opening": 0.65,
+     "hole_to_opening": 0.5,
+     "annulus_to_opening": 0.35
+    },
+    {
+     "pad": "J301.MP",
+     "same_net": true,
+     "centre_to_opening": 0.4528,
+     "hole_to_opening": 0.3028,
+     "annulus_to_opening": 0.1528
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 19.8,
+   "y": 50.8,
+   "net": "/ADC/ADC_CLKIN",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U6001.17",
+     "same_net": true,
+     "centre_to_opening": 0.6295,
+     "hole_to_opening": 0.4795,
+     "annulus_to_opening": 0.3295
+    },
+    {
+     "pad": "U6001.18",
+     "same_net": false,
+     "centre_to_opening": 0.7166,
+     "hole_to_opening": 0.5666,
+     "annulus_to_opening": 0.4166
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 26.3,
+   "y": 50.8,
+   "net": "/ADC/ADC_CLKIN",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R7101.1",
+     "same_net": false,
+     "centre_to_opening": 0.825,
+     "hole_to_opening": 0.675,
+     "annulus_to_opening": 0.525
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 45.2,
+   "y": 30.5,
+   "net": "/Reference_VCM/VCM_BUF_IN",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R5005.2",
+     "same_net": true,
+     "centre_to_opening": 0.4809,
+     "hole_to_opening": 0.3309,
+     "annulus_to_opening": 0.1809
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 45.2,
+   "y": 26.9,
+   "net": "/Reference_VCM/VCM_BUF_IN",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "R5005.1",
+     "same_net": false,
+     "centre_to_opening": 0.6792,
+     "hole_to_opening": 0.5292,
+     "annulus_to_opening": 0.3792
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 19.9,
+   "y": 51.7,
+   "net": "/MOSI",
+   "class": 1,
+   "why": "annulus >= 0.09 mm from every opening",
+   "records": [
+    {
+     "pad": "U6001.15",
+     "same_net": false,
+     "centre_to_opening": 0.6861,
+     "hole_to_opening": 0.5361,
+     "annulus_to_opening": 0.3861
+    },
+    {
+     "pad": "U6001.16",
+     "same_net": true,
+     "centre_to_opening": 0.525,
+     "hole_to_opening": 0.375,
+     "annulus_to_opening": 0.225
+    },
+    {
+     "pad": "U6001.17",
+     "same_net": false,
+     "centre_to_opening": 0.7839,
+     "hole_to_opening": 0.6339,
+     "annulus_to_opening": 0.4839
+    }
+   ],
+   "fix": null
+  },
+  {
+   "x": 26.3,
+   "y": 51.7,
+   "net": "/MOSI",
+   "class": 1,
+   "why": "no pad opening within 0.6 mm of the annulus",
+   "records": [],
+   "fix": null
+  }
+ ]
+}

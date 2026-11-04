@@ -1,0 +1,32 @@
+{
+ "name": "V2",
+ "outline": [
+  60.4,
+  58.9
+ ],
+ "nets_crossing_zone_a_to_rest": {
+  "count": 9,
+  "nets": [
+   "/CH1_N",
+   "/CH1_P",
+   "/CH2_N",
+   "/CH2_P",
+   "/CH3_N",
+   "/CH3_P",
+   "/CH4_N",
+   "/CH4_P",
+   "AFE_3V0"
+  ]
+ },
+ "channel_gap_below_zone_a_mm": {
+  "min": 5.69,
+  "median": 12.12,
+  "max": 58.9
+ },
+ "j1_pad1_to_bat_post_manhattan_mm": 40.1,
+ "ufl_to_nearest_hiz_mm": [
+  26.5,
+  "U501"
+ ],
+ "max_board_corner_radius_keeping_0p5mm_copper": 3.7
+}

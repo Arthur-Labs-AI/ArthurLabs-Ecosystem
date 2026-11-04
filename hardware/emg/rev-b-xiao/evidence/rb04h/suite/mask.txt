@@ -1,0 +1,5 @@
+class counts: {1: 179, 2: 12, 3: 10, 4: 0} min hole->opening 0.1009 max annulus overlap -0.0491
+bridges <0.10: []
+openings < 0.09 to foreign track: []
+via hole->track <0.2: [] hole-hole <0.2: []
+PTH: [('U1.23', 1.9, 0.915, '/XIAO_Brain_Interface/VBAT_SENSE')]

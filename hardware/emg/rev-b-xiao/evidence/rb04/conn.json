@@ -1,0 +1,10 @@
+{
+ "nets_checked": 71,
+ "split_nets": {
+  "AFE_3V0": {
+   "pads": 20,
+   "components_with_tp": 1,
+   "components_without_tp": 2
+  }
+ }
+}

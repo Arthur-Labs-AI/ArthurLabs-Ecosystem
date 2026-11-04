@@ -1,0 +1,226 @@
+
+Terms and Conditions of JLCPCB Assembly Service
+This website requires JavaScript.
+Account Restriction Notice
+Get Coupon Here
+                Coupons
+Country / Region
+Language
+undefined
+Currency
+USD $
+The currency you select is for reference only, payments must be made in US dollars.
+      Save
+Language Coming Soon
+Ship to
+JLCPCB
+PCB Service
+FR-4 PCBs
+Flexible PCBs
+Metal Core PCBs
+High-Frequency PCBs
+PCBA Service
+PCB Assembly
+Parts Library
+More
+SMT Stencil
+PCB Layout
+Mechanical Services
+JLC3DP - 3D Printing
+JLCCNC - CNC Machining
+JLCCNC - Sheet Metal
+JLCMC - Mechanical Components
+Tools
+EasyEDA - PCB Design Tool
+JLCDFM -  DFM Check
+Impedance Calculator
+PI Stiffener Calculator
+More
+OSHWLAB - Open Source Hardware
+JLCPCB - Flexible Heater
+    Products
+Capabilities
+Contact Us
+                Online Chat>
+Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8
+                Email Us>
+Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8
+                WhatsApp>
+Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8
+Support
+Help Center
+Get instant answers. 24/7 Available.
+Blog
+Community
+    Support
+About Us
+JLCPCB delivers one-stop electronic and mechanical manufacturing solutions to empower hardware innovators worldwide.
+Explore Us
+Why JLCPCB?
+Quality Assurance
+How We Work
+Certifications
+Company News
+    About Us
+    Search
+0
+Order Now
+            Sign In
+              Sign In
+Help Center
+        Help Center
+        PCBA Capabilities & Instructions
+        Terms and Conditions of JLCPCB Assembly Service
+Help Center
+        Get Started
+            Register
+            Know Before Ordering
+            Account Setting
+        Ordering
+            PCB Ordering
+            PCB Assembly Ordering
+            PCB Stencil Ordering
+        PCB Manufacturing
+            PCB Files Preparation
+            PCB Capabilities & Instructions
+            PCB Technical Guidelines
+        PCB Assembly
+            PCB Assembly FAQs
+            PCBA Price Details
+            PCBA Parts Sourcing
+            PCBA Capabilities & Instructions
+            PCBA Technical Guidelines
+            PCBA Files Preparation
+            PCBA Lead Time
+            PCBA After-Sale
+        FPC Manufacturing
+            FPC Materials & Options
+            FPC Design Guidelines
+        SMT Stencil
+            Stencil Ordering
+            Stencil Technical Guidelines
+        PCB Layout
+            PCB Layout Ordering
+            PCB Layout FAQs
+        JLCDFM Tool
+            DFM Tool Help
+            DFM FAQs
+        JLCONE
+            JLCONE FAQs
+            JLCONE Download and Installation
+        Shipping & Delivery
+            Shipping Policies
+            Shipping Instructions
+        Payment & Invoice
+            Payments
+        Collab & Activities
+            JLCPCB API
+            Coupons & Promotions
+        Policies & Certifications
+            Policies
+            Certifications
+        Information
+            Notice
+        Flexible Heater
+            Flexible Heater Ordering
+              Terms and Conditions of JLCPCB Assembly Service
+              Last updated on Sep 09, 2026
+1. 
+About the Components Search and Matching Utility
+For PCB assembly, when at the “Select Parts” step, if our system can detect the parts, they will be automatically selected to make component selection easier. However, they may not be 100% accurate, please carefully check and confirm if the parts are what you need. Those confirmed parts in this step will be placed on your boards. If the automatically-selected parts are inappropriate and cause any issues on the final PCBA, JLCPCB will not take any responsibility.
+2. Notes on DFM
+1.The design of the PCB footprints must comply with "medium density" or "low density" standards listed in IPC-7351B. High density is not supported.
+2.The placement and gap of the components must comply with "medium density" or "low density" standards listed in IPC-7351B. For example, components overlap or components with very small gap should be avoided.
+3. The distance between the body of the components and the edge of the board must be equal or greater than 2.5mm.
+4. The 10-zone reflow oven is used in the SMT line. As thermal conductivity is inconsistent for different PCB pads,if thermal design is not considered, tomb-stone, displacement and other defects may occur.
+5. Board warping may occur during reflow processing, the warpage can be reduced if thermal capacity has been considered in the design. For example: the balance of the copper density and distribution for each layer will affect the warpage.
+6. For SMD parts, please check the placement and polarity in 2D production file. For through-hole parts, please check the placement in 3D production file. Customers are suggested to check the production file in Order history in time. If there is anything should be modified, contact Support Team in time.
+3. Quality Assurance
+1. Designs that comply with the industrial standard will have a higher yield. As JLCPCB receives thousands of orders a day, we're sorry that our SMT line is unable to optimize for a particular order.
+2. We promise the yield of the soldering joints is greater than 95% if the design complies with the industrial standard. 
+3. We will not do a power-on test for all boards. Components' functionality will also not be tested.
+4. Exception Handling during Assembly Production
+1. A component may be missed (unpopulated) because of the inventory mismatching or pick and place machine mulfunction, JLC will refund the relevant cost(the cost of the unpopulated parts, soldering joints points, cost for extended components), JLC will not take the consequential responsibility caused by this issue.
+2. If the component in the BOM does not match the footprint, this part will not be populated. JLC will not take the consequential responsibility caused by this problem.
+3. We use no- clean solder paste, so by default we do not wash the boards after soldering is complete. If you have strict requirements for this and need us to provide board cleaning services, please contact Support after placing your order.
+4.  We recommend that customers check all order information carefully when placing an order. Secondary processing is not recommended. If you really need it, please understand that there will be some risk since the secondary processing is all carried out manually.
+5. Disclaimer
+1. Please make sure you've provided accurate data when you place the order. When the order has been submitted successfully, the SMT line starts to process the order according to the data you provided
+2. The process from PCB to PCB assembly is a complex, multi-stage process, make the whole process error-free is almost impossible. For instance, issues might occur when producing PCBs and causing your order with missing quantity. The missing PCBs cannot be reproduced for PCBA orders currently, so only those good boards will be assembled. The difference for unassembled boards will be refunded. JLCPCB will not take responsibility when the delivered quantity is less than the ordered quantity.
+3. The PCBA order cannot be canceled once the PCB production has started.
+4.  If pcb Surface Finish with lead, SMT will be with lead, if pcb is lead-free, JLCPCB will follow up the compoments properties to determine whether to choose leaded or lead-free. 
+Besides, for smoother fabrication, JLCPCB sometimes updates the HASL-Leaded to lead-free HASL for assembly service, JLCPCB bears the extra fee. 
+5. 
+Tooling holes, Edge rails and Fiducials are required for PCB assembly orders. If you choose "Tooling Holes Added by Customer” and "Edge Rail/ Fiducials Added by Customer", but there are no tooling holes and edge rails/fiducial or incompatibility in your file, to avoid delays, we will help to add or modify them by default.
+6. With via in pads there is the issue of having sufficient solderpasted to fill the via hole during the reflow process, which can cause a lot of problems, for instance, skewed parts, tombstoning, etc, JLC will not take the consequential responsibility due to this.
+7. For Economic PCBA, orders from different customers are combined and produced together, including PCB, stencil and assembly. Therefore, when you place an order for five PCB and two PCBA, there is some possibility that the three blank boards are reflowed and covered with tin.
+8. To avoid boards damage, JLC has regular packing method, which is decided after thorough evaluation and investigation in real production and transportation. If customers have their own requirements in packing, please contact us for further evaluation after placing the orders. If not, JLC will pack the boards in the regular packing method by default and if there is some damage to boards or parts in transit, JLC will not take the final responsibility.
+9.  When there are no abnormalities such as visible welding defects, but some or all of the boards do not work, we recommend that the customers verify the design problems first. There are many reasons for boards not working expectedly. In the absence of visible error, JLC will endeavor to assist the customers in investigating the cause of the defect, but JLC shall not be ultimately liable if it is not clearly stated that the defect is caused by JLC. 
+10. If many LEDs are used on customer's boards, we suggest customers contact us for function tests after the assembly is complete, so we can communicate and solve the problem before shipping and avoid wasting time and money after customers receive the boards. For moisture-sensitive LEDs, we strongly suggest  customers contact us to bake the parts after placing orders. 
+11. SMT is a complicated production process. When the product is slightly damaged due to production, transportation, and some invisible factors, we sincerely hope that customers can try their best to help with repairing. JLC will also provide reasonable compensation for the faulty part (usually in excess of what we charge), but please understand that the compensation would not cover the cost of the entire board.
+12. Consigned components will not be tested regarding quality or function before or after PCBA production. JLCPCB is not responsible for any inevitable PCBA quality issues due to the quality problems of consigned components.
+13. In order to standardize QC process and improve quality assurance, there will be some symbols automatically added on the edge rails for internal check. If customers have some special requirement on the edge rails, please take it into account when designing. JLC will not take the final responsibility.
+14. Since the 0.4mm thickness board does not support the V-cut process according to current capability, for board dimension smaller than 70mmx 70mm or missed edge rail on standard PCBA service, JLCPCB will select a suitable production method for edge rail, for instance, mouse bite method.
+6. Quality Complaint
+If you have any objection to the quality of our assembly products, you need to submit a complaint in our system within three months from the date of receipt. If you do not raise a complaint within the time limit, it will be deemed that you have fully accepted the products provided by us, and the quality of the products fully meets your needs. Besides, if there is indeed some soldering defect, after verification, we will compensate based on the soldering fee we charge.
+          Online Chat >
+Chat with our live agent for fast reply.
+Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8
+          Email Us >
+Contact us at support
+jlcpcb.com
+Typically reply within hours.
+          Help Center >
+Get instant answers.
+24/7 Available.
+Products
+FR-4 PCBs
+Flexible PCBs
+Metal Core PCBs
+High-Frequency PCBs
+PCBA Service
+PCB Layout
+SMT Stencil
+Flex Heater
+Support
+Help Center
+Contact Us
+Community
+Shipping & Delivery
+Payment Methods
+How to Order
+How to Track
+After-Sales Service
+Blog
+Company
+About Us
+Quality Assurance
+How We Work
+Certifications
+Security
+Environment
+JLCAPI
+News
+Cooperation
+Electronics
+EasyEDA
+JLCPCB
+JLCDFM
+LCSC
+OSHWLAB
+Mechanical
+JLC3DP
+JLCCNC
+JLCMC
+CONNECT WITH US
+© 2026 JLCPCB.COM All Rights Reserved.
+        Privacy Policy
+        Terms & Conditions
+        Cookies Policy
+        Get Coupon >
+        Live Chat >
+          Home
+          Cart
+          Files
+          Message
+          Me

@@ -1,0 +1,11 @@
+{
+  "preserved_files_checked": 54,
+  "changed_preexisting_files": [],
+  "canonical_PCB_sha256": "320836d6d7798b7993a3a488d088801edb394b9cfc7bfc1a5702a065013660e1",
+  "drc_same_as_electrical_ECO": true,
+  "drc_errors": 0,
+  "drc_warnings": 1,
+  "unconnected": 0,
+  "native_schematic_parity": 0,
+  "new_exclusions_or_rule_relaxations": false
+}

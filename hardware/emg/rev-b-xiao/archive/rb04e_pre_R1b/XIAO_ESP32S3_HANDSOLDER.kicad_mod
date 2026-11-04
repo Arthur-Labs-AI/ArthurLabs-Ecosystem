@@ -1,0 +1,929 @@
+(footprint "XIAO_ESP32S3_HANDSOLDER"
+	(version 20260206)
+	(generator "rb02_make_footprints")
+	(generator_version "1.0")
+	(layer "F.Cu")
+	(descr "Seeed XIAO ESP32-S3 (plain) hand-solder interface, RB-02: 14 castellation pads 1.50x2.90 (toe 1.30), plated BAT+ post pad 23, underside keep-outs. Origin = module outline centre, USB end toward -y. Source geometry: Seeed v1.5 PCB (RB-02A).")
+	(tags "XIAO ESP32S3 castellated hand solder BAT+ post")
+	(property "Reference" "REF**"
+		(at 0 -12.7675 0)
+		(layer "F.SilkS")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "XIAO_ESP32S3_HANDSOLDER"
+		(at 0 12.1675 0)
+		(layer "F.Fab")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr through_hole dnp)
+	(duplicate_pad_numbers_are_jumpers no)
+	(pad "1" smd roundrect
+		(at -8.74 -7.6466)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "c6b4f664-4c37-430c-ab96-3099422b8dc4")
+	)
+	(pad "2" smd roundrect
+		(at -8.74 -5.1066)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "e0022928-76c4-41f3-bf21-d07f9da0e2e3")
+	)
+	(pad "3" smd roundrect
+		(at -8.74 -2.5666)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "f5c93165-5af9-4b61-994d-b5988f5931a8")
+	)
+	(pad "4" smd roundrect
+		(at -8.74 -0.0266)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "aae3e9d4-1543-4ddd-a60c-be7ca28334b3")
+	)
+	(pad "5" smd roundrect
+		(at -8.74 2.5134)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "72f8f57e-21b3-4d25-888d-98f4a0bc6246")
+	)
+	(pad "6" smd roundrect
+		(at -8.74 5.0534)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "efc2d17f-f411-4ea4-8405-acef2ed58e81")
+	)
+	(pad "7" smd roundrect
+		(at -8.74 7.5934)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "8766ad78-b480-46d3-bf7f-0420a6d84732")
+	)
+	(pad "8" smd roundrect
+		(at 8.74 7.5934)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "9e53cf85-8f31-4677-a4fb-b76b180c8f2e")
+	)
+	(pad "9" smd roundrect
+		(at 8.74 5.0534)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "6b371732-784f-4871-8746-b7dc8162a114")
+	)
+	(pad "10" smd roundrect
+		(at 8.74 2.5134)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "81c66f90-57bf-413e-9643-31a66e370de1")
+	)
+	(pad "11" smd roundrect
+		(at 8.74 -0.0266)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "33845479-67bc-4043-bbd4-97a2cb490453")
+	)
+	(pad "12" smd roundrect
+		(at 8.74 -2.5666)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "83fa9949-e356-4b9e-8390-2913d1a85cb6")
+	)
+	(pad "13" smd roundrect
+		(at 8.74 -5.1066)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "120d4058-90ac-4835-a6e6-e5479377239f")
+	)
+	(pad "14" smd roundrect
+		(at 8.74 -7.6466)
+		(size 2.9 1.5)
+		(layers "F.Cu" "F.Mask")
+		(roundrect_rratio 0.1000)
+		(solder_mask_margin 0.05)
+		(uuid "16d853c1-ce34-4b2e-ad0e-e782314aadb4")
+	)
+	(pad "23" thru_hole circle
+		(at -4.445 -0.4075)
+		(size 1.9 1.9)
+		(drill 1.4)
+		(layers "*.Cu" "F.Mask" "B.Mask")
+		(solder_mask_margin -0.225)
+		(uuid "8564f15a-7cbe-4563-b538-4f314ad52e3e")
+	)
+	(pad "23" smd circle
+		(at -4.445 -0.4075)
+		(size 3 3)
+		(layers "B.Cu" "B.Mask")
+		(solder_mask_margin 0)
+		(uuid "58cb88c3-2810-4faa-9bc2-1ebc09b3a3b0")
+	)
+	(fp_line
+		(start -6.985 -10.5675)
+		(end 6.985 -10.5675)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -6.985 10.5675)
+		(end 6.985 10.5675)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -8.89 -8.6625)
+		(end -8.89 8.6625)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start 8.89 -8.6625)
+		(end 8.89 8.6625)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start -8.89 -8.6625)
+		(mid -8.332 -10.0095)
+		(end -6.985 -10.5675)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start 6.985 -10.5675)
+		(mid 8.332 -10.0095)
+		(end 8.89 -8.6625)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start -6.985 10.5675)
+		(mid -8.332 10.0095)
+		(end -8.89 8.6625)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start 8.89 8.6625)
+		(mid 8.332 10.0095)
+		(end 6.985 10.5675)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_rect
+		(start -4.5 -12.0755)
+		(end 4.5 -4.7255)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.Fab")
+	)
+	(fp_text user "USB-C"
+		(at 0 -10.8755 0)
+		(layer "F.Fab")
+		(effects
+			(font
+				(size 0.9 0.9)
+				(thickness 0.1)
+			)
+		)
+	)
+	(fp_rect
+		(start -6.151 7.5385)
+		(end -3.551 10.1385)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.Fab")
+	)
+	(fp_text user "U.FL"
+		(at -4.851 8.8385 0)
+		(layer "F.Fab")
+		(effects
+			(font
+				(size 0.7 0.7)
+				(thickness 0.1)
+			)
+		)
+	)
+	(fp_rect
+		(start -5.461 -2.8205)
+		(end -3.429 -1.8045)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_rect
+		(start -5.461 -0.9155)
+		(end -3.429 0.1005)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_text user "BAT-"
+		(at -4.445 -2.3125 0)
+		(layer "B.Fab")
+		(effects
+			(font
+				(size 0.5 0.5)
+				(thickness 0.1)
+			)
+			(justify mirror)
+		)
+	)
+	(fp_circle
+		(center -1.27 -8.6625)
+		(end -0.6985 -8.6625)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_circle
+		(center 1.27 -8.6625)
+		(end 1.8415 -8.6625)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_circle
+		(center -1.27 -6.1225)
+		(end -0.6985 -6.1225)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_circle
+		(center 1.27 -6.1225)
+		(end 1.8415 -6.1225)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_circle
+		(center -1.27 -3.5825)
+		(end -0.6985 -3.5825)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_circle
+		(center 1.27 -3.5825)
+		(end 1.8415 -3.5825)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_circle
+		(center -1.27 -1.0425)
+		(end -0.6985 -1.0425)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_circle
+		(center 1.27 -1.0425)
+		(end 1.8415 -1.0425)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_rect
+		(start 3.429 -9.931)
+		(end 5.207 -9.042)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_rect
+		(start -5.207 -9.931)
+		(end -3.429 -9.042)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_rect
+		(start 3.429 -5.741)
+		(end 5.207 -4.852)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_rect
+		(start -5.207 -5.741)
+		(end -3.429 -4.852)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_rect
+		(start -0.255 0.7225)
+		(end 2.495 3.2225)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.Fab")
+	)
+	(fp_line
+		(start -8.64 -10.3175)
+		(end -7.14 -10.3175)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start -8.64 -10.3175)
+		(end -8.64 -8.8175)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start -8.64 10.3175)
+		(end -7.14 10.3175)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start -8.64 10.3175)
+		(end -8.64 8.8175)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start 8.64 -10.3175)
+		(end 7.14 -10.3175)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start 8.64 -10.3175)
+		(end 8.64 -8.8175)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start 8.64 10.3175)
+		(end 7.14 10.3175)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start 8.64 10.3175)
+		(end 8.64 8.8175)
+		(stroke
+			(width 0.15)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_text user "USB END = BOARD EDGE"
+		(at 0 -9.5675 0)
+		(layer "F.SilkS")
+		(effects
+			(font
+				(size 0.8 0.8)
+				(thickness 0.1)
+			)
+		)
+	)
+	(fp_rect
+		(start -10.69 -12.1755)
+		(end 10.69 11.0675)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+	)
+	(fp_rect
+		(start -6.2 -22.0755)
+		(end 6.2 -12.0755)
+		(stroke
+			(width 0.1)
+			(type dash)
+		)
+		(fill no)
+		(layer "Dwgs.User")
+	)
+	(fp_text user "mated USB-C plug overmold ~12.4 wide (length assumed 10)"
+		(at 0 -17.0755 0)
+		(layer "Dwgs.User")
+		(effects
+			(font
+				(size 0.6 0.6)
+				(thickness 0.1)
+			)
+		)
+	)
+	(fp_rect
+		(start -14.851 6.8385)
+		(end -6.151 10.8385)
+		(stroke
+			(width 0.1)
+			(type dash)
+		)
+		(fill no)
+		(layer "Cmts.User")
+	)
+	(fp_text user "U.FL cable corridor (east): keep clear of parts and mind bend radius"
+		(at -10.851 6.2385 0)
+		(layer "Cmts.User")
+		(effects
+			(font
+				(size 0.6 0.6)
+				(thickness 0.1)
+			)
+		)
+	)
+	(zone
+		(net 0)
+		(net_name "")
+		(layers "F.Cu")
+		(uuid "18a0801b-00cb-41f5-a15b-d49b5bdacfc3")
+		(name "XIAO pads 15-22 underside")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(keepout
+			(tracks not_allowed)
+			(vias not_allowed)
+			(pads allowed)
+			(copperpour not_allowed)
+			(footprints allowed)
+		)
+		(placement
+			(enabled no)
+			(sheetname "")
+		)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy -2.62 -10.0275) (xy 2.62 -10.0275) (xy 2.62 0.2925) (xy -2.62 0.2925)
+			)
+		)
+	)
+	(zone
+		(net 0)
+		(net_name "")
+		(layers "F.Cu")
+		(uuid "ee66b32f-fc47-4530-b893-32f6437707fe")
+		(name "XIAO pad 25 GND window")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(keepout
+			(tracks not_allowed)
+			(vias not_allowed)
+			(pads allowed)
+			(copperpour not_allowed)
+			(footprints allowed)
+		)
+		(placement
+			(enabled no)
+			(sheetname "")
+		)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy -0.755 0.2225) (xy 2.995 0.2225) (xy 2.995 3.7225) (xy -0.755 3.7225)
+			)
+		)
+	)
+	(zone
+		(net 0)
+		(net_name "")
+		(layers "F.Cu")
+		(uuid "65997124-5174-4696-8153-4a63f75c17dd")
+		(name "XIAO GND0 (BAT-) pad")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(keepout
+			(tracks not_allowed)
+			(vias not_allowed)
+			(pads allowed)
+			(copperpour not_allowed)
+			(footprints allowed)
+		)
+		(placement
+			(enabled no)
+			(sheetname "")
+		)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy -5.961 -3.3205) (xy -2.929 -3.3205) (xy -2.929 -1.3045) (xy -5.961 -1.3045)
+			)
+		)
+	)
+	(zone
+		(net 0)
+		(net_name "")
+		(layers "F.Cu")
+		(uuid "fe0607bc-7fba-4158-b5e0-85d62df8e6d6")
+		(name "XIAO USB shell oval S1 (GND)")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(keepout
+			(tracks not_allowed)
+			(vias not_allowed)
+			(pads allowed)
+			(copperpour allowed)
+			(footprints allowed)
+		)
+		(placement
+			(enabled no)
+			(sheetname "")
+		)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy 2.929 -10.431) (xy 5.707 -10.431) (xy 5.707 -8.542) (xy 2.929 -8.542)
+			)
+		)
+	)
+	(zone
+		(net 0)
+		(net_name "")
+		(layers "F.Cu")
+		(uuid "61cf6e4b-fb3f-4a7b-a565-143fdd31091b")
+		(name "XIAO USB shell oval S2 (GND)")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(keepout
+			(tracks not_allowed)
+			(vias not_allowed)
+			(pads allowed)
+			(copperpour allowed)
+			(footprints allowed)
+		)
+		(placement
+			(enabled no)
+			(sheetname "")
+		)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy -5.707 -10.431) (xy -2.929 -10.431) (xy -2.929 -8.542) (xy -5.707 -8.542)
+			)
+		)
+	)
+	(zone
+		(net 0)
+		(net_name "")
+		(layers "F.Cu")
+		(uuid "d95143fc-806d-46a8-b05a-a6686b081efe")
+		(name "XIAO USB shell oval S3 (GND)")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(keepout
+			(tracks not_allowed)
+			(vias not_allowed)
+			(pads allowed)
+			(copperpour allowed)
+			(footprints allowed)
+		)
+		(placement
+			(enabled no)
+			(sheetname "")
+		)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy 2.929 -6.241) (xy 5.707 -6.241) (xy 5.707 -4.352) (xy 2.929 -4.352)
+			)
+		)
+	)
+	(zone
+		(net 0)
+		(net_name "")
+		(layers "F.Cu")
+		(uuid "1a78fe17-6682-4eb4-a0f3-6d3706746c62")
+		(name "XIAO USB shell oval S4 (GND)")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(keepout
+			(tracks not_allowed)
+			(vias not_allowed)
+			(pads allowed)
+			(copperpour allowed)
+			(footprints allowed)
+		)
+		(placement
+			(enabled no)
+			(sheetname "")
+		)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy -5.707 -6.241) (xy -2.929 -6.241) (xy -2.929 -4.352) (xy -5.707 -4.352)
+			)
+		)
+	)
+	(zone
+		(net 0)
+		(net_name "")
+		(layers "F.Cu" "In1.Cu" "In2.Cu" "B.Cu")
+		(uuid "e65f2f7a-c925-4d5c-b437-329b6eb39e27")
+		(name "XIAO no vias (below via field)")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(keepout
+			(tracks allowed)
+			(vias not_allowed)
+			(pads allowed)
+			(copperpour allowed)
+			(footprints allowed)
+		)
+		(placement
+			(enabled no)
+			(sheetname "")
+		)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy -8.89 -10.5675) (xy 8.89 -10.5675) (xy 8.89 4.2325) (xy -8.89 4.2325)
+			)
+		)
+	)
+	(zone
+		(net 0)
+		(net_name "")
+		(layers "F.Cu" "In1.Cu" "In2.Cu" "B.Cu")
+		(uuid "d2d1b697-d318-4264-bbdf-defa33d99d8c")
+		(name "XIAO no vias (above via field)")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(keepout
+			(tracks allowed)
+			(vias not_allowed)
+			(pads allowed)
+			(copperpour allowed)
+			(footprints allowed)
+		)
+		(placement
+			(enabled no)
+			(sheetname "")
+		)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy -8.89 9.4325) (xy 8.89 9.4325) (xy 8.89 10.5675) (xy -8.89 10.5675)
+			)
+		)
+	)
+	(zone
+		(net 0)
+		(net_name "")
+		(layers "F.Cu" "In1.Cu" "In2.Cu" "B.Cu")
+		(uuid "fb5d67dc-7b95-4225-85d2-a8ffc5315833")
+		(name "XIAO no vias (west of via field)")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(keepout
+			(tracks allowed)
+			(vias not_allowed)
+			(pads allowed)
+			(copperpour allowed)
+			(footprints allowed)
+		)
+		(placement
+			(enabled no)
+			(sheetname "")
+		)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy 6.29 4.2325) (xy 8.89 4.2325) (xy 8.89 9.4325) (xy 6.29 9.4325)
+			)
+		)
+	)
+	(zone
+		(net 0)
+		(net_name "")
+		(layers "F.Cu" "In1.Cu" "In2.Cu" "B.Cu")
+		(uuid "b72979ae-abe9-4c9a-b182-b7a2b4d55ed9")
+		(name "XIAO no vias (east of via field)")
+		(hatch edge 0.5)
+		(connect_pads
+			(clearance 0)
+		)
+		(min_thickness 0.25)
+		(filled_areas_thickness no)
+		(keepout
+			(tracks allowed)
+			(vias not_allowed)
+			(pads allowed)
+			(copperpour allowed)
+			(footprints allowed)
+		)
+		(placement
+			(enabled no)
+			(sheetname "")
+		)
+		(fill
+			(thermal_gap 0.5)
+			(thermal_bridge_width 0.5)
+		)
+		(polygon
+			(pts
+				(xy -8.89 4.2325) (xy -6.31 4.2325) (xy -6.31 9.4325) (xy -8.89 9.4325)
+			)
+		)
+	)
+)

@@ -55,7 +55,7 @@ The loss is partly recovered by the orientation choice in §4.
 | C — boundary | 48.0 – 53.7 | 33 Ω SPI series R, CS/SYNC pull-ups, DVDD ferrite filter, inhibit cluster (north), 4.7 k VBUS load and D-pin networks (south). **Parts taller than 1.2 mm only at x ≤ 49.7 or in the north strip (y < 12.5)** |
 | D — brain | 53.7 – 75.0 | XIAO + hand-solder pads, BAT+ post, J_BAT + VBAT split + R_PRE/C_PRE in the north strip (y 0–11) |
 
-- **Board: 75.0 × 32.0 mm** (estimate; the USB-C receptacle overhangs the south edge by 1.51 mm).
+- **Board: 75.0 × 32.0 mm** (estimate; the USB-C receptacle overhangs the south edge by 1.51 mm). **[RB-02] Placed board: 97.0 × 32.0 mm.** Zone A grew by 22 mm because the five JST-PH B2B courtyards (9.4 mm each, 47 mm) plus the ADC-side input network do not fit the 39 mm estimate; Zones B–D and the XIAO are unchanged (REVB_RB02_PLACEMENT_REPORT.md §2).
 - This is larger than the RB-00 estimate of 62–68 × 28–30. The growth comes from:
   - the 1.3 mm toes on both sides;
   - the 5.7 mm boundary zone;
@@ -64,7 +64,7 @@ The loss is partly recovered by the orientation choice in §4.
 
 ## 4. XIAO orientation: rotated 180° (USB-C → south edge, east end)
 
-Module outline: x 55.00–72.78, y 10.98–32.00. The USB end is flush with the south board edge.
+Module outline: x 55.00–72.78, y **10.865**–32.00 **[RB-02, D-1: PCB length 21.135, was 21.02]**. The USB end is flush with the south board edge.
 
 | Criterion | 180° (USB south) | −90° (USB east), the RB-00.5 proposal | 0° (USB north) |
 |---|---|---|---|
@@ -131,7 +131,7 @@ AFE_EN ─ R_EN_PD 100 k → GND  (AT the EN pin; plus the TPS7A20 internal 500 
 
 3. Antenna: the U.FL cable exits **east**. The antenna element goes in the enclosure's east/north-east end, ≥ 30 mm from the Zone A connectors. Never route the cable over Zones A–C.
 4. SPI crosses only Zone C (west pins → ADC digital side). Default **SCLK = 4 MHz**; 8 MHz supported.
-5. Solid In1 GND, one GND net, no split. Local 8.192 MHz XO (YXC C7425393).
+5. Solid In1 GND, one GND net, no split. Local 8.192 MHz XO (SCTF SX3M8.192M20F30TNN, C2901557; RB-01R).
 6. **No F.Cu copper under the XIAO's exposed bottom pads 15–22 and 25** (EN, USB D±, JTAG, GND window). Only tented vias inside the designated via field.
 
 ## 8. Everything else is unchanged from RB-00/RB-00.5

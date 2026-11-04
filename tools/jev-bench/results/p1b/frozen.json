@@ -1,0 +1,168 @@
+{
+ "frozen_at": "2026-10-08T17:23:21.495Z",
+ "corpus_sha256": "7b86c37f3ed441690564f48e3e1dac0e194f559dd4a19272a3665c81a35ebecb",
+ "selection": "dev split, non-disputed events, one JEV run with random option order",
+ "objective": "min (false edges + wrongful removals + user-edge violations), then max strict true positives, then max correct stale removals, then most conservative thresholds",
+ "thresholds": {
+  "B": {
+   "pMin": 0.7,
+   "margin": 0.6
+  },
+  "C": {
+   "tau": 0.9,
+   "rev": 0.2,
+   "keep": 0.1
+  },
+  "D": {
+   "pMin": 0.7,
+   "margin": 0,
+   "nTau": 0.5,
+   "rev": 0.3,
+   "cancelTau": 0.3,
+   "goneTau": 0.3,
+   "mootTau": 0.3
+  }
+ },
+ "default_before_tuning": {
+  "B": {
+   "pMin": 0.5,
+   "margin": 0
+  },
+  "C": {
+   "tau": 0.8,
+   "rev": 0.3,
+   "keep": 0.5
+  },
+  "D": {
+   "pMin": 0.7,
+   "margin": 0.4,
+   "nTau": 0.8,
+   "rev": 0.3,
+   "cancelTau": 0.7,
+   "goneTau": 0.7,
+   "mootTau": 0.5
+  }
+ },
+ "dev_fit": {
+  "B": {
+   "dangerous": 4,
+   "strict_precision": {
+    "n": 29,
+    "d": 29,
+    "p": 1,
+    "ci": [
+     0.8830264055344442,
+     1.0000000000000002
+    ]
+   },
+   "strict_recall": {
+    "n": 29,
+    "d": 32,
+    "p": 0.90625,
+    "ci": [
+     0.7578150066422117,
+     0.9675990373736805
+    ]
+   },
+   "stale_removed": {
+    "n": 4,
+    "d": 5,
+    "p": 0.8,
+    "ci": [
+     0.37552826411853885,
+     0.9637768390302125
+    ]
+   },
+   "events": 65
+  },
+  "C": {
+   "dangerous": 1,
+   "strict_precision": {
+    "n": 8,
+    "d": 8,
+    "p": 1,
+    "ci": [
+     0.6755843804891231,
+     1
+    ]
+   },
+   "strict_recall": {
+    "n": 8,
+    "d": 32,
+    "p": 0.25,
+    "ci": [
+     0.13252243982621553,
+     0.42106891770246624
+    ]
+   },
+   "stale_removed": {
+    "n": 1,
+    "d": 5,
+    "p": 0.2,
+    "ci": [
+     0.036223160969787456,
+     0.6244717358814612
+    ]
+   },
+   "events": 65
+  },
+  "D": {
+   "dangerous": 2,
+   "strict_precision": {
+    "n": 26,
+    "d": 26,
+    "p": 1,
+    "ci": [
+     0.8712669561953783,
+     1.0000000000000002
+    ]
+   },
+   "strict_recall": {
+    "n": 26,
+    "d": 32,
+    "p": 0.8125,
+    "ci": [
+     0.6469050424507756,
+     0.9111057606383722
+    ]
+   },
+   "stale_removed": {
+    "n": 5,
+    "d": 5,
+    "p": 1,
+    "ci": [
+     0.565508505247919,
+     1.0000000000000002
+    ]
+   },
+   "events": 65
+  }
+ },
+ "baseline": {
+  "models": {
+   "stageA": {
+    "model": "gpt-4.1-mini",
+    "sampling": {
+     "temperature": 0
+    }
+   },
+   "stageB": {
+    "model": "gpt-5-mini",
+    "sampling": {
+     "reasoning_effort": "low"
+    }
+   }
+  },
+  "prompt_hashes": {
+   "stageA_focus": "f1c299cefcf80b7e",
+   "stageB": "ec98a027d754a857",
+   "rubric": "6b531cb0f60e1dad",
+   "sources": {
+    "prompt.rs": "6a05d8c6a63dc2b8",
+    "verify_prompt.rs": "14138ab501485620",
+    "semantics.rs": "7257e12aef87dffc"
+   }
+  },
+  "note": "production prompts/gates, not tuned"
+ }
+}

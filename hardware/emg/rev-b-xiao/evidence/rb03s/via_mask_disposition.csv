@@ -1,0 +1,78 @@
+via_before,via_after,net,pad,ann_before,hole_before,cls_before,ann_after,hole_after,cls_after,status
+"[13.8, 16.5]","[13.9, 16.5]",/VCM,R306.1,0.036,0.186,2,0.134,0.284,1,relocated 0.10 mm
+"[31.7, 16.5]","[31.7, 16.5]",/VCM,R106.1,-0.023,0.127,3,-0.023,0.127,3,unchanged
+"[17.8, 16.5]",,/VCM,R305.1,-0.003,0.147,3,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[36.4, 16.5]","[36.4, 16.5]",/VCM,R105.1,-0.023,0.127,3,-0.023,0.127,3,unchanged
+"[22.3, 16.5]",,/VCM,R206.1,-0.023,0.127,3,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[3.5, 16.5]",,/VCM,R406.1,-0.023,0.127,3,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[11.1, 55.3]",,/CH3_N,C307.1,0.016,0.166,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[5.3, 15.6]",,GND,D402.1,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[8.9, 33.4]",,GND,R403.2,0.079,0.229,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[33.7, 19.6]",,GND,C104.2,0.075,0.225,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[24.7, 43.8]",,GND,C6010.2,0.079,0.229,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[14.2, 57.5]","[14.2, 57.5]",GND,C406.2,0.091,0.241,1,0.091,0.241,1,unchanged
+"[28.6, 58.9]","[28.6, 58.9]",GND,C7101.2,0.098,0.248,1,0.098,0.248,1,unchanged
+"[33.5, 15.6]",,GND,D102.1,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[14.3, 18.7]","[14.3, 18.7]",GND,C304.2,0.028,0.178,2,0.028,0.178,2,unchanged
+"[10.1, 19.6]",,GND,C403.2,0.079,0.229,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[7.2, 36.7]","[7.2, 36.7]",GND,TP8.1,0.083,0.233,2,0.083,0.233,2,unchanged
+"[43.0, 30.4]",,GND,C5001.2,0.075,0.225,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[19.5, 19.6]",,GND,C303.2,0.079,0.229,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[40.8, 29.3]",,GND,C5002.2,0.079,0.229,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[28.9, 19.6]",,GND,C203.2,0.079,0.229,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[36.4, 23.5]",,GND,C501.2,0.075,0.225,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[46.4, 24.2]",,GND,C503.2,0.075,0.225,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[46.1, 30.4]",,GND,R5004.2,0.083,0.233,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[5.4, 19.6]",,GND,C404.2,0.079,0.229,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[24.1, 15.6]",,GND,D202.1,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[4.2, 33.4]",,GND,R404.2,0.079,0.229,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[17.6, 23.1]",,GND,C502.2,0.079,0.229,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[34.5, 39.7]","[34.5, 39.7]",GND,R7108.2,0.079,0.229,2,0.079,0.229,2,unchanged
+"[13.6, 33.4]",,GND,R304.2,0.079,0.229,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[14.7, 15.6]",,GND,D302.1,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[24.2, 19.6]",,GND,C204.2,0.079,0.229,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[13.4, 36.7]","[13.4, 36.7]",GND,TP7.1,0.083,0.233,2,0.083,0.233,2,unchanged
+"[38.3, 19.6]",,GND,C103.2,0.079,0.229,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[19.4, 15.6]",,GND,D301.1,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[26.5, 37.1]","[26.6, 37.1]",GND,C4006.2,0.04,0.19,2,0.138,0.287,1,relocated 0.10 mm
+"[38.2, 15.6]",,GND,D101.1,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[33.3, 35.0]",,VBAT,R4001.1,-0.023,0.127,3,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[37.4, 40.7]",,VBAT,R7107.1,0.055,0.205,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[26.5, 62.8]",,/XIAO_5V,R3009.1,0.055,0.205,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[9.7, 12.4]",,AFE_3V0,D401.2,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[14.4, 12.4]",,AFE_3V0,D302.2,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[28.5, 12.4]",,AFE_3V0,D201.2,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[17.5, 21.7]",,AFE_3V0,C502.1,-0.023,0.127,3,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[23.8, 12.4]",,AFE_3V0,D202.2,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[47.4, 22.3]",,AFE_3V0,C503.1,0.036,0.186,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[19.1, 12.4]",,AFE_3V0,D301.2,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[33.2, 12.4]",,AFE_3V0,D102.2,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[37.9, 12.4]",,AFE_3V0,D101.2,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[28.7, 37.8]","[28.7, 37.8]",/Analog_Power_Interlock/AFE_EN,Q3001.3,0.001,0.151,2,0.001,0.151,2,unchanged
+"[20.7, 39.1]",,/Analog_Power_Interlock/AFE_EN,U4002.3,0.028,0.178,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[18.8, 40.8]",,/Analog_Power_Interlock/AFE_EN,R3007.2,-0.023,0.127,3,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[11.1, 49.9]","[11.1, 49.9]",/CH2_N,D204.3,0.028,0.178,2,0.028,0.178,2,unchanged
+"[11.1, 49.9]","[11.1, 49.9]",/CH2_N,C207.1,0.016,0.166,2,0.016,0.166,2,unchanged
+"[23.0, 56.4]","[23.0, 56.4]",DVDD_F,R7103.1,0.028,0.178,2,0.028,0.178,2,unchanged
+"[23.0, 56.4]","[23.0, 56.4]",DVDD_F,R7104.1,-0.023,0.127,3,-0.023,0.127,3,unchanged
+"[26.3, 59.3]","[26.3, 59.3]",DVDD_F,C7101.1,0.028,0.178,2,0.028,0.178,2,unchanged
+"[26.3, 59.3]","[26.3, 59.3]",DVDD_F,C7102.1,-0.023,0.127,3,-0.023,0.127,3,unchanged
+"[28.5, 56.7]","[28.5, 56.7]",DVDD_F,FB1.2,-0.023,0.127,3,-0.023,0.127,3,unchanged
+"[11.1, 56.6]",,/CH4_N,C407.1,-0.023,0.127,3,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[11.1, 56.6]",,/CH4_N,D404.3,0.067,0.217,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[11.1, 52.3]",,/CH2_P,C206.1,0.016,0.166,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[24.1, 54.5]","[24.1, 54.5]",/DRDY_N,R6003.2,-0.038,0.112,3,-0.038,0.112,3,unchanged
+"[50.3, 58.3]","[50.3, 58.3]",/DRDY_N,U1.2,0.095,0.245,1,0.095,0.245,1,unchanged
+"[49.4, 58.0]","[49.4, 58.0]",/SYNC_RESET_N,U1.3,-0.045,0.105,3,-0.045,0.105,3,unchanged
+"[24.7, 58.0]",,/SYNC_RESET_N,R7104.2,0.075,0.225,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[22.4, 60.7]","[22.4, 60.7]",/XIAO_Brain_Interface/USB_PRESENT,R7106.1,0.009,0.159,2,0.009,0.159,2,unchanged
+"[30.3, 50.5]","[30.3, 48.2]",/XIAO_Brain_Interface/SCLK_MCU,U1.9,0.072,0.222,2,0.033,0.183,2,relocated 2.30 mm
+"[26.8, 54.6]","[26.8, 54.6]",/XIAO_Brain_Interface/MOSI_MCU,R7102.1,0.028,0.178,2,0.028,0.178,2,unchanged
+"[30.3, 55.5]","[30.3, 55.5]",/XIAO_Brain_Interface/MOSI_MCU,U1.11,-0.006,0.144,3,-0.006,0.144,3,unchanged
+"[12.2, 46.6]",,/CH1_P,C106.1,0.001,0.151,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[11.1, 48.4]","[11.1, 48.4]",/CH1_N,C107.1,0.016,0.166,2,0.016,0.166,2,unchanged
+"[11.1, 53.2]","[11.1, 53.2]",/CH3_P,D303.3,0.028,0.178,2,0.028,0.178,2,unchanged
+"[11.1, 53.2]","[11.1, 53.2]",/CH3_P,C306.1,-0.023,0.127,3,-0.023,0.127,3,unchanged
+"[14.6, 20.1]","[14.6, 20.1]",/CH3/BUF_N,U502.7,0.052,0.202,2,0.052,0.202,2,unchanged
+"[32.8, 20.1]",,/CH1/BUF_N,U501.7,0.052,0.202,2,,,1,moved clear of the pad (no pad opening within the audit radius)
+"[45.2, 30.3]",,/Reference_VCM/VCM_BUF_IN,R5005.2,-0.015,0.135,3,,,1,moved clear of the pad (no pad opening within the audit radius)

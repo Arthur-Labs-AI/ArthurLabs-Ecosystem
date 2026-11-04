@@ -1,0 +1,47 @@
+{
+ "spent_usd": 1.275512432,
+ "entries": [
+  {
+   "label": "smoke-baseline",
+   "usd": 0.0010308,
+   "requests": 1,
+   "at": "2026-10-08T17:19:04.703Z"
+  },
+  {
+   "label": "jev-dev",
+   "usd": 0.07355837999999998,
+   "requests": 288,
+   "at": "2026-10-08T17:19:26.253Z"
+  },
+  {
+   "label": "baseline-dev",
+   "usd": 0.25894249999999996,
+   "requests": 75,
+   "at": "2026-10-08T17:22:14.797Z"
+  },
+  {
+   "label": "jev-holdout",
+   "usd": 0.07308252000000004,
+   "requests": 286,
+   "at": "2026-10-08T17:23:45.583Z"
+  },
+  {
+   "label": "jev-cons",
+   "usd": 0.13186933199999978,
+   "requests": 516,
+   "at": "2026-10-08T17:24:14.113Z"
+  },
+  {
+   "label": "baseline-holdout",
+   "usd": 0.25025825,
+   "requests": 75,
+   "at": "2026-10-08T17:26:41.198Z"
+  },
+  {
+   "label": "baseline-cons",
+   "usd": 0.4867706500000002,
+   "requests": 132,
+   "at": "2026-10-08T17:29:49.958Z"
+  }
+ ]
+}

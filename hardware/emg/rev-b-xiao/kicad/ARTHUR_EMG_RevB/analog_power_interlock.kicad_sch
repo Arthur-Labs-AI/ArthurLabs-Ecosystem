@@ -6,11 +6,11 @@
 	(paper "A3")
 	(title_block
 		(title "Battery, AFE LDO, hardware USB inhibit")
-		(date "2026-09-28")
-		(rev "B / RB-01")
+		(date "2026-10-11")
+		(rev "B / RB-04A")
 		(company "A.R.T.H.U.R EMG")
 		(comment 1 "Architecture frozen: RB-00 + RB-00.5 + RB-00.6")
-		(comment 2 "RB-01 schematic only - no PCB, placement or routing")
+		(comment 2 "RB-04A: BOM fields filled (MPN/LCSC); 2.2 uF 16 V X7R line pending approval; manufacturing BLOCKED")
 	)
 	(lib_symbols
 		(symbol "ARTHUR_RevB:2N7002"
@@ -2115,7 +2115,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C137705.pdf"
 			(at 101.6 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -2137,7 +2137,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "RC0603FR-074R7L"
 			(at 101.6 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -2148,7 +2148,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "YAGEO"
 			(at 101.6 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -2181,7 +2181,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C137705"
+			(at 101.6 76.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 101.6 76.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "not stated on page"
 			(at 101.6 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -2251,7 +2273,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C25803.pdf"
 			(at 132.08 180.34 0)
 			(hide yes)
 			(show_name no)
@@ -2273,7 +2295,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "0603WAF1003T5E"
 			(at 132.08 180.34 0)
 			(hide yes)
 			(show_name no)
@@ -2284,7 +2306,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "UNI-ROYAL"
 			(at 132.08 180.34 0)
 			(hide yes)
 			(show_name no)
@@ -2317,7 +2339,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C25803"
+			(at 132.08 180.34 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 132.08 180.34 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "not stated on page"
 			(at 132.08 180.34 0)
 			(hide yes)
 			(show_name no)
@@ -2387,7 +2431,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C59782.pdf"
 			(at 144.78 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -2409,7 +2453,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "CL10B105KO8NNNC"
 			(at 144.78 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -2420,7 +2464,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "Samsung Electro-Mechanics"
 			(at 144.78 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -2453,7 +2497,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C59782"
+			(at 144.78 88.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 144.78 88.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "Extended Parts"
 			(at 144.78 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -2754,7 +2820,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C98220.pdf"
 			(at 132.08 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -2776,7 +2842,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "RC0603FR-0710KL"
 			(at 132.08 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -2787,7 +2853,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "YAGEO"
 			(at 132.08 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -2820,7 +2886,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C98220"
+			(at 132.08 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 132.08 218.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "Extended Parts"
 			(at 132.08 218.44 0)
 			(hide yes)
 			(show_name no)
@@ -3100,7 +3188,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/2N7002.pdf"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C8545.pdf"
 			(at 170.18 180.34 0)
 			(hide yes)
 			(show_name no)
@@ -3133,7 +3221,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic, e.g. Nexperia/CJ)"
+		(property "Manufacturer" "JSCJ (Jiangsu Changjing)"
 			(at 170.18 180.34 0)
 			(hide yes)
 			(show_name no)
@@ -3155,7 +3243,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C8545"
+			(at 170.18 180.34 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 170.18 180.34 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "not stated on page"
 			(at 170.18 180.34 0)
 			(hide yes)
 			(show_name no)
@@ -3316,7 +3426,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C23162.pdf"
 			(at 106.68 231.14 0)
 			(hide yes)
 			(show_name no)
@@ -3338,7 +3448,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "0603WAF4701T5E"
 			(at 106.68 231.14 0)
 			(hide yes)
 			(show_name no)
@@ -3349,7 +3459,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "UNI-ROYAL"
 			(at 106.68 231.14 0)
 			(hide yes)
 			(show_name no)
@@ -3382,7 +3492,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C23162"
+			(at 106.68 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 106.68 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "not stated on page"
 			(at 106.68 231.14 0)
 			(hide yes)
 			(show_name no)
@@ -3970,7 +4102,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.jst-mfg.com/product/pdf/eng/ePH.pdf"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C295747.pdf"
 			(at 38.1 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -3992,7 +4124,18 @@
 				)
 			)
 		)
-		(property "MPN" "S2B-PH-SM4-TB(LF)(SN) (provisional - 'e.g.' in RB-00.6 mounting spec; final at RB-02)"
+		(property "MPN" "S2B-PH-SM4-TB(LF)(SN)"
+			(at 38.1 76.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC" "C295747"
 			(at 38.1 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -4014,7 +4157,7 @@
 				)
 			)
 		)
-		(property "Spec" "JST PH 2.0 mm 2-pin side-entry SMD. Pin 1 = BAT+, pin 2 = BAT- (verify cell lead polarity)"
+		(property "Spec" "JST PH 2.0 mm 2-pin side-entry SMD, 2 A / 100 V AC/DC (AWG24), mates PHR-2 + SPH-002T-P0.5S. Pin 1 = BAT+, pin 2 = BAT- by this design; PH is not a polarity standard: verify cell lead polarity before first connection"
 			(at 38.1 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -4025,7 +4168,18 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Extended (expected)"
+		(property "BOM_Status" "QUALIFIED"
+			(at 38.1 76.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "Extended (per project field, page lists Economic+Standard)"
 			(at 38.1 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -4186,7 +4340,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.ti.com/lit/ds/symlink/tps7a20.pdf"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C963429.pdf"
 			(at 187.96 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -4241,7 +4395,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Extended (expected)"
+		(property "LCSC" "C963429"
+			(at 187.96 76.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 187.96 76.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "not stated on page (page: Economic and Standard)"
 			(at 187.96 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -4331,7 +4507,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C59782.pdf"
 			(at 223.52 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -4353,7 +4529,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "CL10B105KO8NNNC"
 			(at 223.52 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -4364,7 +4540,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "Samsung Electro-Mechanics"
 			(at 223.52 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -4397,7 +4573,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C59782"
+			(at 223.52 88.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 223.52 88.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "Extended Parts"
 			(at 223.52 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -4600,7 +4798,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C45783.pdf"
 			(at 124.46 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -4611,7 +4809,7 @@
 				)
 			)
 		)
-		(property "Description" "Capacitor 22uF 10V X5R 0805 - C_PRE: LDO input RC bulk (~10 uF effective at 4 V)"
+		(property "Description" "Capacitor 22uF 25V X5R 0805 - C_PRE: LDO input RC bulk (~10 uF effective at 4 V)"
 			(at 124.46 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -4622,7 +4820,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "CL21A226MAQNNNE"
 			(at 124.46 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -4633,7 +4831,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "Samsung Electro-Mechanics"
 			(at 124.46 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -4644,7 +4842,7 @@
 				)
 			)
 		)
-		(property "Spec" "22uF 10V X5R 0805 MLCC"
+		(property "Spec" "22uF 25V X5R 0805 MLCC"
 			(at 124.46 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -4666,7 +4864,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C45783"
+			(at 124.46 88.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 124.46 88.9 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "not stated on page"
 			(at 124.46 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -4890,7 +5110,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C98220.pdf"
 			(at 106.68 167.64 0)
 			(hide yes)
 			(show_name no)
@@ -4912,7 +5132,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "RC0603FR-0710KL"
 			(at 106.68 167.64 0)
 			(hide yes)
 			(show_name no)
@@ -4923,7 +5143,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "YAGEO"
 			(at 106.68 167.64 0)
 			(hide yes)
 			(show_name no)
@@ -4956,7 +5176,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C98220"
+			(at 106.68 167.64 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 106.68 167.64 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "Extended Parts"
 			(at 106.68 167.64 0)
 			(hide yes)
 			(show_name no)
@@ -5180,7 +5422,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze"
+		(property "Datasheet" "https://www.lcsc.com/datasheet/C25803.pdf"
 			(at 157.48 231.14 0)
 			(hide yes)
 			(show_name no)
@@ -5202,7 +5444,7 @@
 				)
 			)
 		)
-		(property "MPN" "GENERIC (spec-defined; JLC Basic part selected at RB-03)"
+		(property "MPN" "0603WAF1003T5E"
 			(at 157.48 231.14 0)
 			(hide yes)
 			(show_name no)
@@ -5213,7 +5455,7 @@
 				)
 			)
 		)
-		(property "Manufacturer" "Any (JLC Basic)"
+		(property "Manufacturer" "UNI-ROYAL"
 			(at 157.48 231.14 0)
 			(hide yes)
 			(show_name no)
@@ -5246,7 +5488,29 @@
 				)
 			)
 		)
-		(property "JLC_Class" "Basic (expected)"
+		(property "LCSC" "C25803"
+			(at 157.48 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "BOM_Status" "QUALIFIED"
+			(at 157.48 231.14 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "JLC_Class" "not stated on page"
 			(at 157.48 231.14 0)
 			(hide yes)
 			(show_name no)

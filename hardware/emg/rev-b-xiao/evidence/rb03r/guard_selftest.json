@@ -1,0 +1,83 @@
+[
+ {
+  "case": "baseline (no mutation)",
+  "guard_exit": 0,
+  "expected": "PASS",
+  "result": "OK",
+  "last_line": [
+   "GUARD PASS"
+  ]
+ },
+ {
+  "case": "netclasses removed",
+  "guard_exit": 1,
+  "expected": "FAIL",
+  "result": "OK",
+  "last_line": [
+   "GUARD FAIL"
+  ]
+ },
+ {
+  "case": "netclass patterns removed",
+  "guard_exit": 1,
+  "expected": "FAIL",
+  "result": "OK",
+  "last_line": [
+   "GUARD FAIL"
+  ]
+ },
+ {
+  "case": "one pattern re-assigned to Default",
+  "guard_exit": 1,
+  "expected": "FAIL",
+  "result": "OK",
+  "last_line": [
+   "GUARD FAIL"
+  ]
+ },
+ {
+  "case": "hiz_leakage rule deleted",
+  "guard_exit": 1,
+  "expected": "FAIL",
+  "result": "OK",
+  "last_line": [
+   "GUARD FAIL"
+  ]
+ },
+ {
+  "case": "no_via_in_smd_pad disabled",
+  "guard_exit": 1,
+  "expected": "FAIL",
+  "result": "OK",
+  "last_line": [
+   "GUARD FAIL"
+  ]
+ },
+ {
+  "case": "clearance severity set to ignore",
+  "guard_exit": 1,
+  "expected": "FAIL",
+  "result": "OK",
+  "last_line": [
+   "GUARD FAIL"
+  ]
+ },
+ {
+  "case": "dru edited (extra rule)",
+  "guard_exit": 1,
+  "expected": "FAIL",
+  "result": "OK",
+  "last_line": [
+   "GUARD FAIL"
+  ]
+ },
+ {
+  "case": "dru missing",
+  "guard_exit": 1,
+  "expected": "FAIL",
+  "result": "OK",
+  "last_line": [
+   "GUARD FAIL"
+  ]
+ }
+]

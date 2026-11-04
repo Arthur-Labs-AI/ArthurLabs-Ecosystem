@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "files_checked": 718,
+  "changed": [],
+  "missing": [],
+  "tracked_diff_identical": true,
+  "branch": "codex/revb-horizontal-jst",
+  "HEAD": "98cc84e07fe4cf2791a56baba2cde3e9bb599724",
+  "exclusions": "Audit directory itself; .history; __pycache__; _restore* backup directories. Existing tracked and untracked files in saved718-file manifest compared byte-for-byte.",
+  "new_audit_files_only": "New evidence directory is intentionally untracked; no commit created."
+}

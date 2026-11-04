@@ -1,0 +1,1238 @@
+[
+ {
+  "spec": "2.2uF 16V X7R 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C101",
+   "C102",
+   "C201",
+   "C202",
+   "C301",
+   "C302",
+   "C401",
+   "C402"
+  ],
+  "sel": {
+   "mfr": "FH (Guangdong Fenghua)",
+   "mpn": "0603B225K160NT",
+   "lcsc": "C43922",
+   "cls": "Extended Parts",
+   "stock": 305720,
+   "tiers": [
+    [
+     20,
+     0.0271
+    ],
+    [
+     200,
+     0.0215
+    ],
+    [
+     600,
+     0.0191
+    ],
+    [
+     4000,
+     0.0158
+    ]
+   ],
+   "rating": "16 V X7R +-10 %, 1.6 x 0.8 x 0.8(+-0.2) mm, -55..125 C",
+   "status": "QUALIFIED",
+   "note": "RB-04B: exact-spec part found by the owner; FH catalogue row verified (2.2 uF / X7R / 16 V / +-10 % / 0603, T 0.80+-0.20 mm). No manufacturer DC-bias curve is published in the FH general-series sheet A0006.",
+   "dcbias": "typ. -10..-25 % at 1.5 V DC (estimate; NO manufacturer curve available -> uncertainty +-10 %)"
+  }
+ },
+ {
+  "spec": "100pF 50V C0G 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C103",
+   "C104",
+   "C203",
+   "C204",
+   "C303",
+   "C304",
+   "C403",
+   "C404"
+  ],
+  "sel": {
+   "mfr": "Samsung Electro-Mechanics",
+   "mpn": "CL10C101JB8NNNC",
+   "lcsc": "C14858",
+   "cls": "not stated on page",
+   "stock": 290550,
+   "tiers": [
+    [
+     50,
+     0.0087
+    ],
+    [
+     500,
+     0.0065
+    ],
+    [
+     1500,
+     0.0056
+    ],
+    [
+     4000,
+     0.0048
+    ]
+   ],
+   "rating": "50 V C0G +-5 %",
+   "status": "QUALIFIED",
+   "note": "C0G: no DC-bias or ageing capacitance change.",
+   "dcbias": "0 % (C0G)"
+  }
+ },
+ {
+  "spec": "10nF 50V C0G 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic or Extended (10 nF C0G - confirm)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C105",
+   "C205",
+   "C305",
+   "C405"
+  ],
+  "sel": {
+   "mfr": "TDK",
+   "mpn": "C1608C0G1H103JT000N",
+   "lcsc": "C76599",
+   "cls": "Extended Parts",
+   "stock": 11740,
+   "tiers": [
+    [
+     20,
+     0.046
+    ],
+    [
+     200,
+     0.0374
+    ],
+    [
+     600,
+     0.0326
+    ],
+    [
+     4000,
+     0.0298
+    ]
+   ],
+   "rating": "50 V C0G +-5 %",
+   "status": "QUALIFIED",
+   "note": "Compliant C0G 10 nF exists (RB-04 report of 'none found' was a search failure). Adds one Extended feeder line.",
+   "dcbias": "0 % (C0G)"
+  }
+ },
+ {
+  "spec": "1.0nF 50V C0G 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C106",
+   "C107",
+   "C206",
+   "C207",
+   "C306",
+   "C307",
+   "C406",
+   "C407"
+  ],
+  "sel": {
+   "mfr": "FH (Guangdong Fenghua)",
+   "mpn": "0603CG102J500NT",
+   "lcsc": "C1636",
+   "cls": "Extended Parts",
+   "stock": 70500,
+   "tiers": [
+    [
+     100,
+     0.0083
+    ],
+    [
+     1000,
+     0.0067
+    ],
+    [
+     4000,
+     0.0054
+    ]
+   ],
+   "rating": "50 V C0G +-5 %",
+   "status": "QUALIFIED",
+   "note": "",
+   "dcbias": "0 % (C0G)"
+  }
+ },
+ {
+  "spec": "22uF 10V X5R 0805 MLCC",
+  "footprint": "C_0805_2012Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C4007"
+  ],
+  "sel": {
+   "mfr": "Samsung Electro-Mechanics",
+   "mpn": "CL21A226MAQNNNE",
+   "lcsc": "C45783",
+   "cls": "not stated on page",
+   "stock": 138860,
+   "tiers": [
+    [
+     20,
+     0.2227
+    ],
+    [
+     200,
+     0.1657
+    ],
+    [
+     600,
+     0.1378
+    ],
+    [
+     2000,
+     0.1129
+    ]
+   ],
+   "rating": "25 V X5R +-20 % (spec 10 V X5R: higher rating, same footprint)",
+   "status": "QUALIFIED",
+   "note": "25 V part instead of 10 V: same dielectric and footprint, less DC-bias loss. +-20 % tolerance as in spec class.",
+   "dcbias": "typ. -20..-40 % at 3.0 V on a 25 V X5R 0805 (estimate; spec role assumes ~10 uF effective)"
+  }
+ },
+ {
+  "spec": "1uF 16V X7R 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C5001",
+   "C6007",
+   "C6008",
+   "C4005",
+   "C4006"
+  ],
+  "sel": {
+   "mfr": "Samsung Electro-Mechanics",
+   "mpn": "CL10B105KO8NNNC",
+   "lcsc": "C59782",
+   "cls": "Extended Parts",
+   "stock": 123400,
+   "tiers": [
+    [
+     50,
+     0.0212
+    ],
+    [
+     500,
+     0.0162
+    ],
+    [
+     1500,
+     0.014
+    ],
+    [
+     4000,
+     0.0124
+    ]
+   ],
+   "rating": "16 V X7R +-10 %",
+   "status": "QUALIFIED",
+   "note": "",
+   "dcbias": "typ. -10..-20 % at 3.0 V (estimate)"
+  }
+ },
+ {
+  "spec": "100nF 16V X7R 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C501",
+   "C502",
+   "C503",
+   "C5002",
+   "C6010",
+   "C7102",
+   "C7103"
+  ],
+  "sel": {
+   "mfr": "YAGEO",
+   "mpn": "CC0603KRX7R9BB104",
+   "lcsc": "C14663",
+   "cls": "Basic (page)",
+   "stock": 4000,
+   "tiers": [
+    [
+     50,
+     0.0141
+    ],
+    [
+     500,
+     0.0107
+    ],
+    [
+     1500,
+     0.0091
+    ],
+    [
+     4000,
+     0.0076
+    ]
+   ],
+   "rating": "50 V X7R +-10 %",
+   "status": "QUALIFIED",
+   "note": "50 V part vs 16 V spec (same footprint, less bias loss). Stock 4,000 only; alternate Samsung CL10B104KB8NNNC C1591 (Extended, 7.8 M stock).",
+   "dcbias": "typ. -0..-10 % at 3.0 V (estimate)"
+  }
+ },
+ {
+  "spec": "220nF 16V X7R 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C6009"
+  ],
+  "sel": {
+   "mfr": "Samsung Electro-Mechanics",
+   "mpn": "CL10B224KO8NNNC",
+   "lcsc": "C160828",
+   "cls": "not stated on page",
+   "stock": 28600,
+   "tiers": [
+    [
+     50,
+     0.0154
+    ],
+    [
+     500,
+     0.0127
+    ],
+    [
+     1500,
+     0.0112
+    ],
+    [
+     4000,
+     0.0102
+    ]
+   ],
+   "rating": "16 V X7R +-10 %",
+   "status": "QUALIFIED",
+   "note": "ADS131M04 CAP pin needs 220 nF (datasheet 10.1); C6009 sits at 1.8 V -> bias loss small.",
+   "dcbias": "typ. -5..-12 % at 1.8 V (estimate)"
+  }
+ },
+ {
+  "spec": "10uF 10V X5R 0603 MLCC",
+  "footprint": "C_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "C7101"
+  ],
+  "sel": {
+   "mfr": "Samsung Electro-Mechanics",
+   "mpn": "CL10A106KP8NNNC",
+   "lcsc": "C19702",
+   "cls": "not stated on page",
+   "stock": 885520,
+   "tiers": [
+    [
+     20,
+     0.0308
+    ],
+    [
+     200,
+     0.0228
+    ],
+    [
+     600,
+     0.0193
+    ],
+    [
+     4000,
+     0.0166
+    ]
+   ],
+   "rating": "10 V X5R +-10 %",
+   "status": "QUALIFIED",
+   "note": "Same as spec.",
+   "dcbias": "typ. -30..-50 % at 3.0 V on a 10 V X5R 0603 (estimate; effective 5-7 uF)"
+  }
+ },
+ {
+  "spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+  "footprint": "SOT-23",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "mfr": "Nexperia",
+  "refs": [
+   "D101",
+   "D102",
+   "D103",
+   "D104",
+   "D201",
+   "D202",
+   "D203",
+   "D204",
+   "D301",
+   "D302",
+   "D303",
+   "D304",
+   "D401",
+   "D402",
+   "D403",
+   "D404"
+  ],
+  "sel": {
+   "mfr": "Nexperia",
+   "mpn": "BAV199,215",
+   "lcsc": "C40919",
+   "cls": "Extended Parts",
+   "stock": 17520,
+   "tiers": [
+    [
+     10,
+     0.0429
+    ],
+    [
+     100,
+     0.0339
+    ],
+    [
+     300,
+     0.0293
+    ],
+    [
+     3000,
+     0.0255
+    ]
+   ],
+   "rating": "85 V, IR 5 nA max @ 75 V (80 nA @ 150 C), Cd 2 pF",
+   "status": "QUALIFIED",
+   "note": "Datasheet read (Nexperia BAV199, 2026-10-11): leakage / capacitance consistent with the HIZ node model.",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "Ferrite bead 600 ohm @ 100 MHz, 0603, >= 200 mA, DCR <= 0.5 ohm",
+  "footprint": "L_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "FB1"
+  ],
+  "sel": {
+   "mfr": "Murata",
+   "mpn": "BLM18AG601SN1D",
+   "lcsc": "C19330",
+   "cls": "Extended",
+   "stock": 400250,
+   "tiers": [
+    [
+     50,
+     0.0128
+    ],
+    [
+     500,
+     0.01
+    ],
+    [
+     1500,
+     0.0087
+    ],
+    [
+     4000,
+     0.0076
+    ]
+   ],
+   "rating": "600 ohm@100 MHz +-25 %, 500 mA, DCR 380 mohm, -55..125 C",
+   "status": "QUALIFIED",
+   "note": "RB-04B: exact-spec fallback made primary. Sunlord GZ1608D601TF C1002 (Basic, 200 mA / 450 mohm = exactly at the limits) has no retrievable LCSC page/stock; swap back (-$3.07 feeder) only if the JLC BOM tool shows stock and the owner accepts zero margin.",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "JST PH 2.0 mm 2-pin side-entry SMD, 2 A / 100 V AC/DC (AWG24), mates PHR-2 + SPH-002T-P0.5S. Pin 1 = BAT+, pin 2 = BAT- by this design; PH is not a polarity standard: verify cell lead polarity before first connection",
+  "footprint": "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+  "mpn": "S2B-PH-SM4-TB(LF)(SN)",
+  "lcsc": "C295747",
+  "jlc_class": "Extended (JLC library type expand); Economic + Standard PCBA; MSL 1",
+  "mfr": "JST",
+  "refs": [
+   "J1"
+  ],
+  "sel": {
+   "mfr": "JST",
+   "mpn": "S2B-PH-SM4-TB(LF)(SN)",
+   "lcsc": "C295747",
+   "cls": "Extended (per project field, page lists Economic+Standard)",
+   "stock": 15180,
+   "tiers": [
+    [
+     5,
+     0.2387
+    ],
+    [
+     50,
+     0.1923
+    ],
+    [
+     150,
+     0.1724
+    ],
+    [
+     1000,
+     0.1475
+    ]
+   ],
+   "rating": "100 V / 2 A, -25..85 C",
+   "status": "QUALIFIED",
+   "note": "datasheet PDF not retrieved",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "JST PH 2.0 mm 2-pin vertical SMD, 2 retention pads",
+  "footprint": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+  "mpn": "B2B-PH-SM4-TB(LF)(SN)",
+  "lcsc": "C160352",
+  "jlc_class": "Extended (expected)",
+  "mfr": "JST",
+  "refs": [
+   "J101",
+   "J201",
+   "J301",
+   "J401",
+   "J5001"
+  ],
+  "sel": {
+   "mfr": "JST",
+   "mpn": "B2B-PH-SM4-TB(LF)(SN)",
+   "lcsc": "C160352",
+   "cls": "Extended (per project field, page lists Economic+Standard)",
+   "stock": 11170,
+   "tiers": [
+    [
+     5,
+     0.2165
+    ],
+    [
+     50,
+     0.1729
+    ],
+    [
+     150,
+     0.1543
+    ],
+    [
+     1000,
+     0.131
+    ]
+   ],
+   "rating": "100 V / 2 A, -25..85 C",
+   "status": "QUALIFIED",
+   "note": "datasheet PDF not retrieved",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "60 V N-MOSFET SOT-23, VGS(th) >= 0.8 V",
+  "footprint": "SOT-23",
+  "mpn": "2N7002",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic, e.g. Nexperia/CJ)",
+  "refs": [
+   "Q3001"
+  ],
+  "sel": {
+   "mfr": "JSCJ (Jiangsu Changjing)",
+   "mpn": "2N7002",
+   "lcsc": "C8545",
+   "cls": "not stated on page",
+   "stock": 665100,
+   "tiers": [
+    [
+     50,
+     0.0179
+    ],
+    [
+     500,
+     0.0143
+    ],
+    [
+     3000,
+     0.0127
+    ]
+   ],
+   "rating": "60 V / 115 mA, VGS(th) <= 2.5 V",
+   "status": "QUALIFIED",
+   "note": "VGS(th) lower bound not read from page; gate drive in the circuit is 3.0-3.3 V.",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R101",
+   "R102",
+   "R201",
+   "R202",
+   "R301",
+   "R302",
+   "R401",
+   "R402",
+   "R5005",
+   "R3006",
+   "R3007",
+   "R7104"
+  ],
+  "sel": {
+   "mfr": "YAGEO",
+   "mpn": "RC0603FR-0710KL",
+   "lcsc": "C98220",
+   "cls": "Extended Parts",
+   "stock": 5076700,
+   "tiers": [
+    [
+     100,
+     0.0034
+    ],
+    [
+     1000,
+     0.0026
+    ],
+    [
+     5000,
+     0.0022
+    ]
+   ],
+   "rating": "+-1 %, 100 mW, 75 V, +-100 ppm/C",
+   "status": "QUALIFIED",
+   "note": "Preferred Basic Uniroyal 0603WAF1002T5E C25804 is out of stock at LCSC; if JLC shows stock, switch to it (saves one feeder fee).",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R103",
+   "R104",
+   "R203",
+   "R204",
+   "R303",
+   "R304",
+   "R403",
+   "R404",
+   "R5003",
+   "R5004",
+   "R3004",
+   "R3008",
+   "R7103",
+   "R7105"
+  ],
+  "sel": {
+   "mfr": "UNI-ROYAL",
+   "mpn": "0603WAF1003T5E",
+   "lcsc": "C25803",
+   "cls": "not stated on page",
+   "stock": 11913200,
+   "tiers": [
+    [
+     100,
+     0.0031
+    ],
+    [
+     1000,
+     0.0024
+    ],
+    [
+     5000,
+     0.0021
+    ]
+   ],
+   "rating": "+-1 %, 100 mW, 75 V",
+   "status": "QUALIFIED",
+   "note": "",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "10M \u00b15% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R105",
+   "R106",
+   "R205",
+   "R206",
+   "R305",
+   "R306",
+   "R405",
+   "R406"
+  ],
+  "sel": {
+   "mfr": "YAGEO",
+   "mpn": "RC0603FR-0710ML",
+   "lcsc": "C114606",
+   "cls": "not stated on page",
+   "stock": 823600,
+   "tiers": [
+    [
+     100,
+     0.005
+    ],
+    [
+     1000,
+     0.0044
+    ],
+    [
+     5000,
+     0.0041
+    ]
+   ],
+   "rating": "+-1 %, 100 mW, 75 V (spec +-5 %: tighter)",
+   "status": "QUALIFIED",
+   "note": "Uniroyal 10M C7250 out of stock.",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "1.0k \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R107",
+   "R108",
+   "R207",
+   "R208",
+   "R307",
+   "R308",
+   "R407",
+   "R408"
+  ],
+  "sel": {
+   "mfr": "UNI-ROYAL",
+   "mpn": "0603WAF1001T5E",
+   "lcsc": "C21190",
+   "cls": "not stated on page",
+   "stock": 1645900,
+   "tiers": [
+    [
+     100,
+     0.0026
+    ],
+    [
+     1000,
+     0.0021
+    ],
+    [
+     5000,
+     0.0018
+    ]
+   ],
+   "rating": "+-1 %, 100 mW, 75 V",
+   "status": "QUALIFIED",
+   "note": "",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "4.7k \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R3009"
+  ],
+  "sel": {
+   "mfr": "UNI-ROYAL",
+   "mpn": "0603WAF4701T5E",
+   "lcsc": "C23162",
+   "cls": "not stated on page",
+   "stock": 8483200,
+   "tiers": [
+    [
+     100,
+     0.0028
+    ],
+    [
+     1000,
+     0.0023
+    ],
+    [
+     5000,
+     0.002
+    ]
+   ],
+   "rating": "+-1 %, 100 mW, 75 V",
+   "status": "QUALIFIED",
+   "note": "",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "4.7 \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R4001"
+  ],
+  "sel": {
+   "mfr": "YAGEO",
+   "mpn": "RC0603FR-074R7L",
+   "lcsc": "C137705",
+   "cls": "not stated on page",
+   "stock": 19100,
+   "tiers": [
+    [
+     100,
+     0.0077
+    ],
+    [
+     1000,
+     0.0066
+    ],
+    [
+     5000,
+     0.0059
+    ]
+   ],
+   "rating": "+-1 %, 100 mW, 75 V, +-200 ppm/C",
+   "status": "QUALIFIED",
+   "note": "Uniroyal 4.7R and Meritek CR164R70F out of stock; stock 19,100.",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "100k \u00b11% 0805 thick film, >=1/10 W, 0805 for creepage",
+  "footprint": "R_0805_2012Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R5002"
+  ],
+  "sel": {
+   "mfr": "UNI-ROYAL",
+   "mpn": "0805W8F1003T5E",
+   "lcsc": "C149504",
+   "cls": "not stated on page",
+   "stock": 2011500,
+   "tiers": [
+    [
+     100,
+     0.006
+    ],
+    [
+     1000,
+     0.0047
+    ],
+    [
+     5000,
+     0.0041
+    ]
+   ],
+   "rating": "+-1 %, 125 mW, 150 V",
+   "status": "QUALIFIED",
+   "note": "0805 kept for creepage (R5002).",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "33 \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R6001",
+   "R6002",
+   "R7101",
+   "R7102"
+  ],
+  "sel": {
+   "mfr": "UNI-ROYAL",
+   "mpn": "0603WAF330JT5E",
+   "lcsc": "C23140",
+   "cls": "not stated on page",
+   "stock": 2943400,
+   "tiers": [
+    [
+     100,
+     0.0025
+    ],
+    [
+     1000,
+     0.002
+    ],
+    [
+     5000,
+     0.0017
+    ]
+   ],
+   "rating": "+-1 %, 100 mW, 75 V",
+   "status": "QUALIFIED",
+   "note": "",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "100 \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R6003"
+  ],
+  "sel": {
+   "mfr": "UNI-ROYAL",
+   "mpn": "0603WAF1000T5E",
+   "lcsc": "C22775",
+   "cls": "not stated on page",
+   "stock": 1944100,
+   "tiers": [
+    [
+     100,
+     0.0032
+    ],
+    [
+     1000,
+     0.0025
+    ],
+    [
+     5000,
+     0.0022
+    ]
+   ],
+   "rating": "+-1 %, 100 mW, 75 V",
+   "status": "QUALIFIED",
+   "note": "",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "150k \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R7106"
+  ],
+  "sel": {
+   "mfr": "UNI-ROYAL",
+   "mpn": "0603WAF1503T5E",
+   "lcsc": "C22807",
+   "cls": "not stated on page",
+   "stock": 502100,
+   "tiers": [
+    [
+     100,
+     0.0045
+    ],
+    [
+     1000,
+     0.0034
+    ],
+    [
+     5000,
+     0.0029
+    ]
+   ],
+   "rating": "+-1 %, 100 mW, 75 V",
+   "status": "QUALIFIED",
+   "note": "",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "1M \u00b11% 0603 thick film, >=1/10 W",
+  "footprint": "R_0603_1608Metric",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "mfr": "Any (JLC Basic)",
+  "refs": [
+   "R7107",
+   "R7108"
+  ],
+  "sel": {
+   "mfr": "UNI-ROYAL",
+   "mpn": "0603WAF1004T5E",
+   "lcsc": "C22935",
+   "cls": "not stated on page",
+   "stock": 3185200,
+   "tiers": [
+    [
+     100,
+     0.002
+    ],
+    [
+     1000,
+     0.0015
+    ],
+    [
+     5000,
+     0.0013
+    ]
+   ],
+   "rating": "+-1 %, 100 mW, 75 V",
+   "status": "QUALIFIED",
+   "note": "",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "Bare B.Cu pad, no via-in-pad, not assembled (size provisional, final at RB-02)",
+  "footprint": "TestPoint_Pad_D1.5mm",
+  "mpn": "N/A (bare copper pad)",
+  "lcsc": null,
+  "jlc_class": "N/A (not assembled)",
+  "mfr": "N/A (PCB feature)",
+  "refs": [
+   "TP4",
+   "TP5",
+   "TP7",
+   "TP1",
+   "TP2",
+   "TP6",
+   "TP3",
+   "TP8"
+  ],
+  "sel": null
+ },
+ {
+  "spec": "ESP32-S3 module, 21.0 x 17.8 mm, castellated. Headers NOT fitted",
+  "footprint": "XIAO_ESP32S3_HANDSOLDER",
+  "mpn": "Seeed PN 202003751 (XIAO ESP32S3 plain, v1.4, unsoldered-header version)",
+  "lcsc": null,
+  "jlc_class": "N/A - DNP at JLC (bought retail, hand-soldered)",
+  "mfr": "Seeed Studio",
+  "refs": [
+   "U1"
+  ],
+  "sel": null
+ },
+ {
+  "spec": "3.0 V 300 mA LDO, active discharge, SOT-23-5",
+  "footprint": "SOT-23-5",
+  "mpn": "TPS7A2030PDBVR",
+  "lcsc": null,
+  "jlc_class": "Extended (expected)",
+  "mfr": "Texas Instruments",
+  "refs": [
+   "U4002"
+  ],
+  "sel": {
+   "mfr": "Texas Instruments",
+   "mpn": "TPS7A2030PDBVR",
+   "lcsc": "C963429",
+   "cls": "not stated on page (page: Economic and Standard)",
+   "stock": 1880,
+   "tiers": [
+    [
+     5,
+     0.2332
+    ],
+    [
+     50,
+     0.1831
+    ],
+    [
+     150,
+     0.1586
+    ],
+    [
+     500,
+     0.1368
+    ]
+   ],
+   "rating": "300 mA, 140 mV dropout, EN 0.3/0.9 V, IQ 6.5 uA",
+   "status": "QUALIFIED",
+   "note": "Datasheet SBVS tps7a20 read 2026-10-11 (EN thresholds, IQ).",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "Quad RRIO op-amp TSSOP-14",
+  "footprint": "TSSOP-14_4.4x5mm_P0.65mm",
+  "mpn": "TLV9064IPWR",
+  "lcsc": null,
+  "jlc_class": "Extended (expected)",
+  "mfr": "Texas Instruments",
+  "refs": [
+   "U501",
+   "U502",
+   "U503"
+  ],
+  "sel": {
+   "mfr": "Texas Instruments",
+   "mpn": "TLV9064IPWR",
+   "lcsc": "C779410",
+   "cls": "Extended",
+   "stock": 18770,
+   "tiers": [
+    [
+     5,
+     0.3927
+    ],
+    [
+     50,
+     0.3075
+    ],
+    [
+     150,
+     0.2709
+    ],
+    [
+     500,
+     0.2145
+    ]
+   ],
+   "rating": "1.8-5.5 V, en 16 nV/rtHz @1 kHz, IB 0.5 pA, -40..125 C",
+   "status": "QUALIFIED",
+   "note": "",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "4-ch 24-bit simultaneous delta-sigma ADC, TSSOP-20",
+  "footprint": "TSSOP-20_4.4x6.5mm_P0.65mm",
+  "mpn": "ADS131M04IPWR",
+  "lcsc": null,
+  "jlc_class": "Extended (expected)",
+  "mfr": "Texas Instruments",
+  "refs": [
+   "U6001"
+  ],
+  "sel": {
+   "mfr": "Texas Instruments",
+   "mpn": "ADS131M04IPWR",
+   "lcsc": "C2862562",
+   "cls": "Extended",
+   "stock": 1717,
+   "tiers": [
+    [
+     1,
+     4.69
+    ],
+    [
+     10,
+     4.18
+    ],
+    [
+     30,
+     3.85
+    ],
+    [
+     100,
+     3.54
+    ]
+   ],
+   "rating": "-40..125 C, AIN abs -1.6 V .. AVDD+0.3 V",
+   "status": "QUALIFIED",
+   "note": "Datasheet SBAS890D read.",
+   "dcbias": "n/a"
+  }
+ },
+ {
+  "spec": "8.192 MHz CMOS XO, 1.62-3.63 V, +/-20 ppm @25C, +/-30 ppm -40..85C, 45-55 % duty, Icc <= 10 mA (15 pF), tstart <= 5 ms, SMD3225-4P",
+  "footprint": "OSC_SCTF_SX3M_SMD3225-4P",
+  "mpn": "SX3M8.192M20F30TNN",
+  "lcsc": "C2901557",
+  "jlc_class": "Extended (JLC library type expand); Economic + Standard PCBA; MSL 1",
+  "mfr": "SCTF (Shenzhen SCTF Elec)",
+  "refs": [
+   "X1"
+  ],
+  "sel": {
+   "mfr": "SCTF (Asian Brands)",
+   "mpn": "SX3M8.192M20F30TNN",
+   "lcsc": "C2901557",
+   "cls": "Extended (per project field)",
+   "stock": 1658,
+   "tiers": [
+    [
+     1,
+     0.3482
+    ],
+    [
+     10,
+     0.3071
+    ],
+    [
+     30,
+     0.2891
+    ],
+    [
+     100,
+     0.2661
+    ]
+   ],
+   "rating": "1.62-3.63 V, +-20 ppm @25 C, -40..85 C",
+   "status": "QUALIFIED",
+   "note": "datasheet PDF not retrievable",
+   "dcbias": "n/a"
+  }
+ }
+]

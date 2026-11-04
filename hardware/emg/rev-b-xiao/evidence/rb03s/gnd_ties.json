@@ -1,0 +1,357 @@
+[
+ {
+  "pad": "C306.2",
+  "nearest_gnd_via_mm": 4.23,
+  "fcu_gnd_component_mm": 2.97
+ },
+ {
+  "pad": "C206.2",
+  "nearest_gnd_via_mm": 4.04,
+  "fcu_gnd_component_mm": 2.97
+ },
+ {
+  "pad": "R303.2",
+  "nearest_gnd_via_mm": 3.84,
+  "fcu_gnd_component_mm": 4.72
+ },
+ {
+  "pad": "R7106.2",
+  "nearest_gnd_via_mm": 3.63,
+  "fcu_gnd_component_mm": 5.82
+ },
+ {
+  "pad": "C207.2",
+  "nearest_gnd_via_mm": 3.49,
+  "fcu_gnd_component_mm": 1.47
+ },
+ {
+  "pad": "C107.2",
+  "nearest_gnd_via_mm": 2.96,
+  "fcu_gnd_component_mm": 4.95
+ },
+ {
+  "pad": "U1.13",
+  "nearest_gnd_via_mm": 2.91,
+  "fcu_gnd_component_mm": 6.64
+ },
+ {
+  "pad": "U502.11",
+  "nearest_gnd_via_mm": 2.85,
+  "fcu_gnd_component_mm": 4.01
+ },
+ {
+  "pad": "C307.2",
+  "nearest_gnd_via_mm": 2.78,
+  "fcu_gnd_component_mm": 6.62
+ },
+ {
+  "pad": "R3004.2",
+  "nearest_gnd_via_mm": 2.24,
+  "fcu_gnd_component_mm": 7.2
+ },
+ {
+  "pad": "J1.2",
+  "nearest_gnd_via_mm": 2.16,
+  "fcu_gnd_component_mm": 2.35
+ },
+ {
+  "pad": "U4002.2",
+  "nearest_gnd_via_mm": 1.64,
+  "fcu_gnd_component_mm": 1.69
+ },
+ {
+  "pad": "C106.2",
+  "nearest_gnd_via_mm": 1.48,
+  "fcu_gnd_component_mm": 4.95
+ },
+ {
+  "pad": "U503.11",
+  "nearest_gnd_via_mm": 1.47,
+  "fcu_gnd_component_mm": 1.81
+ },
+ {
+  "pad": "C7102.2",
+  "nearest_gnd_via_mm": 1.42,
+  "fcu_gnd_component_mm": 6.64
+ },
+ {
+  "pad": "C407.2",
+  "nearest_gnd_via_mm": 1.42,
+  "fcu_gnd_component_mm": 6.62
+ },
+ {
+  "pad": "R3008.2",
+  "nearest_gnd_via_mm": 1.37,
+  "fcu_gnd_component_mm": 7.2
+ },
+ {
+  "pad": "D204.1",
+  "nearest_gnd_via_mm": 1.36,
+  "fcu_gnd_component_mm": 1.36
+ },
+ {
+  "pad": "U6001.2",
+  "nearest_gnd_via_mm": 1.36,
+  "fcu_gnd_component_mm": 1.39
+ },
+ {
+  "pad": "U6001.19",
+  "nearest_gnd_via_mm": 1.36,
+  "fcu_gnd_component_mm": 1.39
+ },
+ {
+  "pad": "U501.11",
+  "nearest_gnd_via_mm": 1.31,
+  "fcu_gnd_component_mm": 1.31
+ },
+ {
+  "pad": "C4007.2",
+  "nearest_gnd_via_mm": 1.2,
+  "fcu_gnd_component_mm": 2.58
+ },
+ {
+  "pad": "Q3001.2",
+  "nearest_gnd_via_mm": 1.17,
+  "fcu_gnd_component_mm": 1.26
+ },
+ {
+  "pad": "D404.1",
+  "nearest_gnd_via_mm": 1.15,
+  "fcu_gnd_component_mm": 1.34
+ },
+ {
+  "pad": "X1.2",
+  "nearest_gnd_via_mm": 1.02,
+  "fcu_gnd_component_mm": 1.17
+ },
+ {
+  "pad": "C6007.2",
+  "nearest_gnd_via_mm": 1.02,
+  "fcu_gnd_component_mm": 1.18
+ },
+ {
+  "pad": "C5002.2",
+  "nearest_gnd_via_mm": 0.99,
+  "fcu_gnd_component_mm": 1.72
+ },
+ {
+  "pad": "C6010.2",
+  "nearest_gnd_via_mm": 0.99,
+  "fcu_gnd_component_mm": 1.72
+ },
+ {
+  "pad": "C502.2",
+  "nearest_gnd_via_mm": 0.99,
+  "fcu_gnd_component_mm": 1.72
+ },
+ {
+  "pad": "C4005.2",
+  "nearest_gnd_via_mm": 0.98,
+  "fcu_gnd_component_mm": 1.28
+ },
+ {
+  "pad": "C303.2",
+  "nearest_gnd_via_mm": 0.97,
+  "fcu_gnd_component_mm": 1.73
+ },
+ {
+  "pad": "C403.2",
+  "nearest_gnd_via_mm": 0.97,
+  "fcu_gnd_component_mm": 1.73
+ },
+ {
+  "pad": "C7103.2",
+  "nearest_gnd_via_mm": 0.97,
+  "fcu_gnd_component_mm": 1.27
+ },
+ {
+  "pad": "C6008.2",
+  "nearest_gnd_via_mm": 0.97,
+  "fcu_gnd_component_mm": 1.27
+ },
+ {
+  "pad": "C203.2",
+  "nearest_gnd_via_mm": 0.97,
+  "fcu_gnd_component_mm": 1.73
+ },
+ {
+  "pad": "C204.2",
+  "nearest_gnd_via_mm": 0.97,
+  "fcu_gnd_component_mm": 1.73
+ },
+ {
+  "pad": "C103.2",
+  "nearest_gnd_via_mm": 0.97,
+  "fcu_gnd_component_mm": 1.73
+ },
+ {
+  "pad": "C404.2",
+  "nearest_gnd_via_mm": 0.97,
+  "fcu_gnd_component_mm": 1.73
+ },
+ {
+  "pad": "C5001.2",
+  "nearest_gnd_via_mm": 0.96,
+  "fcu_gnd_component_mm": 1.68
+ },
+ {
+  "pad": "C4006.2",
+  "nearest_gnd_via_mm": 0.96,
+  "fcu_gnd_component_mm": 1.73
+ },
+ {
+  "pad": "C501.2",
+  "nearest_gnd_via_mm": 0.96,
+  "fcu_gnd_component_mm": 1.58
+ },
+ {
+  "pad": "R104.2",
+  "nearest_gnd_via_mm": 0.96,
+  "fcu_gnd_component_mm": 1.23
+ },
+ {
+  "pad": "C503.2",
+  "nearest_gnd_via_mm": 0.96,
+  "fcu_gnd_component_mm": 1.68
+ },
+ {
+  "pad": "R103.2",
+  "nearest_gnd_via_mm": 0.96,
+  "fcu_gnd_component_mm": 1.23
+ },
+ {
+  "pad": "R203.2",
+  "nearest_gnd_via_mm": 0.96,
+  "fcu_gnd_component_mm": 1.23
+ },
+ {
+  "pad": "C104.2",
+  "nearest_gnd_via_mm": 0.95,
+  "fcu_gnd_component_mm": 1.62
+ },
+ {
+  "pad": "R5004.2",
+  "nearest_gnd_via_mm": 0.94,
+  "fcu_gnd_component_mm": 1.73
+ },
+ {
+  "pad": "R304.2",
+  "nearest_gnd_via_mm": 0.93,
+  "fcu_gnd_component_mm": 4.72
+ },
+ {
+  "pad": "C7101.2",
+  "nearest_gnd_via_mm": 0.92,
+  "fcu_gnd_component_mm": 6.64
+ },
+ {
+  "pad": "R403.2",
+  "nearest_gnd_via_mm": 0.92,
+  "fcu_gnd_component_mm": 1.67
+ },
+ {
+  "pad": "R404.2",
+  "nearest_gnd_via_mm": 0.92,
+  "fcu_gnd_component_mm": 1.67
+ },
+ {
+  "pad": "R204.2",
+  "nearest_gnd_via_mm": 0.91,
+  "fcu_gnd_component_mm": 1.02
+ },
+ {
+  "pad": "R3009.2",
+  "nearest_gnd_via_mm": 0.91,
+  "fcu_gnd_component_mm": 0.98
+ },
+ {
+  "pad": "C406.2",
+  "nearest_gnd_via_mm": 0.9,
+  "fcu_gnd_component_mm": 6.62
+ },
+ {
+  "pad": "D304.1",
+  "nearest_gnd_via_mm": 0.84,
+  "fcu_gnd_component_mm": 1.16
+ },
+ {
+  "pad": "D403.1",
+  "nearest_gnd_via_mm": 0.84,
+  "fcu_gnd_component_mm": 1.16
+ },
+ {
+  "pad": "D203.1",
+  "nearest_gnd_via_mm": 0.84,
+  "fcu_gnd_component_mm": 1.16
+ },
+ {
+  "pad": "D104.1",
+  "nearest_gnd_via_mm": 0.84,
+  "fcu_gnd_component_mm": 1.16
+ },
+ {
+  "pad": "R7108.2",
+  "nearest_gnd_via_mm": 0.83,
+  "fcu_gnd_component_mm": 2.58
+ },
+ {
+  "pad": "D401.1",
+  "nearest_gnd_via_mm": 0.82,
+  "fcu_gnd_component_mm": 1.09
+ },
+ {
+  "pad": "D201.1",
+  "nearest_gnd_via_mm": 0.82,
+  "fcu_gnd_component_mm": 1.09
+ },
+ {
+  "pad": "C304.2",
+  "nearest_gnd_via_mm": 0.8,
+  "fcu_gnd_component_mm": 0.87
+ },
+ {
+  "pad": "C6009.2",
+  "nearest_gnd_via_mm": 0.77,
+  "fcu_gnd_component_mm": 15.21
+ },
+ {
+  "pad": "D202.1",
+  "nearest_gnd_via_mm": 0.76,
+  "fcu_gnd_component_mm": 1.39
+ },
+ {
+  "pad": "D101.1",
+  "nearest_gnd_via_mm": 0.76,
+  "fcu_gnd_component_mm": 1.39
+ },
+ {
+  "pad": "D402.1",
+  "nearest_gnd_via_mm": 0.76,
+  "fcu_gnd_component_mm": 1.39
+ },
+ {
+  "pad": "D102.1",
+  "nearest_gnd_via_mm": 0.76,
+  "fcu_gnd_component_mm": 1.39
+ },
+ {
+  "pad": "D302.1",
+  "nearest_gnd_via_mm": 0.75,
+  "fcu_gnd_component_mm": 1.49
+ },
+ {
+  "pad": "D301.1",
+  "nearest_gnd_via_mm": 0.75,
+  "fcu_gnd_component_mm": 1.59
+ },
+ {
+  "pad": "D303.1",
+  "nearest_gnd_via_mm": 0.7,
+  "fcu_gnd_component_mm": 0.74
+ },
+ {
+  "pad": "D103.1",
+  "nearest_gnd_via_mm": 0.7,
+  "fcu_gnd_component_mm": 0.74
+ }
+]

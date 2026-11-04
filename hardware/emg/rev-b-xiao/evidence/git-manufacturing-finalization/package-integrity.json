@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "checked_git_HEAD": "5fc29db590e354c53feb4cb83e38dce1886db6a3",
+  "manifest_bound_files_and_git_blobs": 91,
+  "manifest_source_files": 27,
+  "manifest_and_bundle_checksums": "PASS",
+  "bundle_members_match_disk": true,
+  "BOM_groups": 28,
+  "factory_references": 126,
+  "horizontal_JST_references": [
+    "J1",
+    "J101",
+    "J201",
+    "J301",
+    "J401",
+    "J5001"
+  ],
+  "exclusions": [
+    "U1",
+    "TP1-TP8"
+  ],
+  "explicit_quantity_total_per_board": 126,
+  "explicit_quantity_total_two_assembled": 252,
+  "CPL_unique_top_placements": 126,
+  "gerber_drill_members": 11,
+  "drill_hits": 192,
+  "fresh_export_comparison": "PASS: CSV rows identical; all 11 plot/drill members identical except generation timestamps",
+  "manufacturing_package": "NOT_RELEASED_PENDING_FACTORY_APPROVAL",
+  "production_approved": false,
+  "human_contact_approved": false,
+  "authority": "Current committed schematic/PCB plus hash-bound package; historical manifest git_HEAD records pre-commit provenance"
+}

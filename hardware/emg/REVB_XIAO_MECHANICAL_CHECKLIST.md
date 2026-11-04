@@ -2,7 +2,7 @@
 
 Zero-cost physical validation: no test PCB. **All "before order" items must pass before the RB-03 Gerber order.** Record the measured values in the table.
 
-## A. Print verification — [XIAO_MOUNTING_1TO1.pdf](XIAO_MOUNTING_1TO1.pdf) page 1
+## A. Print verification — [XIAO_MOUNTING_1TO1.pdf](XIAO_MOUNTING_1TO1.pdf) page 1 (**[RB-02]** or the CAD-derived [XIAO_RB02A_CAD_1TO1.pdf](XIAO_RB02A_CAD_1TO1.pdf), which has the same P1–P3 scale references)
 
 | # | Check | Pass criterion | Result |
 |---|---|---|---|
@@ -11,20 +11,22 @@ Zero-cost physical validation: no test PCB. **All "before order" items must pass
 | P3 | 50 × 50 mm square, both axes | 50.0 ± 0.3 mm each | |
 | P4 | Board outline | 75.0 × 32.0 ± 0.3 mm | |
 
-## B. Real-part measurements (caliper), 2 modules
+## B. Real-part measurements (caliper), **one module is sufficient [RB-02A decision]; needed before the Gerber order, not before placement**
 
 | # | Feature | Expected (Seeed data) | Module 1 | Module 2 |
 |---|---|---|---|---|
 | M1 | Width across castellation edges | 17.78 ± 0.15 | | |
-| M2 | Length (USB end to far end, excl. USB-C overhang) | 21.02 ± 0.15 | | |
+| M2 | Length (USB end to far end, excl. USB-C overhang) | **21.135** ± 0.15 [RB-02, D-1] | | |
 | M3 | USB-C overhang past the module end | 1.51 ± 0.2 | | |
 | M4 | **XIAO PCB thickness** (sets fillet height) | record (expect 1.0–1.2) | | |
 | M5 | Castellation pitch over 6 pitches (pin 1 → pin 7) | 15.24 ± 0.10 | | |
-| M6 | BAT+ pad centre from the far end / from the D0–D6 edge | 10.88 / 4.45 ± 0.15 | | |
-| M7 | BAT− (GND0) centre, same references | 12.79 / 4.45 ± 0.15 | | |
-| M8 | U.FL centre from the far end / from the D0–D6 edge | 1.64 / 4.07 ± 0.3 | | |
+| M6 | BAT+ pad centre from the far end / from the D0–D6 edge | **10.975** / 4.445 ± 0.15 [RB-02, D-7] (10.160 from the USB edge) | | |
+| M7 | BAT− (GND0) centre, same references | **12.880** / 4.445 ± 0.15 [RB-02, D-7] (8.255 from the USB edge) | | |
+| M8 | U.FL centre from the far end / from the D0–D6 edge | **1.729** / 4.039 ± 0.3 [RB-02, D-7] | | |
 | M9 | Underside flatness (straight edge): no components, no protrusions > 0.1 mm | flat | | |
-| M10 | Board revision silk / label; Sense B2B connector **not** populated; 470 nH inductor present | record | | |
+| M10 | Board revision silk / label; **B2B connector is expected to be POPULATED on the plain module [RB-02, D-6]**; 470 nH inductor present | record | | |
+| M11 | **[RB-02, D-3]** Four USB-C shell THT ovals visible on the underside (GND, 1.78 × 0.89) at 4.57 / 13.21 mm from the D0–D6 edge, 1.08 / 5.27 mm from the USB edge | present / absent | | |
+| M12 | **[RB-02, D-2]** Castellation copper width along the edge (caliper on one pad) | 1.63 ± 0.1 | | |
 
 ## C. Paper fit check (real XIAO on the 1:1 print)
 
@@ -60,4 +62,4 @@ Zero-cost physical validation: no test PCB. **All "before order" items must pass
 | G4 | F.Cu keep-outs under exposed module pads 15–22, 25 and GND0 are present and DRC-enforced |
 | G5 | Height bands west of the toes respected (none < 1.5 mm; ≤ 1.2 mm tall within 1.5–4.0 mm) |
 | G6 | Module USB end at the board edge 0…+0.2 mm; copper-to-edge ≥ 0.5 mm elsewhere (east toes 0.92) |
-| G7 | Re-generate `XIAO_MOUNTING_1TO1.pdf` from the final PCB coordinates and repeat sections A and C before ordering |
+| G7 | Re-generate the 1:1 drawing from the final PCB coordinates (`tools/rb02a_make_1to1.py`) and repeat sections A and C before ordering |

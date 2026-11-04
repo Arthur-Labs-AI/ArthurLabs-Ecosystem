@@ -1,0 +1,36 @@
+{
+  "root_GLB": "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.glb",
+  "sha256": "a3fc6565e5afc56a29977252a157da9965e6159555863a16029a0a68c81a8d3f",
+  "asset": {
+    "generator": "Open CASCADE Technology 7.9 [dev.opencascade.org]",
+    "version": "2.0",
+    "extras": {
+      "pcb_name": "ARTHUR_EMG_RevB",
+      "source_pcb_file": "ARTHUR_EMG_RevB.glb",
+      "generator": "KiCad 10.0.6",
+      "generated_at": "2026-10-15T13:42:10"
+    }
+  },
+  "mesh_count": 6,
+  "bounds_m": [
+    [
+      -2.6645352591003758e-18,
+      0.0513
+    ],
+    [
+      -7.500000000000001e-05,
+      0.0015912
+    ],
+    [
+      0.0,
+      0.06495000000000001
+    ]
+  ],
+  "interpretation": "Board/layer export; no identifiable JST component model and no 5.5 mm above-board housing geometry. It predates current validation.",
+  "KICAD10_3DMODEL_DIR": "UNSET",
+  "referenced_STEP": "${KICAD10_3DMODEL_DIR}/Connector_JST.3dshapes/JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal.step",
+  "referenced_STEP_located": false,
+  "other_local_3D": "Curated board-only GLB and explicitly simplified connector-envelope/nominal-bounds WRLs. These have no qualified cavities, terminals or pin numbering.",
+  "manufacturer_STEP_available": false,
+  "orientation_from_manufacturer_3D_verified": false
+}

@@ -68,7 +68,7 @@ The XIAO provides MCU, BLE/Wi-Fi, USB-C, LiPo charging, 3V3 regulation and firmw
 | Followers | U501, U502 TLV9064 (8 unity followers) | AFE_3V0 |
 | AC coupling / AAF | 2.2 µF → 100 k to GND → 1 k → 1 nF CM ×2 + 10 nF diff | — |
 | ADC | U6001 ADS131M04, AVDD 1 µF, DVDD 1 µF, CAP 220 nF | AVDD=AFE_3V0, DVDD=DVDD_F |
-| Clock | X1 **YXC OT2JI-111-8.192M (JLC C7425393)**, 3225, OE (pin 1) tied to DVDD_F → 33 Ω → CLKIN | DVDD_F |
+| Clock | X1 **SCTF SX3M8.192M20F30TNN (JLC C2901557; RB-01R, replaces the RB-00.5 YXC part)**, 3225, OE (pin 1) tied to DVDD_F → 33 Ω → CLKIN | DVDD_F |
 | VCM/bias electrode | 100 k/100 k divider (C5001/C5002 at the node) → **10 k** → U503A +IN follower → VCM; 100 k → RLD_SAFE → J5001 pin 2 (**pin 1 NC**) | AFE_3V0 |
 | AFE LDO | VBAT → 4.7 Ω + 22 µF → TPS7A2030PDBVR → AFE_3V0 | VBAT |
 | DVDD filter | XIAO 3V3 → ferrite (600 Ω@100 MHz, 0603) → 10 µF + 100 nF → DVDD_F | 3V3 |
@@ -194,9 +194,9 @@ Hard rules:
 | R1 | XIAO 5V pin voltage on battery only | **Mitigated by design** (4.7 k load, RB-00.5); confirm < 0.5 V at bring-up | — |
 | R2 | BLE-interval noise lines in band | Bench prototype: Rev A AFE on battery + XIAO on the same ground; FFT | Product claims |
 | R3 | Seeed footprint / bottom pads / JLC part | Footprint frozen (official `XIAO-ESP32-S3-SMD`, 25 pads verified). JLC C9900124959 not used (0 stock, MOQ 445). **Residual:** Seeed's plain-v1.4 files are unobtainable (the link serves Sense v1.5); verify purchased modules at incoming inspection | RB-02 layout freeze |
-| R4 | Oscillator | **Closed**: YXC OT2JI-111-8.192M, C7425393 | — |
+| R4 | Oscillator | **Closed (RB-01R)**: SCTF SX3M8.192M20F30TNN, C2901557 | no absolute-maximum table published; verify frequency/marking on the first reel |
 | R5 | J5001 pin 1 = GND | **Closed**: pin 1 NC | — |
-| R6 | ADC-input power-down transient | **Closed**: 8 × BAV199 negative clamps at AIN (≥ −1.04 V worst case) + 10 k at U503A +IN. PGA gain ≥ 4 contract | — |
+| R6 | ADC-input power-down transient | **Closed**: 8 × BAV199 negative clamps at AIN (≥ −1.09 V worst case, RB-01R) + 10 k at U503A +IN. No gain restriction (RB-01R withdrew "PGA gain ≥ 4") | — |
 | R7 | Charging: 50 mA, no NTC | Cell with PCM; accept or add an external charger (out of scope) | Product |
 | R8 | ESP32-S3 battery life (~3× nRF) | Firmware power budget | Product |
 | R9 | Module revision drift | Folded into R3 (incoming inspection + Seeed file request). 0 Ω option to feed the LDO from 3V3 kept | RB-02 |

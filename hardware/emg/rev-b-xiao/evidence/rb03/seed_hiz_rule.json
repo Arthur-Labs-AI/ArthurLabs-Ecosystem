@@ -1,0 +1,30 @@
+{
+ "outside_TLV9064_courtyards (rule must fire)": {
+  "segment": [
+   "/CH2/HIZ_P",
+   27.7,
+   13.8,
+   27.7,
+   11.3
+  ],
+  "offset_centre_mm": [
+   -0.4,
+   0.0
+  ],
+  "hiz_leakage_violations": 1
+ },
+ "inside_TLV9064_courtyards (rule exempt)": {
+  "segment": [
+   "/CH4/HIZ_N",
+   6.6,
+   23.2,
+   6.6,
+   17.6
+  ],
+  "offset_centre_mm": [
+   0.4,
+   0.0
+  ],
+  "hiz_leakage_violations": 0
+ }
+}

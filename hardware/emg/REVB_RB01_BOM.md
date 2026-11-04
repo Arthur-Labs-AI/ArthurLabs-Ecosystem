@@ -1,4 +1,6 @@
-# A.R.T.H.U.R EMG Rev B — RB-01 BOM
+# A.R.T.H.U.R EMG Rev B — RB-01 BOM (updated in RB-01R, 2026-10-10)
+
+> RB-01R changes: X1 = SCTF SX3M8.192M20F30TNN (C2901557) replaces the YXC part; J1 MPN frozen (S2B-PH-SM4-TB(LF)(SN), C295747); LCSC C160352 added to the five B2B electrode connectors. BOM re-exported with `kicad-cli sch export bom` (30 lines, 126 assembled + 1 DNP, unchanged counts).
 
 Source: `kicad-cli sch export bom` on `hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_sch`, grouped by Value + Footprint + MPN + DNP (10.0.6).
 **Prices are not re-quoted in RB-01**; see REVB_COST_MODEL.md. No component was substituted to reduce cost.
@@ -12,11 +14,11 @@ Source: `kicad-cli sch export bom` on `hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_
 | **DNP** | **1** (U1 XIAO ESP32S3: bought retail, hand-soldered per REVB_XIAO_ASSEMBLY_PROCEDURE.md) |
 | Bare test pads (not in BOM, not in CPL) | 8 (TP1–TP8) |
 | BOM lines | 30 (29 populated + 1 DNP) |
-| **Unique exact MPNs (populated)** | **8**: ADS131M04IPWR, TLV9064IPWR, TPS7A2030PDBVR, OT2JI-111-8.192M, BAV199, B2B-PH-SM4-TB(LF)(SN), S2B-PH-SM4-TB(LF)(SN) *(provisional)*, 2N7002 *(generic MPN, any maker)*. Plus Seeed 202003751 (DNP) |
+| **Unique exact MPNs (populated)** | **8**: ADS131M04IPWR, TLV9064IPWR, TPS7A2030PDBVR, SX3M8.192M20F30TNN, BAV199, B2B-PH-SM4-TB(LF)(SN), S2B-PH-SM4-TB(LF)(SN), 2N7002 *(generic MPN, any maker)*. Plus Seeed 202003751 (DNP) |
 | Generic spec-defined lines | 21 (20 R/C value groups + FB1) |
 | **Expected JLC Basic lines** | **21** firm (20 generic R/C/FB + 2N7002); **22** if 10 nF C0G 0603 is Basic |
-| **Expected JLC Extended lines** | **7** firm (ADS131M04, TLV9064, TPS7A2030P, X1 C7425393, BAV199 ×16, JST B2B vertical ×5, JST S2B side-entry ×1); **8** if 10 nF C0G is Extended |
-| Components with unresolved exact MPN | 21 generic lines (97 parts: 53 R + 43 C + FB1) + J1 provisional + Q3001 maker open + BAV199 packing suffix |
+| **Expected JLC Extended lines** | **7** firm (ADS131M04, TLV9064, TPS7A2030P, X1 C2901557, BAV199 ×16, JST B2B vertical ×5 (C160352), JST S2B side-entry ×1 (C295747)); **8** if 10 nF C0G is Extended |
+| Components with unresolved exact MPN | 21 generic lines (97 parts: 53 R + 43 C + FB1) + Q3001 maker open + BAV199 packing suffix (J1 and X1 closed in RB-01R) |
 
 JLC classes are **expected**, taken from REVB_MANUFACTURING_CONSTRAINTS.md §2 and REVB_COST_MODEL.md §1; they are confirmed only when the RB-03 BOM is uploaded.
 
@@ -35,8 +37,8 @@ JLC classes are **expected**, taken from REVB_MANUFACTURING_CONSTRAINTS.md §2 a
 | 9 | C7101 | 1 | 10uF | 10uF 10V X5R 0603 MLCC | `Capacitor_SMD:C_0603_1608Metric` | GENERIC (spec-defined; JLC Basic part selected at RB-03) | Any (JLC Basic) | — | Basic (expected) |  |
 | 10 | D101, D102, D103, D104, D201, D202, D203, D204, D301, D302, D303, D304, D401, D402, D403, D404 | 16 | BAV199 | Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23 | `Package_TO_SOT_SMD:SOT-23` | BAV199 | Nexperia | — | Extended (expected), 1 line for all 16 |  |
 | 11 | FB1 | 1 | 600R@100MHz | Ferrite bead 600 ohm @ 100 MHz, 0603, >= 200 mA, DCR <= 0.5 ohm | `Inductor_SMD:L_0603_1608Metric` | GENERIC (spec-defined; JLC Basic part selected at RB-03) | Any (JLC Basic) | — | Basic (expected) |  |
-| 12 | J1 | 1 | S2B-PH-SM4-TB | JST PH 2.0 mm 2-pin side-entry SMD. Pin 1 = BAT+, pin 2 = BAT- (verify cell lead polarity) | `Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal` | S2B-PH-SM4-TB(LF)(SN) (provisional - 'e.g.' in RB-00.6 mounting spec; final at RB-02) | JST | — | Extended (expected) |  |
-| 13 | J101, J201, J301, J401, J5001 | 5 | B2B-PH-SM4-TB | JST PH 2.0 mm 2-pin vertical SMD, 2 retention pads | `Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical` | B2B-PH-SM4-TB(LF)(SN) | JST | — | Extended (expected) |  |
+| 12 | J1 | 1 | S2B-PH-SM4-TB | JST PH 2.0 mm 2-pin side-entry SMD. Pin 1 = BAT+, pin 2 = BAT- (verify cell lead polarity) | `Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal` | S2B-PH-SM4-TB(LF)(SN) | JST | C295747 | Extended (library type expand); Economic + Standard PCBA; MSL 1; stock 14,405, $0.2387 @5 → $0.1475 @1000 (JLC page 2026-10-10) |  |
+| 13 | J101, J201, J301, J401, J5001 | 5 | B2B-PH-SM4-TB | JST PH 2.0 mm 2-pin vertical SMD, 2 retention pads | `Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical` | B2B-PH-SM4-TB(LF)(SN) | JST | C160352 | Extended (expand); Economic + Standard PCBA; MSL 1; stock 10,600 (JLC 2026-10-10) |  |
 | 14 | Q3001 | 1 | 2N7002 | 60 V N-MOSFET SOT-23, VGS(th) >= 0.8 V | `Package_TO_SOT_SMD:SOT-23` | 2N7002 | Any (JLC Basic, e.g. Nexperia/CJ) | — | Basic (expected) |  |
 | 15 | R101, R102, R201, R202, R301, R302, R401, R402, R3006, R3007, R5005, R7104 | 12 | 10k | 10k ±1% 0603 thick film, >=1/10 W | `Resistor_SMD:R_0603_1608Metric` | GENERIC (spec-defined; JLC Basic part selected at RB-03) | Any (JLC Basic) | — | Basic (expected) |  |
 | 16 | R103, R104, R203, R204, R303, R304, R403, R404, R3004, R3008, R5003, R5004, R7103, R7105 | 14 | 100k | 100k ±1% 0603 thick film, >=1/10 W | `Resistor_SMD:R_0603_1608Metric` | GENERIC (spec-defined; JLC Basic part selected at RB-03) | Any (JLC Basic) | — | Basic (expected) |  |
@@ -53,7 +55,7 @@ JLC classes are **expected**, taken from REVB_MANUFACTURING_CONSTRAINTS.md §2 a
 | 27 | U501, U502, U503 | 3 | TLV9064IPWR | Quad RRIO op-amp TSSOP-14 | `Package_SO:TSSOP-14_4.4x5mm_P0.65mm` | TLV9064IPWR | Texas Instruments | — | Extended (expected) |  |
 | 28 | U4002 | 1 | TPS7A2030PDBVR | 3.0 V 300 mA LDO, active discharge, SOT-23-5 | `Package_TO_SOT_SMD:SOT-23-5` | TPS7A2030PDBVR | Texas Instruments | — | Extended (expected) |  |
 | 29 | U6001 | 1 | ADS131M04IPWR | 4-ch 24-bit simultaneous delta-sigma ADC, TSSOP-20 | `Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm` | ADS131M04IPWR | Texas Instruments | — | Extended (expected) |  |
-| 30 | X1 | 1 | OT2JI-111-8.192M | 8.192 MHz CMOS XO, 1.8-3.3 V, +/-20 ppm, 45-55 % duty, <= 5 mA, SMD3225-4P | `ARTHUR:OSC_YXC_SMD3225-4P` | OT2JI-111-8.192M | YXC | C7425393 | Extended (expected), Economic PCBA eligible |  |
+| 30 | X1 | 1 | SX3M8.192M20F30TNN | 8.192 MHz CMOS XO, 1.62–3.63 V, ±20 ppm @25 °C / ±30 ppm −40…85 °C, 45–55 % duty, Icc ≤ 10 mA (15 pF), SMD3225-4P | `ARTHUR:OSC_SCTF_SX3M_SMD3225-4P` | SX3M8.192M20F30TNN | SCTF (Shenzhen SCTF Elec) | C2901557 | Extended (expand); Economic + Standard PCBA; MSL 1; LCSC stock 1,658, $0.3482 @1 → $0.2332 @500 (2026-10-10) |  |
 
 Not on the BOM (by design):
 - **TP1–TP8**: bare copper pads (`in_bom no`, `in_pos_files no`).
@@ -95,6 +97,6 @@ Not on the BOM (by design):
 |---|---|---|
 | 20 R/C value groups | value, tolerance, voltage, dielectric, package | JLC Basic part number (select at RB-03; 10 M 0603 and 10 nF C0G 0603 Basic status to confirm) |
 | FB1 | 600 Ω @ 100 MHz, 0603, ≥ 200 mA | part number |
-| J1 | JST PH 2p SMD side entry | S2B-PH-SM4-TB is provisional; final pads/part at RB-02 |
+| J1 | — | closed in RB-01R (S2B-PH-SM4-TB(LF)(SN), C295747) |
 | Q3001 | 2N7002 SOT-23 | manufacturer |
 | D101–D404 | Nexperia BAV199 | orderable packing suffix on the JLC line |

@@ -1,0 +1,10 @@
+144,145c144,145
+< 		(size 1.9 1.9)
+< 		(drill 1.4)
+---
+> 		(size 2.3 2.3)
+> 		(drill 1.9)
+147c147
+< 		(solder_mask_margin -0.225)
+---
+> 		(solder_mask_margin -0.175)
