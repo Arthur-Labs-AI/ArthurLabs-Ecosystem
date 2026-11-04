@@ -912,6 +912,7 @@ export class SentryRuntimeHost {
         : { agentStackIds: [...parsed.agentStackIds] as never }),
       ...(parsed.runTimeoutMs === undefined ? {} : { runTimeoutMs: parsed.runTimeoutMs }),
       ...(parsed.webAccess === true ? { webAccess: true } : {}),
+      ...(parsed.toolDownloads === true ? { toolDownloads: true } : {}),
       ...(parsed.revisionId === undefined ? {} : { revisionId: parsed.revisionId }),
       ...(parsed.useProfile === true ? { useProfile: true } : {}),
     });
@@ -1466,6 +1467,7 @@ const StartRunParamsSchema = z
     agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
     runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
     webAccess: z.boolean().optional(),
+    toolDownloads: z.boolean().optional(),
     useProfile: z.boolean().optional(),
   })
   .strict();

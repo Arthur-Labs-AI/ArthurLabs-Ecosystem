@@ -46,6 +46,7 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
       agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
       runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
       webAccess: z.boolean().optional(),
+      toolDownloads: z.boolean().optional(),
       useProfile: z.boolean().optional(),
     })
     .strict(),
@@ -62,6 +63,7 @@ export const DesktopChannelSchemas: Record<string, z.ZodTypeAny> = {
       agentStackIds: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
       runTimeoutMs: z.number().int().min(RUN_TIMEOUT_MS_MIN).max(RUN_TIMEOUT_MS_MAX).optional(),
       webAccess: z.boolean().optional(),
+      toolDownloads: z.boolean().optional(),
       useProfile: z.boolean().optional(),
     })
     .strict(),
@@ -277,6 +279,7 @@ export async function dispatchDesktopCommand(
         agentStackIds: parsed['agentStackIds'],
         runTimeoutMs: parsed['runTimeoutMs'],
         webAccess: parsed['webAccess'],
+        toolDownloads: parsed['toolDownloads'],
         useProfile: parsed['useProfile'],
         revisionId: parsed['revisionId'],
       });

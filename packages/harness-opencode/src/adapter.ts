@@ -10,6 +10,8 @@ import {
   nowIsoTimestamp,
   webAccessEnabled,
   PACKAGE_REGISTRY_HOSTS,
+  allowedAgentHosts,
+  toolDownloadsEnabled,
   type AgentRunId,
   type OperationId,
   type ToolchainSetup,
@@ -275,6 +277,8 @@ interface OpenCodeRunEntry {
   proxy?: OpenCodeAuthProxy | undefined;
   /** Registry-only egress proxy for tool shells (absent when socat is missing or the shell is bypassed). */
   egress?: EgressProxy | undefined;
+  /** Hosts the egress proxy admits for this run (registries, plus SDK hosts when opted in). */
+  allowedHosts?: readonly string[] | undefined;
   session?: OpenCodeSessionView | undefined;
   client?: OpenCodeClientView | undefined;
   maskedConfig: readonly string[];
@@ -579,6 +583,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     const scoped = applyOpenCodeScopeEnvironment(this.baseEnvironment, scope);
     let shell: string | undefined;
     if (process.platform === 'linux') {
+      entry.allowedHosts = allowedAgentHosts(request.executionSafeguards);
       shell = await this.buildToolShell(scope, request.workspace.runtimePath, entry);
       if (shell !== undefined) this.pipefailRuns.add(request.agentRunId);
     } else {
@@ -739,7 +744,8 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     let socketPath = join(scope.directory, 'egress.sock');
     if (Buffer.byteLength(socketPath) > 100)
       socketPath = join(tmpdir(), 'sentry-eg-' + randomBytes(6).toString('hex') + '.sock');
-    entry.egress = await startEgressProxy({ socketPath, allowedHosts: PACKAGE_REGISTRY_HOSTS });
+    entry.egress = await startEgressProxy({ socketPath, allowedHosts: entry.allowedHosts ?? PACKAGE_REGISTRY_HOSTS,
+    });
     return { socketPath, socat, port: TOOL_SHELL_EGRESS_PORT };
   }
 
@@ -1203,7 +1209,10 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
         depth,
         operations: this.observedOperations,
         contextBudget,
-        network: { webAccess: webAccessEnabled(request.executionSafeguards) },
+        network: {
+          webAccess: webAccessEnabled(request.executionSafeguards),
+          toolDownloads: toolDownloadsEnabled(request.executionSafeguards),
+        },
         event: (body) => event(request.agentRunId, body),
         streamTurn: (turnText) =>
           streamObservedWork(

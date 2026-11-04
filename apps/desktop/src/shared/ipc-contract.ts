@@ -167,6 +167,7 @@ export interface SentryDesktopApi {
         agentStackIds?: string[];
         revisionId?: string;
         webAccess?: boolean;
+        toolDownloads?: boolean;
         useProfile?: boolean;
       },
     ): Promise<DesktopOperation>;
@@ -180,6 +181,7 @@ export interface SentryDesktopApi {
         agentStackIds?: string[];
         revisionId?: string;
         webAccess?: boolean;
+        toolDownloads?: boolean;
         useProfile?: boolean;
       },
     ): Promise<DesktopOperation>;

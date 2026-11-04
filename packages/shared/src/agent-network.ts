@@ -46,6 +46,32 @@ export const PACKAGE_REGISTRY_HOSTS: readonly string[] = [
   'release-assets.githubusercontent.com',
 ];
 
+/**
+ * Official download hosts of language toolchains and SDKs. Added to the registry list
+ * only for runs that opt in to tool and SDK downloads; everything else stays blocked.
+ */
+export const SDK_DOWNLOAD_HOSTS: readonly string[] = [
+  // Rust
+  'static.rust-lang.org',
+  'sh.rustup.rs',
+  // .NET
+  'dot.net',
+  'dotnet.microsoft.com',
+  'builds.dotnet.microsoft.com',
+  'ci.dot.net',
+  // Go
+  'go.dev',
+  'dl.google.com',
+  // Python tooling
+  'astral.sh',
+  'bootstrap.pypa.io',
+  // JVM
+  'api.adoptium.net',
+  'archive.apache.org',
+  'downloads.apache.org',
+  'dlcdn.apache.org',
+];
+
 function normalizeHost(host: string): string {
   return host.trim().toLowerCase().replace(/\.$/, '');
 }
@@ -69,6 +95,22 @@ export function webAccessEnabled(
   safeguards: { readonly webAccess?: boolean | undefined } | undefined,
 ): boolean {
   return safeguards?.webAccess === true;
+}
+
+/** True only when the run explicitly opted in to tool and SDK downloads. */
+export function toolDownloadsEnabled(
+  safeguards: { readonly toolDownloads?: boolean | undefined } | undefined,
+): boolean {
+  return safeguards?.toolDownloads === true;
+}
+
+/** The hosts an agent shell may reach for this run. */
+export function allowedAgentHosts(
+  safeguards: { readonly toolDownloads?: boolean | undefined } | undefined,
+): readonly string[] {
+  return toolDownloadsEnabled(safeguards)
+    ? [...PACKAGE_REGISTRY_HOSTS, ...SDK_DOWNLOAD_HOSTS]
+    : PACKAGE_REGISTRY_HOSTS;
 }
 
 /** Package-manager caches live inside the workspace, the only place shells may write. */
@@ -128,6 +170,8 @@ export const DEPENDENCY_INSTALL_COMMAND =
 
 export interface AgentNetworkPromptOptions {
   readonly webAccess: boolean;
+  /** Tool and SDK download hosts are reachable for this run. */
+  readonly toolDownloads?: boolean;
   /** False for harnesses without web tools (they must never be told to use them). */
   readonly webToolsAvailable?: boolean;
 }
@@ -138,7 +182,9 @@ export function agentNetworkPromptLines(options: AgentNetworkPromptOptions): str
     'Install the project’s dependencies inside this workspace with its own package manager and lockfile (for example `pnpm install --frozen-lockfile`, `npm ci`, `yarn install --immutable`, `pip install -r requirements.txt` into a `.venv`, `cargo fetch`, `go mod download`) BEFORE build, lint, typecheck or tests. An install only prepares a check; it is never proof of one. If an install fails inside a package lifecycle script (a postinstall that downloads a binary, for example), rerun it once with `--ignore-scripts` instead of debugging the script.',
     'Install ONCE per run: when the operation receipt already shows a successful install (exit 0) in this workspace, do not repeat it for later checks; the dependencies are still there.',
     'Build outputs (dist) are not part of the workspace. Before importing a package or running a suite that needs its build, build just what the probe needs, once (for example `pnpm --filter <package>... build`). A missing build is a setup step to do, never a reason to leave a check unproven.',
-    'Shell network access reaches package registries only. Never work around that restriction. If an install fails, record the exact failure as a limitation, continue statically, and never claim a check passed that could not run.',
+    options.toolDownloads === true
+      ? 'Shell network access reaches package registries and the official download hosts of language toolchains (for example static.rust-lang.org, dot.net, go.dev, astral.sh, api.adoptium.net). You may install a missing toolchain or SDK from those hosts into this workspace; other hosts stay blocked and you must never work around that. If an install fails, record the exact failure as a limitation, continue statically, and never claim a check passed that could not run.'
+      : 'Shell network access reaches package registries only. Never work around that restriction. If an install fails, record the exact failure as a limitation, continue statically, and never claim a check passed that could not run.',
     'Never run scripts that publish, deploy or contact production systems.',
   ];
   if (options.webAccess && options.webToolsAvailable !== false)

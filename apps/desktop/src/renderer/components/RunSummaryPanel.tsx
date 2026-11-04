@@ -31,6 +31,7 @@ export function RunSummaryPanel({
   const configuration = run['configuration'] as
     | {
         agentStackIds?: string[];
+        executionSafeguards?: { webAccess?: boolean; toolDownloads?: boolean };
         profileUsage?: {
           requested: boolean;
           usedAgentStackIds: string[];
@@ -63,6 +64,12 @@ export function RunSummaryPanel({
           {String(run['mode'] ?? '').toUpperCase() +
             ' QA · ' +
             (run['executionKind'] === 'production' ? 'Production' : 'Legacy simulation')}
+        </div>
+        <div className="metadata" style={{ marginTop: 4 }}>
+          {'Web access: ' +
+            (configuration?.executionSafeguards?.webAccess === true ? 'on' : 'off') +
+            ' · tool and SDK downloads: ' +
+            (configuration?.executionSafeguards?.toolDownloads === true ? 'on' : 'off')}
         </div>
         {profileUsage === undefined ? null : (
           <div className="metadata" style={{ marginTop: 4 }}>

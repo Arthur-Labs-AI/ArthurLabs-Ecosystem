@@ -78,6 +78,8 @@ export interface RunOptions {
   readonly runTimeoutMs?: number;
   /** Opt in to general web access for agents; package installs are always allowed. Omitted means off. */
   readonly webAccess?: boolean;
+  /** Opt in to the official download hosts of language toolchains and SDKs. Omitted means off. */
+  readonly toolDownloads?: boolean;
   /** Phase 7 (§8-§13): TARGETED QA. Same independent agent architecture
    *  and FULL-strength responsibility class, focused on a narrower scope.
    *  Omitted (or mode 'full') preserves FULL semantics unchanged (§7). */
@@ -362,6 +364,7 @@ export class RunCoordinator {
                 ? SENTRY_PRODUCTION_RUN_TIMEOUT_MS
                 : SENTRY_SIMULATION_RUN_TIMEOUT_MS),
             ...(options.webAccess === true ? { webAccess: true } : {}),
+            ...(options.toolDownloads === true ? { toolDownloads: true } : {}),
           },
           profileUsage,
         },

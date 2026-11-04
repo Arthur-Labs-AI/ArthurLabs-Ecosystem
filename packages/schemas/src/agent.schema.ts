@@ -51,6 +51,7 @@ export const ExecutionSafeguardsSchema = z
     commandTimeoutMs: NonNegativeIntSchema.optional(),
     /** Per-run opt-in to general web access; omitted means off. Package installs are always allowed. */
     webAccess: z.boolean().optional(),
+    toolDownloads: z.boolean().optional(),
   })
   .strict();
 export type ExecutionSafeguards = z.infer<typeof ExecutionSafeguardsSchema>;

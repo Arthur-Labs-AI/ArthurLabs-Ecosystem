@@ -10,6 +10,8 @@ import {
   nowIsoTimestamp,
   dependencyCacheEnvironment,
   webAccessEnabled,
+  allowedAgentHosts,
+  toolDownloadsEnabled,
   type AgentRunId,
   type OperationId,
   describePlanRejection,
@@ -1484,7 +1486,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
     try {
       await mkdir(ephemeralClaudeDir, { recursive: true });
       await mkdir(configDir, { recursive: true });
-      await writeFile(settingsPath, JSON.stringify(buildClaudeSettings()), 'utf8');
+      await writeFile(settingsPath, JSON.stringify(buildClaudeSettings({ allowedDomains: allowedAgentHosts(request.executionSafeguards) })), 'utf8');
       const spec: ClaudeSpawnSpec = {
         executable: this.runtime.executable,
         cwd: request.workspace.runtimePath,
@@ -1524,7 +1526,7 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
           mkdirSync(spec.cwd, { recursive: true });
           mkdirSync(ephemeralClaudeDir, { recursive: true });
           mkdirSync(configDir, { recursive: true });
-          writeFileSync(settingsPath, JSON.stringify(buildClaudeSettings()), 'utf8');
+          writeFileSync(settingsPath, JSON.stringify(buildClaudeSettings({ allowedDomains: allowedAgentHosts(request.executionSafeguards) })), 'utf8');
         }
         const candidate = await this.clientFactory(spec);
         if (this.cancelled) {
@@ -1662,7 +1664,10 @@ export class ClaudeCodeHarnessAdapter implements HarnessAdapter {
         depth,
         operations: this.observedOperations,
         contextBudget,
-        network: { webAccess: webAccessEnabled(request.executionSafeguards) },
+        network: {
+          webAccess: webAccessEnabled(request.executionSafeguards),
+          toolDownloads: toolDownloadsEnabled(request.executionSafeguards),
+        },
         event: (body) => event(request.agentRunId, body),
         streamTurn: (turnText) =>
           this.streamPhaseTurn(session!, turnText, request.agentRunId, 'investigation'),

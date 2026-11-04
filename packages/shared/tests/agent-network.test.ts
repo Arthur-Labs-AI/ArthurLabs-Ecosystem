@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   DEPENDENCY_CACHE_DIRNAME,
   PACKAGE_REGISTRY_HOSTS,
+  SDK_DOWNLOAD_HOSTS,
   agentNetworkPromptLines,
+  allowedAgentHosts,
   dependencyCacheEnvironment,
   hostMatchesAllowlist,
+  toolDownloadsEnabled,
   webAccessEnabled,
 } from '../src/index.js';
 
@@ -69,5 +72,22 @@ describe('agent network policy', () => {
       '\n',
     );
     expect(noTools).toContain('Web access is disabled');
+  });
+
+  it('adds the vendor download hosts only for runs that opt in, and nothing broader', () => {
+    expect(toolDownloadsEnabled(undefined)).toBe(false);
+    expect(toolDownloadsEnabled({ toolDownloads: false })).toBe(false);
+    expect(toolDownloadsEnabled({ toolDownloads: true })).toBe(true);
+    expect(allowedAgentHosts(undefined)).toEqual(PACKAGE_REGISTRY_HOSTS);
+    expect(allowedAgentHosts({})).toEqual(PACKAGE_REGISTRY_HOSTS);
+    const widened = allowedAgentHosts({ toolDownloads: true });
+    expect(widened).toEqual([...PACKAGE_REGISTRY_HOSTS, ...SDK_DOWNLOAD_HOSTS]);
+    expect(hostMatchesAllowlist('static.rust-lang.org', widened)).toBe(true);
+    expect(hostMatchesAllowlist('static.rust-lang.org', PACKAGE_REGISTRY_HOSTS)).toBe(false);
+    expect(hostMatchesAllowlist('go.dev.evil.com', widened)).toBe(false);
+    expect(SDK_DOWNLOAD_HOSTS.some((host) => host.includes('*'))).toBe(false);
+    const on = agentNetworkPromptLines({ webAccess: false, toolDownloads: true }).join(' ');
+    expect(on).toContain('official download hosts of language toolchains');
+    expect(agentNetworkPromptLines({ webAccess: false }).join(' ')).not.toContain('download hosts');
   });
 });

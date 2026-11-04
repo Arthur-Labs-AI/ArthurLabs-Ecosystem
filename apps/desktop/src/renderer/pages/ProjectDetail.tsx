@@ -53,6 +53,7 @@ export function ProjectDetail(): React.JSX.Element {
   const [mode, setMode] = React.useState<'full' | 'targeted'>('full');
   const [targetPaths, setTargetPaths] = React.useState('');
   const [webAccess, setWebAccess] = React.useState(false);
+  const [toolDownloads, setToolDownloads] = React.useState(false);
   const detail = useQuery({
     queryKey: ['project', projectId],
     queryFn: () => sentryApi().projects.get(projectId as string),
@@ -135,6 +136,7 @@ export function ProjectDetail(): React.JSX.Element {
       : {}),
     ...(effectiveStacks.length === 0 ? {} : { agentStackIds: effectiveStacks }),
     ...(webAccess ? { webAccess: true } : {}),
+    ...(toolDownloads ? { toolDownloads: true } : {}),
     ...(useProfile ? { useProfile: true } : {}),
   });
   const onStarted = (operation: unknown): void => {
@@ -430,6 +432,24 @@ export function ProjectDetail(): React.JSX.Element {
               ? 'No selected agent has an up-to-date profile; runs start without one.'
               : freshProfileCount + ' of ' + effectiveStacks.length + ' selected agents have an up-to-date profile and get it back; the others start without one.'}
           </p>
+          <label
+            className="metadata"
+            style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '12px 0 6px' }}
+          >
+            <input
+              type="checkbox"
+              aria-label="Allow tool and SDK downloads"
+              checked={toolDownloads}
+              onChange={(e) => setToolDownloads(e.target.checked)}
+            />
+            Allow tool and SDK downloads
+          </label>
+          <p className="metadata" style={{ margin: '0 0 6px' }}>
+            Lets agents download missing compilers and SDKs from the official vendor sites (Rust, .NET,
+            Go, Python tooling, Java). Other sites stay blocked. Downloads are discarded after the run;
+            for repeated use install the toolchain under Settings, Toolchains. Applies to OpenCode
+            and Claude Code.
+          </p>
           <p className="metadata" style={{ margin: '0 0 6px' }}>
             Package installs from registries are always allowed. Web access also lets agents fetch
             and search the web for docs and advisories.
@@ -594,7 +614,8 @@ export function ProjectDetail(): React.JSX.Element {
               </p>
             ) : null}
             <p className="metadata">
-              Web access: {webAccess ? 'on' : 'off'} · package installs: on
+              Web access: {webAccess ? 'on' : 'off'} · tool and SDK downloads:{' '}
+              {toolDownloads ? 'on' : 'off'} · package installs: on
             </p>
             {confirmStart === 'targeted' && targetPaths.trim() !== '' ? (
               <p className="mono metadata">Scope: {targetPaths}</p>
