@@ -275,6 +275,8 @@ export function renderToolShellWrapper(spec: ToolShellSpec): string {
     '  --unshare-net \\',
     // Windows interop is reached through this socket variable; without it a shell cannot start .exe files.
     '  --unsetenv WSL_INTEROP \\',
+    // .NET (and other tools) keep lock files under $XDG_RUNTIME_DIR; the host value is read-only here.
+    '  --setenv XDG_RUNTIME_DIR /tmp \\',
     '  --dev /dev \\',
     '  --proc /proc \\',
     '  --bind "$SENTRY_RUN_TMP" /tmp \\',

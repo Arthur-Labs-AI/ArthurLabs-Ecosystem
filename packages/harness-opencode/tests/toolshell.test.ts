@@ -42,6 +42,19 @@ describe('windows drive hiding', () => {
     expect(script).toContain("--tmpfs '/mnt/c'");
     expect(script).toContain('--unsetenv WSL_INTEROP');
   });
+
+  it('points XDG_RUNTIME_DIR at the private tmp so .NET can create its lock files', () => {
+    const script = renderToolShellWrapper({
+      realShell: '/bin/bash',
+      bwrap: '/usr/bin/bwrap',
+      hidePaths: [],
+      runTmp: '/tmp/.scope/tmp',
+      scopeHome: '/tmp/.scope/home',
+      workspace: '/tmp/data/w1',
+    });
+    expect(script).toContain('--setenv XDG_RUNTIME_DIR /tmp');
+    expect(script.indexOf('--bind "$SENTRY_RUN_TMP" /tmp')).toBeGreaterThan(-1);
+  });
 });
 
 describe('tool shell wrapper', () => {
