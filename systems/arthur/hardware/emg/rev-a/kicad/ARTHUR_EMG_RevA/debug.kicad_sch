@@ -1,0 +1,712 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "2054fac0-afcd-50db-922d-781174fb9771")
+	(paper "A4")
+	(title_block
+		(title "Programming and debug")
+		(rev "A-architecture")
+		(company "A.R.T.H.U.R.")
+		(comment 1 "Architecture schematic; unresolved values are explicitly marked TBD")
+		(comment 2 "IC pin mappings verified against manufacturer datasheets listed in SCHEMATIC_ARCHITECTURE.md")
+	)
+	(lib_symbols
+		(symbol "ARTHUR:ARM_SWD_10"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -16.51 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "ARM_SWD_10"
+				(at 0 16.51 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" "https://developer.arm.com/documentation/101416/latest/Hardware-Description/Target-Connectors/Cortex-Debug--10-pin"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" "ARM Cortex 10-pin debug connector"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "ARM_SWD_10_0_1"
+				(rectangle
+					(start -7.62 -13.97)
+					(end 7.62 13.97)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "ARM_SWD_10_1_1"
+				(pin power_in line
+					(at 10.16 11.43 180)
+					(length 2.54)
+					(name "VTREF"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin bidirectional line
+					(at 10.16 8.89 180)
+					(length 2.54)
+					(name "SWDIO/TMS"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 6.35 180)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "3"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at 10.16 3.81 180)
+					(length 2.54)
+					(name "SWCLK/TCK"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "4"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 1.27 180)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin input line
+					(at 10.16 -1.27 180)
+					(length 2.54)
+					(name "SWO/TDO"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "6"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 -3.81 180)
+					(length 2.54)
+					(name "KEY"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "7"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 -6.35 180)
+					(length 2.54)
+					(name "NC/TDI"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "8"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 -8.89 180)
+					(length 2.54)
+					(name "GNDDetect"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "9"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin output line
+					(at 10.16 -11.43 180)
+					(length 2.54)
+					(name "nRESET"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "10"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+	)
+	(text "ARM Cortex 10-pin SWD connector. Key pin is absent; SWO is not routed in Rev A architecture."
+		(exclude_from_sim no)
+		(at 100 15 0)
+		(effects
+			(font
+				(size 1.1 1.1)
+			)
+		)
+		(uuid "b277f2a5-aecd-5921-8e29-efe30a5c71d0")
+	)
+	(text "Production firmware must define APPROTECT/debug-lock policy and a recoverability procedure before release."
+		(exclude_from_sim no)
+		(at 100 145 0)
+		(effects
+			(font
+				(size 1.1 1.1)
+			)
+		)
+		(uuid "f82f577d-4f2c-5e23-9c35-c1370b75324d")
+	)
+	(no_connect
+		(at 90.17 76.2)
+		(uuid "3a3d054c-efed-5208-b341-4e0ed517a537")
+	)
+	(no_connect
+		(at 90.17 73.66)
+		(uuid "78af0c81-cd8c-50f4-8a4b-c6cbee1f7f67")
+	)
+	(no_connect
+		(at 90.17 71.12)
+		(uuid "90a1afb6-c44a-5024-8c0a-4cf3e1799317")
+	)
+	(global_label "SWDIO"
+		(shape bidirectional)
+		(at 30 125 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "2990031d-700e-59a7-97b7-6982d5617495")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 30 125 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_RESET_N"
+		(shape bidirectional)
+		(at 105 125 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "3fe962da-2ae4-563f-bf47-d2107ff2e09b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 105 125 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 90.17 63.5 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "42f53081-e116-51d9-8323-662d721c7f29")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 90.17 63.5 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "MCU_RESET_N"
+		(shape bidirectional)
+		(at 90.17 81.28 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "581be9c3-abcf-59b6-a65b-9f9a46e21a81")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 90.17 81.28 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "3V3"
+		(shape bidirectional)
+		(at 90.17 58.42 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "6b001141-e83b-5303-9b9e-669f79cb79ea")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 90.17 58.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 90.17 78.74 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "7ad818cf-54f2-590a-b694-566b04872a52")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 90.17 78.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "SWDCLK"
+		(shape bidirectional)
+		(at 90.17 66.04 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "9e46365d-1951-5aa8-8d28-585ad026270d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 90.17 66.04 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "3V3"
+		(shape bidirectional)
+		(at 145 125 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "bd477b5b-7b60-5971-85e6-fbe5dd2ed134")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 145 125 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 90.17 68.58 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "db15d8fd-45db-51a7-93b0-fd5b32103648")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 90.17 68.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "SWDIO"
+		(shape bidirectional)
+		(at 90.17 60.96 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "e6fa2437-4552-544b-b411-6e3aab372464")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 90.17 60.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 175 125 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "ecff991d-8dd8-58be-83c7-d7a53901571a")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 175 125 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "SWDCLK"
+		(shape bidirectional)
+		(at 65 125 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "ee99d8ee-2239-521f-a448-fdbbcc34b4da")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 65 125 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(hierarchical_label "SWDIO"
+		(shape bidirectional)
+		(at 30 125 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "3a48d2e6-0e36-5fd0-92d4-542964de0c7b")
+	)
+	(hierarchical_label "SWDCLK"
+		(shape output)
+		(at 65 125 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "6d80ea4f-a35c-5d99-a028-204e4bb7bb62")
+	)
+	(hierarchical_label "MCU_RESET_N"
+		(shape output)
+		(at 105 125 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "91452ac8-fd49-59f1-9365-5f63d36df03f")
+	)
+	(hierarchical_label "3V3"
+		(shape input)
+		(at 145 125 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "caaa8e35-8a9b-529c-9882-0ab3bce729ba")
+	)
+	(hierarchical_label "GND"
+		(shape bidirectional)
+		(at 175 125 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "f8bd01fd-2d42-5013-b813-8813b7f99bc2")
+	)
+	(symbol
+		(lib_id "ARTHUR:ARM_SWD_10")
+		(at 80.01 69.85 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "d90aaec1-3803-5d2e-9628-9d60dd8df299")
+		(property "Reference" "J8001"
+			(at 80.01 57.15 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "ARM Cortex Debug 10-pin"
+			(at 80.01 82.55 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Connector_PinHeader_1.27mm:PinHeader_2x05_P1.27mm_Vertical_SMD"
+			(at 80.01 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" "https://developer.arm.com/documentation/101416/latest/Hardware-Description/Target-Connectors/Cortex-Debug--10-pin"
+			(at 80.01 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" "ARM Cortex 10-pin debug connector"
+			(at 80.01 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "3162a12e-766b-5452-8ff1-2bf6116b854b")
+		)
+		(pin "2"
+			(uuid "b0e0dea4-38b9-5914-9c8e-1c1a00af73e0")
+		)
+		(pin "3"
+			(uuid "0500dcc7-5d4b-5178-bbce-6f035779d5db")
+		)
+		(pin "4"
+			(uuid "2d910afa-42cb-5d86-a43d-a901f31f1007")
+		)
+		(pin "5"
+			(uuid "687ec704-2e6d-56e9-ad37-784579e1dab6")
+		)
+		(pin "6"
+			(uuid "6af83f62-672f-5bba-9f9f-9134e38ec134")
+		)
+		(pin "7"
+			(uuid "843b08cf-2ab1-5250-a4bc-02f35d13097b")
+		)
+		(pin "8"
+			(uuid "f07c9a30-0c2d-5751-b0b6-db7734114521")
+		)
+		(pin "9"
+			(uuid "97325fc8-a3d8-5a33-8bb9-b131908914da")
+		)
+		(pin "10"
+			(uuid "9fe47aad-38fe-50e0-bee7-8c69e188eaad")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/24a5e863-07d2-543d-8449-b1135e00e14e"
+					(reference "J8001")
+					(unit 1)
+				)
+			)
+		)
+	)
+)

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Marginalia Mobile board</title>
+<link rel="stylesheet" href="../exploration/arthur.css">
+<style>
+  html,body{height:auto}
+  body{background:var(--sunken);font:400 14px/1.5 var(--sans);padding:32px 36px 80px}
+  h1{margin:0;font:400 38px/1.05 var(--serif);letter-spacing:-.02em} .lead{color:var(--ink-2);max-width:70ch;margin:8px 0 0}
+  h2{margin:44px 0 4px;font:430 26px/1.15 var(--serif)} .note{color:var(--ink-3);margin:0 0 16px;max-width:80ch}
+  .row{display:flex;gap:28px;overflow-x:auto;padding:6px 4px 18px;align-items:flex-start}
+  figure{margin:0;flex:none} figcaption{margin:0 0 10px;font-weight:600;font-size:13px} figcaption small{display:block;color:var(--ink-3);font-weight:400;font-size:12px;max-width:34ch}
+  .dev{border-radius:38px;padding:9px;background:#0a0b0b;border:1px solid var(--line);box-shadow:0 18px 50px rgba(0,0,0,.4)}
+  iframe{display:block;border:0;border-radius:30px;background:var(--ground)}
+  a{color:var(--ink-2)}
+</style></head><body>
+<h1>Marginalia Mobile · all compositions</h1>
+<p class="lead">Every frame is the live renderer in a real-size iframe, driven by the demo database (16 captures, 49 ideas, 54 links, 71 revisions). <a href="index.html">Open the interactive playground</a> · <a href="system.html">Mobile system</a></p>
+<div id="b"></div>
+<script>
+const S=[
+ ["1 · Home","Capture first. The page, Speak, and the Recent stream grouped by Capture.",[["home","Home · populated","390×844"],["home-typing","Typing","Keyboard resizes the page; Capture sits above it"],["home-recording","Recording","Full-screen, tab bar hidden"]]],
+ ["2 · Capture states","Saving and organizing are separate operations. Failures are quiet, and say what is unchanged.",[["home-transcribing","Transcribing","Audio is not kept"],["home-saved","Capture saved","Thread not drawn yet"],["home-organizing","Arthur organizing","Dashed = pending, solid = real"],["home-organized","Organized","Thread draws once, 700ms"],["home-orgfail","Organizing failed","Your thought is saved. Retry organizing."]]],
+ ["3 · Voice permission and errors","Real error codes from the native layer: permission, STT, interruption.",[["home-nopermission","Capture tab, no permission","Opens Home only. No dialog"],["home-permission","Speak tapped","Android asks now, after an explicit tap"],["home-denied","Microphone denied","Type instead stays one tap away"],["home-sttfail","STT failed: retry","Audio kept only for this retry flow"],["home-sttterminal","STT unavailable","Terminal: nothing kept"],["home-interrupted","Interrupted","Arthur left the foreground"]]],
+ ["4 · Ideas","Dense feed: title, preview, margin (source, links, revisions).",[["ideas","Ideas","All, newest first"],["ideas-search","Search · Cyrillic","“бълг”"],["ideas-long","Search · 131-char title","Two-line clamp; full title in detail"]]],
+ ["5 · Idea detail","Full-screen. Provenance, Connections, Evolution as facets of one thought.",[["idea","Idea detail","7 connections, 5 revisions"],["idea-long","Long title","Wraps; never truncated here"],["idea-cyrillic","Bulgarian","Source Serif 4 Cyrillic fallback"],["idea-offline","Idea · 3 connections","Offline capture"],["revise","Revise sheet","Saves R6; R5 unchanged"]]],
+ ["6 · Connections · List","List is first-class: object, relation kind, direction, origin.",[["connections-list","List · hub open","7-connection hub"],["connections-filtered","Filtered (empty-ish)","Contradicts + supersedes, Arthur’s only"]]],
+ ["7 · Connections · Map","True canvas: pan, pinch, tap nodes and edges. Stable layout; no fit-to-all.",[["connections-map","Map · default view","Centered on the hub at 1×"],["connections-node","Node selected","Peek sheet; neighbours stay, rest dim"],["connections-node-open","Node sheet expanded","Connections listed with geometry"],["connections-edge","Edge selected","Relation swatch + meaning + origin"]]],
+ ["8 · Evolution","A vertical temporal rail. Selection expands in place, so the lineage never leaves the screen.",[["evolution","Evolution","Branch and merge"],["evolution-rev","Revision selected","Deterministic word diff"],["evolution-merge","Merge · pick parent","R2 or R3"],["evolution-lanes","Most branched idea","Widest lineage in the dataset"],["evolution-merge-sheet","Merge sheet",""],["evolution-pick","Pick an idea",""]]],
+ ["9 · Settings","Only what the app can say truthfully.",[["settings","Settings",""]]],
+];
+const SZ=[
+ ["Sizes and stress","360×800 is the tightest design size. 412×915 is the largest.",[
+  ["home",360,800,"Home · 360×800",""],["ideas-long",360,800,"Ideas · 360 stress","Long title + search"],["idea-long",360,800,"Detail · 360 stress",""],["connections-node",360,800,"Map · 360×800",""],["evolution-lanes",360,800,"Evolution · 360 stress","Most lanes in the dataset, merge selected"],
+  ["home",412,915,"Home · 412×915",""],["connections-list",412,915,"List · 412×915",""],["evolution",412,915,"Evolution · 412×915",""]]],
+ ["Android navigation, Daylight","3-button bar (48px inset) and the secondary theme.",[["home",390,844,"3-button nav","","&nav=buttons"],["evolution-rev",390,844,"Revision · 3-button","","&nav=buttons"],["ideas",390,844,"Daylight · Ideas","","&theme=light"],["connections-node",390,844,"Daylight · Map","","&theme=light"],["home-organizing",390,844,"Daylight · Organizing","","&theme=light"]]],
+];
+let h="";
+const fr=(s,w,hh,t,c,x)=>`<figure><figcaption>${t}<small>${c||""}</small></figcaption><div class="dev"><iframe loading="lazy" title="${t}" width="${w}" height="${hh}" src="phone.html?s=${s}&w=${w}&h=${hh}${x||""}"></iframe></div></figure>`;
+S.forEach(([t,n,f])=>{h+=`<h2>${t}</h2><p class="note">${n}</p><div class="row">${f.map(([s,l,c])=>fr(s,390,844,l,c)).join("")}</div>`});
+SZ.forEach(([t,n,f])=>{h+=`<h2>${t}</h2><p class="note">${n}</p><div class="row">${f.map(([s,w,hh,l,c,x])=>fr(s,w,hh,l,c,x)).join("")}</div>`});
+document.getElementById("b").innerHTML=h;
+</script></body></html>

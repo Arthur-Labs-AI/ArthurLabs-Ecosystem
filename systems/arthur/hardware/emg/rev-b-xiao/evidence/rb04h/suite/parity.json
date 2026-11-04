@@ -1,0 +1,60 @@
+{
+ "schematic_components": 135,
+ "pcb_footprints": 135,
+ "missing_in_pcb": [],
+ "extra_in_pcb": [],
+ "value_mismatch": [],
+ "footprint_mismatch": [],
+ "dnp_schematic": [],
+ "dnp_pcb": [
+  "U1"
+ ],
+ "netlist_nodes": 357,
+ "pad_net_mismatch": [
+  [
+   "U1",
+   "5",
+   "unconnected-(U1-D4/GPIO5/SDA-Pad5)",
+   "unconnected-(U1-D4{slash}GPIO5{slash}SDA-Pad5)"
+  ],
+  [
+   "U1",
+   "6",
+   "unconnected-(U1-D5/GPIO6/SCL-Pad6)",
+   "unconnected-(U1-D5{slash}GPIO6{slash}SCL-Pad6)"
+  ]
+ ],
+ "netlist_pins_without_pad": [],
+ "pcb_netted_pads_not_in_netlist": [],
+ "nets_in_schematic": 90,
+ "nets_in_pcb": 90,
+ "nets_only_in_pcb": [
+  "unconnected-(U1-D4{slash}GPIO5{slash}SDA-Pad5)",
+  "unconnected-(U1-D5{slash}GPIO6{slash}SCL-Pad6)"
+ ],
+ "nets_only_in_schematic": [
+  "unconnected-(U1-D4/GPIO5/SDA-Pad5)",
+  "unconnected-(U1-D5/GPIO6/SCL-Pad6)"
+ ],
+ "pad_set_differs": [],
+ "top_side_smt": 126,
+ "attrs": {
+  "smd": 126,
+  "dnp,through_hole": 1,
+  "exclude_from_bom,exclude_from_pos_files": 8
+ },
+ "layers": {
+  "F.Cu": 127,
+  "B.Cu": 8
+ },
+ "bottom_side": [
+  "TP1",
+  "TP2",
+  "TP3",
+  "TP4",
+  "TP5",
+  "TP6",
+  "TP7",
+  "TP8"
+ ]
+}

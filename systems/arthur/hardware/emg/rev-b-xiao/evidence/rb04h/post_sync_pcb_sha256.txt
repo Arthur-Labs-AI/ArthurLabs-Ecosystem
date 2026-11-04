@@ -1,0 +1,1 @@
+7fda8d9c6fa568d703dfdf91c5fbd35bc0b9001164543d38d661ca0690ae75a9  kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb

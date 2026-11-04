@@ -1,0 +1,197 @@
+How to Add Edge Rails and Fiducials for PCB Assembly OrdersThis website requires JavaScript.
+Account Restriction Notice
+Get Coupon Here
+Coupons
+Country / Region
+Language
+undefined
+Currency
+USD $
+The currency you select is for reference only, payments must be made in US dollars.
+Save
+Language Coming Soon
+Ship to
+JLCPCB
+PCB Service
+FR-4 PCBs
+Flexible PCBs
+Metal Core PCBs
+High-Frequency PCBs
+PCBA Service
+PCB Assembly
+Parts Library
+More
+SMT Stencil
+PCB Layout
+Mechanical Services
+JLC3DP - 3D Printing
+JLCCNC - CNC Machining
+JLCCNC - Sheet Metal
+JLCMC - Mechanical Components
+Tools
+EasyEDA - PCB Design Tool
+JLCDFM -  DFM Check
+Impedance Calculator
+PI Stiffener Calculator
+More
+OSHWLAB - Open Source Hardware
+JLCPCB - Flexible Heater
+Products
+Capabilities
+Contact Us
+Online Chat>
+Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8
+Email Us>
+Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8
+WhatsApp>
+Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8
+Support
+Help Center
+Get instant answers. 24/7 Available.
+Blog
+Community
+Support
+About Us
+JLCPCB delivers one-stop electronic and mechanical manufacturing solutions to empower hardware innovators worldwide.
+Explore Us
+Why JLCPCB?
+Quality Assurance
+How We Work
+Certifications
+Company News
+About Us
+Search
+0 Order Now
+Sign In
+Sign In
+Help Center
+Help Center
+PCBA Technical Guidelines
+How to Add Edge Rails and Fiducials for PCB Assembly Orders
+Help Center
+Get Started
+Register
+Know Before Ordering
+Account Setting
+Ordering
+PCB Ordering
+PCB Assembly Ordering
+PCB Stencil Ordering
+PCB Manufacturing
+PCB Files Preparation
+PCB Capabilities & Instructions
+PCB Technical Guidelines
+PCB Assembly
+PCB Assembly FAQs
+PCBA Price Details
+PCBA Parts Sourcing
+PCBA Capabilities & Instructions
+PCBA Technical Guidelines
+PCBA Files Preparation
+PCBA Lead Time
+PCBA After-Sale
+FPC Manufacturing
+FPC Materials & Options
+FPC Design Guidelines
+SMT Stencil
+Stencil Ordering
+Stencil Technical Guidelines
+PCB Layout
+PCB Layout Ordering
+PCB Layout FAQs
+JLCDFM Tool
+DFM Tool Help
+DFM FAQs
+JLCONE
+JLCONE FAQs
+JLCONE Download and Installation
+Shipping & Delivery
+Shipping Policies
+Shipping Instructions
+Payment & Invoice
+Payments
+Collab & Activities
+JLCPCB API
+Coupons & Promotions
+Policies & Certifications
+Policies
+Certifications
+Information
+Notice
+Flexible Heater
+Flexible Heater Ordering
+How to Add Edge Rails and Fiducials for PCB Assembly Orders
+Last updated on Sep 09, 2026
+Overview
+Edge rails and fiducials are required for standard PCB assembly at JLCPCB.
+Edge rails are added to increase the clearance between components and the board edges. Fiducials are small reference pads placed on a PCB to assist Pick & Place machines in accurate component placement. They are often added on edge rails as well.
+To achieve optimal assembly results, we recommend following the guidelines below when adding edge rails and fiducials to your PCB design.
+Edge Rails
+Edge rails are added to increase the distance between components and the board edge. The minimum width of edge rails should be at least 5 mm.
+Note
+By default, assembled PCBs will be delivered with edge rails attached. If you would like us to remove the edge rails after assembly, please inform us when placing your order. Additional post-processing fees will apply.
+Fiducials
+1. Fiducial markers are created by placing an un-drilled circular copper pad on the PCB. The fiducial area must be free of solder mask.
+2. The recommended diameter of a fiducial marker is 1 mm. The solder mask opening should be twice the diameter of the exposed copper pad.
+3. Three to four fiducial markers should be placed along the board edges to ensure optimal placement accuracy.
+4. Fiducial markers must maintain a minimum clearance of 3.35 mm from the board edge, including the fiducial keep-out area.
+Online Chat >
+Chat with our live agent for fast reply.
+Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8
+Email Us >
+Contact us at supportjlcpcb.com
+Typically reply within hours.
+Help Center >
+Get instant answers.
+24/7 Available.
+Products
+FR-4 PCBs
+Flexible PCBs
+Metal Core PCBs
+High-Frequency PCBs
+PCBA Service
+PCB Layout
+SMT Stencil
+Flex Heater
+Support
+Help Center
+Contact Us
+Community
+Shipping & Delivery
+Payment Methods
+How to Order
+How to Track
+After-Sales Service
+Blog
+Company
+About Us
+Quality Assurance
+How We Work
+Certifications
+Security
+Environment
+JLCAPI
+News
+Cooperation
+Electronics
+EasyEDA
+JLCPCB
+JLCDFM
+LCSC
+OSHWLAB
+Mechanical
+JLC3DP
+JLCCNC
+JLCMC
+CONNECT WITH US
+© 2026 JLCPCB.COM All Rights Reserved.
+Privacy Policy
+Terms & Conditions
+Cookies Policy
+Get Coupon >
+Live Chat >
+Home
+Cart
+Files
+Message
+Me

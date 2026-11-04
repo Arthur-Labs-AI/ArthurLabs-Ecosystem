@@ -1,0 +1,461 @@
+[
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/ARTHUR.pretty/OSC_SCTF_SX3M_SMD3225-4P.kicad_mod",
+    "bad": [
+      {
+        "type": "fp_line",
+        "gap": 0.09,
+        "geometry": [
+          "fp_line",
+          [
+            "start",
+            "-1.1",
+            "-1.5"
+          ],
+          [
+            "end",
+            "1.1",
+            "-1.5"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ]
+        ]
+      },
+      {
+        "type": "fp_line",
+        "gap": 0.09,
+        "geometry": [
+          "fp_line",
+          [
+            "start",
+            "-1.1",
+            "1.5"
+          ],
+          [
+            "end",
+            "1.1",
+            "1.5"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Capacitor_SMD.pretty/C_0603_1608Metric.kicad_mod",
+    "bad": [
+      {
+        "type": "fp_line",
+        "gap": 0.127712,
+        "geometry": [
+          "fp_line",
+          [
+            "start",
+            "-0.14058",
+            "-0.51"
+          ],
+          [
+            "end",
+            "0.14058",
+            "-0.51"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ]
+        ]
+      },
+      {
+        "type": "fp_line",
+        "gap": 0.127712,
+        "geometry": [
+          "fp_line",
+          [
+            "start",
+            "-0.14058",
+            "0.51"
+          ],
+          [
+            "end",
+            "0.14058",
+            "0.51"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Capacitor_SMD.pretty/C_0805_2012Metric.kicad_mod",
+    "bad": [
+      {
+        "type": "fp_line",
+        "gap": 0.129013,
+        "geometry": [
+          "fp_line",
+          [
+            "start",
+            "-0.261252",
+            "-0.735"
+          ],
+          [
+            "end",
+            "0.261252",
+            "-0.735"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ]
+        ]
+      },
+      {
+        "type": "fp_line",
+        "gap": 0.129013,
+        "geometry": [
+          "fp_line",
+          [
+            "start",
+            "-0.261252",
+            "0.735"
+          ],
+          [
+            "end",
+            "0.261252",
+            "0.735"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Inductor_SMD.pretty/L_0603_1608Metric.kicad_mod",
+    "bad": [
+      {
+        "type": "fp_line",
+        "gap": 0.130464,
+        "geometry": [
+          "fp_line",
+          [
+            "start",
+            "-0.162779",
+            "-0.51"
+          ],
+          [
+            "end",
+            "0.162779",
+            "-0.51"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ]
+        ]
+      },
+      {
+        "type": "fp_line",
+        "gap": 0.130464,
+        "geometry": [
+          "fp_line",
+          [
+            "start",
+            "-0.162779",
+            "0.51"
+          ],
+          [
+            "end",
+            "0.162779",
+            "0.51"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Resistor_SMD.pretty/R_0603_1608Metric.kicad_mod",
+    "bad": [
+      {
+        "type": "fp_line",
+        "gap": 0.133658,
+        "geometry": [
+          "fp_line",
+          [
+            "start",
+            "-0.237258",
+            "-0.5225"
+          ],
+          [
+            "end",
+            "0.237258",
+            "-0.5225"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ]
+        ]
+      },
+      {
+        "type": "fp_line",
+        "gap": 0.133658,
+        "geometry": [
+          "fp_line",
+          [
+            "start",
+            "-0.237258",
+            "0.5225"
+          ],
+          [
+            "end",
+            "0.237258",
+            "0.5225"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Resistor_SMD.pretty/R_0805_2012Metric.kicad_mod",
+    "bad": [
+      {
+        "type": "fp_line",
+        "gap": 0.116442,
+        "geometry": [
+          "fp_line",
+          [
+            "start",
+            "-0.227064",
+            "-0.735"
+          ],
+          [
+            "end",
+            "0.227064",
+            "-0.735"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ]
+        ]
+      },
+      {
+        "type": "fp_line",
+        "gap": 0.116442,
+        "geometry": [
+          "fp_line",
+          [
+            "start",
+            "-0.227064",
+            "0.735"
+          ],
+          [
+            "end",
+            "0.227064",
+            "0.735"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "file": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/TestPoint.pretty/TestPoint_Pad_D1.5mm.kicad_mod",
+    "bad": [
+      {
+        "type": "fp_circle",
+        "gap": -1.01,
+        "geometry": [
+          "fp_circle",
+          [
+            "center",
+            "0",
+            "0"
+          ],
+          [
+            "end",
+            "0",
+            "0.95"
+          ],
+          [
+            "stroke",
+            [
+              "width",
+              "0.12"
+            ],
+            [
+              "type",
+              "solid"
+            ]
+          ],
+          [
+            "fill",
+            "no"
+          ],
+          [
+            "layer",
+            "F.SilkS"
+          ],
+          [
+            "uuid",
+            "188606f7-41cf-4150-b22a-1b8f5885c87d"
+          ]
+        ]
+      }
+    ]
+  }
+]

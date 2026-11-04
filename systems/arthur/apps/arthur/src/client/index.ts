@@ -1,0 +1,47 @@
+import type { ArthurClient, ArthurClientKind } from "./arthur-client";
+import { createDesktopClient } from "./desktop-client";
+import { createMobileClient } from "./mobile-client";
+import { createPreviewClient } from "./preview-client";
+import { isTauriRuntime, type Invoke } from "./tauri-ipc";
+import { demoAnswer } from "../test/recall-fixtures";
+import { reviewDemoClient } from "../test/review-fixtures";
+
+export { AiSetupError, SpeechError, DistillationError, EvolutionError, LineageError, ProjectError, RelationError, VoiceCaptureError } from "./arthur-client";
+export type { ArthurClient, ArthurClientCapabilities, ArthurClientKind } from "./arthur-client";
+
+export interface ClientEnvironment {
+  /** True when running inside a Tauri webview. */
+  isTauri: boolean;
+  /** Tauri target platform of this build (`TAURI_ENV_PLATFORM`), when known. */
+  tauriPlatform?: string | undefined;
+}
+
+export function readClientEnvironment(): ClientEnvironment {
+  return {
+    isTauri: isTauriRuntime(),
+    tauriPlatform: import.meta.env.TAURI_ENV_PLATFORM,
+  };
+}
+
+export function selectClientKind(env: ClientEnvironment): ArthurClientKind {
+  if (!env.isTauri) return "preview";
+  return env.tauriPlatform === "android" || env.tauriPlatform === "ios" ? "mobile" : "desktop";
+}
+
+export function createArthurClient(env: ClientEnvironment = readClientEnvironment(), call?: Invoke): ArthurClient {
+  switch (selectClientKind(env)) {
+    case "desktop":
+      return createDesktopClient(call);
+    case "mobile":
+      return createMobileClient(call);
+    case "preview":
+      // Development only: `?recallDemo` scripts Ask Arthur so its states can be looked at. Dead code in a production bundle.
+      // Development only: `?reviewDemo` holds one suggestion for review so the Review screen can be looked at in a plain browser.
+      if (import.meta.env.DEV && typeof location !== "undefined" && location.search.includes("reviewDemo")) return reviewDemoClient();
+      return createPreviewClient({
+        ...(import.meta.env.DEV && typeof location !== "undefined" && location.search.includes("recallDemo") ? { recall: { answer: demoAnswer } } : {}),
+        // Development only: `?setup` shows first-run Setup in a plain browser.
+        ...(import.meta.env.DEV && typeof location !== "undefined" && location.search.includes("setup") ? { ai: { setupCompleted: false, credentials: [] } } : {}),
+      });
+  }
+}

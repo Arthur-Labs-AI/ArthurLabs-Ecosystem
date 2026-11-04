@@ -1,0 +1,18 @@
+[
+  {
+    "mutation": "bad_pad_width",
+    "rejected": true
+  },
+  {
+    "mutation": "wrong_rotation",
+    "rejected": true
+  },
+  {
+    "mutation": "wrong_part",
+    "rejected": true
+  },
+  {
+    "mutation": "outline_changed",
+    "rejected": true
+  }
+]

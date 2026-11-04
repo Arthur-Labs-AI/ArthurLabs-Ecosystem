@@ -1,0 +1,351 @@
+/*
+ * Review and Thought Evolution (Marginalia). Rule 1: colour means a state, never a category. Pencil blue (--pencil) marks anything Arthur
+ * proposed rather than you wrote; added and removed words also differ by underline and strike-through, so colour never carries it alone.
+ */
+.rv-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.review {
+  padding: 26px 36px 56px 36px;
+  max-width: 1180px;
+}
+.rv-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 32px;
+  margin-top: 18px;
+  align-items: start;
+}
+.rv-list ul,
+.rv-m-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line-soft);
+}
+.rv-list li,
+.rv-m-list li {
+  border-bottom: 1px solid var(--line-soft);
+}
+.rv-list button,
+.rv-m-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 8px;
+  text-align: left;
+  background: none;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+}
+.rv-m-row {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  min-height: 56px;
+}
+.rv-list button:hover,
+.rv-m-row:hover {
+  background: var(--hover);
+}
+.rv-list button[aria-current="true"] {
+  background: var(--selected);
+  box-shadow: inset 2px 0 0 var(--pencil);
+}
+.rv-li {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rv-li b {
+  font-weight: 500;
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rv-li small {
+  color: var(--ink-3);
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rv-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xs);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-family: var(--sans);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.rv-detail {
+  max-width: 68ch;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.rv-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+.rv-head h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.rv-sub {
+  margin: 4px 0 0;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.rv-ai {
+  color: var(--pencil);
+}
+.rv-ai-note,
+.rv-note {
+  margin: 0;
+  color: var(--pencil);
+  font-size: 13.5px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.rv-note {
+  color: var(--ink-2);
+}
+.rv-sec {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 12px;
+}
+.rv-sec h3 {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.rv-sec h3 small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12.5px;
+}
+.rv-sec h4 {
+  margin: 14px 0 6px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.rv-text {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.rv-suggested {
+  border-left: 2px solid var(--pencil);
+  padding-left: 14px;
+}
+.rv-diff .rv-ins {
+  color: var(--add);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: none;
+}
+.rv-diff .rv-del {
+  color: var(--del);
+  text-decoration: line-through;
+}
+.rv-stat {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.rv-ins-stat {
+  color: var(--add);
+}
+.rv-del-stat {
+  color: var(--del);
+}
+.rv-reasons,
+.rv-candidates {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.rv-candidates {
+  list-style: none;
+  padding: 0;
+}
+.rv-candidates li {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 4px 0;
+}
+.rv-warn {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--pencil);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.rv-fine {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 12.5px;
+}
+.rv-done,
+.rv-banner {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--r-sm);
+  font-size: 14px;
+}
+.rv-banner {
+  margin-bottom: 14px;
+}
+.rv-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rv-edit textarea {
+  width: 100%;
+  background: var(--sunken);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  font: 400 15.5px/1.55 var(--sans);
+  resize: vertical;
+}
+.rv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rv-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--pencil);
+  border-radius: var(--r-sm);
+  font-size: 14px;
+}
+.rv-notice span {
+  flex: 1;
+}
+
+/* settings */
+.evo-mode {
+  color: var(--pencil);
+}
+.evo-todo {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.evo-perms {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 14px 0;
+}
+.evo-perm {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+}
+.evo-perm h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.evo-prov {
+  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+.evo-disclosure {
+  margin: 8px 0;
+  padding: 10px 12px;
+  background: var(--sunken);
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+}
+.evo-disclosure ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.evo-disclosure-h {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+/* mobile */
+.rv-detail[data-variant="mobile"] {
+  padding: 4px 16px 24px;
+  max-width: none;
+}
+.rv-detail[data-variant="mobile"] .rv-text {
+  font-size: 17px;
+}
+.rv-detail[data-variant="mobile"] .rv-actions {
+  flex-direction: column;
+}
+.rv-detail[data-variant="mobile"] .rv-actions button {
+  width: 100%;
+  min-height: 48px;
+}
+.rv-m-list {
+  margin: 8px 0 0;
+}
+.rv-notice[data-variant="mobile"] {
+  margin: 8px 16px;
+}
+
+@media (max-width: 900px) {
+  .rv-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* a removed word directly followed by its replacement still reads as two words */
+.rv-diff del + ins,
+.rv-diff ins + del {
+  margin-left: 0.25em;
+}

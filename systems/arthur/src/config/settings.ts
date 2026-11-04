@@ -1,0 +1,388 @@
+/**
+ * Configuration loading (spec section 15).
+ *
+ * All values come from environment variables (optionally seeded from `.env`).
+ * Secrets are held in memory only and are never logged.
+ */
+
+import * as path from "node:path";
+
+import type { ReasoningProfile } from "../models/contracts";
+import { resolveAppDataRoot } from "../runtime/app_data";
+import { DEFAULT_VOICE_SETTINGS, loadVoiceSettings, VoiceSettings, VoiceSettingsOverrides } from "../voice/config";
+
+export type ModelProviderId = "deepseek" | "fake";
+export type EmbeddingProviderId = "local_multilingual" | "fake";
+
+export interface Settings {
+  env: string;
+  dbPath: string;
+  modelProvider: ModelProviderId;
+  modelName: string;
+  deepseekApiKey: string;
+  deepseekBaseUrl: string;
+  /** HR-02 cloud voice key (OPENAI_API_KEY only — no aliases, never logged). */
+  openaiApiKey: string;
+  modelTimeoutSeconds: number;
+  historyMaxTurns: number;
+  reasoningProfile: ReasoningProfile;
+  contextTokenBudget: number;
+  retryMaxAttempts: number;
+  retryBaseDelayMs: number;
+  approvalTtlSeconds: number;
+  // ---- SC-06 bounded conversation loop budgets (trusted config; the model
+  // can never change these). Human approval waiting never counts against
+  // loopActiveRuntimeMs; the approval TTL bounds that wait separately.
+  loopMaxRounds: number;
+  loopMaxCallsPerRound: number;
+  loopMaxCallsTotal: number;
+  loopMaxResultBytes: number;
+  loopMaxActiveMs: number;
+  loopRepeatLimit: number;
+  logLevel: string;
+  bindHost: string;
+  bindPort: number;
+  maxMessageChars: number;
+  version: string;
+  // ---- Phase 2 memory / RAG ----
+  memoryPersonalDbPath: string;
+  memoryBusinessDbPath: string;
+  embeddingProvider: EmbeddingProviderId;
+  embeddingModel: string;
+  embeddingDimensions: number;
+  memoryMaxRetrievalCandidates: number;
+  memoryMaxRerankedResults: number;
+  memoryMaxContextTokens: number;
+  memoryMaxSingleChunkTokens: number;
+  memoryVectorMinSimilarity: number;
+  memoryExtractionEnabled: boolean;
+  memoryExtractionConfidenceThreshold: number;
+  memoryExtractionImportanceThreshold: number;
+  memoryTemporaryTtlSeconds: number;
+  /**
+   * SC-05 production git catalog file (TASK-0022): machine-local JSON file
+   * using the exact GitCapabilityConfig schema. Empty = git capability
+   * disabled (startup succeeds, git.* tools absent). Set via
+   * ARTHUR_GIT_CONFIG. Never model input.
+   */
+  gitConfigPath: string;
+  /**
+   * SC-04 production local capability file (TASK-0025): machine-local JSON
+   * file using the exact LocalCapabilityConfig schema. Empty = existing
+   * default local behavior (workspace filesystem root, default bounds,
+   * empty application catalog). Set via ARTHUR_LOCAL_CONFIG. Never model
+   * input.
+   */
+  localConfigPath: string;
+  // ---- Phase 3 local voice layer ----
+  voice: VoiceSettings;
+}
+
+export const SESSION_DB_FILENAME = "arthur.db";
+export const MEMORY_PERSONAL_DB_FILENAME = "memory-personal.db";
+export const MEMORY_BUSINESS_DB_FILENAME = "memory-business.db";
+
+export function defaultSessionDbPath(): string {
+  return path.join(resolveAppDataRoot(), SESSION_DB_FILENAME);
+}
+
+export function defaultMemoryPersonalDbPath(): string {
+  return path.join(resolveAppDataRoot(), MEMORY_PERSONAL_DB_FILENAME);
+}
+
+export function defaultMemoryBusinessDbPath(): string {
+  return path.join(resolveAppDataRoot(), MEMORY_BUSINESS_DB_FILENAME);
+}
+
+// Note (HR-02.5F): the three dbPath entries below are historical
+// cwd-relative spellings, superseded by defaultSessionDbPath() and
+// friends (stable app-data-root defaults, resolved per loadSettings
+// call). They remain only so DEFAULTS_MAP stays a complete Settings;
+// loadSettings never uses them for the DB paths. Explicit values and
+// the in-memory special case keep their existing constructor semantics.
+const DEFAULTS_MAP: Settings = {
+  env: "development",
+  dbPath: "./data/arthur.db",
+  modelProvider: "fake",
+  modelName: "",
+  deepseekApiKey: "",
+  deepseekBaseUrl: "https://api.deepseek.com",
+  openaiApiKey: "",
+  modelTimeoutSeconds: 60,
+  historyMaxTurns: 20,
+  reasoningProfile: "normal",
+  contextTokenBudget: 8000,
+  retryMaxAttempts: 3,
+  retryBaseDelayMs: 250,
+  approvalTtlSeconds: 300,
+  loopMaxRounds: 6,
+  loopMaxCallsPerRound: 8,
+  loopMaxCallsTotal: 24,
+  loopMaxResultBytes: 64 * 1024,
+  loopMaxActiveMs: 120000,
+  loopRepeatLimit: 2,
+  logLevel: "info",
+  bindHost: "127.0.0.1",
+  bindPort: 8080,
+  maxMessageChars: 8000,
+  version: "0.1.0",
+  memoryPersonalDbPath: "./data/memory-personal.db",
+  memoryBusinessDbPath: "./data/memory-business.db",
+  embeddingProvider: "local_multilingual",
+  embeddingModel: "arthur-ngram-v1",
+  embeddingDimensions: 384,
+  memoryMaxRetrievalCandidates: 40,
+  memoryMaxRerankedResults: 12,
+  memoryMaxContextTokens: 1200,
+  memoryMaxSingleChunkTokens: 300,
+  memoryVectorMinSimilarity: 0.5,
+  memoryExtractionEnabled: false,
+  memoryExtractionConfidenceThreshold: 0.6,
+  memoryExtractionImportanceThreshold: 0.2,
+  memoryTemporaryTtlSeconds: 86400,
+  gitConfigPath: "",
+  localConfigPath: "",
+  voice: DEFAULT_VOICE_SETTINGS,
+};
+
+function envStr(key: string, fallback: string): string {
+  const v = process.env[key];
+  if (v === undefined || v === "") return fallback;
+  return v;
+}
+
+function envInt(key: string, fallback: number): number {
+  const raw = envStr(key, String(fallback));
+  const n = Number.parseInt(raw, 10);
+  if (Number.isNaN(n)) return fallback;
+  return n;
+}
+
+function envFloat(key: string, fallback: number): number {
+  const raw = envStr(key, String(fallback));
+  const n = Number.parseFloat(raw);
+  if (Number.isNaN(n)) return fallback;
+  return n;
+}
+
+function envBool(key: string, fallback: boolean): boolean {
+  const raw = envStr(key, "").toLowerCase();
+  if (raw === "") return fallback;
+  return raw === "true" || raw === "1" || raw === "yes" || raw === "on";
+}
+
+/**
+ * FRS-01: unified configuration bootstrap for every real ARTHUR
+ * entrypoint (CLI, HTTP/API, production runners).
+ *
+ * Precedence (highest wins):
+ *
+ *   1. programmatic/test Settings overrides (applied later, in loadSettings)
+ *   2. ambient process environment (never overwritten here)
+ *   3. repo/CWD `.env` developer override
+ *   4. canonical machine config.env (<app-data-root>/config.env)
+ *   5. code-owned defaults (applied later, in loadSettings)
+ *
+ * Repo `.env` remains a supported developer override; it is no longer the
+ * production configuration identity. Machine config never overwrites the
+ * ambient environment, repo `.env` outranks machine config but never the
+ * ambient environment, and locating the machine config never depends on
+ * process.cwd(). Parsing uses Node's standard .env grammar via
+ * machine_config.ts (one policy implementation).
+ *
+ * Missing files are not errors; malformed content fails typed
+ * (INVALID_CONFIG) out of loadConfigurationEnvironment.
+ */
+export function loadDotEnv(path = ".env"): void {
+  const { loadConfigurationEnvironment } = require("./machine_config") as typeof import("./machine_config");
+  loadConfigurationEnvironment({ repoEnvPath: path });
+}
+
+export type SettingsOverrides = {
+  [key: string]: string | number | boolean | undefined | VoiceSettingsOverrides;
+  env?: string;
+  loopMaxRounds?: number;
+  loopMaxCallsPerRound?: number;
+  loopMaxCallsTotal?: number;
+  loopMaxResultBytes?: number;
+  loopMaxActiveMs?: number;
+  loopRepeatLimit?: number;
+  dbPath?: string;
+  modelProvider?: string;
+  modelName?: string;
+  deepseekApiKey?: string;
+  deepseekBaseUrl?: string;
+  modelTimeoutSeconds?: number;
+  historyMaxTurns?: number;
+  reasoningProfile?: string;
+  contextTokenBudget?: number;
+  retryMaxAttempts?: number;
+  retryBaseDelayMs?: number;
+  approvalTtlSeconds?: number;
+  logLevel?: string;
+  bindHost?: string;
+  bindPort?: number;
+  maxMessageChars?: number;
+  memoryPersonalDbPath?: string;
+  memoryBusinessDbPath?: string;
+  embeddingProvider?: string;
+  embeddingModel?: string;
+  embeddingDimensions?: number;
+  memoryMaxRetrievalCandidates?: number;
+  memoryMaxRerankedResults?: number;
+  memoryMaxContextTokens?: number;
+  memoryMaxSingleChunkTokens?: number;
+  memoryVectorMinSimilarity?: number;
+  memoryExtractionEnabled?: boolean;
+  memoryExtractionConfidenceThreshold?: number;
+  memoryExtractionImportanceThreshold?: number;
+  memoryTemporaryTtlSeconds?: number;
+  /** SC-05 production git catalog file (ARTHUR_GIT_CONFIG). */
+  gitConfigPath?: string;
+  /** SC-04 production local capability file (ARTHUR_LOCAL_CONFIG). */
+  localConfigPath?: string;
+  /** Phase 3 voice settings (nested override object; flattened env in .env). */
+  voice?: VoiceSettingsOverrides;
+}
+
+export function loadSettings(overrides: SettingsOverrides = {}): Settings {
+  const raw: Record<string, string | number> = {
+    ARTHUR_ENV: envStr("ARTHUR_ENV", DEFAULTS_MAP.env),
+    ARTHUR_DB_PATH: envStr("ARTHUR_DB_PATH", defaultSessionDbPath()),
+    ARTHUR_MODEL_PROVIDER: envStr("ARTHUR_MODEL_PROVIDER", DEFAULTS_MAP.modelProvider),
+    ARTHUR_MODEL_NAME: envStr("ARTHUR_MODEL_NAME", DEFAULTS_MAP.modelName),
+    DEEPSEEK_API_KEY: envStr("DEEPSEEK_API_KEY", DEFAULTS_MAP.deepseekApiKey),
+    OPENAI_API_KEY: envStr("OPENAI_API_KEY", DEFAULTS_MAP.openaiApiKey),
+    DEEPSEEK_BASE_URL: envStr("DEEPSEEK_BASE_URL", DEFAULTS_MAP.deepseekBaseUrl),
+    ARTHUR_MODEL_TIMEOUT_SECONDS: envInt("ARTHUR_MODEL_TIMEOUT_SECONDS", DEFAULTS_MAP.modelTimeoutSeconds),
+    ARTHUR_HISTORY_MAX_TURNS: envInt("ARTHUR_HISTORY_MAX_TURNS", DEFAULTS_MAP.historyMaxTurns),
+    ARTHUR_REASONING_PROFILE: envStr("ARTHUR_REASONING_PROFILE", DEFAULTS_MAP.reasoningProfile),
+    ARTHUR_CONTEXT_TOKEN_BUDGET: envInt("ARTHUR_CONTEXT_TOKEN_BUDGET", DEFAULTS_MAP.contextTokenBudget),
+    ARTHUR_MODEL_RETRY_MAX_ATTEMPTS: envInt("ARTHUR_MODEL_RETRY_MAX_ATTEMPTS", DEFAULTS_MAP.retryMaxAttempts),
+    ARTHUR_MODEL_RETRY_BASE_DELAY_MS: envInt("ARTHUR_MODEL_RETRY_BASE_DELAY_MS", DEFAULTS_MAP.retryBaseDelayMs),
+    ARTHUR_APPROVAL_TTL_SECONDS: envInt("ARTHUR_APPROVAL_TTL_SECONDS", DEFAULTS_MAP.approvalTtlSeconds),
+    ARTHUR_TOOL_LOOP_MAX_ROUNDS: envInt("ARTHUR_TOOL_LOOP_MAX_ROUNDS", DEFAULTS_MAP.loopMaxRounds),
+    ARTHUR_TOOL_LOOP_MAX_CALLS_PER_ROUND: envInt("ARTHUR_TOOL_LOOP_MAX_CALLS_PER_ROUND", DEFAULTS_MAP.loopMaxCallsPerRound),
+    ARTHUR_TOOL_LOOP_MAX_CALLS_TOTAL: envInt("ARTHUR_TOOL_LOOP_MAX_CALLS_TOTAL", DEFAULTS_MAP.loopMaxCallsTotal),
+    ARTHUR_TOOL_LOOP_MAX_RESULT_BYTES: envInt("ARTHUR_TOOL_LOOP_MAX_RESULT_BYTES", DEFAULTS_MAP.loopMaxResultBytes),
+    ARTHUR_TOOL_LOOP_MAX_ACTIVE_MS: envInt("ARTHUR_TOOL_LOOP_MAX_ACTIVE_MS", DEFAULTS_MAP.loopMaxActiveMs),
+    ARTHUR_TOOL_LOOP_REPEAT_LIMIT: envInt("ARTHUR_TOOL_LOOP_REPEAT_LIMIT", DEFAULTS_MAP.loopRepeatLimit),
+    ARTHUR_LOG_LEVEL: envStr("ARTHUR_LOG_LEVEL", DEFAULTS_MAP.logLevel),
+    ARTHUR_BIND_HOST: envStr("ARTHUR_BIND_HOST", DEFAULTS_MAP.bindHost),
+    ARTHUR_BIND_PORT: envInt("ARTHUR_BIND_PORT", DEFAULTS_MAP.bindPort),
+    ARTHUR_MAX_MESSAGE_CHARS: envInt("ARTHUR_MAX_MESSAGE_CHARS", DEFAULTS_MAP.maxMessageChars),
+    ARTHUR_MEMORY_PERSONAL_DB_PATH: envStr("ARTHUR_MEMORY_PERSONAL_DB_PATH", defaultMemoryPersonalDbPath()),
+    ARTHUR_MEMORY_BUSINESS_DB_PATH: envStr("ARTHUR_MEMORY_BUSINESS_DB_PATH", defaultMemoryBusinessDbPath()),
+    ARTHUR_EMBEDDING_PROVIDER: envStr("ARTHUR_EMBEDDING_PROVIDER", DEFAULTS_MAP.embeddingProvider),
+    ARTHUR_EMBEDDING_MODEL: envStr("ARTHUR_EMBEDDING_MODEL", DEFAULTS_MAP.embeddingModel),
+    ARTHUR_EMBEDDING_DIMENSIONS: envInt("ARTHUR_EMBEDDING_DIMENSIONS", DEFAULTS_MAP.embeddingDimensions),
+    ARTHUR_MEMORY_MAX_RETRIEVAL_CANDIDATES: envInt("ARTHUR_MEMORY_MAX_RETRIEVAL_CANDIDATES", DEFAULTS_MAP.memoryMaxRetrievalCandidates),
+    ARTHUR_MEMORY_MAX_RERANKED_RESULTS: envInt("ARTHUR_MEMORY_MAX_RERANKED_RESULTS", DEFAULTS_MAP.memoryMaxRerankedResults),
+    ARTHUR_MEMORY_MAX_CONTEXT_TOKENS: envInt("ARTHUR_MEMORY_MAX_CONTEXT_TOKENS", DEFAULTS_MAP.memoryMaxContextTokens),
+    ARTHUR_MEMORY_MAX_SINGLE_CHUNK_TOKENS: envInt("ARTHUR_MEMORY_MAX_SINGLE_CHUNK_TOKENS", DEFAULTS_MAP.memoryMaxSingleChunkTokens),
+    ARTHUR_MEMORY_VECTOR_MIN_SIMILARITY: envFloat("ARTHUR_MEMORY_VECTOR_MIN_SIMILARITY", DEFAULTS_MAP.memoryVectorMinSimilarity),
+    ARTHUR_MEMORY_EXTRACTION_ENABLED: envBool("ARTHUR_MEMORY_EXTRACTION_ENABLED", DEFAULTS_MAP.memoryExtractionEnabled) ? "true" : "false",
+    ARTHUR_MEMORY_EXTRACTION_CONFIDENCE_THRESHOLD: envFloat("ARTHUR_MEMORY_EXTRACTION_CONFIDENCE_THRESHOLD", DEFAULTS_MAP.memoryExtractionConfidenceThreshold),
+    ARTHUR_MEMORY_EXTRACTION_IMPORTANCE_THRESHOLD: envFloat("ARTHUR_MEMORY_EXTRACTION_IMPORTANCE_THRESHOLD", DEFAULTS_MAP.memoryExtractionImportanceThreshold),
+    ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS: envInt("ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS", DEFAULTS_MAP.memoryTemporaryTtlSeconds),
+    ARTHUR_GIT_CONFIG: envStr("ARTHUR_GIT_CONFIG", DEFAULTS_MAP.gitConfigPath),
+    ARTHUR_LOCAL_CONFIG: envStr("ARTHUR_LOCAL_CONFIG", DEFAULTS_MAP.localConfigPath),
+  };
+
+  // SC-06 §140: camelCase loopMax* overrides map to ARTHUR_TOOL_LOOP_*
+  // (the generic ARTHUR_ prefixer would produce the wrong key).
+  const LOOP_OVERRIDE_KEYS: Record<string, string> = {
+    loopMaxRounds: "ARTHUR_TOOL_LOOP_MAX_ROUNDS",
+    loopMaxCallsPerRound: "ARTHUR_TOOL_LOOP_MAX_CALLS_PER_ROUND",
+    loopMaxCallsTotal: "ARTHUR_TOOL_LOOP_MAX_CALLS_TOTAL",
+    loopMaxResultBytes: "ARTHUR_TOOL_LOOP_MAX_RESULT_BYTES",
+    loopMaxActiveMs: "ARTHUR_TOOL_LOOP_MAX_ACTIVE_MS",
+    loopRepeatLimit: "ARTHUR_TOOL_LOOP_REPEAT_LIMIT",
+    // SC-05 production catalog file: camelCase gitConfigPath maps to
+    // ARTHUR_GIT_CONFIG (the generic prefixer would yield the wrong key).
+    gitConfigPath: "ARTHUR_GIT_CONFIG",
+    // SC-04 production local capability file: camelCase localConfigPath
+    // maps to ARTHUR_LOCAL_CONFIG (the generic prefixer would yield the
+    // wrong key).
+    localConfigPath: "ARTHUR_LOCAL_CONFIG",
+  };
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value === undefined) continue;
+    if (typeof key === "string" && key === "voice") continue;
+    if (typeof key === "string" && LOOP_OVERRIDE_KEYS[key] !== undefined) {
+      raw[LOOP_OVERRIDE_KEYS[key] as string] = value as number;
+      continue;
+    }
+    const upper = key
+      .replace(/[A-Z]/g, (m) => `_${m}`)
+      .toUpperCase()
+      .replace(/^_/, "");
+    const envKey = `ARTHUR_${upper}` === "ARTHUR_DEEPSEEK" ? "DEEPSEEK_API_KEY" : `ARTHUR_${upper}`;
+    if (envKey === "ARTHUR_DEEPSEEK_API_KEY") {
+      raw["DEEPSEEK_API_KEY"] = String(value);
+      continue;
+    }
+    if (envKey === "ARTHUR_DEEPSEEK_BASE_URL") {
+      raw["DEEPSEEK_BASE_URL"] = String(value);
+      continue;
+    }
+    if (raw[envKey] !== undefined) raw[envKey] = typeof value === "number" ? value : String(value);
+  }
+
+  return {
+    env: String(raw["ARTHUR_ENV"]),
+    dbPath: String(raw["ARTHUR_DB_PATH"]),
+    modelProvider: String(raw["ARTHUR_MODEL_PROVIDER"]) as ModelProviderId,
+    modelName: String(raw["ARTHUR_MODEL_NAME"]),
+    deepseekApiKey: String(raw["DEEPSEEK_API_KEY"]),
+    openaiApiKey: String(raw["OPENAI_API_KEY"]),
+    deepseekBaseUrl: String(raw["DEEPSEEK_BASE_URL"]),
+    modelTimeoutSeconds: Number(raw["ARTHUR_MODEL_TIMEOUT_SECONDS"]),
+    historyMaxTurns: Number(raw["ARTHUR_HISTORY_MAX_TURNS"]),
+    reasoningProfile: String(raw["ARTHUR_REASONING_PROFILE"]) as ReasoningProfile,
+    contextTokenBudget: Number(raw["ARTHUR_CONTEXT_TOKEN_BUDGET"]),
+    retryMaxAttempts: Number(raw["ARTHUR_MODEL_RETRY_MAX_ATTEMPTS"]),
+    retryBaseDelayMs: Number(raw["ARTHUR_MODEL_RETRY_BASE_DELAY_MS"]),
+    approvalTtlSeconds: Number(raw["ARTHUR_APPROVAL_TTL_SECONDS"]),
+    loopMaxRounds: Number(raw["ARTHUR_TOOL_LOOP_MAX_ROUNDS"]),
+    loopMaxCallsPerRound: Number(raw["ARTHUR_TOOL_LOOP_MAX_CALLS_PER_ROUND"]),
+    loopMaxCallsTotal: Number(raw["ARTHUR_TOOL_LOOP_MAX_CALLS_TOTAL"]),
+    loopMaxResultBytes: Number(raw["ARTHUR_TOOL_LOOP_MAX_RESULT_BYTES"]),
+    loopMaxActiveMs: Number(raw["ARTHUR_TOOL_LOOP_MAX_ACTIVE_MS"]),
+    loopRepeatLimit: Number(raw["ARTHUR_TOOL_LOOP_REPEAT_LIMIT"]),
+    logLevel: String(raw["ARTHUR_LOG_LEVEL"]),
+    bindHost: String(raw["ARTHUR_BIND_HOST"]),
+    bindPort: Number(raw["ARTHUR_BIND_PORT"]),
+    maxMessageChars: Number(raw["ARTHUR_MAX_MESSAGE_CHARS"]),
+    version: DEFAULTS_MAP.version,
+    memoryPersonalDbPath: String(raw["ARTHUR_MEMORY_PERSONAL_DB_PATH"]),
+    memoryBusinessDbPath: String(raw["ARTHUR_MEMORY_BUSINESS_DB_PATH"]),
+    embeddingProvider: String(raw["ARTHUR_EMBEDDING_PROVIDER"]) as EmbeddingProviderId,
+    embeddingModel: String(raw["ARTHUR_EMBEDDING_MODEL"]),
+    embeddingDimensions: Number(raw["ARTHUR_EMBEDDING_DIMENSIONS"]),
+    memoryMaxRetrievalCandidates: Number(raw["ARTHUR_MEMORY_MAX_RETRIEVAL_CANDIDATES"]),
+    memoryMaxRerankedResults: Number(raw["ARTHUR_MEMORY_MAX_RERANKED_RESULTS"]),
+    memoryMaxContextTokens: Number(raw["ARTHUR_MEMORY_MAX_CONTEXT_TOKENS"]),
+    memoryMaxSingleChunkTokens: Number(raw["ARTHUR_MEMORY_MAX_SINGLE_CHUNK_TOKENS"]),
+    memoryVectorMinSimilarity: Number(raw["ARTHUR_MEMORY_VECTOR_MIN_SIMILARITY"]),
+    memoryExtractionEnabled: String(raw["ARTHUR_MEMORY_EXTRACTION_ENABLED"]) === "true",
+    memoryExtractionConfidenceThreshold: Number(raw["ARTHUR_MEMORY_EXTRACTION_CONFIDENCE_THRESHOLD"]),
+    memoryExtractionImportanceThreshold: Number(raw["ARTHUR_MEMORY_EXTRACTION_IMPORTANCE_THRESHOLD"]),
+    memoryTemporaryTtlSeconds: Number(raw["ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS"]),
+    gitConfigPath: String(raw["ARTHUR_GIT_CONFIG"]),
+    localConfigPath: String(raw["ARTHUR_LOCAL_CONFIG"]),
+    voice: loadVoiceSettings(overrides as VoiceSettingsOverrides),
+  };
+}
+
+/** List of known secrets from settings, for redaction. */
+export function collectSecrets(settings: Settings): string[] {
+  const secrets: string[] = [];
+  if (settings.deepseekApiKey && settings.deepseekApiKey.length >= 4) {
+    secrets.push(settings.deepseekApiKey);
+  }
+  if (settings.openaiApiKey && settings.openaiApiKey.length >= 4) {
+    secrets.push(settings.openaiApiKey);
+  }
+  return secrets;
+}

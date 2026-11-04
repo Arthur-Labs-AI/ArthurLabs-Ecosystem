@@ -1,0 +1,47 @@
+[
+  {
+    "pin": "U501.4",
+    "other": "C501.1",
+    "straight_pad_center_mm": 2.463
+  },
+  {
+    "pin": "U502.4",
+    "other": "C502.1",
+    "straight_pad_center_mm": 2.463
+  },
+  {
+    "pin": "U503.4",
+    "other": "C503.1",
+    "straight_pad_center_mm": 2.463
+  },
+  {
+    "pin": "U6001.1",
+    "other": "C6007.1",
+    "straight_pad_center_mm": 2.053
+  },
+  {
+    "pin": "U6001.20",
+    "other": "C6008.1",
+    "straight_pad_center_mm": 1.474
+  },
+  {
+    "pin": "U6001.18",
+    "other": "C6009.1",
+    "straight_pad_center_mm": 2.008
+  },
+  {
+    "pin": "U6001.17",
+    "other": "X1.3",
+    "straight_pad_center_mm": 3.613
+  },
+  {
+    "pin": "U4002.5",
+    "other": "C4006.1",
+    "straight_pad_center_mm": 2.689
+  },
+  {
+    "pin": "X1.4",
+    "other": "C6010.1",
+    "straight_pad_center_mm": 3.774
+  }
+]

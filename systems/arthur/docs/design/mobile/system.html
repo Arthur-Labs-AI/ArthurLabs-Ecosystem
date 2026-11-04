@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Marginalia Mobile system</title>
+<link rel="stylesheet" href="../exploration/arthur.css"><link rel="stylesheet" href="mobile.css">
+<style>
+  html,body{height:auto}
+  body{background:var(--sunken);font:400 14.5px/1.55 var(--sans);padding:36px 40px 90px;max-width:1080px;margin:0 auto}
+  h1{margin:0;font:400 40px/1.05 var(--serif);letter-spacing:-.02em} h2{margin:48px 0 6px;font:430 27px/1.15 var(--serif);padding-top:20px;border-top:1px solid var(--line-soft)}
+  h3{margin:22px 0 6px;font:600 14px var(--sans)} p{color:var(--ink-2);max-width:70ch;margin:6px 0} .mut{color:var(--ink-3)}
+  table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13.5px} th,td{text-align:left;padding:9px 12px 9px 0;border-bottom:1px solid var(--line-soft);vertical-align:top} th{font-weight:600;color:var(--ink);font-size:13px} td{color:var(--ink-2)} td:first-child{color:var(--ink);white-space:nowrap}
+  .specs{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;margin:12px 0}
+  .sw{height:48px;border-radius:6px;border:1px solid var(--line);display:flex;align-items:flex-end;padding:6px 8px;font-size:11.5px}
+  .type div{padding:10px 0;border-bottom:1px solid var(--line-soft);display:flex;gap:18px;align-items:baseline} .type small{width:150px;flex:none;color:var(--ink-3);font:12px var(--sans)}
+  .crop{position:relative;height:150px;width:390px;overflow:hidden;border:1px solid var(--line);border-radius:12px;margin:10px 0} .crop iframe{position:absolute;left:0;bottom:0;border:0}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:28px} .id{background:var(--raised);border:1px solid var(--line-soft);padding:14px 16px;border-radius:var(--r-md)}
+  .touch{display:flex;gap:18px;align-items:flex-end;margin:14px 0} .touch i{display:block;border:1px dashed var(--accent);border-radius:6px;position:relative} .touch figcaption{font-size:12px;color:var(--ink-3);margin-top:6px} .touch figure{margin:0}
+  a{color:var(--ink-2)} a:hover{color:var(--ink)} code{font:12.5px ui-monospace,monospace;color:var(--ink-2)}
+</style></head><body>
+<h1>Marginalia Mobile · system</h1>
+<p>Mobile adapts the locked desktop language. It reuses <code>../exploration/arthur.css</code> for every colour, relation colour, radius, easing and duration, and adds only what a touch screen needs. Nothing below changes a desktop token. <a href="board.html">Board</a> · <a href="index.html">Playground</a></p>
+
+<h2>Principle</h2>
+<div class="two"><div class="id"><b style="font:430 22px var(--serif)">Desktop = explore your thinking.</b><p>Rail, inspector beside the list, a full-bleed graph, a horizontal lineage. Reading and comparing.</p></div><div class="id"><b style="font:430 22px var(--serif)">Mobile = capture your thinking.</b><p>Capture, organize, glance, continue. One column, one thumb, one primary action always in reach.</p></div></div>
+
+<h2>Navigation: the notebook edge</h2>
+<p>A five-slot bottom bar. The centre slot is not a floating button. It is an <b>index tab</b>: the ink-filled primary from the desktop rail, turned into a tab that sticks 12px out of the page edge, carrying the accent thread-knot (the logo’s apex) on its top edge. It stays in the bar so it never covers content, and sits in the lowest, most reachable row of the screen.</p>
+<div class="crop"><iframe title="Tab bar" width="390" height="844" src="phone.html?s=ideas&w=390&h=844"></iframe></div>
+<table><tr><th>Part</th><th>Spec</th></tr>
+<tr><td>Bar</td><td>60px content + bottom inset (gesture 20px, 3-button 48px; <code>env(safe-area-inset-bottom)</code> in production). Fill <code>--sunken</code>, 1px <code>--line-soft</code> top hairline.</td></tr>
+<tr><td>Slots</td><td>Home · Ideas · <b>Capture</b> (78px) · Connections · Evolution. Icon 23px, label 11.5px Hanken Grotesk, always visible.</td></tr>
+<tr><td>Current</td><td>Ink label at weight 650, heavier icon stroke, 24×2px accent bar on the bar’s top edge. The desktop’s leading accent bar, turned to the horizontal.</td></tr>
+<tr><td>Capture tab</td><td>68×72px, radii 10 / 10 / 4 / 4, <code>--ink</code> fill, <code>--ground</code> glyph, 6px accent knot. Permission granted: tap = start listening. Not granted: tap opens Home; only Speak asks.</td></tr>
+<tr><td>Settings</td><td>Not a tab. 44px glyph button at the top right of every screen, opening a pushed page.</td></tr>
+<tr><td>Hidden</td><td>During recording, in Idea detail (replaced by Revise / Branch), and while the keyboard is up.</td></tr></table>
+
+<h2>Type</h2>
+<p>Same two families as desktop; sizes step up because the reading distance is shorter. Cyrillic falls through to Source Serif 4 and Inter, both already bundled by the app.</p>
+<div class="type">
+<div><small>Hero · 36 / 1.08 · Newsreader</small><span style="font:400 36px/1.08 var(--serif);letter-spacing:-.02em">What’s on your mind?</span></div>
+<div><small>Page title · 30 · 28 at 360</small><span style="font:400 30px/1.05 var(--serif)">Connections</span></div>
+<div><small>Thought title · 30 · 27 at 360</small><span style="font:430 30px/1.12 var(--serif)">Arthur mobile app experience</span></div>
+<div><small>Body · 18 / 1.62 · 17 at 360</small><span style="font:400 18px/1.62 var(--serif)">Capture a thought in one gesture, then let Arthur organize it.</span></div>
+<div><small>Row title · 17 / 1.26</small><span style="font:450 17px/1.26 var(--serif)">Sync after the phone is back online</span></div>
+<div><small>Cyrillic · same sizes</small><span style="font:450 17px/1.26 var(--serif)">Arthur трябва да разбира български 😀</span></div>
+<div><small>Quote · italic 16 / 1.6</small><span style="font:italic 400 16px/1.6 var(--serif);color:var(--ink-2)">“Mobile capture has to work on the train.”</span></div>
+<div><small>UI · 15 · Hanken Grotesk</small><span style="font:500 15px var(--sans)">Retry organizing</span></div>
+<div><small>Margin / meta · 12.5, floor 12</small><span style="font:500 12.5px var(--sans);color:var(--ink-3)">Voice · 7 links · r5 · 20 min</span></div>
+</div>
+
+<h2>Spacing, size, touch</h2>
+<table><tr><th>Token</th><th>Value</th><th>Use</th></tr>
+<tr><td>--gut</td><td>20px · 16px at 360 · 22px at 412</td><td>Side gutter. Everything aligns to it; the thread sits at gutter + 10px.</td></tr>
+<tr><td>--safe-t</td><td>36px</td><td>Status bar and display cutout. <code>env(safe-area-inset-top)</code> in production.</td></tr>
+<tr><td>--safe-b</td><td>20px gesture · 48px 3-button</td><td>Bottom inset. Sheets, action bars and the tab bar all add it.</td></tr>
+<tr><td>--bar-h</td><td>60px</td><td>Tab bar content height.</td></tr>
+<tr><td>--touch</td><td>48px</td><td>Primary targets. 44px is the floor for secondary controls and dense rows; nothing is smaller than 40px, and 40px only for in-row secondary buttons with 8px spacing.</td></tr>
+<tr><td>Rows</td><td>Ideas ≈ 102px · stream kid ≥ 52px · revision ≥ 84px · relation ≥ 56px</td><td>Comfortable, one thumb, no density toggle on mobile.</td></tr>
+<tr><td>Radii</td><td>3 / 6 / 11 / 14 (sheet top)</td><td>Same three as desktop plus one for sheets. Full radius for Speak, Stop and status dots only.</td></tr></table>
+<div class="touch"><figure><i style="width:48px;height:48px"></i><figcaption>48 primary</figcaption></figure><figure><i style="width:44px;height:44px"></i><figcaption>44 floor</figcaption></figure><figure><i style="width:56px;height:56px;border-radius:28px"></i><figcaption>56 Speak</figcaption></figure><figure><i style="width:64px;height:64px;border-radius:32px"></i><figcaption>64 Stop</figcaption></figure></div>
+
+<h2>Surfaces</h2>
+<p>Still hairlines and whitespace. Mobile raises three things: the Home <b>page</b> (the composer), <b>sheets</b> and the <b>toast</b>. Selection is a wash on tap, never a bordered card. Lists are separated by hairlines, not containers.</p>
+<div class="specs"><div class="sw" style="background:var(--ground)">ground</div><div class="sw" style="background:var(--sunken)">sunken · tab bar</div><div class="sw" style="background:var(--raised)">raised · Home page</div><div class="sw" style="background:var(--overlay)">overlay · sheets</div><div class="sw" style="background:var(--accent);color:var(--accent-ink)">accent · Speak, current, focus</div><div class="sw" style="background:var(--ink);color:var(--ground)">ink · Capture, Stop, Revise</div></div>
+
+<h2>Motion</h2>
+<table><tr><th>Moment</th><th>Spec</th></tr>
+<tr><td>Thread drawing</td><td>After organizing: 700ms down + 240ms-delayed 700ms across, per idea. The one orchestrated moment. Pending threads are dashed and static.</td></tr>
+<tr><td>Sheets</td><td>220ms translateY(24px) + fade, desktop easing. Scrim 220ms fade.</td></tr>
+<tr><td>Pushed pages</td><td>Idea detail and Settings: 220ms translateX(28px) + fade.</td></tr>
+<tr><td>Map focus</td><td>On select, the world glides 280ms to put the node in the visible area above the sheet.</td></tr>
+<tr><td>Recording</td><td>A 2.4s breathing ring on the accent knot. The only looping animation, and only while the microphone is live.</td></tr>
+<tr><td>Reduced motion</td><td>All of the above become instant (inherited <code>prefers-reduced-motion</code> rule). The thread simply appears; the knot stays still.</td></tr></table>
+
+<h2>Relation geometry on a phone</h2>
+<p>Unchanged from desktop: line shape is the kind, colour only reinforces it. The legend is also the filter (in the Filter sheet), and each relation row in the List carries the same swatch.</p>
+<div id="sw" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px 22px;margin:12px 0"></div>
+
+<h2>Continuity with desktop</h2>
+<table><tr><th></th><th>Rule</th></tr>
+<tr><td>Identical</td><td>Notebook-with-a-memory idea · Newsreader / Hanken Grotesk + Cyrillic fallbacks · Graphite and Daylight palettes · verdigris accent only for current / focus / Speak · pencil-blue for Arthur’s proposals · five kind glyphs (shape, not colour) · seven relation geometries · solid = yours, dashed = Arthur’s · margin metadata (source, links, revisions) · the thread · Connections organic with serif labels, Evolution structured with sans labels · all copy and error voice · what the client can and cannot do.</td></tr>
+<tr><td>Transformed</td><td>Rail → bottom tab bar with an index-tab Capture · composer → the Home “page” with a thumb-height Speak · persistent inspector → full-screen detail (Ideas) and bottom sheets (Map, Filters, Revise) · two-column Home → one column with the stream below Capture · legend-as-filter overlay → Filter sheet · horizontal two-lane rail → vertical lane rail with in-place expansion · hover and ⌘ shortcuts → taps, long reads, and visible buttons · Connections default Map → default List.</td></tr>
+<tr><td>Desktop only</td><td>Keyboard shortcuts (⌘N, ⌥Space, /) · persistent three-region layouts · side-by-side graph and inspector · dense compact rows toggle · the “Connected thinking” mini-graph on Home.</td></tr>
+<tr><td>Mobile only</td><td>Full-screen recording moment · Android permission handling and interruption states · index-tab Capture · map minimap and zoom buttons · pinch / pan · bottom-sheet peek on map selection · action bar in Idea detail · thumb-zone ordering.</td></tr></table>
+
+<script src="../exploration/arthur-ui.js"></script>
+<script>document.getElementById("sw").innerHTML=Object.entries(Arthur.REL).map(([k,v])=>`<div style="display:flex;gap:12px;align-items:center">${Arthur.relSwatch(k,52)}<span><b style="font-weight:600">${v.label}</b><br><span class="mut" style="font-size:12.5px">${v.sym?"No direction":"Has a direction"}</span></span></div>`).join("")</script>
+</body></html>

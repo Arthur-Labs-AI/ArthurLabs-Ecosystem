@@ -1,0 +1,472 @@
+[
+ {
+  "id": "j01",
+  "lang": "en",
+  "claim": "The onboarding flow also shows a privacy note.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.96,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.96,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.96,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "revise:a",
+  "note": ""
+ },
+ {
+  "id": "j02",
+  "lang": "bg",
+  "claim": "Бележките могат и да се експортират.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.94,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.94,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.94,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "revise:a",
+  "note": ""
+ },
+ {
+  "id": "j03",
+  "lang": "en",
+  "claim": "Plan a birthday party.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.05,
+     "reframing": 0.0,
+     "relation": "distinct_same_project",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.05,
+     "reframing": 0.0,
+     "relation": "distinct_same_project",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.05,
+     "reframing": 0.0,
+     "relation": "distinct_same_project",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "new",
+  "note": ""
+ },
+ {
+  "id": "j04",
+  "lang": "en",
+  "claim": "The app is really a family organiser.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.9,
+     "reframing": 0.7,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.9,
+     "reframing": 0.7,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.9,
+     "reframing": 0.7,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "uncertain",
+  "note": ""
+ },
+ {
+  "id": "j05",
+  "lang": "en",
+  "claim": "Switch from REST to gRPC.",
+  "candidates": [
+   "a",
+   "b"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "decision_replacement",
+     "referent": true,
+     "supersession": true
+    },
+    {
+     "id": "b",
+     "same": 0.2,
+     "reframing": 0.0,
+     "relation": "distinct_same_project",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "decision_replacement",
+     "referent": true,
+     "supersession": true
+    },
+    {
+     "id": "b",
+     "same": 0.2,
+     "reframing": 0.0,
+     "relation": "distinct_same_project",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "decision_replacement",
+     "referent": true,
+     "supersession": true
+    },
+    {
+     "id": "b",
+     "same": 0.2,
+     "reframing": 0.0,
+     "relation": "distinct_same_project",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "revise:a",
+  "note": ""
+ },
+ {
+  "id": "j06",
+  "lang": "en",
+  "claim": "Send the report.",
+  "candidates": [
+   "a",
+   "b"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.7,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    },
+    {
+     "id": "b",
+     "same": 0.7,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.7,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    },
+    {
+     "id": "b",
+     "same": 0.7,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.7,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    },
+    {
+     "id": "b",
+     "same": 0.7,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "uncertain",
+  "note": ""
+ },
+ {
+  "id": "j07",
+  "lang": "unicode",
+  "claim": "Добави и яйца 🥚.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "revise:a",
+  "note": ""
+ },
+ {
+  "id": "j08",
+  "lang": "en",
+  "claim": "Break the launch into three tasks.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.9,
+     "reframing": 0.0,
+     "relation": "subtask",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.9,
+     "reframing": 0.0,
+     "relation": "subtask",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.9,
+     "reframing": 0.0,
+     "relation": "subtask",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "uncertain",
+  "note": "subtask never automatic"
+ },
+ {
+  "id": "j09",
+  "lang": "en",
+  "claim": "Use Postgres.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "decision_replacement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "decision_replacement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.95,
+     "reframing": 0.0,
+     "relation": "decision_replacement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "uncertain",
+  "note": ""
+ },
+ {
+  "id": "j10",
+  "lang": "en",
+  "claim": "Arthur will also support desktop.",
+  "candidates": [
+   "a"
+  ],
+  "runs": [
+   [
+    {
+     "id": "a",
+     "same": 0.85,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.85,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ],
+   [
+    {
+     "id": "a",
+     "same": 0.85,
+     "reframing": 0.0,
+     "relation": "additive_refinement",
+     "referent": true,
+     "supersession": false
+    }
+   ]
+  ],
+  "expect": "uncertain",
+  "note": "below the calibrated threshold"
+ }
+]

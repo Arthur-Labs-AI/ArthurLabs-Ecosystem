@@ -1,0 +1,351 @@
+
+S2B-PH-SM4-TB(LF)(SN) | JST | JLCPCB
+Coupons
+Assembly Parts Lib
+For PCBA Only
+Upload BOM
+Search
+0
+Parts Cart
+Sign In
+Sign In
+Upload BOM
+Search
+Products
+In Stock Parts
+Bom Tool
+Request a Quote
+Support
+Online Chat >
+Chat with our live agent for fast reply.
+Mon-Fri: 24 hours, Sat: 9am-6pm, GMT+8
+Email Us >
+Contact us at support@jlcpcb.com
+Typically reply within hours.
+Help Center >
+Get instant answers.
+24/7 Available.
+Services & Tools
+Electronic Parts
+BOM Tool
+Request a Quote
+Manufacturers
+PCB Assembly
+Support
+Contact Us
+How to Order
+User Guides
+Sourcing Tips
+Payment Methods
+Company
+About Us
+Quality Assurance
+How We Work
+Certifications
+Security
+JLCAPI
+News
+Cooperation
+Careers
+Electronics
+EasyEDA
+JLCPCB
+JLCDFM
+LCSC
+OSHWLAB
+Mechanical
+JLC3DP
+JLCCNC
+JLCMC
+Download JLCONE Desktop—Get $524 Exclusive Coupons
+CONNECT WITH US
+Services & Tools
+Electronic Parts
+BOM Tool
+Request a Quote
+Manufacturers
+PCB Assembly
+Support
+Contact Us
+How to Order
+User Guides
+Sourcing Tips
+Payment Methods
+Company
+About Us
+Quality Assurance
+How We Work
+Certifications
+Security
+JLCAPI
+News
+Cooperation
+Careers
+Electronics
+EasyEDA
+JLCPCB
+JLCDFM
+LCSC
+OSHWLAB
+Mechanical
+JLC3DP
+JLCCNC
+JLCMC
+Download JLCONE Desktop—Get $524 Exclusive Coupons
+CONNECT WITH US
+© 
+2026
+JLCPCB.COM All Rights Reserved.
+Privacy Policy
+Terms & Conditions
+Cookies Policy
+Do Not Sell or Share My Personal Information
+JLCPCB
+Parts Library
+All Components
+Connectors
+Wire To Board Connector
+S2B-PH-SM4-TB(LF)(SN)
+Extended
+1
+/
+4
+* Images are for reference only
+S2B-PH-SM4-TB(LF)(SN)
+Attributes
+Value
+Manufacturer
+JST
+MFR.Part #
+S2B-PH-SM4-TB(LF)(SN)
+JLCPCB Part #
+C295747
+Package
+SMD,P=2mm,Surface Mount，Right Angle
+Description
+-25℃~+85℃ 1 100V 1x2P 2 2A 2P 2mm 5.5mm 7.9mm 8.6mm Auxiliary Solder Pin Beige Copper alloy PA PH Surface Mount, Right Angle Tin UL94V-0 SMD,P=2mm,卧贴 Wire To Board Connector ROHS
+EasyEDA Libraries
+PCB Footprint or Symbol
+ECCN
+EAR99
+Datasheet
+Download
+Source
+JLCPCB
+Assembly Type
+SMT Assembly
+PCBA Type
+Economic and Standard
+MSL Level
+MSL 1
+Note: The purchased components are stored in your JLCPCB parts library for future PCBA orders only, and cannot be shipped separately.
+Specifications
+Attributes
+Value
+Category
+Connectors/Wire To Board Connector
+Manufacturer
+JST
+Package
+SMD,P=2mm,Surface Mount，Right Angle
+Operating Temperature
+-25℃~+85℃
+Number of Rows
+1
+Voltage Rating
+100V
+Color
+Beige
+Current Rating
+2A
+Pins Structure
+1x2P
+Mounting Type
+Surface Mount, Right Angle
+Flame Retardant Rating
+UL94V-0
+Y-Width of Bottom Edge on Board
+8.6mm
+X-Length of Bottom Edge on Board (Spacing Line)
+7.9mm
+Reference Series
+PH
+Contact Plating
+Tin
+Number of Pins
+2P
+Pitch
+2mm
+Contact Material
+Copper alloy
+Supplementary Features
+Auxiliary Solder Pin
+Z-Height of the Board
+5.5mm
+Plastic Material
+PA
+Number of PINs Per Row
+2
+Results remaining
+: 
+0
+View Similar
+PCB Assembly Tips
+Documents
+PCB Footprint/Symbol
+Related Products
+JLCPCB
+Parts Library
+All Components
+Connectors
+Wire To Board Connector
+S2B-PH-SM4-TB(LF)(SN)
+* Images are for reference only
+S2B-PH-SM4-TB(LF)(SN)
+Extended
+Manufacturer
+JST
+MFR.Part #
+S2B-PH-SM4-TB(LF)(SN)
+JLCPCB Part #
+C295747
+Package
+SMD,P=2mm,Surface Mount，Right Angle
+Description
+-25℃~+85℃ 1 100V 1x2P 2 2A 2P 2mm 5.5mm 7.9mm 8.6mm Auxiliary Solder Pin Beige Copper alloy PA PH Surface Mount, Right Angle Tin UL94V-0 SMD,P=2mm,卧贴 Wire To Board Connector ROHS
+EasyEDA Libraries
+PCB Footprint or Symbol
+ECCN
+EAR99
+Datasheet
+Download
+Source
+JLCPCB
+Assembly Type
+SMT Assembly
+PCBA Type
+Economic and Standard
+MSL Level
+MSL 1
+Note: The purchased components are stored in your JLCPCB parts library for future PCBA orders only, and cannot be shipped separately.
+* Images are for reference only
+S2B-PH-SM4-TB(LF)(SN)
+Extended
+Manufacturer
+JST
+MFR.Part #
+S2B-PH-SM4-TB(LF)(SN)
+JLCPCB Part #
+C295747
+Package
+SMD,P=2mm,Surface Mount，Right Angle
+Description
+-25℃~+85℃ 1 100V 1x2P 2 2A 2P 2mm 5.5mm 7.9mm 8.6mm Auxiliary Solder Pin Beige Copper alloy PA PH Surface Mount, Right Angle Tin UL94V-0 SMD,P=2mm,卧贴 Wire To Board Connector ROHS
+EasyEDA Libraries
+PCB Footprint or Symbol
+ECCN
+EAR99
+Datasheet
+Download
+Source
+JLCPCB
+Assembly Type
+SMT Assembly
+PCBA Type
+Economic and Standard
+MSL Level
+MSL 1
+Note: The purchased components are stored in your JLCPCB parts library for future PCBA orders only, and cannot be shipped separately.
+Specifications
+PCB Assembly Tips
+Documents
+PCB Footprint/Symbol
+S2B-PH-SM4-TB(LF)(SN)
+ Specifications
+S2B-PH-SM4-TB(LF)(SN)
+ technical specifications, attributes, and parameters.
+Report an Error?
+Attributes
+Value
+Category
+Connectors/Wire To Board Connector
+Manufacturer
+JST
+Package
+SMD,P=2mm,Surface Mount，Right Angle
+Operating Temperature
+-25℃~+85℃
+Number of Rows
+1
+Voltage Rating
+100V
+Color
+Beige
+Current Rating
+2A
+Pins Structure
+1x2P
+Mounting Type
+Surface Mount, Right Angle
+Flame Retardant Rating
+UL94V-0
+Y-Width of Bottom Edge on Board
+8.6mm
+X-Length of Bottom Edge on Board (Spacing Line)
+7.9mm
+Reference Series
+PH
+Contact Plating
+Tin
+Number of Pins
+2P
+Pitch
+2mm
+Contact Material
+Copper alloy
+Supplementary Features
+Auxiliary Solder Pin
+Z-Height of the Board
+5.5mm
+Plastic Material
+PA
+Number of PINs Per Row
+2
+Results remaining
+: 
+0
+View Similar
+PCB Assembly Tips
+From components to fully assembled PCBs. JLCPCB supports PCB assembly for the
+S2B-PH-SM4-TB(LF)(SN)
+. Sign up to receive and
+start your assembly today
+→
+1
+Step 
+1
+ - 
+Pre-order the parts you need from JLCPCB.
+2
+Step 
+2
+ - 
+Place a PCBA order to have those parts assembled onto your boards.
+3
+Step 
+3
+ - 
+JLCPCB manufactures and assembles your boards in as fast as 3 days.
+Learn more about JLCPCB Assembly
+S2B-PH-SM4-TB(LF)(SN)
+ Documents
+S2B-PH-SM4-TB(LF)(SN)
+ datasheets or manufacturer documentation.
+Datasheet:
+S2B-PH-SM4-TB(LF)(SN)
+ Datasheet (PDF)
+S2B-PH-SM4-TB(LF)(SN)
+ Schematic Symbol & PCB Footprint
+The 
+S2B-PH-SM4-TB(LF)(SN)
+ schematic symbol and PCB footprint are available in the EasyEDA PCB design tool.

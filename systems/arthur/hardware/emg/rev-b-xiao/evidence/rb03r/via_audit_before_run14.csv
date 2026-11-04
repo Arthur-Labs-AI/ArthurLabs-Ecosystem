@@ -1,0 +1,125 @@
+via,via_net,via_size,via_drill,layers,pad,pad_net,pad_layer,centre_to_pad_copper_mm,mask_margin_mm,centre_to_mask_opening_mm,hole_to_opening_mm,annulus_to_opening_mm,centre_in_pad,paste_aperture,paste_margin_mm,paste_hit,class
+"[17.5, 30.3]",/CH3_P,0.6,0.3,F.Cu-B.Cu,R307.2,/CH3_P,F.Cu,0.309,0.0,0.309,0.159,0.009,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[11.1, 50.6]",/CH3_P,0.6,0.3,F.Cu-B.Cu,D303.3,/CH3_P,F.Cu,0.34,0.0,0.34,0.19,0.04,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[11.1, 50.6]",/CH3_P,0.6,0.3,F.Cu-B.Cu,C306.1,/CH3_P,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[11.1, 52.8]",/CH3_N,0.6,0.3,F.Cu-B.Cu,C307.1,/CH3_N,F.Cu,0.316,0.0,0.316,0.166,0.016,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[33.8, 29.1]",/CH1/ACN_N,0.6,0.3,F.Cu-B.Cu,C102.2,/CH1/ACN_N,F.Cu,0.102,0.0,0.102,-0.048,-0.198,False,True,0.0,False,FAIL hole within 0.10 mm of the mask opening
+"[33.1, 28.6]",/CH1/ACN_N,0.6,0.3,F.Cu-B.Cu,R104.1,/CH1/ACN_N,F.Cu,0.246,0.0,0.246,0.096,-0.054,False,True,0.0,False,FAIL hole within 0.10 mm of the mask opening
+"[26.3, 34.6]",GND,0.6,0.3,F.Cu-B.Cu,C4006.2,GND,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[24.1, 44.1]",GND,0.6,0.3,F.Cu-B.Cu,X1.2,GND,F.Cu,0.43,0.0,0.43,0.28,0.13,False,True,0.0,False,OK (web >= 0.10 mm)
+"[8.0, 33.4]",GND,0.6,0.3,F.Cu-B.Cu,TP8.1,GND,B.Cu,0.344,0.0,0.344,0.194,0.044,False,False,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[13.6, 30.3]",GND,0.6,0.3,F.Cu-B.Cu,R304.2,GND,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[14.2, 55.0]",GND,0.6,0.3,F.Cu-B.Cu,C406.2,GND,F.Cu,0.391,0.0,0.391,0.241,0.091,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[35.3, 24.2]",GND,0.6,0.3,F.Cu-B.Cu,C501.2,GND,F.Cu,0.375,0.0,0.375,0.225,0.075,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[9.3, 49.7]",GND,0.6,0.3,F.Cu-B.Cu,D303.1,GND,F.Cu,0.406,0.0,0.406,0.256,0.106,False,True,0.0,False,OK (web >= 0.10 mm)
+"[34.6, 37.2]",GND,0.6,0.3,F.Cu-B.Cu,R7108.2,GND,F.Cu,0.375,0.0,0.375,0.225,0.075,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[34.6, 37.2]",GND,0.6,0.3,F.Cu-B.Cu,C4007.2,GND,F.Cu,0.426,0.0,0.426,0.276,0.126,False,True,0.0,False,OK (web >= 0.10 mm)
+"[40.8, 29.3]",GND,0.6,0.3,F.Cu-B.Cu,C5002.2,GND,F.Cu,0.379,0.0,0.379,0.229,0.079,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[20.8, 35.0]",GND,0.6,0.3,F.Cu-B.Cu,U4002.2,GND,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[5.4, 19.6]",GND,0.6,0.3,F.Cu-B.Cu,C404.2,GND,F.Cu,0.379,0.0,0.379,0.229,0.079,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[46.4, 24.2]",GND,0.6,0.3,F.Cu-B.Cu,C503.2,GND,F.Cu,0.375,0.0,0.375,0.225,0.075,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[23.0, 30.4]",GND,0.6,0.3,F.Cu-B.Cu,R204.2,GND,F.Cu,0.379,0.0,0.379,0.229,0.079,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[5.1, 15.6]",GND,0.6,0.3,F.Cu-B.Cu,D402.1,GND,F.Cu,0.352,0.0,0.352,0.202,0.052,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[3.8, 43.4]",GND,0.6,0.3,F.Cu-B.Cu,D104.1,GND,F.Cu,0.402,0.0,0.402,0.252,0.102,False,True,0.0,False,OK (web >= 0.10 mm)
+"[3.7, 50.6]",GND,0.6,0.3,F.Cu-B.Cu,D304.1,GND,F.Cu,0.402,0.0,0.402,0.252,0.102,False,True,0.0,False,OK (web >= 0.10 mm)
+"[38.8, 15.6]",GND,0.6,0.3,F.Cu-B.Cu,D101.1,GND,F.Cu,0.352,0.0,0.352,0.202,0.052,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[14.5, 15.6]",GND,0.6,0.3,F.Cu-B.Cu,D302.1,GND,F.Cu,0.352,0.0,0.352,0.202,0.052,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[34.6, 34.9]",GND,0.6,0.3,F.Cu-B.Cu,C4007.2,GND,F.Cu,0.426,0.0,0.426,0.276,0.126,False,True,0.0,False,OK (web >= 0.10 mm)
+"[15.0, 42.6]",GND,0.6,0.3,F.Cu-B.Cu,C6007.2,GND,F.Cu,0.449,0.0,0.449,0.299,0.149,False,True,0.0,False,OK (web >= 0.10 mm)
+"[19.2, 15.6]",GND,0.6,0.3,F.Cu-B.Cu,D301.1,GND,F.Cu,0.352,0.0,0.352,0.202,0.052,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[24.7, 46.5]",GND,0.6,0.3,F.Cu-B.Cu,C6009.2,GND,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[13.6, 47.1]",GND,0.6,0.3,F.Cu-B.Cu,C107.2,GND,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[13.6, 47.1]",GND,0.6,0.3,F.Cu-B.Cu,C207.2,GND,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[28.9, 19.6]",GND,0.6,0.3,F.Cu-B.Cu,C203.2,GND,F.Cu,0.379,0.0,0.379,0.229,0.079,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[28.6, 15.6]",GND,0.6,0.3,F.Cu-B.Cu,D201.1,GND,F.Cu,0.352,0.0,0.352,0.202,0.052,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[28.6, 59.5]",GND,0.6,0.3,F.Cu-B.Cu,R3009.2,GND,F.Cu,0.375,0.0,0.375,0.225,0.075,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[10.1, 19.6]",GND,0.6,0.3,F.Cu-B.Cu,C403.2,GND,F.Cu,0.379,0.0,0.379,0.229,0.079,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[33.3, 15.6]",GND,0.6,0.3,F.Cu-B.Cu,D102.1,GND,F.Cu,0.352,0.0,0.352,0.202,0.052,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[39.4, 34.6]",GND,0.6,0.3,F.Cu-B.Cu,J1.2,GND,F.Cu,0.402,0.0,0.402,0.252,0.102,False,True,0.0,False,OK (web >= 0.10 mm)
+"[22.7, 38.8]",GND,0.6,0.3,F.Cu-B.Cu,R3008.2,GND,F.Cu,0.176,0.0,0.176,0.026,-0.124,False,True,0.0,False,FAIL hole within 0.10 mm of the mask opening
+"[3.7, 54.2]",GND,0.6,0.3,F.Cu-B.Cu,D403.1,GND,F.Cu,0.402,0.0,0.402,0.252,0.102,False,True,0.0,False,OK (web >= 0.10 mm)
+"[14.9, 19.6]",GND,0.6,0.3,F.Cu-B.Cu,C304.2,GND,F.Cu,0.375,0.0,0.375,0.225,0.075,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[24.2, 19.6]",GND,0.6,0.3,F.Cu-B.Cu,C204.2,GND,F.Cu,0.379,0.0,0.379,0.229,0.079,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[24.6, 58.8]",GND,0.6,0.3,F.Cu-B.Cu,R7106.2,GND,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[3.8, 47.0]",GND,0.6,0.3,F.Cu-B.Cu,D203.1,GND,F.Cu,0.402,0.0,0.402,0.252,0.102,False,True,0.0,False,OK (web >= 0.10 mm)
+"[17.6, 23.1]",GND,0.6,0.3,F.Cu-B.Cu,C502.2,GND,F.Cu,0.379,0.0,0.379,0.229,0.079,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[7.6, 43.4]",GND,0.6,0.3,F.Cu-B.Cu,D103.1,GND,F.Cu,0.402,0.0,0.402,0.252,0.102,False,True,0.0,False,OK (web >= 0.10 mm)
+"[35.7, 33.3]",GND,0.6,0.3,F.Cu-B.Cu,C7103.2,GND,F.Cu,0.449,0.0,0.449,0.299,0.149,False,True,0.0,False,OK (web >= 0.10 mm)
+"[18.4, 33.4]",GND,0.6,0.3,F.Cu-B.Cu,C4005.2,GND,F.Cu,0.449,0.0,0.449,0.299,0.149,False,True,0.0,False,OK (web >= 0.10 mm)
+"[9.8, 15.6]",GND,0.6,0.3,F.Cu-B.Cu,D401.1,GND,F.Cu,0.352,0.0,0.352,0.202,0.052,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[38.8, 19.6]",GND,0.6,0.3,F.Cu-B.Cu,C103.2,GND,F.Cu,0.375,0.0,0.375,0.225,0.075,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[33.7, 19.6]",GND,0.6,0.3,F.Cu-B.Cu,C104.2,GND,F.Cu,0.375,0.0,0.375,0.225,0.075,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[20.5, 42.7]",GND,0.6,0.3,F.Cu-B.Cu,C6008.2,GND,F.Cu,0.426,0.0,0.426,0.276,0.126,False,True,0.0,False,OK (web >= 0.10 mm)
+"[24.7, 41.3]",GND,0.6,0.3,F.Cu-B.Cu,C6010.2,GND,F.Cu,0.379,0.0,0.379,0.229,0.079,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[22.1, 43.5]",GND,0.6,0.3,F.Cu-B.Cu,X1.2,GND,F.Cu,0.402,0.0,0.402,0.252,0.102,False,True,0.0,False,OK (web >= 0.10 mm)
+"[4.2, 30.4]",GND,0.6,0.3,F.Cu-B.Cu,R404.2,GND,F.Cu,0.379,0.0,0.379,0.229,0.079,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[11.2, 34.2]",GND,0.6,0.3,F.Cu-B.Cu,TP7.1,GND,B.Cu,0.383,0.0,0.383,0.233,0.083,False,False,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[19.5, 19.6]",GND,0.6,0.3,F.Cu-B.Cu,C303.2,GND,F.Cu,0.379,0.0,0.379,0.229,0.079,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[9.3, 53.3]",GND,0.6,0.3,F.Cu-B.Cu,D404.1,GND,F.Cu,0.406,0.0,0.406,0.256,0.106,False,True,0.0,False,OK (web >= 0.10 mm)
+"[18.8, 30.3]",GND,0.6,0.3,F.Cu-B.Cu,R303.2,GND,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[23.9, 15.6]",GND,0.6,0.3,F.Cu-B.Cu,D202.1,GND,F.Cu,0.352,0.0,0.352,0.202,0.052,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[30.0, 29.1]",/CH2/ACN_P,0.6,0.3,F.Cu-B.Cu,C201.2,/CH2/ACN_P,F.Cu,0.102,0.0,0.102,-0.048,-0.198,False,True,0.0,False,FAIL hole within 0.10 mm of the mask opening
+"[25.9, 29.5]",/CH2_P,0.6,0.3,F.Cu-B.Cu,R207.2,/CH2_P,F.Cu,0.078,0.0,0.078,-0.072,-0.222,False,True,0.0,False,FAIL hole within 0.10 mm of the mask opening
+"[21.3, 30.3]",/CH2_N,0.6,0.3,F.Cu-B.Cu,R208.2,/CH2_N,F.Cu,0.309,0.0,0.309,0.159,0.009,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[11.1, 47.4]",/CH2_N,0.6,0.3,F.Cu-B.Cu,D204.3,/CH2_N,F.Cu,0.328,0.0,0.328,0.178,0.028,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[11.1, 47.4]",/CH2_N,0.6,0.3,F.Cu-B.Cu,C207.1,/CH2_N,F.Cu,0.316,0.0,0.316,0.166,0.016,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[4.9, 27.3]",/CH4/ACN_N,0.6,0.3,F.Cu-B.Cu,R404.1,/CH4/ACN_N,F.Cu,0.297,0.0,0.297,0.147,-0.003,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[5.6, 30.3]",/CH4/ACN_N,0.6,0.3,F.Cu-B.Cu,C402.2,/CH4/ACN_N,F.Cu,0.316,0.0,0.316,0.166,0.016,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[23.7, 27.3]",/CH2/ACN_N,0.6,0.3,F.Cu-B.Cu,R204.1,/CH2/ACN_N,F.Cu,0.297,0.0,0.297,0.147,-0.003,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[24.4, 30.3]",/CH2/ACN_N,0.6,0.3,F.Cu-B.Cu,C202.2,/CH2/ACN_N,F.Cu,0.316,0.0,0.316,0.166,0.016,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[22.7, 53.9]",DVDD_F,0.6,0.3,F.Cu-B.Cu,R7104.1,DVDD_F,F.Cu,0.309,0.0,0.309,0.159,0.009,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[22.7, 53.9]",DVDD_F,0.6,0.3,F.Cu-B.Cu,R7103.1,DVDD_F,F.Cu,0.355,0.0,0.355,0.205,0.055,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[24.3, 45.0]",DVDD_F,0.6,0.3,F.Cu-B.Cu,X1.4,DVDD_F,F.Cu,0.43,0.0,0.43,0.28,0.13,False,True,0.0,False,OK (web >= 0.10 mm)
+"[26.3, 56.8]",DVDD_F,0.6,0.3,F.Cu-B.Cu,C7102.1,DVDD_F,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[26.3, 56.8]",DVDD_F,0.6,0.3,F.Cu-B.Cu,C7101.1,DVDD_F,F.Cu,0.328,0.0,0.328,0.178,0.028,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[29.7, 45.9]",/XIAO_Brain_Interface/SCLK_MCU,0.6,0.3,F.Cu-B.Cu,U1.9,/XIAO_Brain_Interface/SCLK_MCU,F.Cu,0.41,0.05,0.36,0.21,0.06,False,False,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[27.9, 47.8]",/SCLK,0.6,0.3,F.Cu-B.Cu,R7101.2,/SCLK,F.Cu,0.328,0.0,0.328,0.178,0.028,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[19.0, 27.3]",/CH3/ACN_P,0.6,0.3,F.Cu-B.Cu,R303.1,/CH3/ACN_P,F.Cu,0.297,0.0,0.297,0.147,-0.003,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[19.7, 30.3]",/CH3/ACN_P,0.6,0.3,F.Cu-B.Cu,C301.2,/CH3/ACN_P,F.Cu,0.316,0.0,0.316,0.166,0.016,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[26.8, 16.5]",/VCM,0.6,0.3,F.Cu-B.Cu,R205.1,/VCM,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[47.1, 20.5]",/VCM,0.6,0.3,F.Cu-B.Cu,TP4.1,/VCM,B.Cu,0.418,0.0,0.418,0.268,0.118,False,False,0.0,False,OK (web >= 0.10 mm)
+"[31.5, 16.5]",/VCM,0.6,0.3,F.Cu-B.Cu,R106.1,/VCM,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[12.7, 16.5]",/VCM,0.6,0.3,F.Cu-B.Cu,R306.1,/VCM,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[8.0, 16.5]",/VCM,0.6,0.3,F.Cu-B.Cu,R405.1,/VCM,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[3.3, 16.5]",/VCM,0.6,0.3,F.Cu-B.Cu,R406.1,/VCM,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[17.4, 16.5]",/VCM,0.6,0.3,F.Cu-B.Cu,R305.1,/VCM,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[22.1, 16.5]",/VCM,0.6,0.3,F.Cu-B.Cu,R206.1,/VCM,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[33.3, 12.8]",AFE_3V0,0.6,0.3,F.Cu-B.Cu,D102.2,AFE_3V0,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[46.4, 21.9]",AFE_3V0,0.6,0.3,F.Cu-B.Cu,C503.1,AFE_3V0,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[9.8, 12.8]",AFE_3V0,0.6,0.3,F.Cu-B.Cu,D401.2,AFE_3V0,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[35.2, 22.3]",AFE_3V0,0.6,0.3,F.Cu-B.Cu,C501.1,AFE_3V0,F.Cu,0.047,0.0,0.047,-0.103,-0.253,False,True,0.0,False,FAIL hole within 0.10 mm of the mask opening
+"[14.5, 12.8]",AFE_3V0,0.6,0.3,F.Cu-B.Cu,D302.2,AFE_3V0,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[19.2, 12.8]",AFE_3V0,0.6,0.3,F.Cu-B.Cu,D301.2,AFE_3V0,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[16.4, 22.3]",AFE_3V0,0.6,0.3,F.Cu-B.Cu,C502.1,AFE_3V0,F.Cu,0.047,0.0,0.047,-0.103,-0.253,False,True,0.0,False,FAIL hole within 0.10 mm of the mask opening
+"[38.0, 12.8]",AFE_3V0,0.6,0.3,F.Cu-B.Cu,D101.2,AFE_3V0,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[28.6, 12.8]",AFE_3V0,0.6,0.3,F.Cu-B.Cu,D201.2,AFE_3V0,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[23.9, 12.8]",AFE_3V0,0.6,0.3,F.Cu-B.Cu,D202.2,AFE_3V0,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[16.0, 44.3]",AFE_3V0,0.6,0.3,F.Cu-B.Cu,C6007.1,AFE_3V0,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[16.2, 46.3]",AFE_3V0,0.6,0.3,F.Cu-B.Cu,U6001.1,AFE_3V0,F.Cu,0.078,0.0,0.078,-0.072,-0.222,False,True,0.0,False,FAIL hole within 0.10 mm of the mask opening
+"[37.4, 38.2]",VBAT,0.6,0.3,F.Cu-B.Cu,R7107.1,VBAT,F.Cu,0.355,0.0,0.355,0.205,0.055,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[33.2, 32.5]",VBAT,0.6,0.3,F.Cu-B.Cu,R4001.1,VBAT,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[34.6, 34.0]",/Analog_Power_Interlock/VBAT_AFE,0.6,0.3,F.Cu-B.Cu,R4001.2,/Analog_Power_Interlock/VBAT_AFE,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[11.1, 45.9]",/CH1_N,0.6,0.3,F.Cu-B.Cu,C107.1,/CH1_N,F.Cu,0.316,0.0,0.316,0.166,0.016,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[9.6, 28.6]",/CH4/ACN_P,0.6,0.3,F.Cu-B.Cu,R403.1,/CH4/ACN_P,F.Cu,0.246,0.0,0.246,0.096,-0.054,False,True,0.0,False,FAIL hole within 0.10 mm of the mask opening
+"[10.3, 29.1]",/CH4/ACN_P,0.6,0.3,F.Cu-B.Cu,C401.2,/CH4/ACN_P,F.Cu,0.102,0.0,0.102,-0.048,-0.198,False,True,0.0,False,FAIL hole within 0.10 mm of the mask opening
+"[11.1, 54.1]",/CH4_N,0.6,0.3,F.Cu-B.Cu,D404.3,/CH4_N,F.Cu,0.367,0.0,0.367,0.217,0.067,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[11.1, 54.1]",/CH4_N,0.6,0.3,F.Cu-B.Cu,C407.1,/CH4_N,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[29.7, 27.7]",/CH2/BUF_P,0.6,0.3,F.Cu-B.Cu,C201.1,/CH2/BUF_P,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[14.8, 38.0]",/Analog_Power_Interlock/AFE_EN,0.6,0.3,F.Cu-B.Cu,TP6.1,/Analog_Power_Interlock/AFE_EN,B.Cu,0.418,0.0,0.418,0.268,0.118,False,False,0.0,False,OK (web >= 0.10 mm)
+"[20.7, 36.6]",/Analog_Power_Interlock/AFE_EN,0.6,0.3,F.Cu-B.Cu,U4002.3,/Analog_Power_Interlock/AFE_EN,F.Cu,0.301,0.0,0.301,0.151,0.001,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[19.8, 38.8]",/Analog_Power_Interlock/AFE_EN,0.6,0.3,F.Cu-B.Cu,R3008.1,/Analog_Power_Interlock/AFE_EN,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[12.2, 44.1]",/CH1_P,0.6,0.3,F.Cu-B.Cu,C106.1,/CH1_P,F.Cu,0.301,0.0,0.301,0.151,0.001,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[24.7, 55.5]",/SYNC_RESET_N,0.6,0.3,F.Cu-B.Cu,R7104.2,/SYNC_RESET_N,F.Cu,0.375,0.0,0.375,0.225,0.075,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[49.4, 55.5]",/SYNC_RESET_N,0.6,0.3,F.Cu-B.Cu,U1.3,/SYNC_RESET_N,F.Cu,0.305,0.05,0.255,0.105,-0.045,False,False,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[24.1, 52.7]",/CS_N,0.6,0.3,F.Cu-B.Cu,R7103.2,/CS_N,F.Cu,0.246,0.0,0.246,0.096,-0.054,False,True,0.0,False,FAIL hole within 0.10 mm of the mask opening
+"[32.8, 20.1]",/CH1/BUF_N,0.6,0.3,F.Cu-B.Cu,U501.7,/CH1/BUF_N,F.Cu,0.352,0.0,0.352,0.202,0.052,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[14.3, 27.3]",/CH3/ACN_N,0.6,0.3,F.Cu-B.Cu,R304.1,/CH3/ACN_N,F.Cu,0.297,0.0,0.297,0.147,-0.003,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[15.0, 30.3]",/CH3/ACN_N,0.6,0.3,F.Cu-B.Cu,C302.2,/CH3/ACN_N,F.Cu,0.316,0.0,0.316,0.166,0.016,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[24.3, 38.3]",/Analog_Power_Interlock/VBUS_GATE,0.6,0.3,F.Cu-B.Cu,R3004.1,/Analog_Power_Interlock/VBUS_GATE,F.Cu,0.441,0.0,0.441,0.291,0.141,False,True,0.0,False,OK (web >= 0.10 mm)
+"[29.7, 58.7]",/XIAO_5V,0.6,0.3,F.Cu-B.Cu,U1.14,/XIAO_5V,F.Cu,0.359,0.05,0.309,0.159,0.009,False,False,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[27.1, 38.3]",/XIAO_5V,0.6,0.3,F.Cu-B.Cu,R3006.1,/XIAO_5V,F.Cu,0.277,0.0,0.277,0.127,-0.023,False,True,0.0,False,TIER-B annulus inside the mask opening (hole clear)
+"[26.5, 58.7]",/XIAO_5V,0.6,0.3,F.Cu-B.Cu,R3009.1,/XIAO_5V,F.Cu,0.336,0.0,0.336,0.186,0.036,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[49.4, 56.4]",/DRDY_N,0.6,0.3,F.Cu-B.Cu,U1.2,/DRDY_N,F.Cu,0.0,0.05,-0.05,-0.2,-0.35,True,False,0.0,False,FAIL via-in-pad
+"[24.7, 51.4]",/DRDY_N,0.6,0.3,F.Cu-B.Cu,R6003.2,/DRDY_N,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad
+"[14.0, 20.1]",/CH3/BUF_N,0.6,0.3,F.Cu-B.Cu,U502.7,/CH3/BUF_N,F.Cu,0.352,0.0,0.352,0.202,0.052,False,True,0.0,False,"TIER-A- annulus clear, mask web < 0.10 mm"
+"[38.5, 27.9]",/CH1/BUF_P,0.6,0.3,F.Cu-B.Cu,C101.1,/CH1/BUF_P,F.Cu,0.0,0.0,0.0,-0.15,-0.3,True,True,0.0,True,FAIL via-in-pad

@@ -1,0 +1,97 @@
+[
+  {
+    "file": "bav199.pdf",
+    "url": "https://assets.nexperia.com/documents/data-sheet/BAV199.pdf",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "file": "ads131m04.pdf",
+    "url": "https://www.ti.com/lit/ds/symlink/ads131m04.pdf",
+    "final_url": "https://www.ti.com/lit/ds/symlink/ads131m04.pdf",
+    "bytes": 3605075,
+    "sha256": "cc5bfca62f8b1b0dbd956d786943616cd28414ccce6c15cc9e503e669cb89d71",
+    "date": "2026-10-19"
+  },
+  {
+    "file": "tlv9064.pdf",
+    "url": "https://www.ti.com/lit/ds/symlink/tlv9064.pdf",
+    "final_url": "https://www.ti.com/lit/ds/symlink/tlv9064.pdf",
+    "bytes": 8130802,
+    "sha256": "7a5517d7f74bedddf4b8404fce93e21100d2833a6f4ae16a93f934eaf0c6477c",
+    "date": "2026-10-19"
+  },
+  {
+    "file": "tps7a20.pdf",
+    "url": "https://www.ti.com/lit/ds/symlink/tps7a20.pdf",
+    "final_url": "https://www.ti.com/lit/ds/symlink/tps7a20.pdf",
+    "bytes": 8987811,
+    "sha256": "b6c487d79ebed6dd43bf220b07fc5b3ecb9ee55d87e6daa2312acda6546046c0",
+    "date": "2026-10-19"
+  },
+  {
+    "file": "2n7002.pdf",
+    "url": "https://assets.nexperia.com/documents/data-sheet/2N7002.pdf",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "file": "xiao-v11.pdf",
+    "url": "https://files.seeedstudio.com/wiki/SeeedStudio-XIAO-ESP32S3/res/XIAO_ESP32S3_SCH_v1.1.pdf",
+    "final_url": "https://files.seeedstudio.com/wiki/SeeedStudio-XIAO-ESP32S3/res/XIAO_ESP32S3_SCH_v1.1.pdf",
+    "bytes": 1086845,
+    "sha256": "a9958dc4cbb34664c42799ed79b2e08c5e536d176f371610089f8af730265c67",
+    "date": "2026-10-19"
+  },
+  {
+    "file": "seeed.html",
+    "url": "https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/",
+    "final_url": "https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/",
+    "bytes": 149822,
+    "sha256": "a0e1ee74ef3db59ad8564fd6d7aa85a57fa829979277301ae9706a1bde774b10",
+    "date": "2026-10-19"
+  },
+  {
+    "file": "bav199-ordering.html",
+    "url": "https://www.nexperia.com/product/BAV199",
+    "error": "HTTP Error 403: Forbidden"
+  },
+  {
+    "file": "jlc-rails.html",
+    "url": "https://jlcpcb.com/help/article/how-to-add-edge-rails-fiducials-for-pcb-assembly-order",
+    "final_url": "https://jlcpcb.com/help/article/how-to-add-edge-rails-fiducials-for-pcb-assembly-order",
+    "bytes": 106107,
+    "sha256": "7fca0035d6e1b7bbc2273dc2fd2fed28af5ffd9c6587878056c9f61c63104b4a",
+    "date": "2026-10-19"
+  },
+  {
+    "file": "jlc-capabilities.html",
+    "url": "https://jlcpcb.com/capabilities/pcb-capabilities",
+    "final_url": "https://jlcpcb.com/capabilities/pcb-capabilities",
+    "bytes": 136918,
+    "sha256": "7ae0e7c601abef246724545125d36ef3ac8bc7a7aedf651e259abe4294ff2bd0",
+    "date": "2026-10-19"
+  },
+  {
+    "file": "jlc-pcba.html",
+    "url": "https://jlcpcb.com/capabilities/pcb-assembly-capabilities",
+    "final_url": "https://jlcpcb.com/capabilities/pcb-assembly-capabilities",
+    "bytes": 109227,
+    "sha256": "509af696390f6c23c08be56885d51a2ede2d559acbfab38fee3da20c6d00108c",
+    "date": "2026-10-19"
+  },
+  {
+    "file": "pcbasic-assembly.html",
+    "url": "https://www.pcbasic.com/pcba_capabilities/pcba_special_reminders.html",
+    "final_url": "https://www.pcbasic.com/pcba_capabilities/pcba_special_reminders.html",
+    "bytes": 376047,
+    "sha256": "43d7bf1993dff3977640c62f779e68d5e6cdf524476b653935462d83a2d7c66a",
+    "date": "2026-10-19"
+  },
+  {
+    "file": "pcbasic-pcb.html",
+    "url": "https://www.pcbasic.com/pcb_capabilities/pcbasic_pcb_capabilities.html",
+    "final_url": "https://www.pcbasic.com/pcb_capabilities/pcbasic_pcb_capabilities.html",
+    "bytes": 433832,
+    "sha256": "992c4f9179d7a437b5f9af6791e4b42318806f9957de282c0be516173299f97e",
+    "date": "2026-10-19"
+  }
+]

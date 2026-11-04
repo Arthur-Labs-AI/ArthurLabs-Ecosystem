@@ -1,0 +1,56 @@
+{
+ "AFE_3V0": {
+  "source": "U4002.5",
+  "pads": 19,
+  "unreached_pads": [],
+  "max_mohm": 140.8,
+  "farthest": "U502.4",
+  "bound_mA": 13.8,
+  "drop_mV_upper_bound": 1.943
+ },
+ "DVDD_F": {
+  "source": "FB1.2",
+  "pads": 10,
+  "unreached_pads": [],
+  "max_mohm": 47.4,
+  "farthest": "C6010.1",
+  "bound_mA": 11.4,
+  "drop_mV_upper_bound": 0.54
+ },
+ "VBAT": {
+  "source": "J1.1",
+  "pads": 4,
+  "unreached_pads": [],
+  "max_mohm": 14.3,
+  "farthest": "U1.23",
+  "bound_mA": 500.0,
+  "drop_mV_upper_bound": 7.15
+ },
+ "/Analog_Power_Interlock/VBAT_AFE": {
+  "source": "R4001.2",
+  "pads": 4,
+  "unreached_pads": [],
+  "max_mohm": 17.0,
+  "farthest": "C4005.1",
+  "bound_mA": 14.8,
+  "drop_mV_upper_bound": 0.252
+ },
+ "/XIAO_Brain_Interface/XIAO_3V3": {
+  "source": "U1.12",
+  "pads": 2,
+  "unreached_pads": [],
+  "max_mohm": 7.2,
+  "farthest": "FB1.1",
+  "bound_mA": 11.4,
+  "drop_mV_upper_bound": 0.082
+ },
+ "/XIAO_5V": {
+  "source": "U1.14",
+  "pads": 4,
+  "unreached_pads": [],
+  "max_mohm": 57.8,
+  "farthest": "R3006.1",
+  "bound_mA": 20.0,
+  "drop_mV_upper_bound": 1.156
+ }
+}

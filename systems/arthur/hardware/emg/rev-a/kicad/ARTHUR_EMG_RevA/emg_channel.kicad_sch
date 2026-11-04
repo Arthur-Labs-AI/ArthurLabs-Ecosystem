@@ -1,0 +1,1701 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "818f8f26-8239-5216-b94a-517b06f0a213")
+	(paper "A4")
+	(title_block
+		(title "Reusable EMG electrode input channel")
+		(rev "A-architecture")
+		(company "A.R.T.H.U.R.")
+		(comment 1 "Architecture schematic; unresolved values are explicitly marked TBD")
+		(comment 2 "IC pin mappings verified against manufacturer datasheets listed in SCHEMATIC_ARCHITECTURE.md")
+	)
+	(lib_symbols
+	(symbol "ARTHUR:TP_TEST"
+		(pin_names
+			(offset 1)
+		)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "TP"
+			(at 0 -2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "TP_SMD"
+			(at 0 2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 0 0 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" "ARTHUR SMD test point 1x1mm, placement rev A"
+			(at 0 0 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(symbol "TP_TEST_0_1"
+			(circle
+				(center 0 0)
+				(radius 1.27)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+		)
+		(symbol "TP_TEST_1_1"
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 2.54)
+				(name "1"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1 1)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+		(symbol "ARTHUR:C_DIFF"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "C_DIFF"
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "C_DIFF_0_1"
+				(rectangle
+					(start -2.54 -2.54)
+					(end 2.54 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "C_DIFF_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "ARTHUR:EMG_CONN"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -7.62 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "EMG_CONN"
+				(at 0 7.62 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" "Electrode connector; keying and footprint TBD"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "EMG_CONN_0_1"
+				(rectangle
+					(start -7.62 -5.08)
+					(end 7.62 5.08)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "EMG_CONN_1_1"
+				(pin passive line
+					(at 10.16 1.27 180)
+					(length 2.54)
+					(name "IN+"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 10.16 -1.27 180)
+					(length 2.54)
+					(name "IN-"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "ARTHUR:R_BIAS"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "R_BIAS"
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "R_BIAS_0_1"
+				(rectangle
+					(start -2.54 -2.54)
+					(end 2.54 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "R_BIAS_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+		(symbol "ARTHUR:R_INPUT"
+			(pin_names
+				(offset 1)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "U"
+				(at 0 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Value" "R_INPUT"
+				(at 0 5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(property "Description" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1 1)
+					)
+				)
+			)
+			(symbol "R_INPUT_0_1"
+				(rectangle
+					(start -2.54 -2.54)
+					(end 2.54 2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+			)
+			(symbol "R_INPUT_1_1"
+				(pin passive line
+					(at -5.08 0 0)
+					(length 2.54)
+					(name "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 5.08 0 180)
+					(length 2.54)
+					(name "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1 1)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+	)
+	(text "Freeze Rev A: R_SER 2.2k 1%, C_DIFF 4.7nF C0G, R_BIAS 390k 1% to VCM, C_CM 470pF DNP, dual-TVS footprint DNP. See ELECTRICAL_DESIGN_FREEZE.md Sec 2."
+		(exclude_from_sim no)
+		(at 100 15 0)
+		(effects
+			(font
+				(size 1.1 1.1)
+			)
+		)
+		(uuid "52f8fc1a-c75b-5471-a369-755b093c5312")
+	)
+	(text "Clamp: dual-TVS SOT-23-3L footprint frozen as DNP (3.3V VRWM class); populate only after leakage/capacitance review."
+		(exclude_from_sim no)
+		(at 100 130 0)
+		(effects
+			(font
+				(size 1.1 1.1)
+			)
+		)
+		(uuid "683dba3a-a8f2-5f39-9b3d-a7463aa20d4d")
+	)
+	(global_label "ADC_P"
+		(shape bidirectional)
+		(at 124.46 49.53 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "2c2b6303-6701-55cb-8f16-fb5f258619df")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 124.46 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ELECTRODE_P"
+		(shape bidirectional)
+		(at 59.69 49.53 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "3ad33dd6-c8a8-5bc0-83cd-38e0a76e6d84")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 59.69 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_P"
+		(shape bidirectional)
+		(at 69.85 49.53 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "3e4810b4-cf85-5077-8aea-af244611cef2")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 69.85 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ELECTRODE_P"
+		(shape bidirectional)
+		(at 35.56 58.42 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "451c4dcf-a922-57c6-b4e8-3bb34eedb77d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 35.56 58.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "VCM"
+		(shape bidirectional)
+		(at 25 110 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "50ce1968-aef9-5107-b448-8708af58c5f1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 25 110 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_N"
+		(shape bidirectional)
+		(at 124.46 69.85 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "569057f7-df5d-5752-a2df-1a192b028759")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 124.46 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_P"
+		(shape bidirectional)
+		(at 95.25 59.69 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "5f4e1415-a897-512b-8d77-6b9470f13056")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 95.25 59.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_N"
+		(shape bidirectional)
+		(at 115 110 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "76558346-ed61-5c74-b42b-ac2145e463c1")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 115 110 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "VCM"
+		(shape bidirectional)
+		(at 134.62 49.53 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "781bbf5b-ee76-5f05-9c52-69e8d69ef134")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 134.62 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_N"
+		(shape bidirectional)
+		(at 105.41 59.69 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "9564b29e-d014-5f4d-8a63-edd2d620a1c3")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 105.41 59.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_P"
+		(shape bidirectional)
+		(at 75 110 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "a66ae02c-77cc-59e6-a390-18ec3de6b56a")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 75 110 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ELECTRODE_N"
+		(shape bidirectional)
+		(at 35.56 60.96 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "b3c51227-e120-5da1-96be-9d27c2a673de")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 35.56 60.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "VCM"
+		(shape bidirectional)
+		(at 134.62 69.85 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "db1f1ec6-b85e-56cd-b202-0cc901b4b844")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 134.62 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ELECTRODE_N"
+		(shape bidirectional)
+		(at 59.69 69.85 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "dd2e93dc-ef79-54a6-97a7-bd5f3bacc6a9")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 59.69 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 160 110 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "df1be5bb-388a-54cf-a203-c6dc07c26741")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 160 110 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(global_label "ADC_N"
+		(shape bidirectional)
+		(at 69.85 69.85 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "fd44429d-5e65-52a0-b31b-8e6c78a315fb")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 69.85 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(hierarchical_label "GND"
+		(shape bidirectional)
+		(at 160 110 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "00ca8716-22d0-5144-a620-97a0cbbb8763")
+	)
+	(hierarchical_label "ADC_N"
+		(shape output)
+		(at 115 110 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "34694dfe-40e3-51ec-b105-107c1b399676")
+	)
+	(hierarchical_label "VCM"
+		(shape input)
+		(at 25 110 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "75cc0084-bf2e-5fd0-9daf-aec047920e6a")
+	)
+	(hierarchical_label "ADC_P"
+		(shape output)
+		(at 75 110 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "7a7c89af-09f8-5e53-b863-c092a1c188ab")
+	)
+	(symbol
+		(lib_id "ARTHUR:R_BIAS")
+		(at 129.54 69.85 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "0a8504db-38f6-5e82-a605-02e1d9b4f69c")
+		(property "Reference" "R104"
+			(at 129.54 57.15 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "390k 1%"
+			(at 129.54 82.55 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 129.54 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 129.54 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 129.54 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "734f934e-14ec-5dbd-babe-78fd789849d6")
+		)
+		(pin "2"
+			(uuid "8a110388-a498-5c20-ac14-42f450950ac9")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/3bc8baec-2361-5ae9-9978-6ccd998bda82"
+					(reference "R204")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/448094d7-de46-5d65-b108-c52a79bf462a"
+					(reference "R404")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/c25c7857-2ecf-55ed-8a5d-3d53647252d8"
+					(reference "R304")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/e89a0f5e-20db-555c-a35b-ab3a8a1ff732"
+					(reference "R104")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:C_DIFF")
+		(at 100.33 59.69 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "5e408bec-763b-54f8-81b7-0af862758a52")
+		(property "Reference" "C101"
+			(at 100.33 46.99 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "4.7nF C0G"
+			(at 100.33 72.39 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
+			(at 100.33 59.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 100.33 59.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 100.33 59.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "c9ffd1b9-e110-5b5c-af9a-783a2ed14447")
+		)
+		(pin "2"
+			(uuid "c5e27040-5d19-551a-a380-cfccb7f20b37")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/3bc8baec-2361-5ae9-9978-6ccd998bda82"
+					(reference "C201")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/448094d7-de46-5d65-b108-c52a79bf462a"
+					(reference "C401")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/c25c7857-2ecf-55ed-8a5d-3d53647252d8"
+					(reference "C301")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/e89a0f5e-20db-555c-a35b-ab3a8a1ff732"
+					(reference "C101")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:EMG_CONN")
+		(at 25.4 59.69 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "63abee7e-3922-5bf0-af57-52806ff3652e")
+		(property "Reference" "J101"
+			(at 25.4 46.99 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "Bipolar EMG electrode connector"
+			(at 25.4 72.39 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical"
+			(at 25.4 59.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 25.4 59.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" "Electrode connector; keying and footprint TBD"
+			(at 25.4 59.69 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "6657f0eb-2bf7-54f9-acf6-e9b4837cc9cc")
+		)
+		(pin "2"
+			(uuid "2389ba95-44b3-5783-a44a-2cc80c91c08d")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/3bc8baec-2361-5ae9-9978-6ccd998bda82"
+					(reference "J201")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/448094d7-de46-5d65-b108-c52a79bf462a"
+					(reference "J401")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/c25c7857-2ecf-55ed-8a5d-3d53647252d8"
+					(reference "J301")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/e89a0f5e-20db-555c-a35b-ab3a8a1ff732"
+					(reference "J101")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:R_INPUT")
+		(at 64.77 69.85 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "6ae53f68-7157-58f6-84de-7021cd67b9c9")
+		(property "Reference" "R102"
+			(at 64.77 57.15 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "2.2k 1%"
+			(at 64.77 82.55 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 64.77 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 64.77 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 64.77 69.85 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "d7e123f1-3e74-5bc7-94e7-6e4f5feefaea")
+		)
+		(pin "2"
+			(uuid "356b9f9e-2c22-5a07-8133-886e599b87ab")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/3bc8baec-2361-5ae9-9978-6ccd998bda82"
+					(reference "R202")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/448094d7-de46-5d65-b108-c52a79bf462a"
+					(reference "R402")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/c25c7857-2ecf-55ed-8a5d-3d53647252d8"
+					(reference "R302")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/e89a0f5e-20db-555c-a35b-ab3a8a1ff732"
+					(reference "R102")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:R_BIAS")
+		(at 129.54 49.53 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "95c2e3fe-64be-51d2-b318-d300a04c373a")
+		(property "Reference" "R103"
+			(at 129.54 36.83 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "390k 1%"
+			(at 129.54 62.23 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 129.54 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 129.54 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 129.54 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "53a9a552-a7cc-5c1a-ae44-40a8bb822ca4")
+		)
+		(pin "2"
+			(uuid "5714f418-5f49-5039-984f-723835cf1a99")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/3bc8baec-2361-5ae9-9978-6ccd998bda82"
+					(reference "R203")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/448094d7-de46-5d65-b108-c52a79bf462a"
+					(reference "R403")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/c25c7857-2ecf-55ed-8a5d-3d53647252d8"
+					(reference "R303")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/e89a0f5e-20db-555c-a35b-ab3a8a1ff732"
+					(reference "R103")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:R_INPUT")
+		(at 64.77 49.53 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "a3dd0494-24e4-5ec0-ac44-e563565bc1eb")
+		(property "Reference" "R101"
+			(at 64.77 36.83 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "2.2k 1%"
+			(at 64.77 62.23 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
+			(at 64.77 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 64.77 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Description" ""
+			(at 64.77 49.53 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "e0dc3a18-877f-5901-8809-27810aecea5b")
+		)
+		(pin "2"
+			(uuid "9a8cdce7-b4c8-5c0d-9712-44496be73a02")
+		)
+		(instances
+			(project "ARTHUR_EMG_RevA"
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/3bc8baec-2361-5ae9-9978-6ccd998bda82"
+					(reference "R201")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/448094d7-de46-5d65-b108-c52a79bf462a"
+					(reference "R401")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/c25c7857-2ecf-55ed-8a5d-3d53647252d8"
+					(reference "R301")
+					(unit 1)
+				)
+				(path "/987ec9b9-694a-51dd-a673-e7db18e53010/e89a0f5e-20db-555c-a35b-ab3a8a1ff732"
+					(reference "R101")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TP_TEST")
+		(at 205.74 38.10 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "d1010000-0000-4000-8000-000000000001")
+		(property "Reference" "TP111"
+			(at 205.74 25.40 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "TP_SMD"
+			(at 205.74 50.80 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 205.74 38.10 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "d1020000-0000-4000-8000-000000000001")
+		)
+		(instances
+		(project "ARTHUR_EMG_RevA"
+			(path "/987ec9b9-694a-51dd-a673-e7db18e53010/3bc8baec-2361-5ae9-9978-6ccd998bda82"
+				(reference "TP113")
+				(unit 1)
+			)
+		)
+		(project "ARTHUR_EMG_RevA"
+			(path "/987ec9b9-694a-51dd-a673-e7db18e53010/448094d7-de46-5d65-b108-c52a79bf462a"
+				(reference "TP117")
+				(unit 1)
+			)
+		)
+		(project "ARTHUR_EMG_RevA"
+			(path "/987ec9b9-694a-51dd-a673-e7db18e53010/c25c7857-2ecf-55ed-8a5d-3d53647252d8"
+				(reference "TP115")
+				(unit 1)
+			)
+		)
+		(project "ARTHUR_EMG_RevA"
+			(path "/987ec9b9-694a-51dd-a673-e7db18e53010/e89a0f5e-20db-555c-a35b-ab3a8a1ff732"
+				(reference "TP111")
+				(unit 1)
+			)
+		)
+		)
+	)
+	(global_label "ADC_P"
+		(shape bidirectional)
+		(at 205.74 41.91 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "d1030000-0000-4000-8000-000000000001")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 205.74 41.91 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "ARTHUR:TP_TEST")
+		(at 205.74 50.80 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "d1010000-0000-4000-8000-000000000002")
+		(property "Reference" "TP112"
+			(at 205.74 38.10 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Value" "TP_SMD"
+			(at 205.74 63.50 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(property "Footprint" "ARTHUR:TP_SMD_1x1mm"
+			(at 205.74 50.80 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1 1)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "d1020000-0000-4000-8000-000000000002")
+		)
+		(instances
+		(project "ARTHUR_EMG_RevA"
+			(path "/987ec9b9-694a-51dd-a673-e7db18e53010/3bc8baec-2361-5ae9-9978-6ccd998bda82"
+				(reference "TP114")
+				(unit 1)
+			)
+		)
+		(project "ARTHUR_EMG_RevA"
+			(path "/987ec9b9-694a-51dd-a673-e7db18e53010/448094d7-de46-5d65-b108-c52a79bf462a"
+				(reference "TP118")
+				(unit 1)
+			)
+		)
+		(project "ARTHUR_EMG_RevA"
+			(path "/987ec9b9-694a-51dd-a673-e7db18e53010/c25c7857-2ecf-55ed-8a5d-3d53647252d8"
+				(reference "TP116")
+				(unit 1)
+			)
+		)
+		(project "ARTHUR_EMG_RevA"
+			(path "/987ec9b9-694a-51dd-a673-e7db18e53010/e89a0f5e-20db-555c-a35b-ab3a8a1ff732"
+				(reference "TP112")
+				(unit 1)
+			)
+		)
+		)
+	)
+	(global_label "ADC_N"
+		(shape bidirectional)
+		(at 205.74 54.61 0)
+		(effects
+			(font
+				(size 1 1)
+			)
+		)
+		(uuid "d1030000-0000-4000-8000-000000000002")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 205.74 54.61 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+	)
+)

@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Arthur / Thoughtspace: screens</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="thoughtspace.css">
+</head><body>
+<div id="root"></div>
+<script>
+const I = {
+  stream:'<path d="M4 6h16M4 12h10M4 18h13"/>',
+  link:'<circle cx="6" cy="7" r="2.3"/><circle cx="18" cy="6" r="2.3"/><circle cx="12" cy="18" r="2.3"/><path d="M8 8l3 8M16 8l-3 8M8.3 7h7.4"/>',
+  branch:'<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-12 6"/>',
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
+  mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  text:'<path d="M5 6h14M12 6v13M9 19h6"/>',
+  search:'<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  chev:'<path d="M9 6l6 6-6 6"/>',
+  back:'<path d="M15 6l-6 6 6 6"/>',
+  person:'<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-5.5 7-5.5s6 1.5 7 5.5"/>',
+  topic:'<path d="M12 3l9 9-9 9-9-9z"/>',
+  proj:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/>',
+  place:'<path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/>',
+  dot:'<circle cx="12" cy="12" r="4"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7"/>',
+  spark:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4"/>',
+  bulb:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>',
+  tasks:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',
+};
+const ic = (n, s) => `<svg viewBox="0 0 24 24"${s?` style="width:${s}px;height:${s}px"`:''}>${I[n]}</svg>`;
+const T = {
+  idea:{l:'Idea',c:'--t-idea',i:'bulb'}, voice:{l:'Voice',c:'--t-voice',i:'mic'},
+  note:{l:'Note',c:'--t-note',i:'text'}, task:{l:'Task',c:'--t-task',i:'tasks'}, insight:{l:'Insight',c:'--t-insight',i:'spark'},
+};
+const pill = t => `<span class="pill" style="--c:var(${T[t].c})">${ic(T[t].i)}${T[t].l}</span>`;
+const logo = `<svg class="lg" viewBox="0 0 24 24" width="22" height="22"><rect x=".75" y=".75" width="22.5" height="22.5" rx="6.5" fill="none" stroke="var(--line)" stroke-width="1.5"/><path d="M7 16.5 12 7l5 9.5" fill="none" stroke="var(--ink)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="2.1" fill="var(--accent)"/></svg>`;
+
+const DATA = [
+  {day:'Today', items:[
+    {t:'14:02', ty:'voice', ti:'Capture should work without a connection', ex:'Capture has to work offline and organize later when the phone is back online. Nothing should be lost between speaking and saving.', tags:['mobile','capture'], lk:3, rv:2, sel:1},
+    {t:'11:40', ty:'idea', ti:'Arthur mobile app experience', ex:'Voice-first, almost no navigation. Capture has to feel like a natural extension of thinking, not a form.', tags:['mobile','ux'], lk:5, rv:5},
+    {t:'09:15', ty:'task', ti:'Email Ignatov about the demo setup', ex:'Send the latest build and check the presentation flow before Thursday.', tags:['demo'], lk:2, rv:1},
+  ]},
+  {day:'Yesterday', items:[
+    {t:'21:30', ty:'insight', ti:'Contradicting ideas need a review step', ex:'Two captures disagree about auto-linking. Surface both side by side instead of picking one.', tags:['graph','review'], lk:2, rv:3},
+    {t:'16:48', ty:'note', ti:'Architecture overview: capture to recall', ex:'Capture, distillation, graph, lineage and recall as one pipeline with a local-first store.', tags:['architecture'], lk:3, rv:3},
+  ]},
+];
+const streamHTML = (days, mobile) => days.map(d=>`
+  <div class="day"><div class="lbl">${d.day}</div><div class="stream">${d.items.map(it=>`
+    <div class="item${it.sel?' sel':''}"><span class="rail ${it.sel?'fill':''}" style="--c:var(${T[it.ty].c})"></span>
+      ${mobile?`<div><div class="tmrow">${pill(it.ty)}<span class="mono">${it.t}</span></div>`
+              :`<div class="tm mono">${it.t}</div><div><div class="row1">${pill(it.ty)}</div>`}
+        <div class="ttl">${it.ti}</div><div class="exc">${it.ex}</div>
+        <div class="meta">${it.tags.map(g=>`<span class="tag">#${g}</span>`).join('')}
+          <span class="stat">${ic('link')}${it.lk}</span><span class="stat">${ic('branch')}r${it.rv}</span></div></div></div>`).join('')}
+  </div></div>`).join('');
+
+const side = on => `
+<aside class="side">
+  <div class="brand">${logo}<span>Arthur</span></div>
+  <nav class="nav">
+    <a class="${on==='home'?'on':''}">${ic('stream')}Thoughts<span class="n mono">42</span></a>
+    <a class="${on==='cx'?'on':''}">${ic('link')}Connections</a>
+    <a class="${on==='ev'?'on':''}">${ic('branch')}Evolution</a>
+    <a>${ic('folder')}Projects</a>
+  </nav>
+  <div class="lbl sec">Projects</div>
+  <div class="proj" style="--c:var(--t-idea)"><b></b>Arthur app</div>
+  <div class="proj" style="--c:var(--t-task)"><b></b>Mobile app</div>
+  <div class="proj" style="--c:var(--t-insight)"><b></b>Demo, October</div>
+  <div class="grow"></div>
+  <div class="nav" style="margin-bottom:10px"><a>${ic('gear')}Settings</a></div>
+  <div class="band"><span class="dot"></span><div><div class="t1">Ready</div><div class="t2">Knowledge stored locally</div></div></div>
+</aside>`;
+const topbar = () => `<div class="top"><div class="search">${ic('search')}Search thoughts, people, projects<kbd>⌘K</kbd></div><div class="sp"></div><button class="btn pri">${ic('plus')}Capture<span class="mono" style="color:inherit;opacity:.7">⌘N</span></button></div>`;
+const wm = n => `<span class="wavemini">${Array.from({length:n},(_,i)=>`<i style="height:${4+Math.abs(Math.sin(i*1.3))*14|0}px"></i>`).join('')}</span>`;
+const capbar = () => `<div class="capbar"><span class="ph">Capture a thought…</span>${wm(14)}
+  <div class="modes"><span class="on">${ic('text')}Text</span><span>${ic('mic')}Voice</span></div>
+  <button class="go">Capture${ic('arrow')}</button></div>`;
+const ev = (t,n,cur)=>`<a class="ev"><b>${t}</b><div class="spark">${Array.from({length:n},(_,i)=>(i?'<u></u>':'')+`<i class="${i===n-1?'cur':''}"></i>`).join('')}</div><div class="mini mono"><span>r${n}${cur?' current':''}</span><span>${cur}</span></div></a>`;
+
+function home(theme){ return `
+<div class="ts d" data-theme="${theme}">${side('home')}
+ <div class="main">${topbar()}
+  <div class="home"><div class="col">
+    <h1 class="h1">Your thoughts, <em>expanded.</em></h1>
+    <p class="sub">42 thoughts · 14 connections formed this week</p>
+    ${capbar()}
+    <div class="filters"><span class="chip on">All</span>${Object.entries(T).map(([k,v])=>`<span class="chip" style="--c:var(${v.c})"><i class="c"></i>${v.l}</span>`).join('')}<span class="sp"></span><span class="mono">Newest first</span></div>
+    ${streamHTML(DATA)}
+  </div>
+  <div class="rr">
+    <div class="blk"><h4>Recently evolving</h4>
+      ${ev('Arthur mobile app experience',5,'18 min ago')}${ev('Capture should work without a connection',2,'2 h ago')}${ev('Architecture overview',3,'1 d ago')}</div>
+    <div class="blk"><h4>Linked to the latest thought</h4>
+      <div class="ent"><span class="glyph" style="--c:var(--t-task)">${ic('proj')}</span><div><div class="nm">Mobile app</div><div class="ty">Project · 9 thoughts</div></div></div>
+      <div class="ent"><span class="glyph">${ic('topic')}</span><div><div class="nm">Offline capture</div><div class="ty">Topic · 4 thoughts</div></div></div>
+      <div class="ent"><span class="glyph">${ic('person')}</span><div><div class="nm">Ignatov</div><div class="ty">Person · 2 thoughts</div></div></div>
+    </div>
+  </div></div>
+ </div></div>`; }
+
+function detail(theme){ return `
+<div class="ts d" data-theme="${theme}">${side('home')}
+ <div class="main">${topbar()}
+  <div class="det"><div class="doc">
+    <div class="crumb">Thoughts ${ic('chev')} Today ${ic('chev')} 14:02</div>
+    <div style="display:flex;gap:10px;align-items:center">${pill('voice')}<span class="mono">Captured 14:02 · 0:38 spoken</span></div>
+    <h1>Capture should work without a connection</h1>
+    <div class="by"><span class="tag">#mobile</span><span class="tag">#capture</span><span class="tag">#offline</span></div>
+    <div class="body">
+      <p>Capture has to work without a connection and organize later when the phone is back online. <span class="hl">A thought should never be lost between speaking and saving</span>, otherwise people stop trusting capture.</p>
+      <p>Open question: should a failed transcription keep the audio briefly for a retry, or ask the user to speak again? A short retry window feels fair.</p>
+    </div>
+    <div class="hr"></div>
+    <div class="lbl" style="margin-bottom:6px">Related thoughts</div>
+    <div class="rel">
+      <div class="rl" style="--c:var(--r-depends)"><span class="ln dash"></span><div><b>Voice-first capture flow</b><span>depends on · You</span></div></div>
+      <div class="rl" style="--c:var(--r-contradicts)"><span class="ln"></span><div><b>Always require a connection</b><span>contradicts · You</span></div></div>
+      <div class="rl" style="--c:var(--r-derived)"><span class="ln dash"></span><div><b>Mobile capture research notes</b><span>derived from · Arthur</span></div></div>
+      <div class="rl" style="--c:var(--r-related)"><span class="ln"></span><div><b>Arthur mobile app experience</b><span>related to · Arthur</span></div></div>
+    </div>
+    <div class="hr"></div>
+    <div class="lbl" style="margin-bottom:6px">Evolution</div>
+    <div class="rv">
+      <div class="r cur"><b>r2 · current</b> <span class="mono">14:20</span><div class="df"><ins>+ 1 sentence</ins> about accidental triggers · from a typed edit</div></div>
+      <div class="r"><b>r1</b> <span class="mono">14:02</span><div class="df">Distilled from the voice capture</div></div>
+    </div>
+  </div>
+  <div class="panelr">
+    <div class="blk"><h4>Linked entities</h4>
+      <div class="ent"><span class="glyph" style="--c:var(--t-task)">${ic('proj')}</span><div><div class="nm">Mobile app</div><div class="ty">Project</div></div></div>
+      <div class="ent"><span class="glyph">${ic('topic')}</span><div><div class="nm">Offline capture</div><div class="ty">Topic</div></div></div>
+      <div class="ent"><span class="glyph">${ic('person')}</span><div><div class="nm">Ignatov</div><div class="ty">Person · mentioned</div></div></div>
+    </div>
+    <div class="blk"><h4>Source</h4>
+      <div class="kv"><span>Input</span><span>Voice</span><span>Captured</span><span>Today, 14:02</span><span>Stored</span><span>On this device</span><span>Organized</span><span>Automatically</span></div>
+    </div>
+    <div class="blk"><h4>Actions</h4>
+      <div style="display:flex;flex-direction:column;gap:8px"><button class="btn">${ic('link')}Find connections</button><button class="btn">${ic('branch')}Open evolution</button></div>
+    </div>
+  </div></div>
+ </div></div>`; }
+
+function connections(theme){
+  const N = [ // x,y,type,label,center
+    [330,360,'voice','Capture should work without a connection',1],
+    [130,200,'idea','Voice-first capture flow'],
+    [530,190,'idea','Always require a connection'],
+    [120,520,'note','Mobile capture research notes'],
+    [540,520,'idea','Arthur mobile app experience'],
+    [330,110,'task','Define the retry window'],
+    [70,360,'proj','Mobile app'],
+    [600,360,'topic','Offline capture'],
+    [330,630,'person','Ignatov'],
+  ];
+  const E = [[0,1,'depends',1,'depends on'],[0,2,'contradicts',0,'contradicts'],[0,3,'derived',1,'derived from'],[0,4,'related',0,'related to'],[0,5,'extends',0,'extends'],[0,6,'related',0],[0,7,'related',0],[4,8,'related',0],[1,3,'related',0],[6,1,'related',0]];
+  const col = r => `var(--r-${r})`;
+  const node = (n,i)=>{const [x,y,ty,l,c]=n; const col2 = ty==='proj'?'var(--t-task)':ty==='topic'||ty==='person'?'var(--ink-3)':`var(${T[ty]?T[ty].c:'--ink-3'})`;
+    const r = c?15:9; let sh;
+    if(ty==='proj') sh=`<path d="M${x} ${y-r} l${r} ${r/2} v${r} l-${r} ${r/2} l-${r}-${r/2} v-${r} z" fill="var(--ground)" stroke="${col2}" stroke-width="1.8"/>`;
+    else if(ty==='topic') sh=`<path d="M${x} ${y-r} l${r} ${r} l-${r} ${r} l-${r}-${r} z" fill="var(--ground)" stroke="${col2}" stroke-width="1.8"/>`;
+    else if(ty==='person') sh=`<rect x="${x-r+1}" y="${y-r+1}" width="${2*r-2}" height="${2*r-2}" rx="5" fill="var(--ground)" stroke="${col2}" stroke-width="1.8"/>`;
+    else sh=`<circle cx="${x}" cy="${y}" r="${r}" fill="${c?'var(--accent-soft)':'var(--ground)'}" stroke="${c?'var(--accent)':col2}" stroke-width="${c?2.4:1.8}"/>`;
+    const words = l.split(' '); let l1='',l2=''; words.forEach(w=>{ if((l1+' '+w).trim().length<=22 && !l2) l1=(l1+' '+w).trim(); else l2=(l2+' '+w).trim();});
+    return sh+`<text class="nodelbl" x="${x}" y="${y+r+16}" text-anchor="middle">${l1}</text>`+(l2?`<text class="nodelbl dim" x="${x}" y="${y+r+31}" text-anchor="middle">${l2}</text>`:'');};
+  const edge = e=>{const a=N[e[0]],b=N[e[1]]; const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2;
+    return `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${col(e[2])}" stroke-width="${e[4]?2:1.4}" ${e[3]?'stroke-dasharray="6 5"':''} opacity="${e[4]?1:.7}"/>`+(e[4]?`<g><rect x="${mx-38}" y="${my-10}" width="76" height="19" rx="5" fill="var(--panel)" stroke="var(--line)"/><text class="edgelbl" x="${mx}" y="${my+3.5}" text-anchor="middle" fill="${col(e[2])}" style="fill:${col(e[2])}">${e[4]}</text></g>`:'');};
+  return `
+<div class="ts d" data-theme="${theme}">${side('cx')}
+ <div class="main">${topbar()}
+  <div class="cx">
+   <div class="fl">
+     <div class="blk"><h4 class="lbl">Relations</h4>
+       ${[['related','Related to',14],['extends','Extends',6],['depends','Depends on',5],['derived','Derived from',7],['contradicts','Contradicts',2],['supersedes','Supersedes',1]].map(([k,n,c],i)=>`<div class="chk on" style="--c:var(--r-${k})"><span class="bx">${ic('check',11)}</span><span class="ln ${k==='depends'||k==='derived'?'dash':''}"></span>${n}<span class="n mono">${c}</span></div>`).join('')}</div>
+     <div class="blk"><h4 class="lbl">Show</h4>
+       ${[['Thoughts',42,1],['Projects',3,1],['Topics',11,1],['People',5,1],['Places',2,0]].map(([n,c,o])=>`<div class="chk ${o?'on':''}"><span class="bx">${o?ic('check',11):''}</span>${n}<span class="n mono">${c}</span></div>`).join('')}</div>
+     <div class="blk"><h4 class="lbl">Made by</h4>
+       <div class="chk on"><span class="bx">${ic('check',11)}</span>You</div><div class="chk on"><span class="bx">${ic('check',11)}</span>Arthur (dashed)</div></div>
+   </div>
+   <div class="canvas">
+     <div class="cap-top"><span class="chip on">Around this thought</span><span class="chip">Whole space</span><span class="chip">List</span></div>
+     <svg viewBox="0 0 660 720" preserveAspectRatio="xMidYMid meet">${E.map(edge).join('')}${N.map(node).join('')}</svg>
+     <div class="legendm"><span>${ic('dot')}Thought</span><span>${ic('proj')}Project</span><span>${ic('topic')}Topic</span><span>${ic('person')}Person</span><span class="mono">dashed = proposed by Arthur</span></div>
+   </div>
+   <div class="panelr">
+     <div class="blk"><h4>Selected</h4>${pill('voice')}
+       <div class="ttl" style="margin:8px 0 6px;font-size:18px">Capture should work without a connection</div>
+       <div class="exc" style="font-size:13.5px">Capture has to work without a connection and organize later when the phone is back online…</div>
+       <button class="btn" style="margin-top:6px">Open thought${ic('arrow')}</button></div>
+     <div class="blk"><h4>10 connections</h4>
+       <div class="rl" style="--c:var(--r-depends)"><span class="ln dash"></span><div><b>Voice-first capture flow</b><span>depends on · You</span></div></div>
+       <div class="rl" style="--c:var(--r-contradicts)"><span class="ln"></span><div><b>Always require a connection</b><span>contradicts · You</span></div></div>
+       <div class="rl" style="--c:var(--r-derived)"><span class="ln dash"></span><div><b>Mobile capture research notes</b><span>derived from · Arthur</span></div></div>
+       <div class="rl" style="--c:var(--r-extends)"><span class="ln"></span><div><b>Define the retry window</b><span>extends · Arthur</span></div></div>
+     </div>
+   </div>
+  </div>
+ </div></div>`; }
+
+function capture(theme){
+  const bars = Array.from({length:64},(_,i)=>{const e=Math.max(.06,Math.abs(Math.sin(i*.37)*Math.sin(i*.11+1))*(i>40?.35:1)); return `<i class="${i>52?'q':''}" style="height:${Math.round(6+e*78)}px"></i>`}).join('');
+  return `
+<div class="ts d" data-theme="${theme}" style="position:relative">${side('home')}
+ <div class="main">${topbar()}
+  <div class="home"><div class="col"><h1 class="h1">Your thoughts, <em>expanded.</em></h1><p class="sub">42 thoughts · 14 connections formed this week</p>${capbar()}${streamHTML([DATA[0]])}</div><div class="rr"></div></div>
+ </div>
+ <div class="scrim"><div class="cwin">
+   <div class="cw-h"><div class="rec"><i></i>REC 00:24</div><div class="sp"></div>
+     <div class="modes"><span>${ic('text')}Text</span><span class="on">${ic('mic')}Voice</span></div></div>
+   <div class="wave">${bars}</div>
+   <div class="live">Capture has to work even without a connection, and organize later when the phone is back online. <span class="fresh">Nothing should be lost between speaking and saving</span><span class="cur"></span></div>
+   <div class="cw-f"><span class="mono">Recording is kept only until it is transcribed</span><div class="sp"></div>
+     <button class="btn">Discard</button><button class="btn pri">Stop and save<span class="mono" style="color:inherit;opacity:.7">Space</span></button></div>
+ </div></div></div>`; }
+
+const tab = on => `<div class="tab">
+  <a class="${on==='h'?'on':''}">${ic('stream')}Thoughts</a><a>${ic('search')}Search</a>
+  <a class="cap"><b>${ic('mic')}</b><span>Capture</span></a>
+  <a class="${on==='c'?'on':''}">${ic('link')}Connections</a><a>${ic('branch')}Evolution</a></div>`;
+const status = `<div class="st"><span>19:25</span><span class="mono">●●●</span></div>`;
+
+function mHome(theme){ return `
+<div class="ts m" data-theme="${theme}">${status}
+  <div class="hd">${logo}<b style="font-size:16px">Arthur</b><span class="sp"></span></div>
+  <div class="scroll">
+    <h1 class="h1">Your thoughts,<br><em>expanded.</em></h1>
+    <div class="capbar"><span class="ph">Capture a thought…</span><button class="go" style="padding:0 12px">${ic('mic')}</button></div>
+    ${streamHTML([DATA[0]],true)}
+  </div>${tab('h')}</div>`; }
+
+function mDetail(theme){ return `
+<div class="ts m" data-theme="${theme}">${status}
+  <div class="hd"><button class="btn" style="height:32px;padding:0 10px">${ic('back')}</button><span class="sp"></span><button class="btn" style="height:32px">${ic('link')}Connect</button></div>
+  <div class="scroll det" style="display:block">
+    <div style="display:flex;gap:8px;align-items:center;margin-top:20px">${pill('voice')}<span class="mono">14:02</span></div>
+    <h1 style="margin:12px 0 10px">Capture should work without a connection</h1>
+    <div class="by" style="margin-bottom:16px"><span class="tag">#mobile</span><span class="tag">#capture</span></div>
+    <div class="body"><p>Capture has to work without a connection and organize later. <span class="hl">A thought should never be lost between speaking and saving.</span></p></div>
+    <div class="hr"></div>
+    <div class="lbl" style="margin-bottom:4px">Related · 10</div>
+    <div class="rl" style="--c:var(--r-depends)"><span class="ln dash"></span><div><b>Voice-first capture flow</b><span>depends on</span></div></div>
+    <div class="rl" style="--c:var(--r-contradicts)"><span class="ln"></span><div><b>Always require a connection</b><span>contradicts</span></div></div>
+    <div class="hr"></div>
+    <div class="lbl" style="margin-bottom:4px">Evolution</div>
+    <div class="rv"><div class="r cur"><b>r2 · current</b> <span class="mono">14:20</span><div class="df"><ins>+ 1 sentence</ins> about accidental triggers</div></div><div class="r"><b>r1</b> <span class="mono">14:02</span><div class="df">Distilled from the voice capture</div></div></div>
+  </div>${tab('h')}</div>`; }
+
+function mCapture(theme){
+  const bars = Array.from({length:40},(_,i)=>{const e=Math.max(.08,Math.abs(Math.sin(i*.45)*Math.sin(i*.13+1))); return `<i style="height:${Math.round(8+e*100)}px"></i>`}).join('');
+  return `
+<div class="ts m" data-theme="${theme}">${status}
+  <div class="hd"><span class="rec"><i></i>REC 00:24</span><span class="sp"></span><button class="btn" style="height:32px">Discard</button></div>
+  <div class="scroll" style="display:flex;flex-direction:column">
+    <div class="wave mwave" style="padding:0;margin-top:30px;gap:3px">${bars}</div>
+    <div class="live" style="padding:10px 0;font-size:20px">Capture has to work even without a connection, and organize later when the phone is back online. <span class="fresh">Nothing should be lost between speaking and saving</span><span class="cur"></span></div>
+    <div style="flex:1"></div>
+    <div class="stop"><i></i></div>
+    <div class="mono" style="text-align:center;margin:12px 0 18px">Stop and save</div>
+    <div class="mrec"><div class="modes"><span>${ic('text')}Text</span><span class="on">${ic('mic')}Voice</span></div></div>
+  </div></div>`; }
+
+const SCREENS = [
+  ['home','Desktop · Home (dark)',()=>home('dark')],
+  ['detail','Desktop · Thought detail',()=>detail('dark')],
+  ['connections','Desktop · Connections',()=>connections('dark')],
+  ['capture','Desktop · Capture state',()=>capture('dark')],
+  ['home-light','Desktop · Home (light)',()=>home('light')],
+  ['m-home','Mobile · Home',()=>mHome('dark')],
+  ['m-detail','Mobile · Thought detail',()=>mDetail('dark')],
+  ['m-capture','Mobile · Capture',()=>mCapture('dark')],
+  ['m-home-light','Mobile · Home (light)',()=>mHome('light')],
+  ['detail-light','Desktop · Thought detail (light)',()=>detail('light')],
+  ['connections-light','Desktop · Connections (light)',()=>connections('light')],
+];
+const q = new URLSearchParams(location.search).get('s');
+const root = document.getElementById('root');
+if (q) { const s = SCREENS.find(x=>x[0]===q); document.body.style.background='transparent'; root.innerHTML = s[2](); }
+else {
+  const g = (ids)=>ids.map(id=>{const s=SCREENS.find(x=>x[0]===id);return `<div><h2>${s[1]}</h2><div class="solo">${s[2]()}</div></div>`}).join('');
+  root.innerHTML = `<div class="board"><div class="row">${g(['home','detail'])}</div><div class="row">${g(['connections','capture'])}</div><div class="row">${g(['home-light','detail-light','connections-light'])}</div><div class="row">${g(['m-home','m-detail','m-capture','m-home-light'])}</div></div>`;
+}
+</script>
+</body></html>

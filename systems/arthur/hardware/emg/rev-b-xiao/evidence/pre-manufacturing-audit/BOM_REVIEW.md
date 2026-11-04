@@ -1,0 +1,38 @@
+# Every-line BOM review — NOT RELEASED
+
+All 28 lines and 126 placed references were checked against fresh schematic XML and PCB text. Package compatibility is a nominal footprint/body/pinout check, not a solder-process qualification. Stock and factory rotation remain UNVERIFIED on every line; no automatic substitutions are approved. Full references, declared specs and substitution criteria are in [BOM_LINE_AUDIT.csv](BOM_LINE_AUDIT.csv).
+
+|Line / LCSC|MPN / quantity|Nominal package|Reviewed ratings and evidence|
+|---|---|---|---|
+|1 / C43922|0603B225K160NT ×8|C_0603_1608Metric|2.2uF ±10%,16V,X7R; -55..125C family. FH manufacturer-authored general MLCC approval sheet via LCSC; exact height/DC-bias curve not qualified. [Source](https://datasheet.lcsc.com/datasheet/pdf/09fe2daf22580a99fa7fea93ccb20fb7.pdf?productCode=C43922)|
+|2 / C14858|CL10C101JB8NNNC ×8|C_0603_1608Metric|100pF ±5%,50V,C0G,0603. Samsung ADS list confirms base code; exact packaging suffix/temperature sheet pending. [Source](sources/samsung-list.pdf)|
+|3 / C76599|C1608C0G1H103JT000N ×4|C_0603_1608Metric|10nF ±5%,50V,C0G,0603. TDK current item C1608C0G1H103J080AA maps C1608C0G1H103JT****; exact T000N packaging confirmation pending. [Source](https://product.tdk.com/en/search/capacitor/ceramic/mlcc/info?part_no=C1608C0G1H103J080AA)|
+|4 / C1636|0603CG102J500NT ×8|C_0603_1608Metric|1nF ±5%,50V,C0G,0603; -55..125C family. FH family sheet; factory page confirms exact MPN; exact lot height/temperature approval pending. [Source](https://jlcpcb.com/partdetail/1988-0603CG102J500NT/C1636)|
+|5 / C14663|CC0603KRX7R9BB104 ×7|C_0603_1608Metric|100nF ±10%,50V,X7R,-55..125C. VERIFIED exact Yageo spec; schematic incorrectly says16V. [Source](sources/yageo-100n.pdf)|
+|6 / C59782|CL10B105KO8NNNC ×5|C_0603_1608Metric|1uF ±10%,16V,X7R,0603. Samsung ADS base code confirmed; exact suffix/temp/DC bias not separately qualified. [Source](sources/samsung-list.pdf)|
+|7 / C45783|CL21A226MAQNNNE ×1|C_0805_2012Metric|22uF ±20%,25V,X5R,0805; nominal1.4mm height. Samsung ADS base code confirms25V; schematic incorrectly says10V. Max height/DC bias pending. [Source](sources/samsung-list.pdf)|
+|8 / C160828|CL10B224KO8NNNC ×1|C_0603_1608Metric|220nF ±10%,16V,X7R,0603. Samsung ADS base code confirmed; correct ADC CAP value; exact suffix/temp pending. [Source](sources/samsung-list.pdf)|
+|9 / C19702|CL10A106KP8NNNC ×1|C_0603_1608Metric|10uF ±10%,10V,X5R,0603. Samsung ADS base code confirmed; exact suffix/temp/effective C pending. [Source](sources/samsung-list.pdf)|
+|10 / C40919|BAV199,215 ×16|SOT-23|75V continuous reverse; dual series; IR<=5nA@75V,25C; -65..150C ambient. Nexperia confirms BAV199,215 type BAV199, SOT23; pin1A1,2K2,3junction. [Source](https://www.nexperia.com/chemical-content/BAV199.html)|
+|11 / C19330|BLM18AG601SN1D ×1|L_0603_1608Metric|600ohm ±25%@100MHz;500mA;DCR<=0.38ohm;-55..125C. Murata primary product specification; 0603 fits; rail current small relative to rating. [Source](https://www.murata.com/en-us/api/pdfdownloadapi?cate=cgsubChipFerriBead&partno=BLM18AG601SN1%23)|
+|12 / C295747|S2B-PH-SM4-TB(LF)(SN) ×6|JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal|2A with AWG24;100VAC/DC;PH2.0 horizontal; -25..85C incl rise. JST PH catalog confirms geometry/family; process and retention not physically tested. [Source](../horizontal-jst/JST_PH_datasheet.pdf)|
+|13 / C8545|2N7002 ×1|SOT-23|60V VDS,±20V VGS,115mA,225mW;Tj<=150C;Vth1..2.5V@250uA. Exact JSCJ data: pin1G,2S,3D; Rds max3ohm only at5V, not4.32V. Storage -50..150C; operating ambient limits unqualified. [Source](sources/jscj-2n7002.pdf)|
+|14 / C98220|RC0603FR-0710KL ×12|R_0603_1608Metric|10k,±1%,0.1W@70C,75Vmax,-55..155C. Exact Yageo sheet verified; R105/R106/etc schematic5% field incorrect for10M F part. [Source](sources/yageo-10k.pdf)|
+|15 / C25803|0603WAF1003T5E ×14|R_0603_1608Metric|100kohm,±1%,0603W A=1/10W; family75V,-55..155C. Manufacturer-authored UniOhm family sheet/code checked; exact current SKU/reel approval UNVERIFIED. [Source](sources/uniohm.pdf)|
+|16 / C114606|RC0603FR-0710ML ×8|R_0603_1608Metric|10M,±1%,0.1W@70C,75Vmax,-55..155C. Exact Yageo sheet verified; R105/R106/etc schematic5% field incorrect for10M F part. [Source](sources/yageo-10M.pdf)|
+|17 / C21190|0603WAF1001T5E ×8|R_0603_1608Metric|1kohm,±1%,0603W A=1/10W; family75V,-55..155C. Manufacturer-authored UniOhm family sheet/code checked; exact current SKU/reel approval UNVERIFIED. [Source](sources/uniohm.pdf)|
+|18 / C23162|0603WAF4701T5E ×1|R_0603_1608Metric|4.7kohm,±1%,0603W A=1/10W; family75V,-55..155C. Manufacturer-authored UniOhm family sheet/code checked; exact current SKU/reel approval UNVERIFIED. [Source](sources/uniohm.pdf)|
+|19 / C137705|RC0603FR-074R7L ×1|R_0603_1608Metric|4R7,±1%,0.1W@70C,75Vmax,-55..155C. Exact Yageo sheet verified; R105/R106/etc schematic5% field incorrect for10M F part. [Source](sources/yageo-4R7.pdf)|
+|20 / C149504|0805W8F1003T5E ×1|R_0805_2012Metric|100kohm,±1%,0805W8=1/8W; family150V,-55..155C. UniOhm family/code checked; exact SKU/safety failure behavior not qualified. [Source](sources/uniohm.pdf)|
+|21 / C23140|0603WAF330JT5E ×4|R_0603_1608Metric|33ohm,±1%,0603W A=1/10W; family75V,-55..155C. Manufacturer-authored UniOhm family sheet/code checked; exact current SKU/reel approval UNVERIFIED. [Source](sources/uniohm.pdf)|
+|22 / C22775|0603WAF1000T5E ×1|R_0603_1608Metric|100ohm,±1%,0603W A=1/10W; family75V,-55..155C. Manufacturer-authored UniOhm family sheet/code checked; exact current SKU/reel approval UNVERIFIED. [Source](sources/uniohm.pdf)|
+|23 / C22807|0603WAF1503T5E ×1|R_0603_1608Metric|150kohm,±1%,0603W A=1/10W; family75V,-55..155C. Manufacturer-authored UniOhm family sheet/code checked; exact current SKU/reel approval UNVERIFIED. [Source](sources/uniohm.pdf)|
+|24 / C22935|0603WAF1004T5E ×2|R_0603_1608Metric|1Mohm,±1%,0603W A=1/10W; family75V,-55..155C. Manufacturer-authored UniOhm family sheet/code checked; exact current SKU/reel approval UNVERIFIED. [Source](sources/uniohm.pdf)|
+|25 / C779410|TLV9064IPWR ×3|TSSOP-14_4.4x5mm_P0.65mm|1.8..5.5V supply;unity stable,RRIO; -40..125C;PW14 0.65mm pitch. TI TLV9064IPWR exact package/pinout verified; stability on real harness/CMRR remains bench work. [Source](sources/tlv9064.pdf)|
+|26 / C963429|TPS7A2030PDBVR ×1|SOT-23-5|3.0V fixed,300mA;Vin1.6..6V subject to dropout;Tj -40..125C;DBV5. TI exact DBV pin1IN,2GND,3EN,4NC,5OUT; P variant discharge; output effective0.47..200uF. [Source](sources/tps7a20.pdf)|
+|27 / C2862562|ADS131M04IPWR ×1|TSSOP-20_4.4x6.5mm_P0.65mm|AVDD/DVDD2.7..3.6V;24bit; -40..125C;PW20 0.65mm pitch. TI pinout/supply/ranges verified; gain-dependent AIN range must be enforced. [Source](sources/ads131m04.pdf)|
+|28 / C2901557|SX3M8.192M20F30TNN ×1|OSC_SCTF_SX3M_SMD3225-4P|BOM:8.192MHz,1.62..3.63V,±20ppm initial/±30ppm temp,-40..85C,45..55%duty,<=10mA. Exact manufacturer controlled ordering/abs-max/land drawing not independently obtained; prior family claims only; factory verification REQUIRED. [Source](../rb02e/jlc_sources/partdetail_C2901557.txt)|
+
+U1 is intentionally absent from the factory BOM/CPL; it must be purchased as the selected headerless Seeed module and hand assembled. TP1–TP8 are copper features, not missing purchased components. PHR-2 housings, crimp contacts, wire, battery/PCM, antenna, enclosure and straps are off-board procurement items, absent by design; this package is not a complete wearable BOM.
+
+The Samsung base-code list does not by itself qualify packaging endings C/E, mounted capacitance, component height maxima or lot identity. The old UniOhm family PDF establishes coding/family limits, not present-day availability or a lot certificate. These limitations must remain visible in sourcing review.

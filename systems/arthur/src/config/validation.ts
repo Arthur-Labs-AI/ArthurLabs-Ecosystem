@@ -1,0 +1,176 @@
+/**
+ * Startup configuration validation (spec section 15).
+ *
+ * Fails with actionable messages before any service starts. Never echoes
+ * secret values.
+ */
+
+import { assertDistinctMemoryDatabases } from "../memory/stores/memory_db_identity";
+
+import { ArthurError } from "../core/errors/errors";
+import { validateVoiceSettings } from "../voice/config";
+import type { Settings } from "./settings";
+
+const ENVS = ["development", "test", "production"];
+const PROVIDERS = ["deepseek", "fake"];
+const EMBEDDING_PROVIDERS = ["local_multilingual", "fake"];
+const LOG_LEVELS = ["debug", "info", "warn", "error"];
+const REASONING_PROFILES = ["fast", "normal", "deep"];
+
+function fail(message: string): never {
+  throw new ArthurError("INVALID_CONFIG", message);
+}
+
+/**
+ * SC-01A: physical database identity (realpath + device/inode) replaces the
+ * old lexical comparison. ":memory:" stays a test-only special case. Broken
+ * or ambiguous aliases fail closed here instead of assuming distinct files.
+ */
+
+export function validateSettings(settings: Settings): Settings {
+  const problems: string[] = [];
+
+  if (!ENVS.includes(settings.env)) {
+    problems.push(`ARTHUR_ENV must be one of ${ENVS.join(", ")} (got "${settings.env}")`);
+  }
+  if (!settings.dbPath || settings.dbPath.trim() === "") {
+    problems.push("ARTHUR_DB_PATH must be a non-empty path");
+  }
+  if (!PROVIDERS.includes(settings.modelProvider)) {
+    problems.push(`ARTHUR_MODEL_PROVIDER must be one of ${PROVIDERS.join(", ")} (got "${settings.modelProvider}")`);
+  }
+  if (!LOG_LEVELS.includes(settings.logLevel)) {
+    problems.push(`ARTHUR_LOG_LEVEL must be one of ${LOG_LEVELS.join(", ")} (got "${settings.logLevel}")`);
+  }
+  if (!REASONING_PROFILES.includes(settings.reasoningProfile)) {
+    problems.push(`ARTHUR_REASONING_PROFILE must be one of ${REASONING_PROFILES.join(", ")}`);
+  }
+  if (!Number.isInteger(settings.bindPort) || settings.bindPort < 1 || settings.bindPort > 65535) {
+    problems.push(`ARTHUR_BIND_PORT must be an integer between 1 and 65535 (got "${settings.bindPort}")`);
+  }
+  if (settings.modelTimeoutSeconds <= 0) {
+    problems.push("ARTHUR_MODEL_TIMEOUT_SECONDS must be > 0");
+  }
+  if (settings.historyMaxTurns < 1) {
+    problems.push("ARTHUR_HISTORY_MAX_TURNS must be >= 1");
+  }
+  if (settings.contextTokenBudget < 1) {
+    problems.push("ARTHUR_CONTEXT_TOKEN_BUDGET must be >= 1");
+  }
+  if (settings.retryMaxAttempts < 0) {
+    problems.push("ARTHUR_MODEL_RETRY_MAX_ATTEMPTS must be >= 0");
+  }
+  if (settings.retryBaseDelayMs < 0) {
+    problems.push("ARTHUR_MODEL_RETRY_BASE_DELAY_MS must be >= 0");
+  }
+  if (settings.approvalTtlSeconds < 1) {
+    problems.push("ARTHUR_APPROVAL_TTL_SECONDS must be >= 1");
+  }
+  // SC-06 section 140-141 + 64: loop budgets are trusted config with
+  // conservative Software Core bounds. Invalid values fail startup with
+  // INVALID_CONFIG; the model can never change them (§63).
+  if (!Number.isInteger(settings.loopMaxRounds) || settings.loopMaxRounds < 1 || settings.loopMaxRounds > 10) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_ROUNDS must be an integer between 1 and 10");
+  }
+  if (!Number.isInteger(settings.loopMaxCallsPerRound) || settings.loopMaxCallsPerRound < 1 || settings.loopMaxCallsPerRound > 16) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_CALLS_PER_ROUND must be an integer between 1 and 16");
+  }
+  if (!Number.isInteger(settings.loopMaxCallsTotal) || settings.loopMaxCallsTotal < 1 || settings.loopMaxCallsTotal > 64) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_CALLS_TOTAL must be an integer between 1 and 64");
+  }
+  if (!Number.isInteger(settings.loopMaxResultBytes) || settings.loopMaxResultBytes < 1024) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_RESULT_BYTES must be an integer >= 1024");
+  }
+  if (!Number.isInteger(settings.loopMaxActiveMs) || settings.loopMaxActiveMs < 1000) {
+    problems.push("ARTHUR_TOOL_LOOP_MAX_ACTIVE_MS must be an integer >= 1000");
+  }
+  if (!Number.isInteger(settings.loopRepeatLimit) || settings.loopRepeatLimit < 1 || settings.loopRepeatLimit > 3) {
+    problems.push("ARTHUR_TOOL_LOOP_REPEAT_LIMIT must be an integer between 1 and 3");
+  }
+  if (settings.maxMessageChars < 1) {
+    problems.push("ARTHUR_MAX_MESSAGE_CHARS must be >= 1");
+  }
+  if (!settings.memoryPersonalDbPath || settings.memoryPersonalDbPath.trim() === "") {
+    problems.push("ARTHUR_MEMORY_PERSONAL_DB_PATH must be a non-empty path");
+  }
+  if (!settings.memoryBusinessDbPath || settings.memoryBusinessDbPath.trim() === "") {
+    problems.push("ARTHUR_MEMORY_BUSINESS_DB_PATH must be a non-empty path");
+  }
+  // Physical isolation (SC-01A, freeze invariant M2): realpath + device/inode
+  // identity replaces the old lexical comparison so symlinks, symlinked
+  // parents, hardlinks, ../ aliases, and case aliases all fail startup.
+  if (settings.memoryPersonalDbPath.trim() !== "" && settings.memoryBusinessDbPath.trim() !== "") {
+    try {
+      assertDistinctMemoryDatabases(settings.memoryPersonalDbPath, settings.memoryBusinessDbPath);
+    } catch (error) {
+      problems.push(
+        `ARTHUR_MEMORY_PERSONAL_DB_PATH and ARTHUR_MEMORY_BUSINESS_DB_PATH: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+  if (!EMBEDDING_PROVIDERS.includes(settings.embeddingProvider)) {
+    problems.push(`ARTHUR_EMBEDDING_PROVIDER must be one of ${EMBEDDING_PROVIDERS.join(", ")} (got "${settings.embeddingProvider}")`);
+  }
+  if (!settings.embeddingModel || settings.embeddingModel.trim() === "") {
+    problems.push("ARTHUR_EMBEDDING_MODEL must be a non-empty identifier");
+  }
+  if (!Number.isInteger(settings.embeddingDimensions) || settings.embeddingDimensions < 16 || settings.embeddingDimensions > 2048) {
+    problems.push("ARTHUR_EMBEDDING_DIMENSIONS must be an integer between 16 and 2048");
+  }
+  if (settings.memoryMaxRetrievalCandidates < 1) {
+    problems.push("ARTHUR_MEMORY_MAX_RETRIEVAL_CANDIDATES must be >= 1");
+  }
+  if (settings.memoryMaxRerankedResults < 1) {
+    problems.push("ARTHUR_MEMORY_MAX_RERANKED_RESULTS must be >= 1");
+  }
+  if (settings.memoryMaxRetrievalCandidates < settings.memoryMaxRerankedResults) {
+    problems.push("ARTHUR_MEMORY_MAX_RETRIEVAL_CANDIDATES must be >= ARTHUR_MEMORY_MAX_RERANKED_RESULTS");
+  }
+  if (settings.memoryMaxContextTokens < 1) {
+    problems.push("ARTHUR_MEMORY_MAX_CONTEXT_TOKENS must be >= 1");
+  }
+  if (settings.memoryMaxSingleChunkTokens < 1) {
+    problems.push("ARTHUR_MEMORY_MAX_SINGLE_CHUNK_TOKENS must be >= 1");
+  }
+  if (settings.memoryVectorMinSimilarity < 0 || settings.memoryVectorMinSimilarity > 1) {
+    problems.push("ARTHUR_MEMORY_VECTOR_MIN_SIMILARITY must be within 0..1");
+  }
+  if (
+    settings.memoryExtractionConfidenceThreshold < 0 ||
+    settings.memoryExtractionConfidenceThreshold > 1 ||
+    settings.memoryExtractionImportanceThreshold < 0 ||
+    settings.memoryExtractionImportanceThreshold > 1
+  ) {
+    problems.push("ARTHUR_MEMORY_EXTRACTION_CONFIDENCE_THRESHOLD and ARTHUR_MEMORY_EXTRACTION_IMPORTANCE_THRESHOLD must be within 0..1");
+  }
+  if (settings.memoryTemporaryTtlSeconds < 1) {
+    problems.push("ARTHUR_MEMORY_TEMPORARY_TTL_SECONDS must be >= 1");
+  }
+
+  // Phase 3 voice settings. Missing engines/devices never fail startup: the
+  // voice layer reports component unavailability and degrades to text/PTT
+  // (spec section 33 "Failure handling"). Only malformed configuration fails.
+  if (settings.voice) {
+    problems.push(...validateVoiceSettings(settings.voice));
+  }
+
+  // Provider-specific requirements (fail closed, spec section 3 "Fail closed").
+  if (settings.modelProvider === "deepseek") {
+    if (!settings.modelName || settings.modelName.trim() === "") {
+      problems.push("ARTHUR_MODEL_NAME is required when ARTHUR_MODEL_PROVIDER=deepseek");
+    }
+    if (!settings.deepseekApiKey || settings.deepseekApiKey.trim() === "") {
+      problems.push("DEEPSEEK_API_KEY is required when ARTHUR_MODEL_PROVIDER=deepseek (set it in the environment or .env)");
+    }
+  } else {
+    if (!settings.modelName || settings.modelName.trim() === "") {
+      settings.modelName = "fake-model";
+    }
+  }
+
+  if (problems.length > 0) {
+    fail(`Configuration validation failed:\n- ${problems.join("\n- ")}`);
+  }
+
+  return settings;
+}

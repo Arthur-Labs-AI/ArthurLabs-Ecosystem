@@ -1,0 +1,10 @@
+RB-03S option 1 (reposition X1 / R6001 only, keep C6009 0603 at its RB-02 position), 2026-10-11
+command: rb03s_repair.py --pcb <RB-03R board> --pad C6009.2 --in2-margin -0.02 --gnd-rect-margin 0.25 --move R7101:-0.3:0 <extra> --also-reroute /ADC/X1_OUT
+
+--move R7101 only                      : GND tie = existing 14 mm wire route (no legal via within 3 mm; window 0.11 mm too narrow)
+--move R7101 R6001:0:+0.3              : courtyard conflict R6001 vs R6002
+--move R7101 R6001:0:-0.1              : courtyard conflict R6001 vs C6009
+--move R7101 X1:0:-0.3 (north)         : tie = 2.6 mm x 0.15 mm F.Cu wire to the existing GND via at (24.1, 46.6); no via near the pad; offenders none
+--move R7101 X1:+0.3:0                 : DVDD_F cannot be re-routed (C6010.1), X1.2 via becomes an offender
+--move R7101 X1:-0.3:0                 : courtyard conflict X1 vs U6001
+Option 2 (C6009 -0.18 mm, R7101 back): GND via (25.20, 49.10), stub 0.3 mm wide -- chosen.

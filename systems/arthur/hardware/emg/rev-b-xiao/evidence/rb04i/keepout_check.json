@@ -1,0 +1,254 @@
+{
+ "summary": {
+  "zones": 11,
+  "violations": 0,
+  "gnd0_pad_box": [
+   43.619,
+   56.187,
+   45.651,
+   57.203
+  ],
+  "ring": {
+   "x": 44.635,
+   "y": 54.79,
+   "dia": 2.3,
+   "top_edge_y": 55.94
+  },
+  "ring_to_gnd0_pad_gap": 0.247,
+  "ring_inside_gnd0_margin_band_by": 0.253,
+  "ufl_region_host_f_cu": [
+   "/AFE_EN_REQ w0.2",
+   "VBAT w0.5"
+  ],
+  "ufl_region_vias": []
+ },
+ "zones": [
+  {
+   "name": "XIAO pads 15-22 underside",
+   "layers": [
+    "F.Cu"
+   ],
+   "rules": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "not_allowed",
+    "footprints": "allowed"
+   },
+   "tracks": [],
+   "vias": [],
+   "pads": [],
+   "pours": [],
+   "u1_pads_inside": [],
+   "violations": 0
+  },
+  {
+   "name": "XIAO USB shell oval S3 (GND)",
+   "layers": [
+    "F.Cu"
+   ],
+   "rules": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   },
+   "tracks": [],
+   "vias": [],
+   "pads": [],
+   "pours": [],
+   "u1_pads_inside": [],
+   "violations": 0
+  },
+  {
+   "name": "XIAO pad 25 GND window",
+   "layers": [
+    "F.Cu"
+   ],
+   "rules": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "not_allowed",
+    "footprints": "allowed"
+   },
+   "tracks": [],
+   "vias": [],
+   "pads": [],
+   "pours": [],
+   "u1_pads_inside": [],
+   "violations": 0
+  },
+  {
+   "name": "XIAO GND0 (BAT-) pad",
+   "layers": [
+    "F.Cu"
+   ],
+   "rules": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "not_allowed",
+    "footprints": "allowed"
+   },
+   "tracks": [],
+   "vias": [],
+   "pads": [],
+   "pours": [],
+   "u1_pads_inside": [
+    "U1.23 ['*.Cu'] 2.3x2.3",
+    "U1.23 ['B.Cu'] 3.0x3.0"
+   ],
+   "violations": 0
+  },
+  {
+   "name": "XIAO USB shell oval S2 (GND)",
+   "layers": [
+    "F.Cu"
+   ],
+   "rules": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   },
+   "tracks": [],
+   "vias": [],
+   "pads": [],
+   "pours": [],
+   "u1_pads_inside": [],
+   "violations": 0
+  },
+  {
+   "name": "XIAO USB shell oval S1 (GND)",
+   "layers": [
+    "F.Cu"
+   ],
+   "rules": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   },
+   "tracks": [],
+   "vias": [],
+   "pads": [],
+   "pours": [],
+   "u1_pads_inside": [],
+   "violations": 0
+  },
+  {
+   "name": "XIAO USB shell oval S4 (GND)",
+   "layers": [
+    "F.Cu"
+   ],
+   "rules": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   },
+   "tracks": [],
+   "vias": [],
+   "pads": [],
+   "pours": [],
+   "u1_pads_inside": [],
+   "violations": 0
+  },
+  {
+   "name": "XIAO no vias (above via field)",
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ],
+   "rules": {
+    "tracks": "allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   },
+   "tracks": [],
+   "vias": [],
+   "pads": [],
+   "pours": [],
+   "u1_pads_inside": [],
+   "violations": 0
+  },
+  {
+   "name": "XIAO no vias (below via field)",
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ],
+   "rules": {
+    "tracks": "allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   },
+   "tracks": [],
+   "vias": [],
+   "pads": [],
+   "pours": [],
+   "u1_pads_inside": [
+    "U1.23 ['*.Cu'] 2.3x2.3",
+    "U1.23 ['B.Cu'] 3.0x3.0"
+   ],
+   "violations": 0
+  },
+  {
+   "name": "XIAO no vias (west of via field)",
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ],
+   "rules": {
+    "tracks": "allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   },
+   "tracks": [],
+   "vias": [],
+   "pads": [],
+   "pours": [],
+   "u1_pads_inside": [],
+   "violations": 0
+  },
+  {
+   "name": "XIAO no vias (east of via field)",
+   "layers": [
+    "F.Cu",
+    "B.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ],
+   "rules": {
+    "tracks": "allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   },
+   "tracks": [],
+   "vias": [],
+   "pads": [],
+   "pours": [],
+   "u1_pads_inside": [],
+   "violations": 0
+  }
+ ]
+}

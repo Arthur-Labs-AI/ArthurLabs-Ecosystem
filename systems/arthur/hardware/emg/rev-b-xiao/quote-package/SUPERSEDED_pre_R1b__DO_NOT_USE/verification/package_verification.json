@@ -1,0 +1,300 @@
+{
+ "checks": [
+  {
+   "check": "zip: flat, 10 Gerber layers + 1 drill, no job file",
+   "result": "PASS",
+   "detail": "['ARTHUR_EMG_RevB-B_Cu.gbl', 'ARTHUR_EMG_RevB-B_Mask.gbs', 'ARTHUR_EMG_RevB-B_Silkscreen.gbo', 'ARTHUR_EMG_RevB-Edge_Cuts.gm1', 'ARTHUR_EMG_RevB-F_Cu.gtl', 'ARTHUR_EMG_RevB-F_Mask.gts', 'ARTHUR_EMG_RevB-F_Paste.gtp', 'ARTHUR_EMG_RevB-F_Silkscreen.gto', 'ARTHUR_EMG_RevB-In1_Cu.g1', 'ARTHUR_EMG_RevB-In2_Cu.g2', 'ARTHUR_EMG_RevB.drl']"
+  },
+  {
+   "check": "all Gerbers are metric, 4.6 coordinates",
+   "result": "PASS",
+   "detail": ""
+  },
+  {
+   "check": "outline 51.30 x 64.95 mm, origin at 0,0 (Gerber y negative)",
+   "result": "PASS",
+   "detail": "[0.0, -64.95, 51.3, 0.0]"
+  },
+  {
+   "check": "drill: 201 x 0.30 holes at exactly the via positions",
+   "result": "PASS",
+   "detail": "201"
+  },
+  {
+   "check": "drill: PTH pads = 1.40 holes at source positions; 0 NPTH",
+   "result": "PASS",
+   "detail": "{'holes': {0.3: 201, 1.4: 1}, 'pth': [('U1', '23')]}"
+  },
+  {
+   "check": "BAT+ post (U1.23): 1.40 mm drill, 1.90 mm pad on F.Cu and B.Cu, mask openings both sides, centred on the source position",
+   "result": "PASS",
+   "detail": "{'ref': 'U1.23', 'x': 44.635, 'y': 54.79, 'gerber_xy': (44.635, -54.79), 'pad': ('circle', 1.9, 1.9), 'layers': ['*.Cu', '*.Mask'], 'flashes': {'F_Cu.gtl': [('C', (1.9, 1.9), 'D')], 'B_Cu.gbl': [('C', (1.9, 1.9), 'D'), ('C', (3.0, 3.0), 'D')], 'In1_Cu.g1': [('C', (1.9, 1.9), 'D')], 'In2_Cu.g2': [('C', (1.9, 1.9), 'D')], 'F_Mask.gts': [('C', (1.45, 1.45), 'D')], 'B_Mask.gbs': [('C', (1.45, 1.45), 'D'), ('C', (3.0, 3.0), 'D')]}}"
+  },
+  {
+   "check": "every F.Cu pad of the PCB has a flash at its centre in F_Cu (incl. pin 1 of all polarised parts)",
+   "result": "PASS",
+   "detail": "[]"
+  },
+  {
+   "check": "no via hole inside / touching a mask opening on either side (hole web >= 0.10 mm): vias fully tented",
+   "result": "PASS",
+   "detail": "[]"
+  },
+  {
+   "check": "mask via classes in the Gerber = RB-04 classes (179 / 12 / 10)",
+   "result": "PASS",
+   "detail": "{1: 179, 3: 10, 2: 12}"
+  },
+  {
+   "check": "22 open mask vias V01-V22: class and hole-edge-to-opening match via_list.csv (rounded-rect distance, <=0.03 mm)",
+   "result": "PASS",
+   "detail": "[]"
+  },
+  {
+   "check": "mask counts: F.Mask openings = F.Cu SMD pads + PTH; B.Mask openings = 8 test pads + PTH",
+   "result": "PASS",
+   "detail": "(355, 10)"
+  },
+  {
+   "check": "CPL: exactly 126 rows, all 'Top', refs = every non-DNP, non-test-pad SMD footprint",
+   "result": "PASS",
+   "detail": "126"
+  },
+  {
+   "check": "CPL excludes U1 (XIAO) and TP1-TP8",
+   "result": "PASS",
+   "detail": ""
+  },
+  {
+   "check": "CPL coordinates = PCB footprint origins (x, -y); raw rotation = KiCad; primary rotation = KiCad + community offset",
+   "result": "PASS",
+   "detail": "[]"
+  },
+  {
+   "check": "BOM: 29 lines, 126 designators, no duplicates, same set as CPL, no U1/TP, every line has an LCSC number",
+   "result": "PASS",
+   "detail": "126"
+  },
+  {
+   "check": "BOM lines = RB-04B qualified selection (LCSC and designators)",
+   "result": "PASS",
+   "detail": ""
+  }
+ ],
+ "info": {
+  "outline": [
+   0.0,
+   -64.95,
+   51.3,
+   0.0
+  ],
+  "bat_post": {
+   "ref": "U1.23",
+   "x": 44.635,
+   "y": 54.79,
+   "gerber_xy": [
+    44.635,
+    -54.79
+   ],
+   "pad": [
+    "circle",
+    1.9,
+    1.9
+   ],
+   "layers": [
+    "*.Cu",
+    "*.Mask"
+   ],
+   "flashes": {
+    "F_Cu.gtl": [
+     [
+      "C",
+      [
+       1.9,
+       1.9
+      ],
+      "D"
+     ]
+    ],
+    "B_Cu.gbl": [
+     [
+      "C",
+      [
+       1.9,
+       1.9
+      ],
+      "D"
+     ],
+     [
+      "C",
+      [
+       3.0,
+       3.0
+      ],
+      "D"
+     ]
+    ],
+    "In1_Cu.g1": [
+     [
+      "C",
+      [
+       1.9,
+       1.9
+      ],
+      "D"
+     ]
+    ],
+    "In2_Cu.g2": [
+     [
+      "C",
+      [
+       1.9,
+       1.9
+      ],
+      "D"
+     ]
+    ],
+    "F_Mask.gts": [
+     [
+      "C",
+      [
+       1.45,
+       1.45
+      ],
+      "D"
+     ]
+    ],
+    "B_Mask.gbs": [
+     [
+      "C",
+      [
+       1.45,
+       1.45
+      ],
+      "D"
+     ],
+     [
+      "C",
+      [
+       3.0,
+       3.0
+      ],
+      "D"
+     ]
+    ]
+   }
+  },
+  "v01_v22": {
+   "V01": [
+    3,
+    0.125,
+    -0.025
+   ],
+   "V02": [
+    3,
+    0.125,
+    -0.025
+   ],
+   "V03": [
+    3,
+    0.11,
+    -0.04
+   ],
+   "V04": [
+    3,
+    0.108,
+    -0.042
+   ],
+   "V05": [
+    3,
+    0.125,
+    -0.025
+   ],
+   "V06": [
+    3,
+    0.125,
+    -0.025
+   ],
+   "V07": [
+    3,
+    0.141,
+    -0.009
+   ],
+   "V08": [
+    3,
+    0.125,
+    -0.025
+   ],
+   "V09": [
+    3,
+    0.125,
+    -0.025
+   ],
+   "V10": [
+    3,
+    0.101,
+    -0.049
+   ],
+   "V11": [
+    2,
+    0.228,
+    0.078
+   ],
+   "V12": [
+    2,
+    0.164,
+    0.014
+   ],
+   "V13": [
+    2,
+    0.164,
+    0.014
+   ],
+   "V14": [
+    2,
+    0.228,
+    0.078
+   ],
+   "V15": [
+    2,
+    0.233,
+    0.083
+   ],
+   "V16": [
+    2,
+    0.175,
+    0.025
+   ],
+   "V17": [
+    2,
+    0.2,
+    0.05
+   ],
+   "V18": [
+    2,
+    0.156,
+    0.006
+   ],
+   "V19": [
+    2,
+    0.175,
+    0.025
+   ],
+   "V20": [
+    2,
+    0.15,
+    0.0
+   ],
+   "V21": [
+    2,
+    0.179,
+    0.029
+   ],
+   "V22": [
+    2,
+    0.226,
+    0.076
+   ]
+  }
+ }
+}

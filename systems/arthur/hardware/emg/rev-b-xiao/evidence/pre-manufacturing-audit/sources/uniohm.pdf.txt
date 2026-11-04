@@ -1,0 +1,229 @@
+                      Thick Film Chip Resistors
+                                                                                                                                                           UniOhm
+RoHS Compliant        厚膜晶片电阻器
+
+   Feature (特性)
+   • Small size & light weight 短小轻薄
+   • Reduction of assembly costs and matching with placement machine. 可降低装置成本及配合机器组装
+   • Suitable for both wave & re-flow soldering. 适合波峰焊与回流焊
+   • Applications: Navigator (GPS), Mobile Phone,Telecom, PDA, Setbox, Meter.
+     应用于GPS， 移动电话，PDA，机顶盒，仪表
+
+
+
+   Figures (型状)                                                                                                           Derating Curve & Specification
+                                                                                                                          降功率曲线及性能
+
+                                                                      1. High purity Alumina substrate (高纯度氧化铝基板)
+
+
+                                                                                                                             负载比率(%)
+                                                                      2. Protective coating (保护层)
+                                                                      3. Resistance element (阻抗元素)
+
+
+
+
+                                                                                                                          Percent rated load (%)
+                                                                      4. Termination (Inner) Ni / Cr [端面(内)镍/铬层]
+                                                                      5. Termination (Between) Ni Barrier [端面(中)镍层]
+                                                                      6. Termination (Outer) Sn [端面(外)锡层(无铅)]
+
+                                                                                                                                                   Ambient termperature 环境温度 (°C)
+
+
+
+   Type 类型                    01005 New      0201        0402       0603            0805              1206             1210                        1812         2010          2512
+   Max. Working Voltage
+   最大工作电压
+                                15V          25V         50V         75V            150V              200V             200V                        200V         200V         200V
+   Max. Overload Voltage
+   最大过负荷电压
+                                30V          50V         100V       150V            300V              400V             500V                        500V         500V         500V
+   Dielectric withstanding
+   Voltage                       -            -          100V       300V            500V              500V             500V                        500V         500V         500V
+   绝缘耐压
+   Operating Temperature
+   工作温度范围                    -55~+155°C -55~+155°C -55~+155°C -55~+155°C -55~+155°C -55~+155°C -55~+155°C -55~+155°C -55~+155°C -55~+155°C
+
+
+   Type 类型                       01005 New        0201     0402        0603            0805             1206            1210                       1812         2010          2512
+                                                                                                           1/4W
+   Power Rating at 70°C                                                1/16W       1/10W       1/8W                    1/2W        1/2W
+                                   1/32W       1/20W       1/16W                                          (1/3W-S                               1W
+   功 率                                                               (1/10W-S)   (1/8W-S)    (1/4W-S)                (3/4W-S)    (3/4W-S)
+                                                                                                         1/2W-SS)
+                       L (mm)   0.40 ± 0.02 0.60 ± 0.03 1.00 ± 0.10 1.60 ± 0.10 2.00 ± 0.15 3.10 ± 0.15 3.10 ± 0.10 4.50 ± 0.20 5.00 ± 0.10 6.35 ± 0.10
+                                                                                          +0.15            +0.15
+                      W (mm)    0.20 ± 0.02 0.30 ± 0.03 0.50 ± 0.05 0.80± 0.10 1.25 -0.10           1.55 -0.10        2.60± 0.20 3.20 ± 0.20 2.50± 0.20 3.20± 0.20
+   Dimension
+                      H (mm)    0.13 ± 0.02 0.23 ± 0.03 0.35 ± 0.05 0.45 ± 0.10 0.55 ± 0.10 0.55 ± 0.10 0.55 ± 0.10 0.55 ± 0.20 0.55 ± 0.10 0.55 ± 0.10
+   尺 寸
+                      A (mm)    0.10 ± 0.05 0.10 ± 0.05 0.20 ± 0.10 0.30 ± 0.20 0.40 ± 0.20 0.45 ± 0.20 0.50 ± 0.25 0.50 ± 0.20 0.60 ± 0.25 0.60 ± 0.25
+                       B (mm)   0.10 ± 0.03 0.15 ± 0.05 0.25 ± 0.10 0.30 ± 0.20 0.40 ± 0.20 0.45 ± 0.20 0.50 ± 0.20 0.50 ± 0.20 0.50 ± 0.20 0.50 ± 0.20
+   Resistance Value of
+   Jumper                             -        <50mΩ      <50mΩ       <50mΩ           <50mΩ            <50mΩ           <50mΩ                       <50mΩ       <50mΩ         <50mΩ
+   零欧姆电阻阻值
+   Rated Current of Jumper            -           0.5A      1A          1A               2A               2A             2A                         2A            2A           2A
+   零欧姆电阻额定电流
+   Max. Overload Current
+   of Jumper                          -            1A       2A          2A               5A              10A             10A                        10A          10A          10A
+   零欧姆电阻最大过负
+   荷电流
+   Resistance Range of
+   0.5% (E-96)                        -             -    1Ω ~ 10MΩ 1Ω ~ 10MΩ 1Ω ~ 10MΩ 1Ω ~ 10MΩ 1Ω ~ 10MΩ 1Ω ~ 10MΩ 1Ω ~ 10MΩ 1Ω ~ 10MΩ
+   0.5% 的阻值范围(E-96)
+   Resistance Range of 1%             10Ω
+   (E-96)                              ~     1Ω ~ 10MΩ 1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ
+   1% 的阻值范围 (E-96)                   10MΩ
+   Resistance Range of 2%             10Ω
+   (E-24)                              ~     1Ω ~ 10MΩ 1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ
+   2% 的阻值范围 (E-24)                   10MΩ
+   Resistance Range of 5%             1Ω
+   (E-24)                              ~     1Ω ~ 10MΩ 1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ 0.1Ω~10MΩ
+   5% 的阻值范围 (E-24)                   10MΩ
+
+
+                                                                                                                                                                                     1
+                                                                                                         Thick Film Chip Resistors
+UniOhm
+                                                                                                                     厚膜晶片电阻器                     RoHS Compliant
+
+
+Marking on the Resistors Body (电阻本体字码标示)
+• For 01005, 0201, 0402 size, no marking on the body due to the small size of the resistor.
+  01005, 0201, 0402因电阻本体太小，故本体无标示字码                                                                          153               153 = 15000Ω = 15KΩ
+
+• ±5% tolerance product: the marking is 3 digits, the first 2 digits are the significant of the
+    resistance and the 3rd digit denotes number of zeros following.
+    ±5%公差产品字码是三位数，前二位是阻值的有效数，第三位表示有几个 0
+                                                                                                             6R8
+                                                                                                                               Below 10Ω: 6R8 = 6.8Ω
+                                                                                                                               10Ω 以下标示: 6R8 = 6.8Ω
+• 0805, 1206, 1210, 2010, 2512 ≤±1%: the marking is 4 digits, the first 3 digits
+  are the significant of the resistance and the 4th digit denotes number of zeros following.
+  0805, 1206, 1210, 2010, 2512 ≤±1%公差产品字码有四位数，前三位是阻
+  值的有效数，第四位表示有几个 0                                                                                          2372               2372 = 23700Ω = 23.7KΩ
+
+• Standard E-96 series values of 0603 ≤±1%: due to the small size of the resistor’s
+  body, 3 digits marking will be used to indicate the accurate resistance value by using the
+  following Multiplier & Resistance Code.
+  0603 ≤±1%公差 E-96系列标准阻值，因电阻本体太小，采用三位阻值代码（
+                                                                                                            3R24               Below 10Ω : 3R24 = 3.24Ω
+                                                                                                                               10Ω 以下标示: 3R24 = 3.24Ω
+
+    数字）及下列指数代码（字母）配合来指明标准的阻值。
+
+Multiplier Code (for 0603 ≤±1% marking) [指数码 ( 0603≤±1% 标示)]
+Code
+                   A             B            C             D             E            F           G           H         X             Y          Z
+代 码
+Multiplier
+                  100           101          102           103           104          105         106         107       10-1          10-2       10-3
+指 数
+
+
+Standard E-96 series Resistance Value code (for 0603≤±1% marking) [E-96系列标准阻值代码（对0603≤±1%的字码）]
+    Value        Code          Value        Code          Value         Code         Value        Code       Value      Code          Value      Code
+    阻值           代码            阻值           代码            阻值            代码           阻值           代码         阻值         代码            阻值         代码
+    100           01           147           17           215            33          316           49        464         65           681         81
+    102           02           150            18           221           34           324         50          475        66           698         82
+    105           03           154            19           226           35           332         51          487        67           715         83
+    107           04           158            20           232           36           340         52          499        68           732         84
+    110           05           162            21           237           37           348         53          511        69           750         85
+    113           06           165            22           243           38           357         54          523        70           768         86
+    115           07           169            23           249           39           365         55          536        71           787         87
+    118           08           174            24           255           40           374         56          549        72           806         88
+    121           09           178            25           261           41           383         57          562        73           825         89
+    124           10           182            26           267           42           392         58          576        74           845         90
+    127           11           187            27           274           43           402         59          590        75           866         91
+    130           12           191            28           280           44           412         60          604        76           887         92
+    133           13           196            29           287           45           422         61          619        77           909         93
+    137           14           200            30           294           46           432         62          634        78           931         94
+    140           15           205            31           301           47           442         63          649        79           953         95
+    143           16           210            32           309           48           453         64          665        80           976         96
+
+
+So the resistance value are marked as the following examples ( 阻值标示如下):
+
+                            1.96KΩ= 196 ×101 Ω = 29B                                                     12.4Ω= 124 ×10 -1 = 10X
+          29B                                                                           10X
+• Standard E-24 and not belong to E-96 series values (≤±1%) of 0603 size: the marking is the same as 5% tolerance but marking as underline.
+  0603≤±1%公差，在标准 E-24 系列中，但不属 E-96 系列的阻值，标示和5%的公差相同，但是在字码下多加一条线
+
+                            122 = 1200 = 1.2 KΩ                                                          680 = 68Ω
+             122                                                                         680
+                                                                                                                                                           2
+                    Thick Film Chip Resistors
+                                                                                                                                                       UniOhm
+RoHS Compliant      厚膜晶片电阻器
+
+   Performance Specifications (性能)
+                 Temperature coefficient 温度系数 01005:                                                                1Ω~10Ω: ≤±600PPM/°C
+                				                                                                                              10Ω~100Ω: ≤±400PPM/°C
+                 				                                                                                                >100Ω: ≤±250PPM/°C
+                			 0402, 0603, 0805, 1206, 1210, 2010, 2512:
+                				                    0.1Ω~0.99Ω: ≤±800PPM/°C
+                				                        1Ω~10Ω: ≤±400PPM/°C
+                				                     11Ω~100Ω: ≤±200PPM/°C
+                				                         >100Ω: ≤±100PPM/°C (0201>100Ω: ≤±200PPM/°C)
+                			                         Provided Specially ( 特别提供 ): 0603: 1Ω~10Ω: ≤±200PPM/°C
+                		                      		                          0805, 1206: 1Ω~10Ω: ≤±100PPM/°C
+                 Short-time overload 短时间过负荷 ±5%, ± 2%: ±(2.0% + 0.1Ω) Max( 最大 ).
+                			                         ±1%, ± 0.5%: ±(1.0% + 0.1Ω) Max( 最大 ).
+                                      Insulation resistance      绝缘电阻                   ≥ 1,000 MΩ
+                Dielectric withstanding voltage 绝缘耐压 No evidence of flashover, mechanical damage, arcing or insulation breakdown
+                			无击穿 , 飞弧及可见机械性损伤
+                                         Terminal bending        端子弯曲                   ±(1.0% + 0.05Ω) Max( 最大 ).
+                                            Soldering heat       耐焊接热                   ±(1.0% + 0.05Ω) Max( 最大 ).
+                                              Solderability        可焊性                  Min. 95% coverage ( 最少 95% 覆盖率 )
+                 Temperature cycling 温度循环                                               ±5%, ± 2%: ±(1.0% + 0.05Ω) Max( 最大 ).
+                			                                                                     ±1%, ± 0.5%: ±(0.5% + 0.05Ω) Max( 最大 ).
+                 Humidity (Steady State) 恒定湿热                                           ±5%, ± 2%: ±(3.0% + 0.1Ω) Max( 最大 ).
+                			                                                                     ±1%, ± 0.5%: ±(0.5% + 0.1Ω) Max( 最大 ).
+                 Load life in humidity 湿度寿命                                             ±5%, ± 2%: ±(3.0% + 0.1Ω) Max( 最大 ).
+                			                                                                     ±1%, ± 0.5%: ±(1.0% + 0.1Ω) Max( 最大 ).
+                  Load life 负载寿命                                                        ±5%, ± 2%: ±(3.0% + 0.1Ω) Max( 最大 ).
+                			                                                                     ±1%, ± 0.5%: ±(1.0% + 0.1Ω) Max( 最大 ).
+
+     • The values which are not of standard E-24 series (2% & 5%) and not of E-96 series (1%) could be offered on a case to case basis.
+       阻值如不在 E-24 系列 (2% & 5%) 及 E-96 系列 (1%) 可特别提供
+
+
+    Ordering Procedure (Example: 1206 1/4W-S 5% 1.2 Ω T/R-5000)
+    订购方式 (例如: 1206 1/4W-S 5% 1.2 Ω T/R-5000)
+
+             1 2 0 6 S 4 J 0 1 2 J                                                                                                                    T 5 E
+             Product Type ( 产品类型 ):                             Wattage ( 功率 ):                  Resistance Value (阻值):                                Packing Qty.
+             Fill-in 4 digits with the Chip resistor type       Fill-in 2 digits with            5% (E-24 series) :                                    ( 包装数量 )
+             as follow ( 填四位数表示下列各种                             the codes as follow               the 1st digit is “0”, the 2nd & 3rd digits are       1=1,000pcs
+             晶片电阻类型 ):                                          ( 用下列代码填                          for the significant figures of the resistance and    2=2,000pcs
+               0105(01005), 0201, 0402,                         二位数 ):                            the 4th indicate the numbers of zeros following      3=3,000pcs
+                                                                                                 5% 产品 (E-24 系列阻值 ):
+               0603, 0805, 1206, 1210, 1812,                    WH = 1/32W                                                                             4=4,000pcs,
+                                                                                                  第 1 位数是 0，第 2、3 位数表示阻
+               2010, 2512, 2D02, 4D02, 4D03,                    WM = 1/20W,                                                                            5=5,000pcs
+                                                                                                  值的有效数，第 4 位表示有几个 0);
+               16P8, 2C02, 4C02, 4C03, 10P8,                    WG = 1/16W,                                                                            C=10,000pcs
+               10S8, 10T8, 10E9                                 WA = 1/10W,                      ≤2%( E-24, E-96 series):                              D=20,000pcs
+                                                                1W = 1W,                          the 1st to 3rd digits are for the significant        E= 15,000pcs
+                                                                W2 = 1/2W                         figures of the resistance and the 4th indicate
+                                                                                                                                                       H=50,000pcs
+                                                                W4 = 1/4W,                        the numbers of zeros following
+                                                                                                                                                       J=60,000pcs
+                                                                                                 2% 产品 (E-24, E-96 系列阻值 ):
+                                                                W8 = 1/8W,
+                                                                                                  第 1-3 位数表示阻值的有效数，第 4
+                                                                 SA = 1/10W-S,
+                                                                                                  位数表示有几个 0).
+                                                                 S8 = 1/8W-S,
+                                                                 S4 = 1/4W-S,
+                                                                 S3 = 1/3W-S,               Tolerance              Packing Type (包装类型):                 Special Feature ( 特征 ):
+                                                                 U2 = 1/2W-SS               ( 公差 ):                T = T/R ( 编带 / 卷带 )                  E = Lead Free (standard)
+                                                                 07 = 3/4W-S                D = ±0.5%              B = Bulk in Poly bag ( 散装 / 袋装 )          ( 无铅标准品 )
+                                                                                            F = ±1%                C = Bulk in cassette ( 散装 / 盒装 )
+                                                                                            G = ±2%
+                                                                                            J = ±5%
+
+                                                                                                                                                                               3
+

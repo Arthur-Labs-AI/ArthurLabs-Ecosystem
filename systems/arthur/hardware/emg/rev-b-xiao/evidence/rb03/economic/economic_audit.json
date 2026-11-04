@@ -1,0 +1,248 @@
+{
+ "board": {
+  "width": 51.3,
+  "height": 62.45,
+  "copper_layers": 4,
+  "stackup_thickness_mm": 1.606
+ },
+ "economic_limits": {
+  "layers": [
+   2,
+   4,
+   6
+  ],
+  "single_pcb_mm": [
+   [
+    10,
+    10
+   ],
+   [
+    470,
+    500
+   ]
+  ],
+  "panel_mm": [
+   [
+    10,
+    10
+   ],
+   [
+    250,
+    250
+   ]
+  ],
+  "thickness_mm": [
+   0.8,
+   1.6
+  ],
+  "min_ic_pitch_mm": 0.4,
+  "min_package": "0402",
+  "qty": [
+   2,
+   50
+  ]
+ },
+ "assembly": {
+  "footprints": 135,
+  "jlc_assembled_top": 126,
+  "jlc_assembled_bottom": 0,
+  "tht_by_jlc": 0,
+  "dnp": [
+   "U1"
+  ],
+  "bare_pads": 8,
+  "bottom_footprints_not_excluded_from_pos": [],
+  "cpl_bottom_rows_with_exclude_dnp": [],
+  "cpl_rows_with_exclude_dnp": 126,
+  "cpl_contains_U1": false,
+  "packages": [
+   "C_0603_1608Metric",
+   "C_0805_2012Metric",
+   "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+   "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+   "L_0603_1608Metric",
+   "OSC_SCTF_SX3M_SMD3225-4P",
+   "R_0603_1608Metric",
+   "R_0805_2012Metric",
+   "SOT-23",
+   "SOT-23-5",
+   "TSSOP-14_4.4x5mm_P0.65mm",
+   "TSSOP-20_4.4x6.5mm_P0.65mm"
+  ],
+  "extended_part_lines_expected": [
+   "ADS131M04IPWR",
+   "B2B-PH-SM4-TB(LF)(SN)",
+   "BAV199",
+   "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+   "S2B-PH-SM4-TB(LF)(SN)",
+   "SX3M8.192M20F30TNN",
+   "TLV9064IPWR",
+   "TPS7A2030PDBVR"
+  ],
+  "generic_value_package_lines_basic_unconfirmed": [
+   [
+    "1.0k",
+    "R_0603_1608Metric"
+   ],
+   [
+    "1.0nF",
+    "C_0603_1608Metric"
+   ],
+   [
+    "100",
+    "R_0603_1608Metric"
+   ],
+   [
+    "100k",
+    "R_0603_1608Metric"
+   ],
+   [
+    "100k",
+    "R_0805_2012Metric"
+   ],
+   [
+    "100nF",
+    "C_0603_1608Metric"
+   ],
+   [
+    "100pF",
+    "C_0603_1608Metric"
+   ],
+   [
+    "10M",
+    "R_0603_1608Metric"
+   ],
+   [
+    "10k",
+    "R_0603_1608Metric"
+   ],
+   [
+    "10nF",
+    "C_0603_1608Metric"
+   ],
+   [
+    "10uF",
+    "C_0603_1608Metric"
+   ],
+   [
+    "150k",
+    "R_0603_1608Metric"
+   ],
+   [
+    "1M",
+    "R_0603_1608Metric"
+   ],
+   [
+    "1uF",
+    "C_0603_1608Metric"
+   ],
+   [
+    "2.2uF",
+    "C_0603_1608Metric"
+   ],
+   [
+    "220nF",
+    "C_0603_1608Metric"
+   ],
+   [
+    "22uF",
+    "C_0805_2012Metric"
+   ],
+   [
+    "33",
+    "R_0603_1608Metric"
+   ],
+   [
+    "4.7",
+    "R_0603_1608Metric"
+   ],
+   [
+    "4.7k",
+    "R_0603_1608Metric"
+   ],
+   [
+    "600R@100MHz",
+    "L_0603_1608Metric"
+   ]
+  ],
+  "pads_with_B_Paste": [],
+  "bottom_smd_pads": [
+   [
+    "TP1",
+    "1",
+    "smd"
+   ],
+   [
+    "TP2",
+    "1",
+    "smd"
+   ],
+   [
+    "TP3",
+    "1",
+    "smd"
+   ],
+   [
+    "TP4",
+    "1",
+    "smd"
+   ],
+   [
+    "TP5",
+    "1",
+    "smd"
+   ],
+   [
+    "TP6",
+    "1",
+    "smd"
+   ],
+   [
+    "TP7",
+    "1",
+    "smd"
+   ],
+   [
+    "TP8",
+    "1",
+    "smd"
+   ],
+   [
+    "U1",
+    "23",
+    "smd"
+   ]
+  ],
+  "smt_pad_count_top": 340
+ },
+ "edge": {
+  "parts_within_3mm_any_edge": 11,
+  "within_3mm_long_edges": 6,
+  "within_3mm_short_edges": 5,
+  "status_all_top_smt": {
+   "PASS": 126,
+   "UNKNOWN": 0,
+   "FAIL": 0
+  },
+  "status_near3": {
+   "PASS": 11,
+   "UNKNOWN": 0,
+   "FAIL": 0
+  },
+  "min_envelope_to_edge": 0.5,
+  "overhang": [
+   "J5001",
+   "J101",
+   "J201",
+   "J401",
+   "J301",
+   "U1"
+  ],
+  "rb02_c26_count": 1,
+  "rb02_c26_status": {
+   "PASS": 1,
+   "UNKNOWN": 0,
+   "FAIL": 0
+  }
+ }
+}

@@ -1,0 +1,636 @@
+{
+  "model": "Axis-aligned mask aperture bounding rectangles; corners conservative; straight silk strokes only; not factory CAM",
+  "count_below_0_15": 392,
+  "lowest": [
+    {
+      "conservative_bbox_gap_mm": 0.09,
+      "silk_segment": [
+        [
+          25.3,
+          -45.55
+        ],
+        [
+          23.1,
+          -45.55
+        ]
+      ],
+      "mask_center": [
+        25.3,
+        -46.175
+      ],
+      "mask_size": [
+        1.2,
+        0.95
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.09,
+      "silk_segment": [
+        [
+          25.3,
+          -45.55
+        ],
+        [
+          23.1,
+          -45.55
+        ]
+      ],
+      "mask_center": [
+        23.1,
+        -46.175
+      ],
+      "mask_size": [
+        1.2,
+        0.95
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.09,
+      "silk_segment": [
+        [
+          25.3,
+          -48.55
+        ],
+        [
+          23.1,
+          -48.55
+        ]
+      ],
+      "mask_center": [
+        23.1,
+        -47.925
+      ],
+      "mask_size": [
+        1.2,
+        0.95
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.09,
+      "silk_segment": [
+        [
+          25.3,
+          -48.55
+        ],
+        [
+          23.1,
+          -48.55
+        ]
+      ],
+      "mask_center": [
+        25.3,
+        -47.925
+      ],
+      "mask_size": [
+        1.2,
+        0.95
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1164,
+      "silk_segment": [
+        [
+          43.715,
+          -12.427064
+        ],
+        [
+          43.715,
+          -11.972936
+        ]
+      ],
+      "mask_center": [
+        44.45,
+        -13.1125
+      ],
+      "mask_size": [
+        1.4,
+        1.025
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1164,
+      "silk_segment": [
+        [
+          43.715,
+          -12.427064
+        ],
+        [
+          43.715,
+          -11.972936
+        ]
+      ],
+      "mask_center": [
+        44.45,
+        -11.2875
+      ],
+      "mask_size": [
+        1.4,
+        1.025
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1164,
+      "silk_segment": [
+        [
+          45.185,
+          -12.427064
+        ],
+        [
+          45.185,
+          -11.972936
+        ]
+      ],
+      "mask_center": [
+        44.45,
+        -13.1125
+      ],
+      "mask_size": [
+        1.4,
+        1.025
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1164,
+      "silk_segment": [
+        [
+          45.185,
+          -12.427064
+        ],
+        [
+          45.185,
+          -11.972936
+        ]
+      ],
+      "mask_center": [
+        44.45,
+        -11.2875
+      ],
+      "mask_size": [
+        1.4,
+        1.025
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          42.74,
+          -28.65942
+        ],
+        [
+          42.74,
+          -28.94058
+        ]
+      ],
+      "mask_center": [
+        43.25,
+        -28.025
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          42.74,
+          -28.65942
+        ],
+        [
+          42.74,
+          -28.94058
+        ]
+      ],
+      "mask_center": [
+        43.25,
+        -29.575
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          43.76,
+          -28.65942
+        ],
+        [
+          43.76,
+          -28.94058
+        ]
+      ],
+      "mask_center": [
+        43.25,
+        -28.025
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          43.76,
+          -28.65942
+        ],
+        [
+          43.76,
+          -28.94058
+        ]
+      ],
+      "mask_center": [
+        43.25,
+        -29.575
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          41.14,
+          -28.65942
+        ],
+        [
+          41.14,
+          -28.94058
+        ]
+      ],
+      "mask_center": [
+        41.65,
+        -28.025
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          41.14,
+          -28.65942
+        ],
+        [
+          41.14,
+          -28.94058
+        ]
+      ],
+      "mask_center": [
+        41.65,
+        -29.575
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          42.16,
+          -28.65942
+        ],
+        [
+          42.16,
+          -28.94058
+        ]
+      ],
+      "mask_center": [
+        41.65,
+        -28.025
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          42.16,
+          -28.65942
+        ],
+        [
+          42.16,
+          -28.94058
+        ]
+      ],
+      "mask_center": [
+        41.65,
+        -29.575
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          14.59,
+          -17.85942
+        ],
+        [
+          14.59,
+          -18.14058
+        ]
+      ],
+      "mask_center": [
+        15.1,
+        -17.225
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          14.59,
+          -17.85942
+        ],
+        [
+          14.59,
+          -18.14058
+        ]
+      ],
+      "mask_center": [
+        15.1,
+        -18.775
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          15.61,
+          -17.85942
+        ],
+        [
+          15.61,
+          -18.14058
+        ]
+      ],
+      "mask_center": [
+        15.1,
+        -17.225
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          15.61,
+          -17.85942
+        ],
+        [
+          15.61,
+          -18.14058
+        ]
+      ],
+      "mask_center": [
+        15.1,
+        -18.775
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          25.19,
+          -37.69058
+        ],
+        [
+          25.19,
+          -37.40942
+        ]
+      ],
+      "mask_center": [
+        25.7,
+        -38.325
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          25.19,
+          -37.69058
+        ],
+        [
+          25.19,
+          -37.40942
+        ]
+      ],
+      "mask_center": [
+        25.7,
+        -36.775
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          26.21,
+          -37.69058
+        ],
+        [
+          26.21,
+          -37.40942
+        ]
+      ],
+      "mask_center": [
+        25.7,
+        -38.325
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          26.21,
+          -37.69058
+        ],
+        [
+          26.21,
+          -37.40942
+        ]
+      ],
+      "mask_center": [
+        25.7,
+        -36.775
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          24.34,
+          -28.65942
+        ],
+        [
+          24.34,
+          -28.94058
+        ]
+      ],
+      "mask_center": [
+        24.85,
+        -28.025
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          24.34,
+          -28.65942
+        ],
+        [
+          24.34,
+          -28.94058
+        ]
+      ],
+      "mask_center": [
+        24.85,
+        -29.575
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          25.36,
+          -28.65942
+        ],
+        [
+          25.36,
+          -28.94058
+        ]
+      ],
+      "mask_center": [
+        24.85,
+        -28.025
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          25.36,
+          -28.65942
+        ],
+        [
+          25.36,
+          -28.94058
+        ]
+      ],
+      "mask_center": [
+        24.85,
+        -29.575
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          35.04,
+          -22.45942
+        ],
+        [
+          35.04,
+          -22.74058
+        ]
+      ],
+      "mask_center": [
+        35.55,
+        -21.825
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    },
+    {
+      "conservative_bbox_gap_mm": 0.1277,
+      "silk_segment": [
+        [
+          35.04,
+          -22.45942
+        ],
+        [
+          35.04,
+          -22.74058
+        ]
+      ],
+      "mask_center": [
+        35.55,
+        -23.375
+      ],
+      "mask_size": [
+        0.95,
+        0.9
+      ]
+    }
+  ]
+}

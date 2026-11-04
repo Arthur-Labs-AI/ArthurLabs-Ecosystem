@@ -1,0 +1,429 @@
+﻿
+PCBA Special Reminders
+×
+GERMANY Meet PCBasic at electronica 2026
+10-13 Nov 2026 · Munich, Germany · PCB & PCBA
+Visit boothA1.280
+Save the date
+10-13 Nov 2026
+00d:
+00h:
+00m:
+00s
+Plan your visit→
+×
+Global high-mix volume high-speed PCBA
+manufacturer
+Sign In | Join
+Sign
+Up
+Don't have an account
+Sign
+In
+Already have an
+account
+OR
+Sign in with Google
+Sign in with Apple
+My Orders
+My Profile
+Coupons
+Delivery Address
+Password Change
+Shopping Cart(0)
+Help Center
+Customer Service
+How to order
+Sending a message
+JS@pcbasic.com
+Open Hours：9:00-21:00
+(GMT+8)
+Service hotlines
++86-755-27218592
+9:00 -18:00, Mon. - Fri. (GMT+8)
+9:00 -12:00, Sat. (GMT+8)
+(Except Chinese public holidays)
+X
+Home
+Online Quote
+PCB Assembly
+PCB Manufacturing
+CNC | 3D Printing
+CNC Machining Service
+3D Printing Service
+Sheet Metal Fabrication
+Injection Molding Service
+Product & Capabilities
+Printed Circuit Boards
+PCB
+Manufacturing
+PCB BGA
+Aluminum PCB
+Rigid flex PCB
+Flex PCB
+Rigid PCB
+HDI PCB
+Rogers PCB
+Ceramic PCB
+RF PCB
+PCB Prototype
+LED PCB
+Metal Core PCBs
+Standard PCB
+PCB Capabilities
+PCBasic PCB Capabilities
+Quick Turn PCB
+Advanced PCB Capabilities
+PCB FAQs
+Low-volume PCB Production
+PCBA Capabilities
+PCB Assembly Service Process
+PCBA Special Reminders
+PCB Assembly Capabilities
+BGA Assembly Capabilities
+SMT Stencil
+PCB Assembly FAQs
+Files Requested for PCBA
+SMT Ordering Files and Documents
+PCB Assembly
+PCB Assembly Overview
+Consigned PCB Assembly
+Electronic Component Sourcing
+PCBA Functional Testing
+Panel Assembly Requirements
+Mixed Assembly
+Flex PCB Assembly
+Prototype PCB Assembly
+Turnkey PCB Assembly
+SMT Assembly
+Low Volume PCB Assembly
+High Volume PCB Assembly
+Through Hole PCB Assembly
+Solution
+Medical PCB Assembly
+Robotic Control Board Assembly
+Energy Storage PCB Assembly
+Industrial PCB Assembly
+PCB Layer Solutions
+Medical PCB Assembly
+Robotic Control Board Assembly
+Energy Storage PCB Assembly
+Industrial PCB Assembly
+PCB Layer Solutions
+About Us
+Company Introduction
+Learn About Our Mission
+Contact Us
+Leave Us a Message
+Testing Equipment
+Explore Our In-House Testing Equipment
+Quality Control
+Quality assured
+Quality Certifications
+Certifications We Hold
+Video Collection
+Comprehensive display
+IPC Class 3 Capability
+Our Equipment Highlights
+Customer Feedback
+See What Customers Say About PCBasic
+Testing & Inspection
+Our Equipment Highlights
+FAQ
+FAQ Section - Answers Made Clear.
+Packaging Details
+Elegant & secure
+Corporate Responsibility
+Sustainable Development
+JS@pcbasic.com
++86-755-27218592
+Online Quote
+Online Chat
+Company Introduction
+Contact Us
+Testing Equipment
+Quality Control
+Quality Certifications
+Video Collection
+IPC Class 3 Capability
+Customer Feedback
+Testing & Inspection
+FAQ
+Packaging Details
+Corporate Responsibility
+JS@pcbasic.com
+PCBA Special Reminders
+One-Stop PCBA Solution for Your Ideas
+No MOQ, No Wait – Your Boards, Your Way
+IPC Class 3 Quality – Excellence for Every Board
+16+ Years of Trusted PCBA Manufacturing Expertise
+9 Automated SMT Lines for Delivery
+Order Online
+PCBA Special Reminders
+One-Stop PCB Manufacturing & Testing
+16+ Years of PCB Manufacturing Excellence
+No Minimum Order, Maximum Flexibility
+Custom PCB Designs Tailored to Your Needs
+Multi-Layer PCB Solutions for Advanced Projects
+Order Online
+pcba special reminders
+Special Reminders for PCBA | PCBasic
+At PCBasic, we are dedicated to providing customers with high-quality, high-efficiency and reliable PCB assembly (PCBA) services. To make the production process smoother and reduce possible problems during assembly, we have prepared three important reminders. Please be sure to read them before placing an order.
+These contents can help you confirm that the components, panel design and dimensions all meet our automated SMT and assembly requirements, thus ensuring smooth production and on-time delivery.
+Parts Overages
+In general, any extra or unused components you provide or purchased by PCBasic will not be returned by default.
+If you wish to ship these components along with the assembled circuit board, please inform the salesperson in advance or note the specific names of the components you need to return when placing your order. Of course, PCBasic also offers a leftover material storage service, which is convenient for your future reorders. You can make a note of it when placing your order.
+SMT Component Handling Notes
+If the components are not supplied on reels, please provide a whole continuous strip of tape. Do not separate them in a scattered manner. If the same component is to be used in the assembly of multiple circuit boards, please do not cut the material tape. Keep the original reel tape or continuous material tape to facilitate machine mounting.
+Minimum Quantity and Extra Parts Requirements
+•  Resistors, capacitors, diodes:
+At least 50 should be provided, and 30 more should be prepared than the assembly quantity. For example: 40 need to be installed, please provide 70.
+• Micro-packaged components:
+At least 100 should be provided, and 50 more should be prepared than the assembly quantity. For example: 80 need to be installed, please provide 130.
+For high-priced or precision components (such as ICs, BGA, QFP, connectors, etc.), please prepare an extra 1 to 5 to prevent wear and tear or defects during assembly and avoid affecting the production schedule.
+If you have any questions, please contact the PCBasic technical support team for more instructions.
+Panelization
+If the size of your circuit board is less than 50mm × 100mm, or the shape of the circuit board is an irregular shape (such as round or custom outlines), it must be designed as a panel array before assembly.
+When your PCB manufacturing and assembly are both completed by PCBasic, our engineering team will automatically generate panelization and solder paste data during the board-making stage and directly transmit them to the assembly department.
+This can ensure that the stencil is perfectly matched with the layout of the panel, thereby ensuring precise alignment during installation and enhancing production efficiency and consistency.
+Break-away Rails (Break-away Tabs)
+If the distance between the edge of the circuit board and the copper features is less than 3.5mm (138mil), or your circuit board design requires panelization, then break-away rails/break-away tabs must be added on the two longer parallel edges of the panel.
+The function of these rails is to ensure that the circuit board can be securely transported and assembled during the automated SMT production process, thereby avoiding deformation, vibration or operational errors during mounting, reflow soldering and other processes, and improving assembly accuracy and production stability.
+PCBasic is committed to delivering precise, efficient, and high-quality PCB assembly.
+By following these special reminders, you can help us ensure smooth processing and on-time delivery of your PCBA projects.
+Functions and Categories
+PCB Assembly
+PCB Assembly Overview
+Consigned PCB Assembly
+Electronic Component Sourcing
+PCBA Functional Testing
+Panel Assembly Requirements
+Mixed Assembly
+Flex PCB Assembly
+Prototype PCB Assembly
+Turnkey PCB Assembly
+SMT Assembly
+Low Volume PCB Assembly
+High Volume PCB Assembly
+Through Hole PCB Assembly
+Printed Circuit Boards
+PCB Manufacturing
+PCB BGA
+Aluminum PCB
+Rigid flex PCB
+Flex PCB
+Rigid PCB
+HDI PCB
+Rogers PCB
+Ceramic PCB
+RF PCB
+PCB Prototype
+LED PCB
+Metal Core PCBs
+Standard PCB
+PCBA Capabilities
+PCB Assembly Service Process
+PCBA Special Reminders
+PCB Assembly Capabilities
+BGA Assembly Capabilities
+SMT Stencil
+PCB Assembly FAQs
+Files Requested for PCBA
+SMT Ordering Files and Documents
+PCB Capabilities
+PCBasic PCB Capabilities
+Quick Turn PCB
+Advanced PCB Capabilities
+PCB FAQs
+Low-volume PCB Production
+Assemble 20 PCBs for $0
+PCB Assembly
+PCB Prototype
+Assembly Enquiry
+Product Name
+Quantity
+Choose Num (pcs)
+5
+10
+15
+20
+25
+30
+40
+50
+75
+100
+100+
+BOM Material Type
+BOM Material
+Type
+Please enter a valid number
+BOM Total Components
+BOM Total
+Components
+Please enter a valid number
+Email*
+Please
+enter your email !
+Tel
+Upload File
+Quote Now
+Instant Quote
+Dimensions(mm)
+x
+Quantity
+Choose Num (pcs)
+5
+10
+15
+20
+25
+30
+40
+50
+75
+100
+100+
+Layers
+1 Layers
+2 Layers
+4 Layers
+6 Layers
+8 Layers
+10 Layers
+12 Layers
+14 Layers
+16 Layers
+18 Layers
+20 Layers
+22 Layers
+24 Layers
+28 Layers
+30 Layers
+32 Layers
+Thickness
+0.2 mm
+0.3 mm
+0.4 mm
+0.6 mm
+0.8 mm
+1.0 mm
+1.2 mm
+1.6 mm
+2.0 mm
+2.4 mm
+2.5 mm
+2.6 mm
+2.8 mm
+3.0 mm
+3.2 mm
+3.6 mm
+4.0 mm
+Email*
+Please enter your email !
+Tel
+Upload File
+Quote Now
+JS@pcbasic.com
++86-755-27218592
+9:00 -18:00, Mon. - Fri. (GMT+8)
+9:00 -12:00, Sat. (GMT+8)
+(Excluding Chinese Public Holidays)
+Our address
+Shenzhen Office
+Shenzhen Office:
+Building 1#, Unicity Intelligent Valley, Hang Cheng Street, Baoan, Shenzhen, China
+Shenzhen Factory
+Shenzhen Factory:
+Building E, Jianshi Industrial Park, No. 52 Huangpu Road, Xinqiao Street, Baoan District, Shenzhen, China
+Huizhou Factory
+Huizhou Factory:
+Building 25-26, No. 84 Songbuling Avenue, Sanhe Village, High-tech Zone, Zhongkai High-tech Zone, Huizhou City, China
+Shanghai R&D Center
+Shanghai R&D Center:
+Room 806, Building 2, Lane 1015 Longteng Road, Songjiang District, Shanghai, China
+Mexico Office
+Mexico Office:
+No. 500 Paseo del Café, Apt. 90, Zakia Community, El Marqués, Querétaro 76269, Mexico
+It has been copied to the clipboard!
+Capabilities/Services
+Flex PCB Assembly
+Prototype PCB Assembly
+Turnkey PCB Assembly
+SMT Assembly
+BGA Assembly
+PCB Design
+Technical Support
+Help Center
+How to Order
+How to Register/Log in
+Contact Us
+Privacy Policy & Agreement
+Terms of Service
+Company
+About PCBasic
+Global Exhibitions
+Customer Reviews
+Blog
+Payment Methods
+Delivery Services
+dhl
+Verified by
+iso
+Follow Us On
+Facebook
+twitter
+youtube
+linkedin
+tiktok
+instagram
+Copyright ©2012 - 2026 PCBasic Co., Limited All Rights Reserved.
+We use cookies to enhance your experience, analyze traffic, and provide personalized content. By clicking “Accept Cookies”, you agree to our Cookie and Privacy Policy.
+Customise
+Reject All
+Accept All
+Manage Cookie Preferences
+We use cookies to enhance your browsing experience. Please review the details of each cookie category below and choose your preferences.
+Strictly Necessary Cookies
+These cookies are essential for the website to function properly and cannot be disabled. They are typically set in response to actions you take, such as logging in or adding items to your shopping cart.
+Performance Cookies
+These cookies help us understand how visitors interact with our website by collecting information about traffic and usage. This allows us to measure and improve the website’s performance.
+Targeting/Advertising Cookies
+These cookies are used to deliver
+advertisements relevant to you and your interests. They may also limit the number of times you see an
+advertisement and help measure the effectiveness of advertising campaigns.
+Allow All Cookies
+Save Preferences
+Sign In to PCBasic
+Forgot password?
+Sign In
+Sign in with Google
+Sign in with Apple
+Need a new account? Sign up now
+Create your Account
+Sign Up
+Sign in with Google
+Sign in with Apple
+Already have an account? Log In
+Whatsapp
+Wechat
+Message
+Email
+Phone
+✖
+Phone contact
++86-755-27218592
+In addition, we've prepared a Help Center.
+We recommend checking it before reaching out, as your question and its
+answer may already be clearly explained there.
+✖
+Wechat Support
+In addition, we've prepared a Help Center.
+We recommend checking it before reaching out, as your question and its
+answer may already be clearly explained there.
+✖
+WhatsApp Support
+In addition, we've prepared a Help Center.
+We recommend checking it before reaching out, as your question and its
+answer may already be clearly explained there.
+Chat with us, powered by

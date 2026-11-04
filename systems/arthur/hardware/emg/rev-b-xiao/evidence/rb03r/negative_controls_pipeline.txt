@@ -1,0 +1,13 @@
+RB-03R pipeline negative controls (2026-10-10), rb03r_verify.sh with RB03R_PROJECT pointing at a mutated scratch project:
+
+1. netclasses removed from .kicad_pro (patterns kept)
+   KiCad DRC:    "DRC: {('warning','lib_footprint_mismatch'): 1} | unconnected 0 | parity 0"   <- looks clean
+   GUARD CHECK:  FAIL  (netclass table differs from baseline: 13 classes)
+   GUARD CANARY: PASS  (rules still match by class NAME because the patterns are intact)
+   verify exit code: 1
+
+2. netclass patterns removed from .kicad_pro (the failure mode seen in RB-03)
+   rb03r_guard.py canary: FAIL, 5+ canaries "did NOT fire" (spi_to_buf, zone_a_no_digital, hiz_pad_to_foreign_track,
+   hiz_track_to_foreign_pad, hiz_leakage ...), exit 1
+
+3. rb03r_guard_selftest.py: see guard_selftest.json (9 cases, all detected, baseline passes)

@@ -1,0 +1,47 @@
+{
+ "frozen_at": "2026-10-08T16:24:27.994Z",
+ "selection_data": "dev split, non-disputed cases, 2 random-order JEV reps pooled",
+ "objective": "min dangerous merges (false merge on NEW/UNCERTAIN + wrong target), then max correct REVISE, then max accuracy, then most conservative",
+ "corpus_sha256": "77be61b02888ee81e7de973cbcee15f7f51d2d1bb8fef363a802868b8244dd43",
+ "thresholds": {
+  "noul": {
+   "revise": 0.95,
+   "gap": 0.5,
+   "ambig": 0.4,
+   "new": 0.2
+  },
+  "choice": {
+   "revise": 0.99,
+   "margin": 0.8,
+   "new": 0.7
+  },
+  "hybrid": "REVISE only if Noul and Choice both REVISE with the same target; NEW only if both NEW; otherwise UNCERTAIN"
+ },
+ "dev_fit": {
+  "noul": {
+   "dangerous": 0,
+   "correct_revise": 45,
+   "correct": 125,
+   "n": 154
+  },
+  "choice": {
+   "dangerous": 2,
+   "correct_revise": 62,
+   "correct": 146,
+   "n": 154
+  }
+ },
+ "default_before_tuning": {
+  "noul": {
+   "revise": 0.8,
+   "gap": 0.3,
+   "ambig": 0.5,
+   "new": 0.3
+  },
+  "choice": {
+   "revise": 0.7,
+   "margin": 0.4,
+   "new": 0.7
+  }
+ }
+}

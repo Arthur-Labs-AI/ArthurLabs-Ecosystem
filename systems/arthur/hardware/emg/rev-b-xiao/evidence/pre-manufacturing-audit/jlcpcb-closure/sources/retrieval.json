@@ -1,0 +1,20 @@
+[
+  {
+    "file": "review-before-payment.html",
+    "url": "https://jlcpcb.com/help/article/review-before-payment-service-for-pcba-orders",
+    "sha256": "d3b9795da763d6e25cb91af35bdcf4c450d3067bb602d4a537078a6c7adea659",
+    "date": "2026-10-19"
+  },
+  {
+    "file": "confirm-production-file.html",
+    "url": "https://jlcpcb.com/help/article/how-to-confirm-the-production-file",
+    "sha256": "aca3ae556bdfa16e1c29c833ed37f077c08fc8de120207d5c8ced7f60619a241",
+    "date": "2026-10-19"
+  },
+  {
+    "file": "jst-current.html",
+    "url": "https://jlcpcb.com/partdetail/280164-S2B_PH_SM4_TB_LF_SN/C295747",
+    "sha256": "ce3c55bc92c9715486736babd932e1fc7ba0b3c839197a6956ecea80ed670651",
+    "date": "2026-10-19"
+  }
+]

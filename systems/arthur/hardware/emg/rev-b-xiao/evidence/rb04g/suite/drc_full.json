@@ -1,0 +1,1944 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-10-12T13:09:54",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "schematic_parity": [
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603B225K160NT')",
+            "items": [
+                {
+                    "description": "Footprint C101",
+                    "pos": {
+                        "x": 38.95,
+                        "y": 28.8
+                    },
+                    "uuid": "2dc91aea-c4c9-4ce7-bb7c-e4714c025775"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603B225K160NT')",
+            "items": [
+                {
+                    "description": "Footprint C102",
+                    "pos": {
+                        "x": 34.25,
+                        "y": 28.8
+                    },
+                    "uuid": "f5783a90-99cc-45af-beda-dfafddab5a8b"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10C101JB8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C103",
+                    "pos": {
+                        "x": 38.6,
+                        "y": 18.0
+                    },
+                    "uuid": "c099fa06-b2bf-44f0-8b82-22e6223cba3d"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10C101JB8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C104",
+                    "pos": {
+                        "x": 33.9,
+                        "y": 18.0
+                    },
+                    "uuid": "5328a14c-9a99-4d86-bce9-ffd2191b431f"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'C1608C0G1H103JT000N')",
+            "items": [
+                {
+                    "description": "Footprint C105",
+                    "pos": {
+                        "x": 7.1,
+                        "y": 42.75
+                    },
+                    "uuid": "4c485be7-3eef-4eba-b214-09d931e9ded4"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603CG102J500NT')",
+            "items": [
+                {
+                    "description": "Footprint C106",
+                    "pos": {
+                        "x": 12.6,
+                        "y": 47.35
+                    },
+                    "uuid": "a30d3035-8f5f-4de2-8628-1a420cd85c48"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603CG102J500NT')",
+            "items": [
+                {
+                    "description": "Footprint C107",
+                    "pos": {
+                        "x": 12.6,
+                        "y": 48.85
+                    },
+                    "uuid": "ad9b4beb-b0ba-42d2-8fb8-2ed711500aed"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D101",
+                    "pos": {
+                        "x": 37.4,
+                        "y": 14.0
+                    },
+                    "uuid": "74a5bf20-f7a6-407b-b3e5-ed60b72d197e"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D102",
+                    "pos": {
+                        "x": 32.7,
+                        "y": 14.0
+                    },
+                    "uuid": "c7265d67-0edb-459e-87a1-330b941b32e4"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D103",
+                    "pos": {
+                        "x": 9.1,
+                        "y": 46.15
+                    },
+                    "uuid": "ea14e419-ab8a-4eca-a209-0d85af1eeed9"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D104",
+                    "pos": {
+                        "x": 5.2,
+                        "y": 46.15
+                    },
+                    "uuid": "c533a2c6-8780-4d2f-a48f-ac5aede5a17d"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Missing symbol field 'BOM_Status' in footprint",
+            "items": [
+                {
+                    "description": "Footprint J101",
+                    "pos": {
+                        "x": 35.05,
+                        "y": 3.75
+                    },
+                    "uuid": "25e4cef3-2f8c-4c54-97d3-1b4ad4997b40"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710KL')",
+            "items": [
+                {
+                    "description": "Footprint R101",
+                    "pos": {
+                        "x": 37.4,
+                        "y": 10.1
+                    },
+                    "uuid": "0bd43dae-ef8e-4bc9-974a-de0f2525fdad"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710KL')",
+            "items": [
+                {
+                    "description": "Footprint R102",
+                    "pos": {
+                        "x": 32.7,
+                        "y": 10.1
+                    },
+                    "uuid": "2d645756-6936-4fc9-95e5-9840a1a0f179"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R103",
+                    "pos": {
+                        "x": 37.4,
+                        "y": 31.8
+                    },
+                    "uuid": "b3327d86-4a55-43d6-bcb7-4d4c6285dc4a"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R104",
+                    "pos": {
+                        "x": 32.7,
+                        "y": 31.8
+                    },
+                    "uuid": "48918a8a-a90e-47aa-8e2f-103e6fe70024"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710ML')",
+            "items": [
+                {
+                    "description": "Footprint R105",
+                    "pos": {
+                        "x": 36.2,
+                        "y": 18.0
+                    },
+                    "uuid": "ec411939-5d78-4028-8d2f-826d32b293bb"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710ML')",
+            "items": [
+                {
+                    "description": "Footprint R106",
+                    "pos": {
+                        "x": 31.5,
+                        "y": 18.0
+                    },
+                    "uuid": "0145c2cd-a8fd-4baf-9171-2cd8bce22473"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1001T5E')",
+            "items": [
+                {
+                    "description": "Footprint R107",
+                    "pos": {
+                        "x": 35.85,
+                        "y": 28.8
+                    },
+                    "uuid": "5f0d01db-0d5b-45e9-9bcd-cec2a697c4c5"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1001T5E')",
+            "items": [
+                {
+                    "description": "Footprint R108",
+                    "pos": {
+                        "x": 31.15,
+                        "y": 28.8
+                    },
+                    "uuid": "f6f2f8cf-322c-4f76-ba2e-51ca004bd504"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Missing symbol field 'LCSC' in footprint",
+            "items": [
+                {
+                    "description": "Footprint U501",
+                    "pos": {
+                        "x": 30.35,
+                        "y": 22.6
+                    },
+                    "uuid": "7f0179aa-d20f-437d-80de-1d9106b01bba"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603B225K160NT')",
+            "items": [
+                {
+                    "description": "Footprint C201",
+                    "pos": {
+                        "x": 29.55,
+                        "y": 28.8
+                    },
+                    "uuid": "b7af92ce-fd7a-4342-be72-b7fbd84f4dbb"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603B225K160NT')",
+            "items": [
+                {
+                    "description": "Footprint C202",
+                    "pos": {
+                        "x": 24.85,
+                        "y": 28.8
+                    },
+                    "uuid": "1e2ad43c-30c6-4223-9370-604fc0412030"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10C101JB8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C203",
+                    "pos": {
+                        "x": 29.2,
+                        "y": 18.0
+                    },
+                    "uuid": "9484beb1-e877-4964-a145-7190860b1bfe"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10C101JB8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C204",
+                    "pos": {
+                        "x": 24.5,
+                        "y": 18.0
+                    },
+                    "uuid": "97b9e482-9f10-4be4-b458-838b35367459"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'C1608C0G1H103JT000N')",
+            "items": [
+                {
+                    "description": "Footprint C205",
+                    "pos": {
+                        "x": 10.9,
+                        "y": 42.75
+                    },
+                    "uuid": "a8a8b6ce-6711-4460-af72-c1d31ba8b00d"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603CG102J500NT')",
+            "items": [
+                {
+                    "description": "Footprint C206",
+                    "pos": {
+                        "x": 12.6,
+                        "y": 51.85
+                    },
+                    "uuid": "3ac21dd5-82cf-432d-82c2-c4f1a597909f"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603CG102J500NT')",
+            "items": [
+                {
+                    "description": "Footprint C207",
+                    "pos": {
+                        "x": 12.6,
+                        "y": 50.35
+                    },
+                    "uuid": "4eb883ae-00fa-495e-a0a0-7ce70a4fc5fb"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D201",
+                    "pos": {
+                        "x": 28.0,
+                        "y": 14.0
+                    },
+                    "uuid": "dc0ee0c9-3f1e-4a73-9a4f-8474690e27c7"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D202",
+                    "pos": {
+                        "x": 23.3,
+                        "y": 14.0
+                    },
+                    "uuid": "1bba34c7-61f2-4421-a1a8-125afa8aa184"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D203",
+                    "pos": {
+                        "x": 5.2,
+                        "y": 49.75
+                    },
+                    "uuid": "a75fd8b4-abc6-447f-9a00-ec462677bfcd"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D204",
+                    "pos": {
+                        "x": 9.1,
+                        "y": 49.75
+                    },
+                    "uuid": "1bce1273-e4e9-4eb1-b221-94a059bc056c"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Missing symbol field 'BOM_Status' in footprint",
+            "items": [
+                {
+                    "description": "Footprint J201",
+                    "pos": {
+                        "x": 25.65,
+                        "y": 3.75
+                    },
+                    "uuid": "74d7831e-6500-4c79-b7c9-079c04338835"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710KL')",
+            "items": [
+                {
+                    "description": "Footprint R201",
+                    "pos": {
+                        "x": 28.0,
+                        "y": 10.1
+                    },
+                    "uuid": "caf9dbef-54d4-4f8d-9b7c-0dd1434feafb"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710KL')",
+            "items": [
+                {
+                    "description": "Footprint R202",
+                    "pos": {
+                        "x": 23.3,
+                        "y": 10.1
+                    },
+                    "uuid": "241024a3-514a-4c46-a476-09141dca1228"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R203",
+                    "pos": {
+                        "x": 28.0,
+                        "y": 31.8
+                    },
+                    "uuid": "e6cd009c-7ce3-4d37-a9c5-f52f3c734f98"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R204",
+                    "pos": {
+                        "x": 23.3,
+                        "y": 31.8
+                    },
+                    "uuid": "1aa5fbcc-b404-4aff-93d8-5f72c69f7f68"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710ML')",
+            "items": [
+                {
+                    "description": "Footprint R205",
+                    "pos": {
+                        "x": 26.8,
+                        "y": 18.0
+                    },
+                    "uuid": "deeec704-0ac1-4302-bad2-fd996bc6c815"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710ML')",
+            "items": [
+                {
+                    "description": "Footprint R206",
+                    "pos": {
+                        "x": 22.1,
+                        "y": 18.0
+                    },
+                    "uuid": "0fca73b5-de5c-46f7-aae6-02c4ab0d261b"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1001T5E')",
+            "items": [
+                {
+                    "description": "Footprint R207",
+                    "pos": {
+                        "x": 26.45,
+                        "y": 28.8
+                    },
+                    "uuid": "c2c60b57-010f-4b1f-9432-b44782879d80"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1001T5E')",
+            "items": [
+                {
+                    "description": "Footprint R208",
+                    "pos": {
+                        "x": 21.75,
+                        "y": 28.8
+                    },
+                    "uuid": "ea63ceda-8f77-4935-aad7-990350366cfc"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603B225K160NT')",
+            "items": [
+                {
+                    "description": "Footprint C301",
+                    "pos": {
+                        "x": 20.15,
+                        "y": 28.8
+                    },
+                    "uuid": "9ec40f94-3402-408c-84f0-b24fbe27a395"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603B225K160NT')",
+            "items": [
+                {
+                    "description": "Footprint C302",
+                    "pos": {
+                        "x": 15.45,
+                        "y": 28.8
+                    },
+                    "uuid": "5f01b6cf-be09-4002-b9e4-f2e9ba6d1567"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10C101JB8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C303",
+                    "pos": {
+                        "x": 19.8,
+                        "y": 18.0
+                    },
+                    "uuid": "3733b357-d1cd-4452-9d01-3eaecaa444c4"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10C101JB8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C304",
+                    "pos": {
+                        "x": 15.1,
+                        "y": 18.0
+                    },
+                    "uuid": "1907815b-99c6-4310-8e40-e5802b24c3cc"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'C1608C0G1H103JT000N')",
+            "items": [
+                {
+                    "description": "Footprint C305",
+                    "pos": {
+                        "x": 7.1,
+                        "y": 61.15
+                    },
+                    "uuid": "557edd9d-b048-4a2f-86c7-a2f2a85f12e8"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603CG102J500NT')",
+            "items": [
+                {
+                    "description": "Footprint C306",
+                    "pos": {
+                        "x": 12.6,
+                        "y": 53.35
+                    },
+                    "uuid": "e4b11629-80df-4895-9c54-c4c8278c6876"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603CG102J500NT')",
+            "items": [
+                {
+                    "description": "Footprint C307",
+                    "pos": {
+                        "x": 12.6,
+                        "y": 54.85
+                    },
+                    "uuid": "5b0cb8c9-d471-4f75-a873-248563584888"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D301",
+                    "pos": {
+                        "x": 18.6,
+                        "y": 14.0
+                    },
+                    "uuid": "2994af65-aa2e-4cea-87f4-eddd297e38c8"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D302",
+                    "pos": {
+                        "x": 13.9,
+                        "y": 14.0
+                    },
+                    "uuid": "196944bf-e2ff-47fa-bd33-9e77b8020894"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D303",
+                    "pos": {
+                        "x": 9.1,
+                        "y": 53.35
+                    },
+                    "uuid": "ba0775d1-aa1b-4f5c-ac62-308dd036938a"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D304",
+                    "pos": {
+                        "x": 5.2,
+                        "y": 53.35
+                    },
+                    "uuid": "022f5111-2b11-4357-8999-4ad6e8583d2d"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Missing symbol field 'BOM_Status' in footprint",
+            "items": [
+                {
+                    "description": "Footprint J301",
+                    "pos": {
+                        "x": 16.25,
+                        "y": 3.75
+                    },
+                    "uuid": "8c3378db-4d76-4db9-a225-5b8cc3cba6ad"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710KL')",
+            "items": [
+                {
+                    "description": "Footprint R301",
+                    "pos": {
+                        "x": 18.6,
+                        "y": 10.1
+                    },
+                    "uuid": "82d9ac5a-7cb9-4bfe-a17e-01b9cea799e8"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710KL')",
+            "items": [
+                {
+                    "description": "Footprint R302",
+                    "pos": {
+                        "x": 13.9,
+                        "y": 10.1
+                    },
+                    "uuid": "4dc3399a-13a5-4517-9cfc-bea85b373c61"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R303",
+                    "pos": {
+                        "x": 18.6,
+                        "y": 31.8
+                    },
+                    "uuid": "1a684039-8507-45c6-bbac-e0b30ad43ee6"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R304",
+                    "pos": {
+                        "x": 13.9,
+                        "y": 31.8
+                    },
+                    "uuid": "11f0253b-358a-487b-899a-ba5cc8f32eb5"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710ML')",
+            "items": [
+                {
+                    "description": "Footprint R305",
+                    "pos": {
+                        "x": 17.4,
+                        "y": 18.0
+                    },
+                    "uuid": "93768aae-206b-4b19-b26f-f0522d7edf91"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710ML')",
+            "items": [
+                {
+                    "description": "Footprint R306",
+                    "pos": {
+                        "x": 13.0,
+                        "y": 17.6
+                    },
+                    "uuid": "239f4468-2c15-4654-8ffd-fe21b1203649"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1001T5E')",
+            "items": [
+                {
+                    "description": "Footprint R307",
+                    "pos": {
+                        "x": 17.05,
+                        "y": 28.8
+                    },
+                    "uuid": "aed8d998-6f51-43d1-a71c-4892eabc3344"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1001T5E')",
+            "items": [
+                {
+                    "description": "Footprint R308",
+                    "pos": {
+                        "x": 12.35,
+                        "y": 28.8
+                    },
+                    "uuid": "014a1a74-f685-4684-8210-675eabc23bdf"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Missing symbol field 'LCSC' in footprint",
+            "items": [
+                {
+                    "description": "Footprint U502",
+                    "pos": {
+                        "x": 11.55,
+                        "y": 22.6
+                    },
+                    "uuid": "cf1a4735-bc81-4579-9e83-37aba3eae859"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603B225K160NT')",
+            "items": [
+                {
+                    "description": "Footprint C401",
+                    "pos": {
+                        "x": 10.75,
+                        "y": 28.8
+                    },
+                    "uuid": "8aa88d8a-892b-4ed5-bdfe-b7a84f35db0a"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603B225K160NT')",
+            "items": [
+                {
+                    "description": "Footprint C402",
+                    "pos": {
+                        "x": 6.05,
+                        "y": 28.8
+                    },
+                    "uuid": "90f602b1-e921-4b65-ad1b-e378d37d663d"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10C101JB8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C403",
+                    "pos": {
+                        "x": 10.4,
+                        "y": 18.0
+                    },
+                    "uuid": "5173933d-69d2-43c0-bb76-bf61be60e617"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10C101JB8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C404",
+                    "pos": {
+                        "x": 5.7,
+                        "y": 18.0
+                    },
+                    "uuid": "cf99127b-bea9-4aab-999f-a57bcfeaf412"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'C1608C0G1H103JT000N')",
+            "items": [
+                {
+                    "description": "Footprint C405",
+                    "pos": {
+                        "x": 10.9,
+                        "y": 61.15
+                    },
+                    "uuid": "334d1956-8fae-49ff-86a6-5ae4de518122"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603CG102J500NT')",
+            "items": [
+                {
+                    "description": "Footprint C406",
+                    "pos": {
+                        "x": 12.6,
+                        "y": 57.85
+                    },
+                    "uuid": "a373e326-dec0-4d79-aad8-2bc50edf3088"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603CG102J500NT')",
+            "items": [
+                {
+                    "description": "Footprint C407",
+                    "pos": {
+                        "x": 12.6,
+                        "y": 56.35
+                    },
+                    "uuid": "746df9e5-833a-46a1-b770-bce7f420a463"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D401",
+                    "pos": {
+                        "x": 9.2,
+                        "y": 14.0
+                    },
+                    "uuid": "0550028e-f0ec-496a-8bd9-9a7855822695"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D402",
+                    "pos": {
+                        "x": 4.5,
+                        "y": 14.0
+                    },
+                    "uuid": "a155d3df-35ad-4e01-8e26-646a91b85550"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D403",
+                    "pos": {
+                        "x": 5.2,
+                        "y": 56.95
+                    },
+                    "uuid": "6949eaf2-1113-4ef3-8839-28196cbb34fe"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'BAV199', Schematic: 'BAV199,215')",
+            "items": [
+                {
+                    "description": "Footprint D404",
+                    "pos": {
+                        "x": 9.1,
+                        "y": 56.95
+                    },
+                    "uuid": "efa3a77d-e336-4ffa-be2c-66460f3c336a"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Missing symbol field 'BOM_Status' in footprint",
+            "items": [
+                {
+                    "description": "Footprint J401",
+                    "pos": {
+                        "x": 6.85,
+                        "y": 3.75
+                    },
+                    "uuid": "661925ac-c5ab-4510-8595-7c469bf4da8e"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710KL')",
+            "items": [
+                {
+                    "description": "Footprint R401",
+                    "pos": {
+                        "x": 9.2,
+                        "y": 10.1
+                    },
+                    "uuid": "cd47b63a-fb52-4ae9-bba0-20e319edc474"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710KL')",
+            "items": [
+                {
+                    "description": "Footprint R402",
+                    "pos": {
+                        "x": 4.5,
+                        "y": 10.1
+                    },
+                    "uuid": "875389c3-3649-410f-91e9-ab0fce0473e4"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R403",
+                    "pos": {
+                        "x": 9.2,
+                        "y": 31.8
+                    },
+                    "uuid": "64d40062-e36d-4e79-889c-580ad8ea2d4a"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R404",
+                    "pos": {
+                        "x": 4.5,
+                        "y": 31.8
+                    },
+                    "uuid": "e0e62776-6bc8-4c31-9191-21c778226d49"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710ML')",
+            "items": [
+                {
+                    "description": "Footprint R405",
+                    "pos": {
+                        "x": 8.0,
+                        "y": 18.0
+                    },
+                    "uuid": "db4dc8ce-0842-4460-bda8-8ec27dd79933"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710ML')",
+            "items": [
+                {
+                    "description": "Footprint R406",
+                    "pos": {
+                        "x": 3.3,
+                        "y": 18.0
+                    },
+                    "uuid": "9b75dbff-1b84-499f-8ba6-550ff66522f5"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1001T5E')",
+            "items": [
+                {
+                    "description": "Footprint R407",
+                    "pos": {
+                        "x": 7.65,
+                        "y": 28.8
+                    },
+                    "uuid": "45ceb18f-cf33-44ef-b5d0-7cdce49a2425"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1001T5E')",
+            "items": [
+                {
+                    "description": "Footprint R408",
+                    "pos": {
+                        "x": 2.95,
+                        "y": 28.8
+                    },
+                    "uuid": "2c451ff2-79c5-4ee9-83bf-9bf93a5f4bee"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CC0603KRX7R9BB104')",
+            "items": [
+                {
+                    "description": "Footprint C501",
+                    "pos": {
+                        "x": 35.55,
+                        "y": 22.6
+                    },
+                    "uuid": "24714768-e1a6-41bb-9da5-8f444b832a00"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CC0603KRX7R9BB104')",
+            "items": [
+                {
+                    "description": "Footprint C502",
+                    "pos": {
+                        "x": 16.75,
+                        "y": 22.6
+                    },
+                    "uuid": "f1e0cb81-c3f4-4205-a08c-a690a97929ca"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CC0603KRX7R9BB104')",
+            "items": [
+                {
+                    "description": "Footprint C503",
+                    "pos": {
+                        "x": 46.65,
+                        "y": 22.6
+                    },
+                    "uuid": "57d1d938-51a5-45b3-a76a-0a0a1a06efbf"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10B105KO8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C5001",
+                    "pos": {
+                        "x": 43.25,
+                        "y": 28.8
+                    },
+                    "uuid": "0ac1cddf-24ae-42d8-b547-c71987a6ca57"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CC0603KRX7R9BB104')",
+            "items": [
+                {
+                    "description": "Footprint C5002",
+                    "pos": {
+                        "x": 41.65,
+                        "y": 28.8
+                    },
+                    "uuid": "0ca3d55b-f722-4d92-84af-6471b5312dae"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Missing symbol field 'BOM_Status' in footprint",
+            "items": [
+                {
+                    "description": "Footprint J5001",
+                    "pos": {
+                        "x": 44.45,
+                        "y": 3.75
+                    },
+                    "uuid": "2e1e721c-d952-4945-b0ce-67d35f648d1f"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0805W8F1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R5002",
+                    "pos": {
+                        "x": 44.45,
+                        "y": 10.3
+                    },
+                    "uuid": "154f0a2a-cad6-4fd0-b6c1-a1de6b90ab64"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R5003",
+                    "pos": {
+                        "x": 48.05,
+                        "y": 28.8
+                    },
+                    "uuid": "8f058414-6034-4479-9ff6-eb6001f8532a"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R5004",
+                    "pos": {
+                        "x": 46.45,
+                        "y": 28.8
+                    },
+                    "uuid": "9e2e0bf4-19f4-450c-a294-5b42b02e9c43"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710KL')",
+            "items": [
+                {
+                    "description": "Footprint R5005",
+                    "pos": {
+                        "x": 44.85,
+                        "y": 28.8
+                    },
+                    "uuid": "b5237199-65be-4904-be64-70afa3f970e2"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Missing symbol field 'LCSC' in footprint",
+            "items": [
+                {
+                    "description": "Footprint U503",
+                    "pos": {
+                        "x": 41.45,
+                        "y": 22.6
+                    },
+                    "uuid": "b519bc0f-e486-40b0-8bb1-267f4309c92c"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10B105KO8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C6007",
+                    "pos": {
+                        "x": 15.9,
+                        "y": 46.25
+                    },
+                    "uuid": "bb7d86a6-74b7-4be6-9d4c-bed264ed9366"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10B105KO8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C6008",
+                    "pos": {
+                        "x": 20.7,
+                        "y": 46.85
+                    },
+                    "uuid": "6cca4990-4425-4cb1-ad3e-e7b04ea3d215"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10B224KO8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C6009",
+                    "pos": {
+                        "x": 23.72,
+                        "y": 49.4
+                    },
+                    "uuid": "61a8f729-a4e2-4494-9528-3754e442b20c"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CC0603KRX7R9BB104')",
+            "items": [
+                {
+                    "description": "Footprint C6010",
+                    "pos": {
+                        "x": 24.2,
+                        "y": 44.65
+                    },
+                    "uuid": "5ee636f6-5c26-4540-b410-da24b48899f7"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF330JT5E')",
+            "items": [
+                {
+                    "description": "Footprint R6001",
+                    "pos": {
+                        "x": 23.9,
+                        "y": 50.95
+                    },
+                    "uuid": "9801fa43-ab93-42a2-b4eb-99090b8bd246"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF330JT5E')",
+            "items": [
+                {
+                    "description": "Footprint R6002",
+                    "pos": {
+                        "x": 23.9,
+                        "y": 52.5
+                    },
+                    "uuid": "f3cf101c-f300-40b3-b5ca-872d271c466f"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1000T5E')",
+            "items": [
+                {
+                    "description": "Footprint R6003",
+                    "pos": {
+                        "x": 23.9,
+                        "y": 54.05
+                    },
+                    "uuid": "da7867bc-96df-43bd-9692-0f3d5113881f"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Missing symbol field 'LCSC' in footprint",
+            "items": [
+                {
+                    "description": "Footprint U6001",
+                    "pos": {
+                        "x": 18.3,
+                        "y": 51.95
+                    },
+                    "uuid": "ba1547ce-71a4-47be-b1d4-e7385c3a7430"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'Manufacturer' differs (PCB: 'SCTF (Shenzhen SCTF Elec)', Schematic: 'SCTF (Asian Brands)')",
+            "items": [
+                {
+                    "description": "Footprint X1",
+                    "pos": {
+                        "x": 24.2,
+                        "y": 47.05
+                    },
+                    "uuid": "a352670e-292e-4ec2-8843-5cdf7be403c1"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10B105KO8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C4005",
+                    "pos": {
+                        "x": 18.8,
+                        "y": 37.55
+                    },
+                    "uuid": "b6531f2f-dded-42cb-bc59-b6625af52168"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10B105KO8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C4006",
+                    "pos": {
+                        "x": 25.7,
+                        "y": 37.55
+                    },
+                    "uuid": "1af2fa89-732a-4d0a-9a92-d7f36e939420"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL21A226MAQNNNE')",
+            "items": [
+                {
+                    "description": "Footprint C4007",
+                    "pos": {
+                        "x": 33.9,
+                        "y": 38.55
+                    },
+                    "uuid": "4432aeca-c399-4831-a93b-ae0233e16e26"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Missing symbol field 'BOM_Status' in footprint",
+            "items": [
+                {
+                    "description": "Footprint J1",
+                    "pos": {
+                        "x": 44.4,
+                        "y": 38.3
+                    },
+                    "uuid": "138f0968-be70-48c8-bc9e-d03e68f7fb7c"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'Manufacturer' differs (PCB: 'Any (JLC Basic, e.g. Nexperia/CJ)', Schematic: 'JSCJ (Jiangsu Changjing)')",
+            "items": [
+                {
+                    "description": "Footprint Q3001",
+                    "pos": {
+                        "x": 28.8,
+                        "y": 37.75
+                    },
+                    "uuid": "2511c681-4870-4c16-90c0-f36253f60174"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R3004",
+                    "pos": {
+                        "x": 24.5,
+                        "y": 41.55
+                    },
+                    "uuid": "b6c61489-21d4-4bbc-b710-3c698a63a47b"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710KL')",
+            "items": [
+                {
+                    "description": "Footprint R3006",
+                    "pos": {
+                        "x": 27.7,
+                        "y": 41.55
+                    },
+                    "uuid": "04d8e212-ca48-4ac4-97b7-2b357ac1e9c8"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710KL')",
+            "items": [
+                {
+                    "description": "Footprint R3007",
+                    "pos": {
+                        "x": 18.1,
+                        "y": 41.55
+                    },
+                    "uuid": "14dced2c-a98a-424e-af8b-3912f88ff1ae"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R3008",
+                    "pos": {
+                        "x": 21.3,
+                        "y": 41.55
+                    },
+                    "uuid": "fab65005-38c9-4fcd-986d-9910ae962e73"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF4701T5E')",
+            "items": [
+                {
+                    "description": "Footprint R3009",
+                    "pos": {
+                        "x": 27.0,
+                        "y": 61.99
+                    },
+                    "uuid": "522e2c74-3e00-4271-ada0-780830e9b9c5"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-074R7L')",
+            "items": [
+                {
+                    "description": "Footprint R4001",
+                    "pos": {
+                        "x": 33.9,
+                        "y": 35.75
+                    },
+                    "uuid": "55ef2b32-c586-40bd-b81d-e5cfe35acb28"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Missing symbol field 'LCSC' in footprint",
+            "items": [
+                {
+                    "description": "Footprint U4002",
+                    "pos": {
+                        "x": 22.5,
+                        "y": 37.55
+                    },
+                    "uuid": "e6df2699-d2cf-45ed-b10f-645d2b53f1d6"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CL10A106KP8NNNC')",
+            "items": [
+                {
+                    "description": "Footprint C7101",
+                    "pos": {
+                        "x": 27.0,
+                        "y": 58.5
+                    },
+                    "uuid": "64adb8ed-1f7f-47eb-b93f-4f4fcc49b504"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CC0603KRX7R9BB104')",
+            "items": [
+                {
+                    "description": "Footprint C7102",
+                    "pos": {
+                        "x": 27.0,
+                        "y": 60.05
+                    },
+                    "uuid": "676601b3-8e02-4afe-9ca6-7e1053c72165"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'CC0603KRX7R9BB104')",
+            "items": [
+                {
+                    "description": "Footprint C7103",
+                    "pos": {
+                        "x": 36.6,
+                        "y": 36.2
+                    },
+                    "uuid": "650a8710-6b92-48ea-a399-2f108c559541"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'BLM18AG601SN1D')",
+            "items": [
+                {
+                    "description": "Footprint FB1",
+                    "pos": {
+                        "x": 27.0,
+                        "y": 56.95
+                    },
+                    "uuid": "21b2502e-cd84-425a-94b9-93a821b370e2"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF330JT5E')",
+            "items": [
+                {
+                    "description": "Footprint R7101",
+                    "pos": {
+                        "x": 27.0,
+                        "y": 49.5
+                    },
+                    "uuid": "5d38bf43-1bbe-4a48-8803-038ad9d5f41d"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF330JT5E')",
+            "items": [
+                {
+                    "description": "Footprint R7102",
+                    "pos": {
+                        "x": 26.9,
+                        "y": 54.45
+                    },
+                    "uuid": "c95b407c-891d-433c-841d-b0450c608d17"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R7103",
+                    "pos": {
+                        "x": 23.9,
+                        "y": 55.6
+                    },
+                    "uuid": "26527ae9-dbbb-444e-aa1c-9bc905ad2586"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: 'RC0603FR-0710KL')",
+            "items": [
+                {
+                    "description": "Footprint R7104",
+                    "pos": {
+                        "x": 23.9,
+                        "y": 57.15
+                    },
+                    "uuid": "5f7abcad-95e4-4f81-a38a-05189b58de32"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1003T5E')",
+            "items": [
+                {
+                    "description": "Footprint R7105",
+                    "pos": {
+                        "x": 23.9,
+                        "y": 59.55
+                    },
+                    "uuid": "5cd201f6-e2be-43fb-b584-bfff8baf6bce"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1503T5E')",
+            "items": [
+                {
+                    "description": "Footprint R7106",
+                    "pos": {
+                        "x": 23.9,
+                        "y": 61.15
+                    },
+                    "uuid": "56cc9c82-ad91-4353-9576-b079f98d8d96"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1004T5E')",
+            "items": [
+                {
+                    "description": "Footprint R7107",
+                    "pos": {
+                        "x": 36.6,
+                        "y": 39.5
+                    },
+                    "uuid": "04434597-45ce-4fba-b0eb-b9286252ce19"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        },
+        {
+            "description": "Field 'MPN' differs (PCB: 'GENERIC (spec-defined; JLC Basic part selected at RB-03)', Schematic: '0603WAF1004T5E')",
+            "items": [
+                {
+                    "description": "Footprint R7108",
+                    "pos": {
+                        "x": 34.8,
+                        "y": 41.3
+                    },
+                    "uuid": "402bdf92-945e-4517-89d4-cec3e657ef04"
+                }
+            ],
+            "severity": "warning",
+            "type": "footprint_symbol_field_mismatch"
+        }
+    ],
+    "source": "ARTHUR_EMG_RevB.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Footprint 'XIAO_ESP32S3_HANDSOLDER' does not match copy in library 'ARTHUR'",
+            "items": [
+                {
+                    "description": "Footprint U1",
+                    "pos": {
+                        "x": 40.19,
+                        "y": 54.3825
+                    },
+                    "uuid": "43557376-63cc-495b-a107-e50a998105c8"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        }
+    ]
+}

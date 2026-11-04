@@ -1,0 +1,97 @@
+[
+ {
+  "check": "canonical files (11 incl. PCB and U1 footprint) match the lock baseline",
+  "result": "PASS",
+  "detail": "11"
+ },
+ {
+  "check": "zip: flat, 10 Gerber layers + 1 drill, no job file",
+  "result": "PASS",
+  "detail": "['ARTHUR_EMG_RevB-B_Cu.gbl', 'ARTHUR_EMG_RevB-B_Mask.gbs', 'ARTHUR_EMG_RevB-B_Silkscreen.gbo', 'ARTHUR_EMG_RevB-Edge_Cuts.gm1', 'ARTHUR_EMG_RevB-F_Cu.gtl', 'ARTHUR_EMG_RevB-F_Mask.gts', 'ARTHUR_EMG_RevB-F_Paste.gtp', 'ARTHUR_EMG_RevB-F_Silkscreen.gto', 'ARTHUR_EMG_RevB-In1_Cu.g1', 'ARTHUR_EMG_RevB-In2_Cu.g2', 'ARTHUR_EMG_RevB.drl']"
+ },
+ {
+  "check": "release Gerber/drill equivalent to the audited QUOTE-ONLY outputs (timestamps ignored)",
+  "result": "PASS",
+  "detail": "11/11 equivalent"
+ },
+ {
+  "check": "BOM byte-identical to the audited package",
+  "result": "PASS",
+  "detail": ""
+ },
+ {
+  "check": "CPL byte-identical to the audited package",
+  "result": "PASS",
+  "detail": ""
+ },
+ {
+  "check": "drill: 201 \u00d7 \u00d80.30 vias + exactly 1 \u00d7 \u00d81.90 plated hole, no NPTH",
+  "result": "PASS",
+  "detail": "{0.3: 201, 1.9: 1}"
+ },
+ {
+  "check": "\u00d81.90 hole at (44.635, -54.790) Gerber frame = U1 pad 23",
+  "result": "PASS",
+  "detail": "[(44.635, -54.79)]"
+ },
+ {
+  "check": "\u00d81.90 tool tagged Plated,PTH,ComponentDrill (not ViaDrill)",
+  "result": "PASS",
+  "detail": ""
+ },
+ {
+  "check": "F.Mask: single \u00d81.95 opening at the hole; B.Mask: \u00d81.95 + \u00d83.00 openings",
+  "result": "PASS",
+  "detail": "([('C', 1.95, None)], [('C', 1.95, None), ('C', 3.0, None)])"
+ },
+ {
+  "check": "mask layers carry no regions/draws that could cover the hole",
+  "result": "PASS",
+  "detail": ""
+ },
+ {
+  "check": "no paste aperture at the hole",
+  "result": "PASS",
+  "detail": ""
+ },
+ {
+  "check": "copper at the hole is ComponentPad (\u00d82.30 F/In1/In2/B) + \u00d83.00 B.Cu land; no ViaPad",
+  "result": "PASS",
+  "detail": ""
+ },
+ {
+  "check": "exactly 126 CPL rows, all Top, = every non-DNP SMD footprint on F.Cu",
+  "result": "PASS",
+  "detail": "126"
+ },
+ {
+  "check": "BOM: 29 lines, 126 unique designators, same set as the CPL",
+  "result": "PASS",
+  "detail": ""
+ },
+ {
+  "check": "U1 (XIAO) is DNP in the PCB and absent from BOM and CPL; TP1\u2013TP8 absent",
+  "result": "PASS",
+  "detail": "['through_hole', 'dnp']"
+ },
+ {
+  "check": "every BOM designator: LCSC + footprint = schematic netlist fields; MPN and status = RB-04B qualified selection",
+  "result": "PASS",
+  "detail": "[]"
+ },
+ {
+  "check": "CPL coordinates = PCB footprint origins (x, \u2212y) to 0.0006 mm",
+  "result": "PASS",
+  "detail": "[]"
+ },
+ {
+  "check": "netlist: 135 components, 357 pad nodes",
+  "result": "PASS",
+  "detail": "(135, 357)"
+ },
+ {
+  "check": "no PCBA line for the XIAO module (MPN/Seeed) anywhere in the BOM",
+  "result": "PASS",
+  "detail": ""
+ }
+]

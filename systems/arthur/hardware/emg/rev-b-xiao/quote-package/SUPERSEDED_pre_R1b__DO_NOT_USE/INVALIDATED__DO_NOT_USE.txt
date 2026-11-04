@@ -1,0 +1,6 @@
+INVALIDATED - SUPERSEDED BY RB-04G (R1b installed in the canonical PCB on 2026-10-12)
+
+The Gerber/drill files in this folder were exported BEFORE the BAT+ post hole change (U1 pad 23: drill 1.40 mm, copper 1.90 mm, mask 1.45 mm).
+The canonical PCB now has drill 1.90 mm, copper 2.30 mm, mask 1.95 mm.  F.Cu, B.Cu, In1, In2, F.Mask, B.Mask and the drill file here are WRONG.
+Do not upload, do not quote from, do not order from these files.  The BOM/CPL files are byte-identical to the new ones but must be taken from
+../staging_R1b_QUOTE_ONLY/.   This folder is kept only as an audit record.

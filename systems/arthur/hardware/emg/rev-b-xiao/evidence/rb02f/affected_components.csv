@@ -1,0 +1,38 @@
+ref,value,mpn,footprint,nearest_edge,body_to_edge_mm,courtyard_to_edge_mm,pad_to_edge_mm,shortfall_to_2p5_mm,on_rb02_list,status
+J1,S2B-PH-SM4-TB,S2B-PH-SM4-TB(LF)(SN),JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal,north,0.80,0.10,0.60,1.70,no,UNKNOWN
+R5003,100k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,west,1.19,0.87,1.12,1.31,yes,UNKNOWN
+J5001,B2B-PH-SM4-TB,B2B-PH-SM4-TB(LF)(SN),JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical,south,1.23,0.00,0.50,1.27,no,UNKNOWN
+R7106,150k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,south,1.64,1.32,1.57,0.86,yes,UNKNOWN
+R7107,1M,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,1.69,1.12,1.38,0.81,yes,UNKNOWN
+R7108,1M,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,east,1.69,1.37,1.62,0.81,no,UNKNOWN
+C7103,100nF,generic (JLC Basic part chosen at RB-03),C_0603_1608Metric,east,1.70,1.37,1.62,0.80,no,UNKNOWN
+R4001,4.7,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.39,2.07,2.33,0.11,yes,UNKNOWN
+C101,2.2uF,generic (JLC Basic part chosen at RB-03),C_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+C102,2.2uF,generic (JLC Basic part chosen at RB-03),C_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+C201,2.2uF,generic (JLC Basic part chosen at RB-03),C_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+C202,2.2uF,generic (JLC Basic part chosen at RB-03),C_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+C301,2.2uF,generic (JLC Basic part chosen at RB-03),C_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+C302,2.2uF,generic (JLC Basic part chosen at RB-03),C_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+C401,2.2uF,generic (JLC Basic part chosen at RB-03),C_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+C402,2.2uF,generic (JLC Basic part chosen at RB-03),C_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+C5001,1uF,generic (JLC Basic part chosen at RB-03),C_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+C5002,100nF,generic (JLC Basic part chosen at RB-03),C_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R103,100k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R104,100k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R107,1.0k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R108,1.0k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R203,100k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R204,100k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R207,1.0k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R208,1.0k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R303,100k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R304,100k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R307,1.0k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R308,1.0k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R403,100k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R404,100k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R407,1.0k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R408,1.0k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R5004,100k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R5005,10k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,north,2.40,1.72,1.98,0.10,yes,UNKNOWN
+R3009,4.7k,generic (JLC Basic part chosen at RB-03),R_0603_1608Metric,south,2.49,2.17,2.42,0.01,yes,UNKNOWN

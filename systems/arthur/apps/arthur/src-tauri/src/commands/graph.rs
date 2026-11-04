@@ -1,0 +1,119 @@
+use tauri::State;
+
+use crate::graph::integration::IntegrationService;
+use crate::graph::{create_manual_relation, GraphService, RelationError};
+use crate::runtime::RuntimeHandle;
+use crate::storage::knowledge_store::KnowledgeObject;
+use crate::storage::relation_store::{Direction, NewRelation, Relation};
+
+/// Mirrors `CreateRelationInput`. Id, timestamp and origin are never accepted from the UI.
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CreateRelationInput {
+    pub kind: String,
+    pub source_object_id: String,
+    pub target_object_id: String,
+}
+
+/// A user-authored relation (origin `user`). Creating an edge that already exists returns it unchanged.
+#[tauri::command]
+pub fn create_relation(
+    store: State<'_, RuntimeHandle>,
+    input: CreateRelationInput,
+) -> Result<Relation, RelationError> {
+    create_manual_relation(
+        &store,
+        NewRelation {
+            kind: input.kind,
+            source_object_id: input.source_object_id,
+            target_object_id: input.target_object_id,
+        },
+    )
+}
+
+#[tauri::command]
+pub fn list_relations(store: State<'_, RuntimeHandle>) -> Result<Vec<Relation>, RelationError> {
+    store
+        .list_relations()
+        .map_err(|error| RelationError::Storage(error.to_string()))
+}
+
+fn parse_filter(direction: Option<String>) -> Result<Direction, RelationError> {
+    match direction {
+        None => Ok(Direction::Any),
+        Some(text) => Direction::parse(&text)
+            .ok_or_else(|| RelationError::InvalidRelation("unknown direction".into())),
+    }
+}
+
+fn from_query(error: crate::storage::capture_store::StoreError) -> RelationError {
+    use crate::storage::capture_store::StoreError;
+    match error {
+        StoreError::Invalid(reason) => RelationError::InvalidRelation(reason),
+        StoreError::NotFound(_) => RelationError::ObjectNotFound,
+        other => RelationError::Storage(other.to_string()),
+    }
+}
+
+#[tauri::command]
+pub fn get_object_relations(
+    store: State<'_, RuntimeHandle>,
+    object_id: String,
+    direction: Option<String>,
+    kind: Option<String>,
+) -> Result<Vec<Relation>, RelationError> {
+    store
+        .object_relations(&object_id, parse_filter(direction)?, kind.as_deref())
+        .map_err(from_query)
+}
+
+#[tauri::command]
+pub fn get_object_neighbors(
+    store: State<'_, RuntimeHandle>,
+    object_id: String,
+    direction: Option<String>,
+    kind: Option<String>,
+) -> Result<Vec<KnowledgeObject>, RelationError> {
+    store
+        .object_neighbors(&object_id, parse_filter(direction)?, kind.as_deref())
+        .map_err(from_query)
+}
+
+/// Asks the cloud model to propose relations among recent objects; only validated ones are stored.
+/// Returns the relations this run added.
+#[tauri::command]
+///
+/// Project-local: candidates are only objects of one project (`project_id`, else the requested objects' shared project,
+/// else the Inbox).
+pub async fn infer_relations(
+    graph: State<'_, GraphService>,
+    integration: State<'_, IntegrationService>,
+    store: State<'_, RuntimeHandle>,
+    object_ids: Option<Vec<String>>,
+    project_id: Option<String>,
+) -> Result<Vec<Relation>, RelationError> {
+    // This is real inference (Stage A proposes, Stage B verifies twice, the policy admits). What it did is remembered as counts so the
+    // screen can say WHY nothing was added instead of one generic sentence.
+    match graph
+        .infer_with_report_in(
+            &store,
+            &object_ids.unwrap_or_default(),
+            project_id.as_deref(),
+        )
+        .await
+    {
+        Ok(inference) => {
+            integration
+                .diagnostics
+                .record_manual(inference.considered, &inference.report);
+            Ok(inference.relations)
+        }
+        Err(error) => {
+            integration.diagnostics.manual_failed(
+                matches!(error, RelationError::InvalidOutput(_)),
+                matches!(error, RelationError::Storage(_)),
+            );
+            Err(error)
+        }
+    }
+}

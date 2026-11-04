@@ -1,0 +1,28 @@
+{
+  "$comment": "Machine-local SC-04 local capability config (ARTHUR_LOCAL_CONFIG points here). Copy to a git-ignored machine-local path and set ARTHUR_LOCAL_CONFIG to it. Uses the exact LocalCapabilityConfig schema: filesystem_roots bind root_id -> { label, trusted absolute physical_root, permissions }; applications bind app_id -> { display_name, trusted absolute executable, fixed args, optional windows_verb }. No auto-discovery, no model-provided paths. Never commit the real file: physical paths differ per machine.",
+  "filesystem_roots": [
+    {
+      "id": "workspace",
+      "label": "Workspace",
+      "physical_root": "D:\\A.R.T.H.U.R",
+      "permissions": ["list", "stat", "read", "search"]
+    }
+  ],
+  "applications": [
+    {
+      "id": "vscode",
+      "display_name": "Visual Studio Code",
+      "executable": "C:\\Users\\Example\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+      "args": []
+    }
+  ],
+  "filesystem_bounds": {
+    "list_limit_max": 200,
+    "read_max_lines": 200,
+    "read_max_bytes": 12288,
+    "search_max_results": 50,
+    "search_max_files": 5000,
+    "search_max_bytes_per_file": 1048576,
+    "search_max_total_bytes": 52428800
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "status": "screening calculations only; not measurements or whole-circuit simulation",
+  "AVDD_min_V": 2.955,
+  "ADC_high_gain_recommended_upper_at_AVDD_min_V": 1.155,
+  "buffer_VCM_nominal_V": 1.5,
+  "unloaded_AC_tau_s": 0.22,
+  "unloaded_AC_HP_Hz": 0.7234315595086153,
+  "approx_differential_RC_LP_Hz": 7578.806813899779,
+  "VCM_divider_RC_s": 0.055,
+  "analog_input_series_drop_at_assumed_14mA_V": 0.0658,
+  "minimum_Q3001_gate_at_VBUS4_5V_V": 4.0834097158570115,
+  "MCU_3_3V_through10k_sink_mA": 0.33
+}

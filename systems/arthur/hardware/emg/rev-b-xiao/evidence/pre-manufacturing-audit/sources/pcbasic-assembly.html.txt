@@ -1,0 +1,5920 @@
+﻿ 
+ 
+ 
+
+ 
+ (function (w, d, s, l, i) {
+    w[l] = w[l] || [];
+    w[l].push({
+        'gtm.start':
+            new Date().getTime(), event: 'gtm.js'
+    });
+    var f = d.getElementsByTagName(s)[0],
+        j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : '';
+    j.async = true;
+    j.src =
+        '/metrics/?id=' + i + dl;
+    f.parentNode.insertBefore(j, f);
+})(window, document, 'script', 'dataLayer', 'GTM-NN8N3NT'); 
+ 
+
+     
+     
+        !function (f, b, e, v, n, t, s) {
+            if (f.fbq) return;
+            n = f.fbq = function () {
+                n.callMethod ?
+                    n.callMethod.apply(n, arguments) : n.queue.push(arguments)
+            };
+            if (!f._fbq) f._fbq = n;
+            n.push = n;
+            n.loaded = !0;
+            n.version = '2.0';
+            n.queue = [];
+            t = b.createElement(e);
+            t.async = !0;
+            t.src = v;
+            s = b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t, s)
+        }(window, document, 'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '2806177399775511');
+        fbq('track', 'PageView');
+     
+      
+     
+     
+
+ 
+    (function(w, d, t, u, o) {
+        w[u] = w[u] || [];
+        o.ts = (new Date).getTime();
+
+        var n = d.createElement(t);
+        n.src = "https://bat.bing.net/bat.js?ti=" + o.ti + ("uetq" != u ? "&q=" + u : "");
+        n.async = 1;
+
+        n.onload = n.onreadystatechange = function() {
+            var s = this.readyState;
+            s && "loaded" !== s && "complete" !== s ||
+            (
+                o.q = w[u],
+                    w[u] = new UET(o),
+                    w[u].push("pageLoad"),
+                    n.onload = n.onreadystatechange = null
+            );
+        };
+
+        var i = d.getElementsByTagName(t)[0];
+        i.parentNode.insertBefore(n, i);
+
+    })(window, document, "script", "uetq", {
+        ti: "97177618",
+        enableAutoSpaTracking: true
+    });
+ 
+
+ 
+ window.gtranslateSettings = {"default_language":"en","native_language_names":true,"url_structure":"sub_directory","languages":["en","de","fr","es","hi","pt","it","ko","nl","tr","ja","ar","id","fa","sv","cs","bn","ur","pl","am","el","hu","ro","vi","th","tl","da","fi","no","iw","sk","af"],"wrapper_selector":".gtranslate_wrapper","flag_size":24} 
+  
+   
+ 
+ PCBA Special Reminders 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+ 
+ 
+ 
+ 
+
+ 
+
+ 
+  var currentUrl = $(location).attr('href');
+ 
+ // 对URL进行规范化处理，例如去除URL末尾的斜杠
+ if (currentUrl.endsWith('/')) {
+     currentUrl = currentUrl.substring(0, currentUrl.length - 1);
+ }
+
+ // 添加规范化标签到页面
+ $(' ').attr({
+     rel: 'canonical',
+     href: currentUrl
+ }).appendTo('head');
+ 
+ 
+  
+  
+ 
+  
+
+
+
+ 
+
+localStorage.setItem("consentGranted", "true");
+function gtag() { 
+    dataLayer.push(arguments); 
+}
+
+ 
+ 
+
+  
+ 
+ 
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "ubwgdtu6sy");
+ 
+ 
+ 
+  
+ 
+      
+ 
+ 
+    .process-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 0.5vh;
+        background-color: #dddddd87;
+        z-index: 10000;
+    }
+
+    .process-bar {
+        height: 100%;
+        background-image: linear-gradient(to right, #5BE32E, #FFD606);
+        width: 0;
+    }
+
+    #form_banner {
+        background-color: unset;
+    }
+
+    #form_banner button.tabSub {
+        width: 200px;
+        margin: 0;
+        margin-top: 4%;
+        background-position: 17% center;
+        background-size: 20px;
+        font-size: 16px;
+        height: 44px;
+        line-height: 44px;
+        background-color: #239564;
+        box-sizing: border-box;
+        border: 1px solid #239564;
+        color: #FFFFFF;
+    }
+
+    .robot-font {
+        width: 650px;
+        color: white;
+        position: absolute;
+        z-index: 1;
+        left: 11%;
+    }
+
+    .fontModelSwiperActive {
+        color: #239564 !important;
+    }
+
+    .robot-font-p1 {
+        font-size: 30px;
+        line-height: 40px;
+        font-weight: bold;
+    }
+
+    .robot-font-p2 {
+        font-size: 16px;
+        margin-top: 26px;
+    }
+
+    .robot-font-p3 {
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+        margin-top: 11px;
+    }
+
+    .action_quote .bottom form .inp-box .swiper-pc {
+        display: flex;
+    }
+
+    .action_quote .bottom form .inp-box .swiper-an {
+        display: none;
+    }
+
+    #mobile_form {
+        display: block !important;
+        background-color: #119466;
+        padding: 35px 15px;
+        margin: 30px 0 65px;
+        border-top: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .layui-form-select {
+        display: none;
+    }
+
+    #banner_pc {
+        display: none;
+    }
+
+    #mobile_form h2 {
+        color: #fff;
+        /* margin-bottom: 20px; */
+    }
+
+    .action_quote {
+        width: 370px;
+        padding: 0px 15px;
+        float: right;
+    }
+
+    #mobile_form .index-form-box {
+        /* padding: 20px 0px; */
+        /* background-color: #fff; */
+        border-radius: 15px;
+    }
+
+    #mobile_form .index-form-box h2 {
+        font-size: 24px;
+        line-height: 35px;
+        color: #e4da63;
+        margin-bottom: 0;
+    }
+
+    #mobile_form .index-form-box h2 font {
+        color: #119466
+    }
+
+    #orderFiletext img, #orderFiletextpcba img {
+        display: inline-block;
+        margin-right: 2px;
+        width: 18px;
+        position: relative;
+        left: -11px;
+        top: 4px;
+    }
+
+    .swiper-pc {
+        display: flex;
+    }
+
+    .swiper-an {
+        display: none;
+    }
+
+    .pt100 {
+        padding-top: 0;
+    }
+
+    /* #mobile_form input[type=text]{
+      height: 35px;
+      line-height: 35px;
+      background-color: #fff;
+      border-radius: 5px;
+      outline: 0;
+      border: 0;
+    border: 1px solid #ccc;
+      padding-left: 15px;
+      font-size: 14px;
+      width: 100%;
+      margin-bottom: 15px;
+    } */
+
+    /* #mobile_form textarea {
+        line-height: 27px;
+        height: 120px;
+        background-color: #fff;
+        border-radius: 5px;
+        outline: 0;
+        border: 0;
+    border: 1px solid #ccc;
+        padding-left: 15px;
+        padding-top: 10px;
+        font-size: 14px;
+        width: 100%;
+    }
+
+  #mobile_form button{
+    display: block;
+    height: 35px;
+    line-height: 35px;
+    width: 180px;
+    color: #fff;
+    background-color: #0bad49;
+    text-align: center;
+    margin: 15px auto 0;
+    outline: 0;
+    border: 0;
+    border-radius: 5px;
+  } */
+    .components_rt {
+        float: right;
+        width: 370px;
+        height: 1080px;
+        position: sticky;
+        top: 56px;
+    }
+
+    .action_quote .bottom {
+        text-align: left;
+        line-height: normal;
+    }
+
+    .action_quote .bottom .tit {
+        padding: 15px 20px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .action_quote .bottom .tit p {
+        font-size: 20px;
+        font-weight: bold;
+        color: #119466;
+        line-height: 25px;
+        margin-bottom: 3px;
+    }
+
+    .action_quote .bottom .tit span {
+        color: #979797;
+    }
+
+    .action_quote .bottom .table-box {
+        display: none;
+        opacity: 0;
+        transition: all 0.3s ease-in;
+    }
+
+    .action_quote .bottom .table-box.active {
+        display: block;
+        opacity: 1;
+    }
+
+    .action_quote .bottom form {
+        display: block;
+        padding: 15px 20px;
+    }
+
+    .action_quote .bottom form .inp-box {
+        position: relative;
+        margin-bottom: 6px;
+    }
+
+    .action_quote .bottom form .inp-box label {
+        width: 100%;
+        display: block;
+        font-size: 13px;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+
+    #mobile_form .action_quote .bottom form .inp-box input {
+        width: 100%;
+        padding-left: 8px;
+        padding-right: 0px;
+        height: 25px;
+        line-height: 27px;
+        border-radius: 0px;
+        outline: 0;
+        border: 0;
+        border: 1px solid #ccc;
+        font-size: 12px;
+    }
+
+    .action_quote .bottom form input[type="submit"] {
+        width: 100%;
+        height: 39px;
+        line-height: 39px;
+        outline: 0;
+        border: 0;
+        font-size: 16px;
+        font-weight: bold;
+        background: #119466;
+        color: #fff;
+        cursor: pointer;
+        text-align: center;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        border-radius: 10px;
+        background-image: url(../images/quote_icon.png);
+        background-repeat: no-repeat;
+        background-position: 30% center;
+        padding-left: 10%;
+    }
+
+    .action_quote .bottom form button {
+        width: 100%;
+        height: 39px;
+        line-height: 39px;
+        outline: 0;
+        border: 0;
+        font-size: 16px;
+        font-weight: bold;
+        /* background: #119466; */
+        color: #fff;
+        cursor: pointer;
+        text-align: center;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        border-radius: 10px;
+        background-image: url(../images/quote_icon.png);
+        background-repeat: no-repeat;
+        background-position: 30% center;
+        padding-left: 10%;
+    }
+
+    .action_quote .bottom form p {
+        font-size: 14px;
+    }
+
+    .action_quote .bottom form p font {
+        color: #ff7800;
+    }
+
+    .fix-table-box {
+        position: absolute;
+        background: #fff;
+        width: 100%;
+        opacity: 0;
+        display: none;
+        transition: all 0.3s ease-in-out;
+        -webkit-transition: all 0.3s ease-in-out;
+    }
+
+    .fix-table-box.active {
+        display: block;
+        opacity: 1;
+    }
+
+    .action_quote .bottom form .inp-box select {
+        display: block;
+        border: 1px solid #d2d2d2;
+        width: 100%;
+        color: #333;
+        padding: 3px 4px;
+    }
+
+    .hots_title {
+        display: block;
+        font-size: 30px;
+        margin-top: 30px;
+        margin-bottom: 30px
+    }
+
+    .blog_hots li {
+        position: relative;
+        height: 67px;
+        padding-left: 120px;
+        margin-bottom: 15px
+    }
+
+    .blog_hots li .thumb {
+        width: 100px;
+        height: 66px;
+        position: absolute;
+        left: 0;
+        top: 0;
+        overflow: hidden
+    }
+
+    .blog_hots li .thumb img {
+        width: 100%;
+        height: auto;
+        display: block
+    }
+
+    .blog_hots li label {
+        font-size: 13px;
+        color: #8a8a8a;
+        display: block;
+    }
+
+    .blog_hots li b {
+        display: block;
+        line-height: 1.2;
+        overflow: hidden;
+        height: 32px;
+        margin-bottom: 10px;
+    }
+
+    .blog_hots li a:hover b {
+        color: #119466
+    }
+
+    .right_child_menu {
+        /* border: 1px solid #E2E2E2; */
+        /* padding: 20px 0; */
+        background: #F8F8F8;
+        display: none;
+    }
+
+    .right_child_menu li {
+        cursor: pointer;
+        /* border-top: 1px solid #555; */
+        text-indent: 17px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f1f1f1;
+        padding-right: 14px;
+    }
+
+    .right_child_menu li a {
+        position: relative;
+        display: block;
+        font-size: 13px;
+        color: #333333;
+        line-height: 36px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .right_child_menu li img {
+        width: 8px;
+        height: 13px;
+    }
+
+    .right_child_menu li.active a {
+        color: white;
+    }
+
+    .right_child_menu li:hover {
+        background: #11946659;
+
+    }
+
+    .right_child_menu li.active {
+        background: #239564;
+
+    }
+
+    /* .right_child_menu li:hover img {
+        filter: brightness(100);
+    } */
+    .right_child_menu li.active img {
+        filter: brightness(100);
+    }
+
+    .action_quote .bottom form .inp-box.wnl::after {
+        display: none;
+    }
+
+    .pcb_list_div {
+        border: 1px solid #E2E2E2;
+        border-bottom: none;
+    }
+
+    .right-list > a {
+        line-height: 45px;
+        /* font-size: 16px; */
+        font-weight: bold;
+        display: block;
+        position: relative;
+        padding: 0 16px;
+        border-bottom: 1px solid #ccc;
+    }
+
+    .right-list > a:hover {
+        /* background: #dddddd8f; */
+        color: #333333;
+    }
+
+    .right-list > a i {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        font-size: 20px;
+        color: #666666;
+    }
+
+    .right-list > a .right_child_menu {
+        display: none;
+    }
+
+    .right-list > a.active .right_child_menu {
+        display: block;
+    }
+
+    .right_title {
+        padding: 0 14px;
+        font-size: 18px;
+        line-height: 45px;
+        background: #119466;
+        color: #FFFFFF;
+    }
+
+
+    @media screen and (max-width: 1200px) {
+        .blog_cat {
+            display: block;
+            padding-left: 0;
+            width: 100%;
+            float: left;
+        }
+    }
+
+    @media (max-width: 1674px) {
+        .components_lt {
+            width: 70%;
+        }
+
+        .components_rt {
+            padding-left: 0px;
+        }
+
+        #mobile_form {
+            /* height: 482px !important; */
+            margin-bottom: 20px;
+        }
+
+
+    }
+
+    @media screen and (max-width: 1370px) {
+        .action_quote {
+            width: 100%;
+            padding: 0;
+        }
+
+        #mobile_form {
+            height: 482px !important;
+        }
+    }
+
+    @media (max-width: 1180px) {
+        .action_quote .bottom form .inp-box .swiper-an {
+            display: block;
+        }
+
+        .action_quote .bottom form .inp-box .swiper-pc {
+            display: none;
+        }
+
+        #subindex_pcba, #subindex_prototype {
+            background-position: 29% center;
+        }
+
+        .wcenter {
+            padding-left: 0%;
+            padding-right: 0%;
+        }
+
+        #components_container {
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
+        .components_lt {
+            width: 100%;
+        }
+
+        .components_rt {
+            width: 100% !important;
+            display: block;
+        }
+
+        .action_quote {
+            padding: 0px;
+            height: 100%;
+            width: 100%;
+        }
+
+        #mobile_form {
+            height: 569px;
+        }
+    }
+
+    @media screen and (max-width: 768px) {
+        .hots_title, .blog_hots, .so_h2, .sol_box {
+            display: none !important;
+        }
+
+        .components_rt {
+            height: auto;
+        }
+
+        .swiper-pc {
+            display: none;
+        }
+
+        .swiper-an {
+            display: flex;
+        }
+
+        .robot-font {
+            width: calc(100% - 20px);
+            color: white;
+            position: absolute;
+            z-index: 1;
+            left: 20px;
+        }
+
+        .robot-font-p1 {
+            /* font-size: 18px;line-height: 24px;font-weight: bold;width: 150px; */
+            font-size: 23px;
+            line-height: 0px;
+            font-weight: bold;
+            width: 100%;
+        }
+
+        .robot-font-p3 {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            margin-top: 11px;
+        }
+    }
+
+    #form_banner .banner_img img {
+        height: 380px !important;
+    }
+ 
+ 
+ 
+ 
+ 
+      
+ 
+ 
+ 
+  
+
+ 
+ 
+ 
+ 
+  
+
+ 
+    .wcenter {
+        max-width: 1540px;
+        margin: 0 auto;
+
+
+    }
+
+    #about_us {
+        /* margin: 0 0 0 212px;
+        padding: 12px 20px 0;
+        max-width: 1370px; */
+    }
+
+    .header .brand_name:hover, .header a:hover .brand_name {
+        color: #119466 !important;
+    }
+
+    .or-divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        color: #666;
+        margin: 10px 0;
+        padding: 0 11px;
+        font-size: 12px;
+    }
+
+    .or-divider::before,
+    .or-divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .or-divider::before {
+        margin-right: 10px;
+    }
+
+    .or-divider::after {
+        margin-left: 10px;
+    }
+
+    .login-options2 {
+        display: flex;
+        width: 257px;
+        height: 40px;
+        align-items: center;
+        border-radius: 4px;
+        cursor: pointer;
+        justify-content: center;
+        gap: 10px;
+        border: 1px solid #DDDDDD;;
+    }
+
+
+    .menu li {
+        margin-right: 10px;
+    }
+
+    .menu > ul > li > a {
+        padding: 0 10px;
+    }
+
+    .pcbAImg {
+        position: relative;
+        /* background-color: #F1F1F1; */
+        background-image: linear-gradient(
+                360deg, #F1F1F1 33%, rgb(0 0 0 / 0%) 82%);
+    }
+
+    .backImg {
+        position: absolute;
+        z-index: -1;
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        width: 100%;
+        transform: rotateX(
+                180deg);
+    }
+
+    .fix-table-box {
+        margin-top: 35px;
+    }
+
+    #pcbM .new_menu_list a, #pro_capa .new_menu_list a {
+        padding: 5px 5px !important;
+    }
+
+    #pro_capa .sub_menu.new_menu_list {
+        width: 46%;
+        left: 628px;
+        box-shadow: 1px 1px 3px 2px #00000020;
+        padding: 25px 0 30px 50px;
+    }
+
+    #pro_capa .new_menu_list ul li a {
+        font-size: 12px;
+        color: #666666;
+    }
+
+    #pro_capa .new_menu_list ul li.Top a {
+        color: #333;
+    }
+
+    #pro_capa .sub_menu.new_menu_list .hot_title {
+        display: flex;
+        align-items: center;
+    }
+
+    .sub_menu.new_menu_list ul li:hover {
+
+        background-color: unset !important;
+    }
+
+    #pro_capa .sub_menu.new_menu_list ul {
+        margin-right: 0;
+    }
+
+    #pro_capa .sub_menu.new_menu_list ul li:hover a {
+        color: #239456;
+        background-color: unset;
+        font-weight: bold;
+    }
+
+    #pro_capa .child_menu {
+        min-width: 228px;
+    }
+
+    #pro_capa .Top {
+        margin-bottom: 6px;
+    }
+
+    #pcbM .new_menu_list {
+        padding: 20px 0px !important;
+    }
+
+    #pcbA .new_menu_list a {
+        padding: 5px 20px !important;
+    }
+
+    .menu-type {
+        height: auto;
+    }
+
+    .info_div {
+        width: 80%;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 24px;
+    }
+
+    .info_div div {
+        width: 47%;
+        background: #F6F6F6;
+        border-radius: 8px;
+        text-align: center;
+        padding: 26px 0px;
+        cursor: pointer;
+    }
+
+    .info_div > div > p {
+        line-height: 10px;
+
+    }
+
+    .gt_container--hich1m .gt_switcher {
+        width: 216px;
+    }
+
+    .gt_container--hich1m .gt_switcher .gt_option {
+        width: 205px;
+    }
+
+    .gt_container--hich1m .gt_switcher .gt_selected a {
+        width: 204px;
+    }
+
+    #email_for_nav:hover {
+        color: #ECFF7D;;
+    }
+
+    .top_tip {
+        background: black;
+        color: #ffffffe8;
+        padding: 14px 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .top_tip > a {
+        color: #239564;
+        text-decoration: underline;
+        /* text-underline-position: under; */
+        font-weight: bold;
+    }
+
+    .top_tip > .close_tip {
+        position: absolute;
+        top: 14px;
+        right: 12%;
+        cursor: pointer;
+    }
+
+    .top_tip.hide_top_tip {
+        display: none;
+    }
+
+    #li_a_2 .first {
+        font-family: "microsoft yahei";
+        min-width: 114px;
+        color: #fff;
+
+        /* 动画：发光强度变化实现闪动 */
+        animation: fireDiv 0.8s infinite alternate ease-in-out;
+    }
+
+    @keyframes fireDiv {
+        0% {
+            text-shadow: 1px 1px 1px #d3cd29,
+            -1px -1px 1px #d3cd29,
+            1px -1px 1px #d3cd29,
+            -1px 1px 1px #d3cd29;
+        }
+        100% {
+            text-shadow: 1px 1px 8px #ff0000,
+            -1px -1px 8px #ff0000,
+            1px -1px 8px #ff0000,
+            -1px 1px 8px #ff0000;
+        }
+
+    }
+
+    /* 抖动动画：模拟火焰燃烧的剧烈晃动 */
+    @keyframes shake {
+        0% {
+            transform: translate(0, 0);
+        }
+
+        50% {
+            transform: translate(1px, -1px);
+        }
+        75% {
+            transform: translate(-1px, -1px);
+        }
+        100% {
+            transform: translate(1px, 1px);
+        }
+    }
+
+    @media (max-width: 1674px) {
+        .aboutus .wcenter {
+            margin-left: inherit;
+        }
+
+        #pro_capa .sub_menu.new_menu_list {
+            width: 52%;
+            left: 470px;
+            min-width: 790px;
+        }
+    }
+
+    @media (max-width: 1100px) {
+        .fix-table-box {
+            margin-top: 0px;
+        }
+    }
+
+    @media (max-width: 1000px) {
+        .gt_container--hich1m .gt_switcher {
+            width: 129px;
+        }
+
+        .gt_container--hich1m .gt_switcher .gt_selected a {
+            width: 117px;
+        }
+
+        .pcbMImg, .pcbAImg {
+            display: none;
+            width: 0px !important;
+        }
+
+        .new_menu_list {
+            width: 100% !important;
+        }
+
+        #pcbM .new_menu_list a {
+            padding: 5px 30px !important;
+        }
+
+        /* #pcbA .new_menu_list a{
+        padding: 10px 0px!important;
+        } */
+        #pcbM .new_menu_list {
+            padding: 0px 0px !important;
+        }
+
+        .child_menu li i {
+            top: 0px !important;
+        }
+
+        .menu > ul > li > a {
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        .menu li .sub_menu.new_menu_list ul li {
+            display: flex;
+        }
+
+        .menu-type, .new_menu_list {
+            box-shadow: unset !important;
+        }
+
+        .menu-type {
+            margin-left: 0px !important;
+        }
+
+        .menu li .sub_menu.new_menu_list ul {
+            border-bottom: 0px;
+        }
+
+        .new_menu_list .wcenter {
+            max-width: 1540px;
+            margin: 0 auto;
+            padding: 0px
+        }
+
+        @media (max-width: 768px) {
+            #pro_capa .sub_menu.new_menu_list {
+                padding: 0;
+            }
+
+            #pro_capa .sub_menu.new_menu_list > ul {
+                padding: 10px 0;
+            }
+
+            #pro_capa .new_menu_list > div {
+                flex-wrap: wrap;
+            }
+
+            #pro_capa .new_menu_list ul li a {
+                font-size: 12px;
+                color: #FFFFFF;
+                padding: 5px 30px 5px 46px !important;
+            }
+
+            #pro_capa .new_menu_list ul li.Top a {
+                display: none;
+            }
+
+            #pro_capa .sub_menu.new_menu_list ul li:hover a {
+                color: #119566;
+                background: #c9ebdd;
+            }
+
+            .close_tip {
+                display: none;
+            }
+        }
+        .menu .child_menu li a {
+            padding-left: 46px !important;
+        }
+
+        #pcbA .new_menu_list a {
+            padding: 5px 30px !important;
+        }
+
+        .menu > ul > li:last-child {
+            margin-right: 10px;
+        }
+
+        .menu li .aboutus {
+            padding: 0px !important;
+        }
+
+        .icon-select-angle {
+            height: 0px;
+        }
+
+        .menu-type {
+            height: 209px;
+        }
+
+        .menu li a i {
+            top: 13px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .top_tip {
+            font-size: 11px;
+            padding: 10px 4px 10px 14px;
+        }
+
+        .new_lang {
+            display: none;
+        }
+    }
+ 
+
+  
+ 
+ 
+     
+         
+             
+                 
+                     
+                 
+                 
+                     
+                 -->
+
+                 
+                     
+                 
+                 
+                     
+                 
+                 
+                     
+                 
+                 
+                     
+                 
+                 
+                     
+                 
+                 
+                     
+                 
+
+                 
+                     
+                 
+                 
+                     
+                 
+                 
+                     
+                 
+                 
+                     
+                 -->
+             
+         
+     
+     
+     × 
+     
+        /*.scroll-container {
+            width: 100%; !* 设置容器宽度 *!
+            height: 42px; !* 设置容器高度 *!
+            overflow: hidden; !* 隐藏超出容器的内容 *!
+            position: relative;
+        }
+
+        .scroll-content {
+            display: flex; !* 使图片和文字水平排列 *!
+            !*animation: scroll 32s linear infinite; !* 滚动动画 *!*!
+            cursor: pointer;
+            will-change: transform;
+        }
+
+        .scroll-container:hover .scroll-content {
+            animation-play-state: paused; !* 鼠标悬停时停止动画 *!
+        }
+
+        .scroll-item {
+            display: flex; !* 使图片和文字在一行显示 *!
+            align-items: center; !* 垂直居中对齐 *!
+        }
+
+        .scroll-item img {
+            width: 100%; !* 设置图片宽度 *!
+            height: 42px; !* 设置图片高度 *!
+            background-color: #119466;
+        }
+
+        .scroll-item-clone img {
+            width: 100%; !* 设置图片宽度 *!
+            height: 42px; !* 设置图片高度 *!
+            background-color: #119466;
+        }
+
+        @keyframes scroll {
+            0% {
+                transform: translate3d(0%, 0, 0); !* 初始位置在容器左侧 *!
+            }
+            50% {
+                transform: translate3d(-50%, 0, 0);
+            }
+            100% {
+                transform: translate3d(-100%, 0, 0); !* 最终位置在容器右侧 *!
+            }
+        }
+
+        .scroll-content .scroll-item-clone {
+            display: flex; !* 使图片和文字水平排列 *!
+            align-items: center;
+        }
+
+        @media (max-width: 800px) {
+            .scroll-content {
+                !*animation: scroll 12s linear infinite; !* 滚动动画 *!*!
+            }
+        }*/
+        .scroll-container {
+            width: 100%; /* 设置容器宽度 */
+            height: 42px; /* 设置容器高度 */
+            overflow: hidden; /* 隐藏超出容器的内容 */
+            position: relative;
+        }
+
+        .scroll-content {
+            /*display: flex;*/ /* 使图片和文字水平排列 */
+            /*animation: scroll 32s linear infinite; !* 滚动动画 *!*/
+            cursor: pointer;
+            will-change: transform;
+        }
+
+        .scroll-container:hover .scroll-content {
+            animation-play-state: paused; /* 鼠标悬停时停止动画 */
+        }
+
+        .scroll-item {
+            display: flex; /* 使图片和文字在一行显示 */
+            align-items: center; /* 垂直居中对齐 */
+        }
+
+        .scroll-item img {
+            width: 100%; /* 设置图片宽度 */
+            height: 42px; /* 设置图片高度 */
+            background-color: #119466;
+        }
+
+        .scroll-item-clone img {
+            width: 100%; /* 设置图片宽度 */
+            height: 42px; /* 设置图片高度 */
+            background-color: #119466;
+        }
+
+        @keyframes scroll {
+            0% {
+                transform: translate3d(0%, 0, 0); /* 初始位置在容器左侧 */
+            }
+            50% {
+                transform: translate3d(-50%, 0, 0);
+            }
+            100% {
+                transform: translate3d(-100%, 0, 0); /* 最终位置在容器右侧 */
+            }
+        }
+
+        .scroll-content .scroll-item-clone {
+            display: flex; /* 使图片和文字水平排列 */
+            align-items: center;
+        }
+
+        .expo-radel-banner-img {
+            content: url("/public/static/images/banner/head/anniversary.png?v=4.7.3");
+        }
+
+        @media (max-width: 800px) {
+            .scroll-content {
+                /*animation: scroll 12s linear infinite; !* 滚动动画 *!*/
+            }
+        }
+
+        @media (max-width: 768px) {
+            .expo-radel-banner-img {
+                content: url("/public/static/images/banner/head/svg/anniversary.png?v=4.7.3");
+            }
+        }
+
+        /* 仅新增关闭按钮样式，不修改你原来任何css */
+        .scroll-content {
+            position: relative;
+        }
+
+        .banner-close-btn {
+            position: absolute;
+            right: 10px;
+            top: 22px;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.25);
+            color: #fff;
+            text-align: center;
+            line-height: 20px;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 999 !important;
+            /* 关键：单独恢复按钮点击能力，不受父级pointer-events:none影响 */
+            pointer-events: auto !important;
+            user-select: none;
+        }
+
+        .banner-close-btn:hover {
+            background: rgba(0, 0, 0, 0.5);
+        }
+     
+     
+         
+         
+         
+     
+        GERMANY  Meet PCBasic at  electronica 2026  
+       10-13 Nov 2026  ·  Munich, Germany  ·  PCB &amp; PCBA 
+     
+              Visit booth  A1.280  
+             
+       Save the date 
+       10-13 Nov 2026 
+       
+          00  d   : 
+          00  h   : 
+          00  m   : 
+          00  s  
+       
+     
+              Plan your visit  →  
+         
+          ×  
+     
+     
+     
+        .event-wrap {
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .pcbasic-event-notice {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            box-sizing: border-box;
+            opacity: 0;
+            /* 过渡：透明度+背景色+文字颜色，0.8秒平滑淡入淡出 */
+            transition: opacity 0.8s ease, background-color 0.8s ease, color 0.8s ease;
+            pointer-events: none; /* 隐藏的横幅禁止点击 */
+        }
+
+        /* 当前激活显示的横幅 */
+        .pcbasic-event-notice.active {
+            opacity: 1;
+            pointer-events: auto;
+            position: relative; /* 撑起容器高度，避免父容器高度塌陷 */
+        }
+
+        /* 香港主题样式 */
+        .pcbasic-event-notice[data-theme="hong-kong"] {
+            background: #084c36;
+            color: #fff;
+        }
+        /* 德国主题样式 */
+        .pcbasic-event-notice[data-theme="germany"] {
+            background: #fff3dd;
+            color: #222;
+        }
+     
+ 
+  
+ 
+
+     
+          Global high-mix volume high-speed  PCBA 
+            manufacturer  
+
+
+         
+
+
+             
+                                 
+                     Join -->
+                     Sign In | Join 
+                 
+                                 
+                                         
+                         
+                             
+                                 Sign
+                                    Up
+                                 
+                                 Don't have an account
+                                 
+                             
+                             
+                                 Sign
+                                    In
+                                 
+                                 Already have an
+                                    account
+                                 
+                             
+                         
+                         Sign in 
+                         Sign Up  -->
+
+                         OR 
+                           -->
+                         
+                             
+                                 
+                                 
+                                     
+                                         
+                                         
+                                         
+                                         
+                                     
+                                 
+                                 
+                                    Sign in with Google
+                                 
+                             
+                         
+                         
+                         
+                             
+                                 
+                                 
+                                     
+                                         
+                                     
+                                 
+                                 
+                                    Sign in with Apple
+                                 
+                             
+                         
+                     
+                    
+                     
+                         My Orders 
+                         My Profile 
+                         Coupons 
+                         Delivery Address 
+                         Password Change 
+                                             
+                 
+                 
+                  
+                  Shopping Cart(  0  )  
+             
+
+             
+                 
+                      
+                 
+             
+             
+                 
+                     
+                 
+             
+             
+                 EN&nbsp;&nbsp;   
+                 
+                     EN 
+                     RU 
+                  -->
+                  
+             
+
+             
+                 Help Center&nbsp;&nbsp;   
+                 
+                     
+                          
+                         
+                             
+                                 
+                                    Customer Service
+                                 
+                             
+
+                             
+                                 
+                                    How to order
+                                 
+                                 
+                                    Service &amp; Refunds
+                                 -->
+                             
+                         
+                     
+                     
+                          
+                         
+                             
+                                Sending a message
+                             
+                             
+                                 
+                                    JS@pcbasic.com
+                                 
+                             
+                             
+                                Open Hours：9:00-21:00
+                                (GMT+8)
+                             
+                         
+                     
+                     
+                          
+                         
+                             
+                                Service hotlines
+                             
+                             
+                                 +86-755-27218592 
+                             
+                             
+                                 9:00 -18:00, Mon. - Fri. (GMT+8) 
+                                 9:00 -12:00, Sat. (GMT+8) 
+                                 (Except Chinese public holidays) 
+                             
+                         
+                     
+                      
+                      
+                 
+             
+
+             
+                     
+
+                   
+                 
+                 
+                   
+                 
+                 
+                   
+                 
+                 
+                   
+                 
+                 
+                    
+                 
+             
+              
+
+             
+                 
+                     X 
+                     
+                         
+                         
+                     
+                 
+             
+
+         
+
+
+     
+
+
+     
+         
+             
+                  Home  
+
+                
+                 
+                     Online Quote                           -->
+                     
+                     
+                         
+                                                         
+                                 PCB Prototype 
+                             
+                                                         
+                                 PCB Assembly 
+                             
+                                                         
+                                 CNC l 3D Printing 
+                             
+                                                     
+                      -->
+                 
+                
+
+                 
+                     PCB Assembly
+                           -->
+                     
+                     
+                         
+                             
+                                
+                                 
+                                     Consigned PCB Assembly 
+                                 
+                                
+
+                                 
+                                     Electronic Component Sourcing 
+                                 
+                                
+
+                                 
+                                     PCBA Functional Testing 
+                                 
+                                
+
+                                 
+                                     Panel Assembly Requirements 
+                                 
+                                
+
+                                 
+                                     Mixed Assembly 
+                                 
+                                
+
+                                 
+                                     Flex PCB Assembly 
+                                 
+                                
+
+                                 
+                                     Prototype PCB Assembly 
+                                 
+                                
+
+                                 
+                                     Turnkey PCB Assembly 
+                                 
+                                
+
+                                 
+                                     SMT Assembly 
+                                 
+                                
+
+                                 
+                                     Low Volume PCB Assembly 
+                                 
+                                
+
+                                 
+                                     High Volume PCB Assembly 
+                                 
+                                
+
+                                 
+                                     Through Hole PCB Assembly 
+                                 
+                                
+                             
+                         
+
+
+                      -->
+
+
+                 
+
+                 
+                     PCB Prototype   
+                     
+                         
+                            
+                             
+                                 Design Process 
+                             
+                            
+
+                             
+                                 Design Case 
+                             
+                            
+                         
+                     
+
+                 -->
+
+                 
+                     PCB Manufacturing
+                           -->
+                     
+
+                     
+                         
+                             
+                                 
+                                     PCB Fabrication
+                                        >  
+                                 
+
+                                
+                                 
+                                     PCB BGA 
+                                 
+                                
+
+                                 
+                                     Aluminum PCB 
+                                 
+                                
+
+                                 
+                                     Rigid flex PCB 
+                                 
+                                
+
+                                 
+                                     Flex PCB 
+                                 
+                                
+
+                                 
+                                     Rigid PCB 
+                                 
+                                
+
+                                 
+                                     HDI PCB 
+                                 
+                                
+
+                                 
+                                     Rogers PCB 
+                                 
+                                
+
+                                 
+                                     Ceramic PCB 
+                                 
+                                
+
+                                 
+                                     RF PCB 
+                                 
+                                
+
+                                 
+                                     PCB Prototype 
+                                 
+                                
+
+                                 
+                                     LED PCB 
+                                 
+                                
+
+                                 
+                                     Metal Core PCBs 
+                                 
+                                
+
+                                 
+                                     Standard PCB 
+                                 
+                                
+                                  
+                             
+                             
+                                 
+                                     PCB Design service >  
+                                 
+                                
+                                 
+                                     Design Process 
+                                 
+                                
+
+                                 
+                                     Design Case 
+                                 
+                                
+                                  
+                             
+                             
+                                 
+                                 
+                                 
+                             
+
+                         
+                     -->
+
+                 
+
+                                 
+                     CNC | 3D Printing   
+                     
+                         
+                                                         
+                                 CNC Machining Service 
+                             
+                                                         
+                                 3D Printing Service 
+                             
+                                                         
+                                 Sheet Metal Fabrication 
+                             
+                                                         
+                                 Injection Molding Service 
+                             
+                                                     
+                     
+                 
+                                
+                 
+                     Product &amp; Capabilities   
+
+                     
+                         
+                             
+                                 
+                                     Printed Circuit Boards  
+                                     PCB Manufacturing   -->
+                                 
+                                  PCB
+                                    Manufacturing   
+                                
+                                 
+                                     PCB BGA 
+                                                                     
+                                
+
+                                 
+                                     Aluminum PCB 
+                                                                         
+                                                                     
+                                
+
+                                 
+                                     Rigid flex PCB 
+                                                                         
+                                                                     
+                                
+
+                                 
+                                     Flex PCB 
+                                                                         
+                                                                     
+                                
+
+                                 
+                                     Rigid PCB 
+                                                                         
+                                                                     
+                                
+
+                                 
+                                     HDI PCB 
+                                                                     
+                                
+
+                                 
+                                     Rogers PCB 
+                                                                     
+                                
+
+                                 
+                                     Ceramic PCB 
+                                                                     
+                                
+
+                                 
+                                     RF PCB 
+                                                                     
+                                
+
+                                 
+                                     PCB Prototype 
+                                                                     
+                                
+
+                                 
+                                     LED PCB 
+                                                                     
+                                
+
+                                 
+                                     Metal Core PCBs 
+                                                                     
+                                
+
+                                 
+                                     Standard PCB 
+                                                                     
+                                
+
+                                  
+                             
+
+                             
+                                 
+                                     PCB Capabilities  -->
+                                     PCB Capabilities 
+                                 
+                                
+                                 
+                                     PCBasic PCB Capabilities 
+                                                                     
+                                
+
+                                 
+                                     Quick Turn PCB 
+                                                                     
+                                
+
+                                 
+                                     Advanced PCB Capabilities 
+                                                                     
+                                
+
+                                 
+                                     PCB FAQs 
+                                                                     
+                                
+
+                                 
+                                     Low-volume PCB Production 
+                                                                     
+                                
+                                  
+                                 
+                                     PCBA Capabilities  -->
+                                     PCBA Capabilities 
+                                 
+                                
+                                 
+                                     PCB Assembly Service Process 
+                                                                     
+                                
+
+                                 
+                                     PCBA Special Reminders 
+                                                                     
+                                
+
+                                 
+                                     PCB Assembly Capabilities 
+                                                                         
+                                                                     
+                                
+
+                                 
+                                     BGA Assembly Capabilities 
+                                                                         
+                                                                     
+                                
+
+                                 
+                                     SMT Stencil 
+                                                                     
+                                
+
+                                 
+                                     PCB Assembly FAQs 
+                                                                     
+                                
+
+                                 
+                                     Files Requested for PCBA 
+                                                                     
+                                
+
+                                 
+                                     SMT Ordering Files and Documents 
+                                                                     
+                                
+                             
+
+                             
+                                 
+                                     PCB Assembly   -->
+                                     PCB Assembly 
+                                 
+                                  PCB Assembly Overview   
+                                
+                                 
+                                     Consigned PCB Assembly 
+                                                                     
+                                
+
+                                 
+                                     Electronic Component Sourcing 
+                                                                     
+                                
+
+                                 
+                                     PCBA Functional Testing 
+                                                                     
+                                
+
+                                 
+                                     Panel Assembly Requirements 
+                                                                     
+                                
+
+                                 
+                                     Mixed Assembly 
+                                                                     
+                                
+
+                                 
+                                     Flex PCB Assembly 
+                                                                         
+                                                                     
+                                
+
+                                 
+                                     Prototype PCB Assembly 
+                                                                         
+                                                                     
+                                
+
+                                 
+                                     Turnkey PCB Assembly 
+                                                                         
+                                                                     
+                                
+
+                                 
+                                     SMT Assembly 
+                                                                         
+                                                                     
+                                
+
+                                 
+                                     Low Volume PCB Assembly 
+                                                                         
+                                                                     
+                                
+
+                                 
+                                     High Volume PCB Assembly 
+                                                                     
+                                
+
+                                 
+                                     Through Hole PCB Assembly 
+                                                                     
+                                
+                                  
+                             
+                             
+                                 
+                                 
+                                 
+                             -->
+
+                         
+                     
+
+                 
+                                
+                 
+                     Solution   
+
+                     
+                         
+                             
+                                 
+                                    PCBA Industry Solutions
+                                 -->
+                                 
+
+                                     
+                                         Medical PCB Assembly 
+                                     
+                                     
+                                         Robotic Control Board Assembly 
+                                     
+                                     
+                                         Motor Control PCB Assembly 
+                                     
+                                     
+                                         Automotive PCB Assembly 
+                                     
+                                     
+                                         Consumer Electronic PCB Assembly 
+                                      -->
+                                     
+                                         Energy Storage PCB Assembly 
+                                     
+                                     
+                                         Industrial PCB Assembly 
+                                     
+
+                                     
+                                         PCB Layer Solutions 
+                                     
+
+                                 
+                             
+                             
+                                   
+                                 How We Ensure Quality 
+                                 
+                                     View More
+                                     
+                                 
+
+                             -->
+                         
+                         
+
+                             
+                                 Medical PCB Assembly 
+                             
+                             
+                                 Robotic Control Board Assembly 
+                             
+                             
+                                 Motor Control PCB Assembly 
+                             
+                             
+                                 Automotive PCB Assembly 
+                             
+                             
+                                 Consumer Electronic PCB Assembly 
+                              -->
+                             
+                                 Energy Storage PCB Assembly 
+                             
+                             
+                                 Industrial PCB Assembly 
+                             
+                             
+                                 PCB Layer Solutions 
+                             
+
+                         
+                     
+                 
+                                 
+                
+
+                 
+                     About Us   
+                     
+                         
+                             
+                                 
+                                     
+                                         
+                                             
+                                                  
+                                             
+                                         
+                                         
+                                             
+                                                Company Introduction 
+                                             
+                                                Learn About Our Mission 
+                                         
+                                     
+                                     
+                                         
+                                             
+                                                  
+                                             
+                                         
+                                         
+                                             
+                                                Contact Us 
+                                             
+                                                Leave Us a Message 
+                                         
+                                     
+                                 
+                                 
+                                     
+                                         
+                                             
+                                         
+                                         
+                                             
+                                                Testing Equipment 
+                                             
+                                             
+                                                Explore Our In-House Testing Equipment
+                                             
+                                         
+                                     
+
+
+                                     
+                                         
+                                             
+                                                 
+                                                     
+                                                         
+                                                     
+                                                 
+                                                 
+                                                     
+                                                         
+                                                     
+                                                     
+                                                         
+                                                     
+                                                 
+                                             
+                                         
+                                         
+                                             
+                                                Quality Control 
+                                             
+                                                Quality assured 
+                                         
+                                     
+                                 
+                                 
+                                     
+                                         
+                                             
+                                         
+                                         
+                                             
+                                                Quality Certifications 
+                                             
+                                                Certifications We Hold 
+                                         
+                                     
+                                     
+                                         
+                                             
+                                                 
+                                                     
+                                                         
+                                                     
+                                                 
+                                                 
+                                                     
+                                                         
+                                                     
+                                                     
+                                                         
+                                                     
+                                                 
+                                             
+                                         
+                                         
+                                             
+                                                Video Collection 
+                                             
+                                                Comprehensive display 
+                                         
+                                     
+                                     
+                                      
+                                          
+                                               
+                                          
+                                      
+                                      
+                                          
+                                             Global Exhibitions 
+                                          
+                                             PCbasic's Recent Exhibitions 
+                                      
+                                   -->
+
+
+                                 
+                                 
+                                     
+                                         
+                                             
+                                                 
+                                                     
+                                                         
+                                                     
+                                                 
+                                                 
+                                                     
+                                                         
+                                                         
+                                                     
+                                                     
+                                                         
+                                                     
+                                                 
+                                             
+                                         
+                                         
+                                             
+                                                IPC Class 3 Capability 
+                                             
+                                                Our Equipment Highlights 
+                                         
+                                     
+                                     
+                                         
+                                             
+                                                  
+                                             
+                                         
+                                         
+                                             
+                                                Customer Feedback 
+                                             
+                                                See What Customers Say About PCBasic 
+                                         
+                                     
+                                 
+                                 
+                                     
+                                         
+                                             
+                                                 
+                                                     
+                                                         
+                                                     
+                                                 
+                                                 
+                                                     
+                                                         
+                                                     
+                                                     
+                                                         
+                                                         
+                                                     
+                                                 
+                                             
+                                         
+                                         
+                                             
+                                                Testing & Inspection 
+                                             
+                                                Our Equipment Highlights 
+                                         
+                                     
+                                     
+                                         
+                                             
+                                                 
+                                                     
+                                                         
+                                                     
+                                                 
+                                                 
+                                                     
+                                                         
+                                                     
+                                                 
+                                             
+                                         
+                                         
+                                             
+                                                FAQ 
+                                             
+                                                FAQ Section - Answers Made Clear. 
+                                         
+                                     
+                                 
+
+                                 
+                                     
+                                         
+                                             
+                                                 
+                                                     
+                                                         
+                                                     
+                                                 
+                                                 
+                                                     
+                                                         
+                                                         
+                                                     
+                                                 
+                                             
+                                         
+                                         
+                                             
+                                                Packaging Details 
+                                             
+                                                Elegant & secure 
+                                         
+                                     
+                                     
+                                         
+                                             
+                                                 
+                                                     
+                                                         
+                                                     
+                                                 
+                                                 
+                                                     
+                                                         
+                                                     
+                                                     
+                                                         
+                                                     
+                                                     
+                                                         
+                                                         
+                                                     
+                                                 
+                                             
+                                         
+                                         
+                                             
+                                                Corporate Responsibility 
+                                             
+                                                Sustainable Development 
+                                         
+                                     
+
+                                 
+
+
+                             
+                             
+                                 
+                                 
+                                     
+                                         
+                                              
+                                         
+                                         JS@pcbasic.com 
+                                     
+                                     
+                                         
+                                              
+                                         
+                                         +86-755-27218592 
+                                     
+
+                                 
+                                 
+                                     
+                                         
+                                             
+                                                 
+                                                     
+                                                 
+                                             
+                                             
+                                                 
+                                                     
+                                                 
+                                                 
+                                                     
+                                                 
+                                                 
+                                                     
+                                                 
+                                             
+                                         
+                                         Online Quote 
+                                     
+                                     
+                                         
+                                             
+                                                 
+                                                     
+                                                 
+                                             
+                                             
+                                                 
+                                                     
+                                                         
+                                                     
+                                                     
+                                                         
+                                                     
+                                                     
+                                                         
+                                                     
+                                                     
+                                                         
+                                                     
+                                                 
+                                             
+                                         
+                                         Online Chat 
+                                     
+                                 
+                                 
+                             
+                             
+                                 
+                                                                          Support     
+
+                                                                         
+                                         Common Problem 
+                                     
+                                                                         
+                                         Message Feedback 
+                                     
+                                                                         
+                                         Research Institute 
+                                     
+                                                                                                              
+                                                                     
+                                
+
+                                 
+                                                                          Why Choose Us     
+
+                                                                         
+                                         Brief introduction 
+                                     
+                                                                         
+                                         Development history 
+                                     
+                                                                         
+                                         Corporate culture 
+                                     
+                                                                         
+                                         Core culture 
+                                     
+                                                                         
+                                         Qualification patent 
+                                     
+                                                                         
+                                         Staff style 
+                                     
+                                                                         
+                                         Contact us 
+                                     
+                                                                                                              
+                                                                     
+                                
+-->
+                                 
+                                     
+                                         Company Introduction 
+                                     
+                                     
+                                         Contact Us 
+                                     
+                                     
+                                         Testing Equipment 
+                                     
+                                     
+                                         Quality Control 
+                                     
+                                     
+                                         Quality Certifications 
+                                     
+                                     
+                                         Video Collection 
+                                     
+                                     
+                                         IPC Class 3 Capability 
+                                     
+                                     
+                                         Global Exhibitions 
+                                      -->
+                                     
+                                         Customer Feedback 
+                                     
+                                     
+                                         Testing & Inspection 
+                                     
+                                     
+                                         FAQ 
+                                     
+                                     
+                                         Packaging Details 
+                                     
+                                     
+                                         Corporate Responsibility 
+                                     
+
+                                 
+                             
+                         
+                     
+                     
+                         
+                            
+                             
+                                                                  Support     
+
+                                                                 
+                                     Common Problem 
+                                 
+                                                                 
+                                     Message Feedback 
+                                 
+                                                                 
+                                     Research Institute 
+                                 
+                                                                                                  
+                                                             
+                            
+
+                             
+                                                                  Why Choose Us     
+
+                                                                 
+                                     Brief introduction 
+                                 
+                                                                 
+                                     Development history 
+                                 
+                                                                 
+                                     Corporate culture 
+                                 
+                                                                 
+                                     Core culture 
+                                 
+                                                                 
+                                     Qualification patent 
+                                 
+                                                                 
+                                     Staff style 
+                                 
+                                                                 
+                                     Contact us 
+                                 
+                                                                                                  
+                                                             
+                            
+                         
+                      -->
+
+                 
+             
+
+
+             
+                 JS@pcbasic.com 
+             
+
+         
+     
+
+     
+         
+              
+              
+              
+         
+     
+ 
+  
+  
+ 
+    function goLinkTo(href) {
+        window.location.href = href;
+    }
+
+    $(function () {
+        $("#info_div_quote").click(function () {
+            window.location.href = "/pcb-prototype.html";
+        });
+        $("#info_div_chat").click(function () {
+            var iframe = document.getElementById('chat-widget-minimized')
+            var iframeWindow = iframe.contentWindow
+            var iframeDocument = iframeWindow.document
+            var iframeButton = $(iframeDocument).find('.e1mwfyk10')
+            iframeButton.trigger('click')
+        });
+        // msgNum();
+        //  // 获取消息
+        // function msgNum() {
+        //     $.ajax({
+        //         url: '/order/messageNum',
+        //         type: "POST",
+        //         contentType: "application/json",
+        //         dataType: "json",
+        //         async: false,
+
+        //         success: function (res) {
+        //             if (!res.data) {
+        //                 switchTitle();
+        //                 $("#inform_num_home").hide();
+        //                 $("#inform_num_home").text('');
+        //                 $("#inform_num_home").removeClass("inform_num_home")
+
+        //                 return;
+        //             };
+        //             const msgShow = document.getElementById('inform_num_home');
+
+        //             document.title = res.data + ' new messages';
+        //             $("#inform_num_home").show();
+        //             $("#inform_num_home").text(res.data);
+        //             $("#inform_num_home").addClass("inform_num_home").attr("data-num", res.data);
+
+        //             msgShow.style.visibility = 'visible'
+        //             setTimeout(switchTitle, 1000);
+        //         }
+        //     })
+        // }   
+        // 登录
+        $(".googleLoginBtn32").click(function () {
+            googleLogin32();
+        })
+
+    })
+
+    // ⚠️ 替换成你自己的 Client ID
+    //const GOOGLE_CLIENT_ID = "955143192557-qqj9c36pl5dp7bkoqeb7d6j0g280h26f.apps.googleusercontent.com";
+    // ⚠️ 替换成你自己的 Facebook App ID
+    // const FACEBOOK_APP_ID = "1710270316336651";  
+
+    // // Gooogle登录
+    function googleLogin32() {
+
+        if (typeof google === 'undefined' || !google.accounts) {
+            alert("Please chech you network.")
+            return;
+        }
+        ;
+        try {
+            // 使用requestAccessToken来触发登录
+            google.accounts.oauth2.initTokenClient({
+                client_id: "955143192557-qqj9c36pl5dp7bkoqeb7d6j0g280h26f.apps.googleusercontent.com",
+                scope: 'email profile',
+                callback: (response) => {
+                    if (response.access_token) {
+                        // 使用access_token获取用户信息
+                        fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                            headers: {
+                                'Authorization': `Bearer ${response.access_token}`
+                            }
+                        })
+                            .then(res => res.json())
+                            .then(userInfo => {
+                                submitLogin32({
+                                    type: 1, // 1:'google' 2:'facebook'
+                                    email: userInfo.email,
+                                    code: userInfo.sub,
+                                    pwd: userInfo.sub
+                                })
+                            });
+                    }
+                }
+            }).requestAccessToken();
+        } catch (error) {
+            // showError('触发Google登录失败: ' + error.message);
+        }
+    }
+
+    // 提交登录请求
+    function submitLogin32(userData) {
+        $.ajax({
+            url: '/login/doLogin',
+            type: "POST",
+            contentType: "application/json",
+            dataType: "json",
+            async: false,
+            data: JSON.stringify(userData),
+            beforeSend: function () {
+
+            },
+            success: function (res) {
+                //    console.log(res);
+                if (res.code == 0) {
+                    layer.msg(res.msg, {icon: 1, time: 500}, function () {
+                        window.location = res.data.gourl;
+                    });
+                } else {
+                    layer.msg(res.msg, {icon: 5});
+                    return false;
+                }
+            }
+        })
+    }
+
+    // 提交注册请求
+    function submitRegister32(userData) {
+        $.ajax({
+            url: '/login/doReg',
+            type: "POST",
+            contentType: "application/json",
+            dataType: "json",
+            async: false,
+            data: JSON.stringify(userData),
+            beforeSend: function () {
+
+            },
+            success: function (res) {
+                if (res.code == 0) {
+                    layer.msg(res.msg, {icon: 1, time: 500}, function () {
+                        var href = $("input[name=gobackurl]").val();
+                        window.location = href;
+                    });
+                } else {
+                    layer.msg(res.msg, {icon: 5});
+                    return false;
+                }
+            }
+        })
+    }
+
+    $(function () {
+        var path = window.location.pathname.toLowerCase();
+
+        if (path == '/') {
+            $('#li_a_1').addClass('seleted');
+        } else if (path == '/standard_pcb.html' || path == '/pcb-prototype.html') {
+            $('#li_a_2').addClass('seleted');
+        } else if (path == '/pcba.html') {
+            $('#pcbA').addClass('seleted');
+        } else if (path == '/pcb-design-service.html') {
+            $('#pcbM').addClass('seleted');
+        } else if (path == '/cnc-machining-services.html' || path == '/printing-3d-service.html' || path == '/sheet-metal-fabrication.html' || path == '/injection-molding-service.html') {
+            $('#li_a_5').addClass('seleted');
+        } else if (path.startsWith('/pcba-f') || path.startsWith('/pcb_capabilities') || path.startsWith('/pcba_capabilities') || path.startsWith('/pcba-x')) {
+            $('#pro_capa').addClass('seleted');
+        } else if (path == '/medical-pcb-assembly.html' || path == '/robot-pcb-assembly.html' || path == '/energy-storage-pcb-assembly.html' || path == '/industrial-pcb-assembly.html' || path == '/pcb-layers.html') {
+            $('#li_a_7').addClass('seleted');
+        } else if (path.startsWith('/company') ||
+            path.startsWith('/quality-certifications.html') ||
+            path.startsWith('/ipc3-pcba.html') ||
+            path.startsWith('/pcba-testing.html') ||
+            path.startsWith('/pcba-packaging-solutions.html') ||
+            path.startsWith('/csr-commitment.html') ||
+            path.startsWith('/quality-control-system.html') ||
+            path.startsWith('/pcba-video-gallery.html') ||
+            path.startsWith('/customer_feedback') ||
+            path.startsWith('/faq.html') ||
+            path.startsWith('/pcba-testing-equipment.html')
+        ) {
+            $('#li_a_8').addClass('seleted');
+        }
+    });
+
+    // 关闭banner逻辑
+    function bannerCloseBtnClick(e) {
+        // 阻止事件向上冒泡，不会触发外层a跳转
+        e.stopPropagation();
+        // 隐藏整个横幅容器
+        $('.scroll-container').hide();
+        $('.banner-close-btn').hide();
+        // 等待浏览器完成DOM渲染，再刷新header布局
+        requestAnimationFrame(function () {
+            layoutHide();
+        });
+    }
+
+ 
+ 
+    var APPLE_CLIENT_ID = 'com.pcbasic.website';
+    var APPLE_REDIRECT_URI = 'https://member.pcbasic.com';
+
+    function generateNonce() {
+        var array = new Uint32Array(16);
+        crypto.getRandomValues(array);
+        return Array.from(array, function (dec) {
+            return ('0' + dec.toString(16)).substr(-2);
+        }).join('');
+    }
+
+    //登陆
+    document.getElementById('appleLoginBtn-3')?.addEventListener('click', function () {
+        handleAppleSignUp('signup');
+    });
+
+    function handleAppleSignUp(authState) {
+        if (window.AppleID && window.AppleID.auth) {
+            //console.log('Apple Sign Up');
+            var nonce = generateNonce();
+            window.AppleID.auth.signIn({
+                clientId: APPLE_CLIENT_ID,
+                scope: 'name email',
+                redirectURI: APPLE_REDIRECT_URI,
+                state: authState,
+                nonce: nonce,
+                usePopup: true
+            }).then(function (response) {
+                handleAppleAuthResponse(response, authState);
+            }).catch(function (error) {
+                //console.log('Apple Sign Up Promise Error:', error);
+                alert('Apple Sign Up failed: ' + (error.message || 'Unknown error'));
+            });
+        } else {
+            //console.log('Apple Sign Up script not loaded');
+        }
+    }
+
+    //注册
+    function handleAppleSignIn(authState) {
+        if (window.AppleID && window.AppleID.auth) {
+            //console.log('Apple Sign In');
+            var nonce = generateNonce();
+            window.AppleID.auth.signIn({
+                clientId: APPLE_CLIENT_ID,
+                scope: 'name email',
+                redirectURI: APPLE_REDIRECT_URI,
+                state: authState,
+                nonce: nonce,
+                usePopup: true
+            }).then(function (response) {
+                handleAppleAuthResponse(response, authState);
+            }).catch(function (error) {
+                //console.log('Apple Sign In Promise Error:', error);
+                alert('Apple Sign In failed: ' + (error.message || 'Unknown error'));
+            });
+        } else {
+            //console.log('Apple Sign In script not loaded');
+        }
+    }
+
+    //验证token
+    function handleAppleAuthResponse(response, authState) {
+        //console.log('Apple Auth Response:', response);
+        //console.log(response);
+        if (response.authorization) {
+            var code = response.authorization.code;
+            var id_token = response.authorization.id_token;
+
+            $.ajax({
+                url: '/login/appleLogin',
+                type: 'POST',
+                data: JSON.stringify({
+                    code: code,
+                    id_token: id_token
+                }),
+                contentType: 'application/json',
+                success: function (data) {
+                    if (data.code == 0) {
+                        if (authState === 'signin') {
+                            submitRegister32({
+                                type: 3, // 1:'google' 2:'facebook' 3: 'apple'
+                                email: data.data.email,
+                                code: data.data.sub
+                            })
+                        } else if (authState === 'signup') {
+                            submitLogin32({
+                                type: 3, // 1:'google' 2:'facebook' 3: 'apple'
+                                email: data.data.email,
+                                code: data.data.sub,
+                                pwd: data.data.sub
+                            })
+                        }
+                    } else {
+                        alert('Authentication failed: ' + data.msg);
+                    }
+                },
+                error: function () {
+                    alert('Failed to connect to backend');
+                }
+            });
+        } else if (response.error) {
+            //console.log('Apple Auth Error:', response.error);
+            alert('Apple Sign In failed: ' + response.error);
+        }
+    }
+
+    //初始化
+    $(document).ready(function () {
+        //console.log(window);
+        if (window.AppleID && window.AppleID.auth) {
+            //console.log('Apple Sign');
+
+            window.AppleID.auth.init({
+                clientId: APPLE_CLIENT_ID,
+                scope: 'name email',
+                redirectURI: APPLE_REDIRECT_URI,
+                state: 'init',
+                usePopup: true,
+                useContinueWith: false
+            });
+        } else {
+            //console.log('Apple Sign In script not available');
+        }
+    });
+ 
+  
+
+ 
+     
+     
+         
+             
+             
+                 PCBA Special Reminders 
+                 
+                     
+                          
+                          
+                     
+                    One-Stop PCBA Solution for Your Ideas
+                 
+                 
+                     
+                          
+                          
+                     
+                    No MOQ, No Wait – Your Boards, Your Way
+                 
+                 
+                     
+                          
+                          
+                     
+                    IPC Class 3 Quality – Excellence for Every Board
+                 
+                 
+                     
+                          
+                          
+                     
+                    16+ Years of Trusted PCBA Manufacturing Expertise
+                 
+                 
+                     
+                          
+                          
+                     
+                    9 Automated SMT Lines for Delivery
+                 
+
+                 Order Online 
+             
+         
+     
+     
+     
+         
+             
+             
+                 PCBA Special Reminders 
+                 
+                     
+                          
+                          
+                     
+                    One-Stop PCB Manufacturing & Testing
+                 
+                 
+                     
+                          
+                          
+                     
+                    16+ Years of PCB Manufacturing Excellence
+                 
+                 
+                     
+                          
+                          
+                     
+                    No Minimum Order, Maximum Flexibility
+                 
+                 
+                     
+                          
+                          
+                     
+                    Custom PCB Designs Tailored to Your Needs
+                 
+                 
+                     
+                          
+                          
+                     
+                    Multi-Layer PCB Solutions for Advanced Projects
+                 
+
+                 Order Online 
+             
+         
+     
+     
+ 
+ 
+         
+          
+             
+                 
+                     pcba special reminders 
+                     pcba special reminders -->
+                 
+             
+         
+     
+        
+ 
+  
+ 
+     
+             
+ 
+  
+ 
+	 
+		 
+			  
+			  
+			  			  
+		 
+	 
+ -->
+  
+ 
+     
+         
+             
+             
+                 pcba special reminders -->
+                                 &nbsp; 
+                 &nbsp; 
+                                  
+	Special Reminders for PCBA | PCBasic
+ 
+&nbsp;&nbsp;
+ 
+	 
+ 
+ 
+	At PCBasic, we are dedicated to providing customers with high-quality, high-efficiency and reliable PCB assembly (PCBA) services. To make the production process smoother and reduce possible problems during assembly, we have prepared three important reminders. Please be sure to read them before placing an order.
+ 
+ 
+	&nbsp;
+ 
+ 
+	These contents can help you confirm that the components, panel design and dimensions all meet our automated SMT and assembly requirements, thus ensuring smooth production and on-time delivery.
+ 
+ 
+	&nbsp;
+ 
+ 
+	Parts Overages
+ 
+ 
+	 
+ 
+ 
+	  
+ 
+ 
+	&nbsp;
+ 
+ 
+	In general, any extra or unused components you provide or purchased by PCBasic will not be returned by default.
+ 
+ 
+	&nbsp;
+ 
+ 
+	If you wish to ship these components along with the assembled circuit board, please inform the salesperson in advance or note the specific names of the components you need to return when placing your order. Of course, PCBasic also offers a leftover material storage service, which is convenient for your future reorders. You can make a note of it when placing your order.
+ 
+ 
+	&nbsp;
+ 
+ 
+	SMT Component Handling Notes
+ 
+ 
+	&nbsp;
+ 
+ 
+	If the components are not supplied on reels, please provide a whole continuous strip of tape. Do not separate them in a scattered manner. If the same component is to be used in the assembly of multiple circuit boards, please do not cut the material tape. Keep the original reel tape or continuous material tape to facilitate machine mounting.
+ 
+ 
+	&nbsp;
+ 
+ 
+	 Minimum Quantity and Extra Parts Requirements  
+ 
+ 
+	 &nbsp;  
+ 
+ 
+	 •&nbsp; Resistors, capacitors, diodes:  
+ 
+ 
+	 &nbsp;  
+ 
+ 
+	At least 50 should be provided, and 30 more should be prepared than the assembly quantity. For example: 40 need to be installed, please provide 70.
+ 
+ 
+	&nbsp;
+ 
+ 
+	 •  &nbsp;Micro-packaged components:  
+ 
+ 
+	 &nbsp;  
+ 
+ 
+	At least 100 should be provided, and 50 more should be prepared than the assembly quantity. For example: 80 need to be installed, please provide 130.
+ 
+ 
+	&nbsp;
+ 
+ 
+	For high-priced or precision components (such as ICs, BGA, QFP, connectors, etc.), please prepare an extra 1 to 5 to prevent wear and tear or defects during assembly and avoid affecting the production schedule.
+ 
+ 
+	&nbsp;
+ 
+ 
+	If you have any questions, please contact the PCBasic technical support team for more instructions.
+ 
+ 
+	&nbsp;
+ 
+ 
+	Panelization
+ 
+ 
+	&nbsp;
+ 
+ 
+	 &nbsp;
+ 
+ 
+	If the size of your circuit board is less than 50mm × 100mm, or the shape of the circuit board is an irregular shape (such as round or custom outlines), it must be designed as a panel array before assembly.
+ 
+ 
+	&nbsp;
+ 
+ 
+	When your PCB manufacturing and assembly are both completed by PCBasic, our engineering team will automatically generate panelization and solder paste data during the board-making stage and directly transmit them to the assembly department.
+ 
+ 
+	&nbsp;
+ 
+ 
+	This can ensure that the stencil is perfectly matched with the layout of the panel, thereby ensuring precise alignment during installation and enhancing production efficiency and consistency.
+ 
+ 
+	&nbsp;
+ 
+ 
+	Break-away Rails (Break-away Tabs)
+ 
+ 
+	&nbsp;
+ 
+ 
+	 &nbsp;
+ 
+ 
+	If the distance between the edge of the circuit board and&nbsp;the copper features is less than 3.5mm (138mil), or your circuit board design requires panelization, then break-away rails/break-away tabs must be added on the two longer parallel edges of the panel.
+ 
+ 
+	&nbsp;
+ 
+ 
+	The function of these rails is to ensure that the circuit board can be securely transported and assembled during the automated SMT production process, thereby avoiding deformation, vibration or operational errors during mounting, reflow soldering and other processes, and improving assembly accuracy and production stability.
+ 
+ 
+	&nbsp;
+ 
+ 
+	PCBasic is committed to delivering precise, efficient, and high-quality PCB assembly.
+ 
+ 
+	&nbsp;
+ 
+ 
+	By following these special reminders, you can help us ensure smooth processing and on-time delivery of your PCBA projects.
+ 
+ 
+	 
+  
+             
+              
+             
+                  Prev   pcb assembly service process                   
+  Next   pcb assembly capabilities                   
+-->
+             
+             
+             Related Products 
+             
+                 
+                                     
+             -->
+         
+          -->
+         
+             QUICK LINKS 	 -->
+             
+                
+             
+             
+                 Functions and Categories 
+                 
+                     PCB Assembly    
+                     
+                          PCB Assembly Overview   
+                        
+                         
+                             Consigned PCB Assembly 
+                              -->
+                         
+                        
+
+                         
+                             Electronic Component Sourcing 
+                              -->
+                         
+                        
+
+                         
+                             PCBA Functional Testing 
+                              -->
+                         
+                        
+
+                         
+                             Panel Assembly Requirements 
+                              -->
+                         
+                        
+
+                         
+                             Mixed Assembly 
+                              -->
+                         
+                        
+
+                         
+                             Flex PCB Assembly 
+                              -->
+                         
+                        
+
+                         
+                             Prototype PCB Assembly 
+                              -->
+                         
+                        
+
+                         
+                             Turnkey PCB Assembly 
+                              -->
+                         
+                        
+
+                         
+                             SMT Assembly 
+                              -->
+                         
+                        
+
+                         
+                             Low Volume PCB Assembly 
+                              -->
+                         
+                        
+
+                         
+                             High Volume PCB Assembly 
+                              -->
+                         
+                        
+
+                         
+                             Through Hole PCB Assembly 
+                              -->
+                         
+                        
+                     
+                 
+                 
+                     Printed Circuit Boards   
+                     
+                          PCB Manufacturing   
+                        
+                         
+                             PCB BGA 
+                              -->
+                         
+                        
+
+                         
+                             Aluminum PCB 
+                              -->
+                         
+                        
+
+                         
+                             Rigid flex PCB 
+                              -->
+                         
+                        
+
+                         
+                             Flex PCB 
+                              -->
+                         
+                        
+
+                         
+                             Rigid PCB 
+                              -->
+                         
+                        
+
+                         
+                             HDI PCB 
+                              -->
+                         
+                        
+
+                         
+                             Rogers PCB 
+                              -->
+                         
+                        
+
+                         
+                             Ceramic PCB 
+                              -->
+                         
+                        
+
+                         
+                             RF PCB 
+                              -->
+                         
+                        
+
+                         
+                             PCB Prototype 
+                              -->
+                         
+                        
+
+                         
+                             LED PCB 
+                              -->
+                         
+                        
+
+                         
+                             Metal Core PCBs 
+                              -->
+                         
+                        
+
+                         
+                             Standard PCB 
+                              -->
+                         
+                        
+                     
+                 
+                 
+                     PCBA Capabilities    
+                     
+                        
+                         
+                             PCB Assembly Service Process 
+                              -->
+                         
+                        
+
+                         
+                             PCBA Special Reminders 
+                              -->
+                         
+                        
+
+                         
+                             PCB Assembly Capabilities 
+                              -->
+                         
+                        
+
+                         
+                             BGA Assembly Capabilities 
+                              -->
+                         
+                        
+
+                         
+                             SMT Stencil 
+                              -->
+                         
+                        
+
+                         
+                             PCB Assembly FAQs 
+                              -->
+                         
+                        
+
+                         
+                             Files Requested for PCBA 
+                              -->
+                         
+                        
+
+                         
+                             SMT Ordering Files and Documents 
+                              -->
+                         
+                        
+                     
+                 
+                 
+                     PCB Capabilities   
+                     
+                        
+                         
+                             PCBasic PCB Capabilities 
+                         
+                        
+
+                         
+                             Quick Turn PCB 
+                         
+                        
+
+                         
+                             Advanced PCB Capabilities 
+                         
+                        
+
+                         
+                             PCB FAQs 
+                         
+                        
+
+                         
+                             Low-volume PCB Production 
+                         
+                        
+                     
+                 
+             
+
+
+             
+                 Leading Printed Circuit Board Assembly(PCBA) Manufacturer  -->
+                 
+                     Assemble 20 PCBs for  $0  
+                     
+                       
+                       
+                       
+                       
+                       
+                        
+                       Contact Now 
+                      -->
+
+                 
+                 
+                     
+                         
+                             PCB Assembly 
+                             PCB Prototype 
+                         
+                                                 
+                             
+                                 
+                                     Assembly Enquiry 
+                                 
+                                 
+                                     
+                                         Product Name 
+                                         
+                                     
+                                     
+                                         Quantity 
+                                         -->
+                                         
+                                             Choose Num (pcs) 
+                                             5 
+                                             10 
+                                             15 
+                                             20 
+                                             25 
+                                             30 
+                                             40 
+                                             50 
+                                             75 
+                                             100 
+                                             100+ 
+                                         
+                                     
+                                      
+                                     
+                                         BOM Material Type 
+                                         BOM Material  Type 
+                                         
+                                         Please enter a valid number 
+                                     
+                                     
+                                         BOM Total Components 
+                                         BOM Total  Components 
+                                         
+                                         Please enter a valid number 
+                                     
+                                      
+                                     
+                                         Email *  
+                                         
+                                         Please
+                                            enter your email ! 
+                                     
+                                     
+                                         Tel 
+                                         
+                                     
+                                      
+                                     
+                                          Upload File
+                                         
+                                         
+                                         
+                                          
+                                     
+                                     
+                                     
+                                     Quote Now
+                                     
+                                      
+                                 
+                             
+
+
+                             
+                                 
+                                     Instant Quote 
+                                 
+                                 
+
+                                     
+                                         Dimensions(mm) 
+                                         
+                                         x 
+                                         
+                                     
+
+                                     
+                                         length: 
+                                         
+                                      -->
+                                     
+                                         Quantity 
+                                         -->
+                                         
+                                             Choose Num (pcs) 
+                                             5 
+                                             10 
+                                             15 
+                                             20 
+                                             25 
+                                             30 
+                                             40 
+                                             50 
+                                             75 
+                                             100 
+                                             100+ 
+                                         
+                                     
+
+                                      
+
+                                     
+                                         Quantity: 
+                                         
+                                      -->
+                                     
+                                         Layers 
+                                         
+                                             1 Layers 
+                                             2 Layers 
+                                             4 Layers 
+                                             6 Layers 
+                                             8 Layers 
+                                             10 Layers 
+                                             12 Layers 
+                                             14 Layers 
+                                             16 Layers 
+                                             18 Layers 
+                                             20 Layers 
+                                             22 Layers 
+                                             24 Layers 
+                                             28 Layers 
+                                             30 Layers 
+                                             32 Layers 
+                                         
+                                     
+                                     
+                                         Thickness 
+                                         
+                                             0.2 mm
+                                             
+                                             0.3 mm
+                                             
+                                             0.4 mm 
+                                             0.6 mm 
+                                             0.8 mm 
+                                             1.0 mm 
+                                             1.2 mm 
+                                             1.6 mm 
+                                             2.0 mm 
+                                             2.4 mm 
+                                             2.5 mm
+                                             
+                                             2.6 mm
+                                             
+                                             2.8 mm
+                                             
+                                             3.0 mm 
+                                             3.2 mm
+                                             
+                                             3.6 mm 
+                                             4.0 mm 
+                                         
+                                     
+                                     
+                                         Email *  
+                                         
+                                         
+                                            Please enter your email ! 
+                                     
+                                     
+                                         Tel 
+                                         
+                                     
+                                      
+                                     
+                                          Upload File
+                                         
+                                         
+                                         
+                                          
+                                     
+                                     
+                                     
+                                     Quote Now
+                                     
+                                      
+                                 
+                             
+
+
+                         
+                     
+                 
+             
+             
+                Recent Posts
+              -->
+
+              
+               Recent Posts 
+               
+                  
+                    
+                         
+                       Mechanical Keyboard PCB Assembly: Key Design, Assembly, and Testing Considerations 
+                       19,Oct,2026 Author:Cameron Lee 
+                    
+                  
+
+                    
+                         
+                       Automotive PCBA Supplier: AEC-Q, IATF 16949, and Reliability Evidence 
+                       16,Oct,2026 Author:Emily Carter 
+                    
+                  
+
+                    
+                         
+                       Bluetooth Module PCB Assembly: SMT Challenges and Production Testing 
+                       16,Oct,2026 Author:Cameron Lee 
+                    
+                  
+
+                    
+                         
+                       Power Module PCB Assembly: What Makes a Reliable Build? 
+                       15,Oct,2026 Author:Jackson Zhang 
+                    
+                  
+
+                    
+                         
+                       PCB Assembly with Component Sourcing: A Practical Guide 
+                       14,Oct,2026 Author:Alex Chen 
+                    
+                  
+               
+            -->
+
+         
+ 
+  
+
+  
+ 
+  .layui-form-select{display: none;}
+ 
+ 
+   
+     
+       
+         
+           
+         
+         
+           
+             Single-sided/double-sided SMD 
+             Single sided 
+             Double sided 
+           
+         
+         
+           
+         
+         
+           
+         
+         
+           
+         
+       
+     
+   
+ 
+
+
+ 
+$(function(){
+layui.use(['layer','form','upload'], function () {
+    var form = layui.form
+        ,upload = layui.upload
+        ,layer = layui.layer
+        $ = layui.$;
+
+
+
+        form.on('submit(pcbformQ)', function(data){
+
+          var data = data.field;
+          
+        //   if(data.product_name == 0){
+        //     layer.msg('Please Choose the PCB type');
+        //     return false;
+        //   }
+
+        //   if(data.qty == ''){
+        //     layer.msg('Please enter the production quantity');
+        //     return false;
+        //   }
+
+        //  if(data.bom_total_components == ''){
+        //   layer.msg('Please enter the BOM Components amount');
+        //  }
+          sessionStorage.removeItem("dopcbform");
+                //
+          var product_name=data.product_name;
+          var qty=data.qty;
+          var bom_material_type= "";
+          var bom_total_components=data.bom_total_components;
+          var email = data.email;
+
+          var field={product_name:product_name,qty:qty,bom_material_number:"",bom_components_number:bom_total_components,smd:'single',collage:'no',ic_number:0,dip_number:0,pcbtype:'hard',delivery_time:'24',order_note:"",email:email}
+          sessionStorage.setItem("pcb-prototype",JSON.stringify(field));
+
+          
+          // 增加样式
+          $('.pcbformbutton').css("background-color","#aaaaaa");
+          // 增加属性
+          $('.pcbformbutton').attr('disabled', 'disabled');
+
+        //
+        $.ajax({
+                  url:'/dopcbform/doPcbform',
+                  type: "POST",
+                  contentType: "application/json",
+                  dataType: "json",
+                  async: false,
+                  data:JSON.stringify(data),
+                  beforeSend:function () {
+                    console.log(data);
+                  },
+
+                  success:function(res){
+                     
+                    if(res.code==0){
+                      console.log(res);
+                      $.ajax({
+                        type: 'POST',
+                        url: '/feedback/doMailTo', // 替换为实际的URL
+                        async: true,
+                        data: res.data, // 使用响应中的 email
+                        success: function(emailResponse) {
+                            console.log(emailResponse);
+                        },
+                        error: function() {
+                            layer.alert('邮件发送请求出错，请稍后再试', {icon: 2});
+                        }
+                      });
+                      window.location.href="https://www.pcbasic.com/pcb-prototype.html";
+  
+                    }else{
+                      window.location.href="https://www.pcbasic.com/pcb-prototype.html";
+                        $(".pcbformbutton").attr('disabled', false).css("background-color","#27ae61").off('click');
+                        // if(res.data=="nologin"){
+                        //     sessionStorage.setItem("dopcbform",JSON.stringify(data));
+                        //     layer.msg("Please log in to submit a quote!", {icon: 5, time: 2000}, function () {
+                        //       var murl=$(".action_icon .login").attr("href");
+                        //       //window.location.href=murl+'/login/?redirect_uri='+window.location.href;
+                        //       var href=murl+'/login/window?email='+data.email;
+                        //       layer.open({
+                        //           type: 2,
+                        //           title: 'Sign In',
+                        //           shadeClose: true,
+                        //           shade: 0.8,
+                        //           area: ['400px', '290px'],
+                        //           content: [href,'no'], // iframe 的 url
+                        //       })
+                        //     });
+                              
+                        // return false;
+                        // }
+                    //  layer.msg(res.msg,{icon:5});
+                      return false;
+                    }
+                  }
+                })
+
+
+        })
+    })
+
+    
+window.addEventListener('message', function(event) {
+    if (event.data == 'refresh') {
+        location.reload();
+    }
+}, false);
+
+  
+})
+
+
+
+  -->
+  
+ 
+ 
+  
+  
+
+
+ 
+     
+         
+             
+                 
+                     
+                         
+
+                         
+                                        
+                             JS@pcbasic.com   
+                         
+                                        
+                             +86-755-27218592  
+                         
+                            9:00 -18:00, Mon. - Fri. (GMT+8)  
+                            9:00 -12:00, Sat. (GMT+8)  
+                            (Excluding Chinese Public Holidays)
+                         
+                        
+                     
+                 
+                 
+                     
+                         
+                             
+                            Our address
+                         
+                         
+                           
+                             
+                                 
+                                Shenzhen Office
+                                 
+                                     Shenzhen Office: 
+                                    Building 1#, Unicity Intelligent Valley, Hang Cheng Street, Baoan, Shenzhen, China
+                                 
+                             
+                             
+                                 
+                                Shenzhen Factory
+                                 
+                                     Shenzhen Factory: 
+                                    Building E, Jianshi Industrial Park, No. 52 Huangpu Road, Xinqiao Street, Baoan District, Shenzhen, China
+                                 
+                             
+                             
+                                 
+                                Huizhou Factory
+                                 
+                                     Huizhou Factory: 
+                                    Building 25-26, No. 84 Songbuling Avenue, Sanhe Village, High-tech Zone, Zhongkai High-tech Zone, Huizhou City, China
+                                 
+                             
+                             
+                                 
+                                Shanghai R&D Center
+                                 
+                                     Shanghai R&D Center: 
+                                    Room 806, Building 2, Lane 1015 Longteng Road, Songjiang District, Shanghai, China
+                                 
+                             
+                             
+                                 
+                                Mexico Office
+                                 
+                                     Mexico Office: 
+                                    No. 500 Paseo del Café, Apt. 90, Zakia Community, El Marqués, Querétaro 76269, Mexico
+                                 
+                             
+                            
+                         
+                         It has been copied to the clipboard! 
+                     
+                 
+                 
+                     
+                          PCB Assembly  
+                                                  PCB Assembly  
+                                                  Stencil  
+                                                  PCBA China  
+                                                  Custom PCB Maker  
+                                                  PCB Shenzhen Factory  
+                                                                     
+                 
+                
+
+
+                 
+                     
+                          Support  
+                                                  Common Problem  
+                                                  Message Feedback  
+                                                  Research Institute  
+                                                                     
+                 
+                
+
+
+                 
+                     
+                          Why Choose Us  
+                                                  Brief introduction  
+                                                  Development history  
+                                                  Corporate culture  
+                                                  Core culture  
+                                                  Qualification patent  
+                                                  Staff style  
+                                                  Contact us  
+                                                                     
+                 
+                
+ -->
+
+
+                 
+                     
+                          Capabilities/Services  
+
+                          Flex PCB Assembly  
+                          Prototype PCB Assembly  
+                          Turnkey PCB Assembly  
+                          SMT Assembly  
+                          BGA Assembly  
+                          PCB Design  
+
+                     
+                 
+
+                 
+                     
+                          Technical Support  
+
+                          Help Center  
+                          How to Order  
+                          How to Register/Log in  
+                          About Shipping  -->
+                          Contact Us  
+                          Privacy Policy & Agreement  
+                          Terms of Service  
+
+
+                     
+                 
+
+                 
+                     
+                          Company  
+
+                          About PCBasic  
+                          Global Exhibitions  
+                          Customer Reviews  
+                          Blog  
+                     
+                 
+
+             
+         
+         
+           
+             
+                 Payment Methods 
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  -->
+             
+             
+                 Delivery Services 
+                 dhl 
+             
+             
+                 Verified by 
+                 iso 
+             
+             
+                 Follow Us On 
+                 Facebook 
+                 twitter 
+
+                 youtube 
+
+                 linkedin 
+                 tiktok 
+                 instagram 
+
+             
+         
+         
+            Copyright &copy;2012 - 2026 PCBasic Co., Limited All Rights Reserved.   
+         
+     
+ 
+
+ 
+     
+        We use cookies to enhance your browsing experience. Continuing to browse indicates that you agree to our cookie policy cookie policy .
+     
+     I agree 
+  -->
+
+ 
+     
+         We use cookies to enhance your experience, analyze traffic, and provide personalized content. By clicking “Accept Cookies”, you agree to our   Cookie   and   Privacy Policy.   
+         
+             Customise 
+             Reject All 
+             Accept All 
+         
+     
+ 
+
+
+ 
+     
+         Manage Cookie Preferences 
+         We use cookies to enhance your browsing experience. Please review the details of each cookie category below and choose your preferences. 
+         
+             
+                 Strictly Necessary Cookies 
+                   
+             
+             These cookies are essential for the website to function properly and cannot be disabled. They are typically set in response to actions you take, such as logging in or adding items to your shopping cart. 
+         
+         
+             
+                 Performance Cookies 
+                   
+             
+             These cookies help us understand how visitors interact with our website by collecting information about traffic and usage. This allows us to measure and improve the website’s performance. 
+         
+         
+             
+                 Functional Cookies 
+                   
+             
+             These cookies remember your preferences, such as username, language, or region, to provide a more personalized and enhanced experience. 
+         -->
+         
+             
+                 Targeting/Advertising Cookies 
+                   
+             
+             These cookies are used to deliver
+                advertisements relevant to you and your interests. They may also limit the number of times you see an
+                advertisement and help measure the effectiveness of advertising campaigns. 
+         
+     
+     Allow All Cookies 
+     Save Preferences 
+ 
+
+ 
+  
+
+ 
+     
+          
+                 
+         
+         Sign In to PCBasic 
+         
+             
+                 
+                     E-mail Address *   -->
+                     
+                 
+                 
+                     Password *   -->
+                     
+                         
+                         
+                             
+                         
+                     
+                 
+                 
+                    &lt;!&ndash; Verification Code *  &ndash;&gt;
+                     
+                         
+                         
+                     
+                 -->
+                 
+                     
+                     Forgot password? 
+                 
+                 
+                     
+                     Sign In 
+                 
+                 
+                     
+                         
+                         
+                             
+                                 
+                                 
+                                 
+                                 
+                             
+                         
+                         
+                            Sign in with Google
+                         
+                     
+                     
+                         
+                         
+                             
+                                 
+                             
+                         
+                         
+                            Sign in with Apple
+                         
+                     
+                 
+                 
+                      
+                 
+                 
+                    Need a new account?  Sign up now 
+                 
+             
+         
+     
+     
+          
+                 
+         
+         Create your Account 
+         
+             
+                 
+                     
+                 
+                 
+                     
+                         
+                         
+                             
+                         
+                     
+                    
+                 
+                 
+                     
+                         
+                         
+                             
+                         
+                     
+                 
+                 
+                     Verification Code *  -->
+                     
+                         
+                         
+                     
+                 
+                 
+                     Sign Up 
+                 
+                 
+                     
+                         
+                         
+                             
+                                 
+                                 
+                                 
+                                 
+                             
+                         
+                         
+                            Sign in with Google
+                         
+                     
+                     
+                         
+                         
+                             
+                                 
+                             
+                         
+                         
+                            Sign in with Apple
+                         
+                     
+                 
+                 
+                      
+                 
+                 
+                    Already have an account?  Log In 
+                 
+             
+         
+     
+ 
+
+
+
+
+
+
+  
+  
+  
+
+ 
+    $(function(){
+        $("#search_button").click(function(){
+            $(".fix-sear").addClass("active").children(".fix-box").addClass("active animated fadeInDown");
+        })
+
+        // 密码框切换显示隐藏文本
+		$('.togglePassword').on('click', function() {
+			var pwdField = $(this).prev();
+			var fieldType = pwdField.attr('type');
+			
+			if(fieldType === 'password') {
+				pwdField.attr('type', 'text');
+				$(this).children().attr('src', '/public/static/images/s_password.svg'); // 显示闭眼图标
+			} else {
+				pwdField.attr('type', 'password');
+				$(this).children().attr('src', '/public/static/images/c_password.svg') // 显示睁眼图标
+			}
+		});
+    })
+
+
+    function closesear() {
+        $(".fix-sear").removeClass("active").children(".fix-box").removeClass("active animated fadeInDown");
+    }
+ 
+
+ 
+    .address_title {
+        color: #FFFFFF;
+        height: 40px;
+        font-weight: bold;
+    }
+    .address_div {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .address_div > :nth-child(odd) {
+        width: 38%;
+    }
+    .address_div > div{ 
+        width: 47%;
+        min-width: 182px;
+        border: 1px solid #45464A;
+        padding: 8px 10px;
+        border-radius: 4px;
+        color: #E3E3E3;
+        cursor: pointer;
+    }
+    .address_div > div > div {
+        display: none;
+        position: absolute;
+        background: #F1F1F1;
+        border-radius: 4px;
+        padding: 5px 18px 14px;
+        left: 40%;
+        top: 10%;
+        line-height: 20px;
+        font-weight: bold;
+        color: #3D3D3D;
+    }
+    .address_div > div > div > p{
+        font-weight: normal;
+        color: #3D3D3D;
+    }
+    .address_div > div:hover > div {
+        display: block;
+    }
+    .copy-notification {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 4px;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s;
+    }
+    #cookie_div {
+        position: fixed;
+        padding: 1.5rem 2rem;
+        text-align: center;
+        z-index: 9999;
+        width: 100%;
+        bottom: 0;
+        border: 1px solid #e9e9e9;
+        background: #FFFFFF;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+    #cookie_div .cookie_div_d {
+        display: flex;
+        justify-content: space-around;
+        /* padding-top: 16px; */
+    }
+    .cookie_div_1_div {
+        opacity: 1;
+        color: #333333;
+        font-size: 14px;
+        line-height: 18px;
+        text-align: left;
+        width: 39%;
+    }
+    .cookie_div_1_div span {
+        color: #119466;
+    }
+    .cookie_div_2_div button {
+        opacity: 1;
+        border-radius: 6px;
+        border: 1px solid #119466;
+        opacity: 1;
+        
+        font-family: Arial;
+        font-weight: bold;
+        font-size: 14px;
+        line-height: 14px;
+        letter-spacing: 0px;
+        text-align: center;
+        width: 140px;
+        height: 36px;
+        cursor: pointer;
+        
+    }
+    .cookie_div_2_div > button:first-of-type {
+        color: #119466;
+        background: white;
+        margin-right: 16px;
+    }
+    .cookie_div_2_div > button:nth-of-type(2) {
+        color: #119466;
+        background: white;
+        margin-right: 16px;
+    }
+    .cookie_div_2_div > button:last-child {
+        color: white;
+        background: #119466;
+    }
+    .c_span {
+        /* opacity: 1;
+        color: #119466;
+        font-family: Arial;
+        font-weight: bold;
+        font-size: 14px;
+        line-height: 14px;
+        letter-spacing: 0px;
+        text-align: left;
+        text-decoration: underline;
+        margin-right: 16px;
+        cursor: pointer; */
+    }
+    #cookieConsent {
+        position: fixed;
+        /* bottom: 0;
+        left: 0;
+        width: 100%;
+        background-color: #f8f9fa; */
+        padding: 1rem 2rem;
+        text-align: center;
+        z-index: 9999;
+
+        width: 30%;
+        left: 36%;
+        top: 16%;
+        /* height: 60%; */
+        border: 1px solid #e9e9e9;
+        border-radius: 6px;
+        background: #FFFFFF;
+    }
+    #mask_layer {
+        display: none;
+        position: fixed;
+        background: rgba(0, 0, 0, 0.5);
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1111;
+        display: none;
+    }
+    .c_p1 {
+        opacity: 1;
+        color: #333333;
+        font-weight: bold;
+        font-size: 18px;
+        letter-spacing: 0px;
+        text-align: center;
+        line-height: 50px;
+    }
+    .c_p2 {
+        opacity: 1;
+        color: #333333;
+        font-size: 14px;
+        line-height: 20px;
+        letter-spacing: 0px;
+        text-align: left;
+        height: 60px;
+    }
+    .c_d {
+        opacity: 1;
+        border-radius: 4px;
+        background: #FFFFFF;
+        border: 1px solid #DDDDDD;
+        padding: 1rem;
+    }
+    .c_d_d {
+        display: flex;
+        justify-content: space-between;
+        /* height: 30px; */
+        align-items: center;
+    }
+    .c_d_d:first-child {
+        opacity: 1;
+        color: #333333;
+        font-weight: bold;
+        font-size: 14px;
+        line-height: 18px;
+    }
+    .c_d_p {
+        opacity: 1;
+        color: #666666;
+        font-size: 12px;
+        line-height: 18px;
+        letter-spacing: 0px;
+        text-align: left;
+    }
+
+    #cookieConsent button {
+        margin-top: 2rem;
+        font-weight: bold;
+    }
+    #cookieConsent .save-first {
+        border-color: #009688;
+        color: #009688;
+    }
+    #cookieConsent .layui-form-switch {
+        min-width: 60px;
+        height: 30px;
+        margin-top: 0;
+    }
+    #cookieConsent .layui-form-onswitch {
+        border-color: #009688;
+        background-color: #009688;
+    }
+    #cookieConsent .layui-form-switch i {
+        width: 18px;
+        height: 18px;
+        top: 5px;
+    }
+    /* #cookieConsent button {
+        margin-top: 1rem;
+        padding: 0.5rem 1rem;
+        border: none;
+        background-color: #007bff;
+        color: white;
+        cursor: pointer;
+    } */
+    .pay-methods-box dd.p-icon {
+        text-indent: -9999px;
+        display: block;
+        margin-left: 0;
+    }
+    .p-icon {
+        background-color: transparent;
+        background-image: url(/public/static/images/iconspirit.webp?v=20260210);
+        background-repeat: no-repeat;
+        display: inline-block;
+        vertical-align: middle;
+        *display: inline;
+        *zoom: 1;
+    }
+    .pay-methods-box dd a {
+        border-radius: 4px;
+    }
+    .pay-methods-box dd a.facebook {
+        display: block;
+        float: left;
+        width: 24px;
+        background-position: -95px -52px;
+        height: 24px;
+        text-indent: -9999px;
+        margin-right: 5px;
+    }
+
+    .pay-methods-box dd a.twitter {
+        display: block;
+        float: left;
+        width: 24px;
+        background-position: -155px -52px;
+        height: 24px;
+        text-indent: -9999px;
+        margin-right: 5px;
+    }
+
+    .pay-methods-box dd a.youtube {
+        display: block;
+        float: left;
+        width: 24px;
+        background-position: -125px -52px;
+        height: 24px;
+        text-indent: -9999px;
+        margin-right: 5px;
+    }
+
+    .pay-methods-box dd a.linkedin {
+        display: block;
+        float: left;
+        width: 24px;
+        background-position: -185px -52px;
+        height: 24px;
+        text-indent: -9999px;
+        margin-right: 5px;
+    }
+
+    .pay-methods-box dd a.instagram {
+        display: block;
+        float: left;
+        width: 24px;
+        background-position: -125px -81px;
+        height: 24px;
+        text-indent: -9999px;
+        margin-right: 5px;
+    }
+
+    .pay-methods-box dd a.tiktok {
+        display: block;
+        float: left;
+        width: 24px;
+        background-position: -155px -81px;
+        height: 24px;
+        text-indent: -9999px;
+        margin-right: 5px;
+    }
+    .f_icon {
+        background-color: transparent;
+        background-image: url(/public/static/images/jt_icons2.png?v=20251115);
+        background-repeat: no-repeat;
+        display: inline-block;
+        vertical-align: middle;
+        *display: inline;
+        *zoom: 1;
+    }
+    .pay-methods-box dd > .pay_1 {
+        width: 69px;
+        background-position: -48px -42px;
+        height: 32px !important;
+        text-indent: -9999px;
+        margin-right: -2px;
+    }
+    .pay-methods-box dd > .pay_2 {
+        width: 69px;
+        background-position: -119px -42px;
+        height: 32px !important;
+        text-indent: -9999px;
+        margin-right: -2px;
+    }
+    .pay-methods-box dd > .pay_3 {
+        width: 69px;
+        background-position: -190px -42px;
+        height: 32px !important;
+        text-indent: -9999px;
+        margin-right: -2px;
+    }
+    .pay-methods-box dd > .pay_4 {
+        width: 69px;
+        background-position: -261px -42px;
+        height: 32px !important;
+        text-indent: -9999px;
+        margin-right: -2px;
+    }
+    .pay-methods-box dd > .pay_5 {
+        width: 69px;
+        background-position: -332px -42px;
+        height: 32px !important;
+        text-indent: -9999px;
+        margin-right: -1px;
+    }
+    .pay-methods-box dd > .pay_6 {
+        width: 56px;
+        background-position: -403px -42px;
+        height: 32px !important;
+        text-indent: -9999px;
+        margin-right: -2px;
+    }
+    .pay-methods-box dd > .pay_7 {
+        width: 57px;
+        background-position: -461px -42px;
+        height: 32px !important;
+        text-indent: -9999px;
+        margin-right: -2px;
+    }
+    .pay-methods-box dd a.dhl {
+        display: block;
+        float: left;
+        width: 195px;
+        background-position: -47px -98px;
+        height: 29px;
+        text-indent: -9999px;
+        cursor: unset;
+    }
+    .pay-methods-box dd a.iso {
+        display: block;
+        float: left;
+        width: 164px;
+        background-position: -45px -151px;
+        height: 30px;
+        text-indent: -9999px;
+        cursor: unset;
+    }
+    .footer_left_bottom .icon > a {
+        color: #FFFFFF;
+        font-size: 14px;
+        margin-left: 8px;
+    }
+ 
+    /* footer .nav-flex ul li .cate-box p a:hover{
+    
+    } */
+    /*footer*/
+footer{background-color: #fff;padding-bottom: 20px;}
+footer *{color: #ADADAD;}
+footer .nav-flex ul{display: flex;}
+footer .nav-flex ul li:nth-child(1){width: 24%;margin-right: 0;}
+footer .nav-flex ul li:nth-child(2){width: 38%;}
+footer .nav-flex ul li:nth-child(3){width: 20%;}
+footer .nav-flex ul li:nth-child(4){width: 20%;}
+footer .nav-flex ul li:nth-child(5){width: 20%;}
+footer .nav-flex ul li b::after{display: none;}
+
+footer .nav-flex ul li .footer_left_bottom{padding-top: 0;}
+footer .nav-flex ul li .footer_left_bottom dd{margin-top: 20px;}
+
+footer .nav-flex ul li .contact{line-height: 24px;}
+footer .nav-flex ul li .contact b{font-size: 18px;color: #555;}
+
+footer .nav-flex ul li .contact p.icon{padding-left: 30px;background-position: left center;background-repeat: no-repeat;background-size: 20px;font-weight: bold;text-transform: none;}
+footer .nav-flex ul li .contact p.email{background-image: url(../images/icon_b_email.webp);}
+footer .nav-flex ul li .contact p.tel{background-image: url(../images/icon_b_tel.webp);}
+
+footer .nav-flex ul li .cate-box p a{display: block;font-size: 14px;line-height: 23px;color: #ADADAD;}
+footer .nav-flex ul li .cate-box b:nth-child(1) a{margin-bottom: 15px;text-transform: capitalize; font-size: 16px;
+      color: #FFFFFF;}
+footer .nav-flex ul li .cate-box p a:hover{color: #119466;}
+
+footer .pay-methods-box {
+        padding: 20px 0;
+        margin: 20px 0;
+        clear: both;
+        border-top: 1px solid #5B5B5B;
+        border-bottom: 1px solid #5B5B5B;
+        display: flex; 
+        align-items: center;
+   }
+   .pay-methods-box > dd:nth-child(1) {
+       width: 46.5%;
+   }
+   .pay-methods-box > dd:nth-child(2), .pay-methods-box > dd:nth-child(3) {
+       width: 18%;
+   }
+footer .pay-methods-box .pay-methods{margin:0;background: unset;display: block;text-align: unset;}
+footer .pay-methods-box .pay-methods img{height: auto;max-width: 100%;}
+footer .pay-methods-box > dd p { 
+    color: #D2D2D2;
+    height: 24px;
+}
+
+footer .copyright{text-align: center;}
+
+    .login_and_register {
+        display: none;
+        position: fixed;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 9999;
+        place-items: center;
+    }
+    .login_and_register > div {
+        border: 1px solid #e9e9e9;
+        border-radius: 6px;
+        background: #FFFFFF;
+        margin: 10px auto;
+        width: 92%;
+        max-width: 500px;
+        padding: 52px 46px;
+        margin: 0 auto;
+        position: relative;
+        float: unset;
+    }
+    .login_and_register > div > b {
+        font-size: 24px;
+    }  
+    .login_and_register > div > .close_lg{
+        text-align: right;
+        position: absolute;
+        right: 24px;
+        top: 22px;
+        cursor: pointer;
+    }
+    .login_and_register .layui-form {
+        padding: 34px 0 0;
+    }
+    .login_and_register .layui-form > ul > li {
+        margin-bottom: 14px;
+    }
+
+    #login_div {
+        display: none;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+    }
+
+
+    #login_div .check {
+        display: flex;
+        justify-content: space-between;
+    }
+    #login_div .check .layui-form-checkbox span {
+        color: #333333;
+    }
+    #login_div .check .forget {
+        color: #777777;
+    }
+    .login_and_register .login-options {
+        display: flex;
+        padding: 6px 12px;
+        border: 1px solid #e6e6e6;
+        align-items: center;
+        border-radius: 2px;  
+        cursor: pointer;
+        width: 48%;
+    }
+    .login_and_register .login-options > :last-child {
+        width: 100%;
+        text-align: center;
+        font-weight: bold;
+    }
+    .go_sign {
+        color: #666666;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+    .go_sign > a{
+        color: #239564;
+        cursor: pointer;
+    }
+
+@media(max-width:1000px){
+	footer li{display: block;}
+	footer .nav-flex ul{display: block;overflow: hidden;}
+	footer .nav-flex ul li:nth-child(1){width: 100%;margin-right: 0;}
+	footer .nav-flex ul li:nth-child(2){}
+	footer .nav-flex ul li:nth-child(3){margin-top: 20px;}
+    footer .nav-flex ul li:nth-child(2),
+	footer .nav-flex ul li:nth-child(3),
+	footer .nav-flex ul li:nth-child(4),
+	footer .nav-flex ul li:nth-child(5){
+		width: 100%;border-top: 1px solid #ccc;padding:15px 0;
+	}
+    .address_div > div, .address_div > :nth-child(odd){  
+        width: 49%;
+        padding: 8px 6px;
+    }
+    .address_div > div:hover > div {
+        top: 20%;
+        left: 5%;
+        margin-right: 20px;
+        padding: 5px 10px 10px;
+    }
+    .address_div {
+        gap: 5px;
+    }
+	footer .nav-flex ul li .cate-box{position: relative;}
+	footer .nav-flex ul li .cate-box::after{content:">";transform: rotate(90deg) scale(0.8,1.2);font-size: 18px;position: absolute;right: 11px;top: 0px;transition:all 0.5s ease;-webkit-transition:all 0.5s ease;}
+	footer .nav-flex ul li .cate-box.active::after{content:">";transform: rotate(-90deg) scale(0.8,1.2);}
+	footer .nav-flex ul li .cate-box b{display: inline-block;margin-bottom: 10px;}
+	footer .nav-flex ul li .cate-box p{padding:0 20px;display: block;width: 80%;}
+	
+
+	footer .nav-flex ul li .cate-box b:nth-child(1) a{margin-bottom: 0;}
+
+	footer .pay-methods-box{margin-top: 0;}
+	footer .nav-flex ul li .cate-box b:nth-child(1) a,footer .nav-flex ul li .contact b{font-size: 16px;}
+}
+@media screen and (max-width: 768px) {
+    #cookieConsent {
+        width: 100%;
+        left: 0;
+        height: 100%;
+        /* top: 18%; */
+        padding: 10px 15px 0;
+    }
+    .c_p1 {
+        font-size: 16px;
+        line-height: 26px;
+    }
+    .c_p2 {
+        font-size: 12px;
+        line-height: 17px;
+        height: 58px;
+    }
+    .c_d {
+        padding: 6px;
+    }
+    .c_d_d:first-child {
+        font-size: 13px;
+    }
+    #cookieConsent button {
+        width: 100%;
+        margin-top: 16px;
+    }
+    #cookieConsent .layui-btn-primary {
+        margin-left: 0;
+    }
+    #cookie_div {
+        height: 44%;
+        min-height: 359px;
+        padding: 1rem 1rem;
+    }
+    #cookie_div .cookie_div_d {
+        flex-direction: column;
+    }
+    .cookie_div_1_div {
+        width: 100%;
+    }
+    .cookie_div_2_div {
+        display: flex;
+        flex-direction: column-reverse;
+        padding: 14% 0 0;
+    }
+    #c_span {
+        width: 100%;
+        display: inline-block;
+        text-align: center;
+        line-height: 28px;
+    }
+    .cookie_div_2_div button {
+        width: 100%;
+        margin-bottom: 12px;
+
+    }
+    .cookie_div_2_div > button:first-of-type {
+        /* margin: 20px 0 10px; */
+    }
+    .cookie_div_1_div {
+        line-height: 22px;
+    }
+    .login_and_register > div {
+        padding: 52px 20px;
+        margin: 35% auto;
+    }
+    footer .pay-methods-box {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .pay-methods-box > dd:nth-child(1), .pay-methods-box > dd:nth-child(2), .pay-methods-box > dd:nth-child(3) {
+       width: 100%;
+   }
+    
+}
+footer .nav-flex ul li .cate-box b:nth-child(1) a{
+      
+    }
+    footer .nav-flex ul li .cate-box p a{
+        
+    }
+   
+ 
+ 
+     // ⚠️ 替换成你自己的 Client ID
+    /// const GOOGLE_CLIENT_ID = "955143192557-qqj9c36pl5dp7bkoqeb7d6j0g280h26f.apps.googleusercontent.com";
+
+
+
+    async function getContinent() {
+        try {
+            const response = await fetch('https://ipapi.co/json/');
+            const data = await response.json();
+            // console.log('c_data', data)
+            return data.timezone;
+        } catch (error) {
+            return null;
+        }
+    }
+    layui.use(['jquery', 'form'], function () {
+        var form = layui.form;
+        var $ = layui.jquery;
+
+        var oneSwitch = $('input[name="essential_c"]');
+        var twoSwitch = $('input[name="property_c"]');
+        var thrSwitch = $('input[name="function_c"]');
+
+        getContinent().then(continent => {
+            if (!$.cookie('cookieConsent1')) {
+                $("#cookie_div").show();
+                // $("#mask_layer").show();
+            }  
+            
+            // if (!continent) return;
+            
+            //let is_europe = continent.split("/")[0];
+            // 检查是否有已存储的同意信息
+            // if (is_europe === 'Europe' && !$.cookie('cookieConsent1')) {
+            //     $("#cookie_div").show();
+            //     $("#mask_layer").show();
+            // }  
+          
+        }) 
+        // 设置偏好
+        $("#c_span").on('click', function() {
+            $("#cookieConsent").show();
+            $("#cookie_div").hide();
+        })
+        // 仅接受必要(已修改成全部拒绝)
+        $("#c_only").on('click', function() {
+            const c_data = {
+                c1: true,
+                c2: false,
+                c3: false,
+            }
+            $.cookie('cookieConsent1', JSON.stringify(c_data), {expires: 36500, path: '/', domain: 'pcbasic.com'});
+            $("#cookie_div").hide();
+            // $("#mask_layer").hide();
+        })
+
+        // 接受cookie和全部保存
+        $(".save-allow") .on('click', function() {
+            const c_data = {
+                c1: true,
+                c2: true,
+                c3: true,
+            }
+            $.cookie('cookieConsent1', JSON.stringify(c_data), {expires: 36500, path: '/', domain: 'pcbasic.com'});
+            twoSwitch.prop('checked', true);
+            thrSwitch.prop('checked', true);
+            form.render('checkbox')
+            $("#cookieConsent").hide();
+            $("#cookie_div").hide();
+            // $("#mask_layer").hide();
+        }) 
+        $(".save-first") .on('click', function() {
+            const c_data = {
+                c1: true,
+                c2: twoSwitch[0].checked ? true : false,
+                c3: thrSwitch[0].checked ? true : false,
+            }
+            $.cookie('cookieConsent1', JSON.stringify(c_data), {expires: 36500, path: '/', domain: 'pcbasic.com'});
+            form.render('checkbox')
+            $("#cookieConsent").hide();
+            $("#cookie_div").hide();
+            // $("#mask_layer").hide();
+        })
+        
+    })
+    let dialogCount = 0;
+    let userInfo = "0";
+    $(function() {
+        $(".close_tip").click(function() {
+            $('.top_tip').hide();
+            $('.top_tip').addClass('hide_top_tip');
+            $("#fixed_height").css({
+                height: '134px'
+            })
+        })
+        // if($(window).width() > 768){
+        //     window.addEventListener('scroll', function() {
+        //         var bottom1 = $(".header");
+        //         var bottom2 = $(".top_tip");
+        //         var bottom3 = $(".notificationBar");
+        //         if (window.scrollY > 20) {
+        //             bottom1.hide();
+        //             bottom2.hide();
+        //             bottom3.hide();
+        //             $("#fixed_height").css({
+        //                 height: '134px'
+        //             })
+        //         } else {
+        //             bottom1.show();
+        //             bottom3.show();
+        //             if (!bottom2.hasClass("hide_top_tip")) {
+        //                 bottom2.show();
+        //                 $("#fixed_height").css({
+        //                     //height: $('.scroll-container').css('display') === 'none' ? '134px' : '176px'
+        //                     height: '134px'
+        //                 })
+        //                 return;
+        //             }
+        //             $("#fixed_height").css({
+        //                 height: '134px'
+        //             })
+        //         }
+        //     })
+        // }
+        // if($(window).width()   20) {
+        //             bottom3.hide();
+        //         } else {
+        //             bottom3.show();
+        //         }
+        //     })
+        // }
+
+
+        var $bar = $(".notificationBar");
+        var $top = $("#top");
+        var $header = $(".header");
+        var $tip = $(".top_tip");
+        var $spacer = $("#fixed_height");
+        var $nav = $("#top > nav");
+        window.compact = false;
+
+        function noticeHeight() {
+            return $bar.is(":visible") ? ($bar.outerHeight() || 0) : 0;
+        }
+
+        window.layout = function(isCompact) {
+            if (isCompact) {
+                $bar.hide();
+                $header.hide();
+                $tip.hide();
+            } else {
+                $bar.show();
+                $header.show();
+                if (!$tip.hasClass("hide_top_tip")) {
+                    $tip.show();
+                }
+            }
+            var notice = isCompact ? 0 : ($bar.outerHeight() || 0);
+            var nav = $nav.outerHeight() || 44;
+            // 通告不占文档流；#top 不再靠静态位置跟着通告高度跳
+            $bar.css({
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: "100%",
+                zIndex: 10000
+            });
+            $top.css({ top: notice });
+            var chrome = isCompact ? nav : ($top.outerHeight() || 134);
+            $spacer.css({
+                height: (notice + chrome) + "px",
+                overflowAnchor: "none"
+            });
+        }
+        // 等待浏览器完成DOM渲染，再刷新header布局
+        window.layoutHide = function () {
+            const y = window.scrollY || 0;
+            // 和menu.html滚动监听保持完全一致的状态计算
+            const next = compact ? y > 0 : y > 20;
+            compact = next;
+            layout(compact);
+
+            // 防跳动补偿逻辑，和原版逻辑对齐
+            if (compact && window.scrollY   0 : y > 20;
+            if (next === compact) return;
+            var yBefore = y;
+            compact = next;
+            layout(compact);
+            if (compact && window.scrollY   div').on('click', function() {
+            const text = $(this).find('div').text();
+            copyToClipboard(text);
+            showCopyNotification();
+        });
+        // 复制到剪贴板功能
+        function copyToClipboard(text) {
+            const $temp = $(' ');
+            $('body').append($temp);
+            $temp.val(text).select();
+            document.execCommand('copy');
+            $temp.remove();
+        }
+        
+        // 显示复制成功通知
+        function showCopyNotification() {
+            const $notification = $('#copyNotification');
+            $notification.css({
+                'opacity': '1',
+                'visibility': 'visible'
+            });
+            
+            setTimeout(() => {
+                $notification.css({
+                    'opacity': '0',
+                    'visibility': 'hidden'
+                });
+            }, 2000); // 2秒后隐藏通知
+        }
+    })
+    $(".close_lg").click(function() {
+        $(this).parent().parent().hide();
+        $(this).parent().hide();
+        // if (dialogCount   a").click(function() {
+        $("#login_div").hide();
+        $("#register_div").show();
+    })
+    $("#register_div .go_sign > a").click(function() {
+        $("#register_div").hide();
+        $("#login_div").show();
+    })
+    let currentAction;
+    // Google登录按钮点击
+    $(".googleLoginBtn_f").click(function() {
+        currentAction = 'login';
+        googleLogin();
+    })
+    // Google注册按钮点击
+    $(".googleRegBtn_f").click(function() {
+        currentAction = 'register';
+        googleLogin();
+    })
+
+    // 检查Google脚本是否加载成功
+    function checkGoogleScript() {
+        if (typeof google === 'undefined' || !google.accounts) {
+            alert('Google Service Load Failed, Please chech you network.');
+            return false;
+        }
+        return true;
+    }
+    // Gooogle登录
+    function googleLogin() {
+        if (!checkGoogleScript()) return;
+        try {
+            // 使用requestAccessToken来触发登录
+            google.accounts.oauth2.initTokenClient({
+                    client_id: "955143192557-qqj9c36pl5dp7bkoqeb7d6j0g280h26f.apps.googleusercontent.com",
+                    scope: 'email profile',
+                    callback: (response) => {
+                        if (response.access_token) {
+                            // 使用access_token获取用户信息
+                            fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                                headers: {
+                                    'Authorization': `Bearer ${response.access_token}`
+                                }
+                            })
+                            .then(res => res.json())
+                            .then(userInfo => {
+                                // 登录 还是 注册
+                                if (currentAction === "login") {
+                                    submitLogin({
+                                        type: 1, // 1:'google' 2:'facebook'
+                                        email: userInfo.email,
+                                        code: userInfo.sub,
+                                        pwd: userInfo.sub
+                                    })
+                                } else {
+                                    submitRegister({
+                                        type: 1, // 1:'google' 2:'facebook'
+                                        email: userInfo.email,
+                                        code: userInfo.sub
+                                    })
+                                }
+                            });
+                        }
+                    }
+                }).requestAccessToken();
+            // 使用弹窗模式渲染登录按钮
+            // google.accounts.id.renderButton(
+            //     document.getElementById("googleLoginBtn"),
+            //     {
+            //         theme: "outline",
+            //         size: "large",
+            //         type: "icon",
+            //         shape: "circle",
+            //         // text: "continue_with",
+            //         logo_alignment: "center",
+            //         // width: "250"
+            //     }
+            // );
+        } catch (error) {
+            // showError('触发Google登录失败: ' + error.message);
+        }
+    }
+    // 提交登录请求
+    function submitLogin(userData) {
+        $.ajax({
+            url: '/login/doLogin',
+            type: "POST",
+            contentType: "application/json",
+            dataType: "json",
+            async: false,
+            data: JSON.stringify(userData),
+            beforeSend: function () {
+
+            },
+            success: function (res) {
+                //    console.log(res);
+                if (res.code == 0) {
+                    layer.msg(res.msg, { icon: 1, time: 500 }, function () {
+                        window.location = res.data.gourl;
+                    });
+                } else {
+                    layer.msg(res.msg, { icon: 5 });
+                    return false;
+                }
+            }
+        })
+    }
+
+    // 提交注册请求
+    function submitRegister(userData) {
+        $.ajax({
+            url: '/login/doReg',
+            type: "POST",
+            contentType: "application/json",
+            dataType: "json",
+            async: false,
+            data: JSON.stringify(userData),
+            beforeSend: function () {
+
+            },
+            success: function (res) {
+                if (res.code == 0) {
+                    layer.msg(res.msg, { icon: 1, time: 500 }, function () {
+                        var href = $("input[name=gobackurl]").val();
+                        window.location = href;
+                    });
+                } else {
+                    layer.msg(res.msg, { icon: 5 });
+                    return false;
+                }
+            }
+        })
+    }
+    
+
+
+
+
+    // var now = new Date();
+    // var timezoneOffset = now.getTimezoneOffset();
+    // var isEuropeanTimeZone = timezoneOffset >= -120 && timezoneOffset  
+ 
+    //登陆
+    document.getElementById('appleLoginBtn-4')?.addEventListener('click', function () {
+        handleAppleSignUp('signup');
+    });
+    //注册
+    document.getElementById('appleRegBtn-1')?.addEventListener('click', function () {
+        handleAppleSignIn('signin');
+    });
+ 
+
+
+
+ 
+    if (window.location.pathname) {
+        let pathname = window.location.pathname.split("/");
+        if (pathname[1]) {
+            if (pathname[1] == 'pcba-x') {
+                $("#form_banner_pcba").show();
+                $("#form_banner_pcb").hide();
+            } else if (pathname[1] == 'pcba-f') {
+                $("#form_banner_pcba").hide();
+                $("#form_banner_pcb").show();
+            }
+            $(".right-list ul").hide();
+            $("#" + pathname[1]).siblings("a").addClass("active")
+            $("#" + pathname[1]).show();
+            $("#" + pathname[1]).siblings("a").find("i").css("transform", "rotate(180deg)");
+        }
+    }
+    //console.log('window.location', window.location)
+    // 右侧报价列表跳转后选中
+    //if (window.location.search) {
+    //let search = window.location.search.split("=");
+    let li_class = 114;//search[search.length - 1]
+    console.log(li_class);
+    $(".rid" + li_class).addClass('active');
+
+    //}
+
+    function goLinkTo(type) {
+        switch (type) {
+            case 1:
+                window.location.href = '/pcb-prototype.html';
+                break;
+            case 2:
+                window.location.href = '/standard_pcb.html';
+                break;
+        }
+    }
+
+    $(document).ready(function () {
+        var width = $(window).width();
+        if (width > 768 && document.getElementsByClassName('home')[0]) {
+            var videox = document.getElementsByClassName('home')[0].offsetLeft
+            $('.robot-font').css('left', videox + 50 + 'px')
+        } else {
+            var videox = document.getElementsByClassName('banner-img')[0].offsetLeft
+            $('.robot-font').css('left', videox + 20 + 'px')
+        }
+        document.getElementById("processBar").style.width = "5%";
+        window.onscroll = function () {
+            var winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            var height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            var scrolled = winScroll / height * 95 + 5;
+            scrolled = Math.max(5, scrolled);
+            if (scrolled > 5) {
+                $("#menu").css('margin-top', '5px');
+            }
+            document.getElementById("processBar").style.width = scrolled + "%";
+        }
+        $(function () {
+            $(".right_child_menu li").click(function () {
+                // console.log();
+                window.location.href = $(this)[0].dataset.href
+                $(".right_child_menu li").removeClass('active');
+            })
+        })
+    })
+
+    $(function () {
+        $(".right-list>a").click(function () {
+            if ($(this).hasClass("active")) {
+                $(".right-list a").removeClass("active")
+                $(this).siblings(".right_child_menu").slideUp(300)
+                $(this).find("i").css("transform", "rotate(0deg)")
+            } else {
+                $(".right-list a").removeClass("active");
+                $(".right_child_menu").slideUp(300);
+                $(".right-list a i").css("transform", "rotate(0deg)")
+                $(this).addClass("active")
+                $(this).siblings(".right_child_menu").slideDown(300)
+                $(this).find("i").css("transform", "rotate(180deg)")
+            }
+            // $(this).addClass("active").siblings().removeClass("active")
+            // $(this).siblings(".right_child_menu").slideToggle(300)
+            // var arrow = $(this).find("i"); // 获取箭头图标
+
+            // // 切换箭头图标
+            // if (arrow.hasClass('fa-angle-down')) {
+            //     arrow.removeClass('fa-angle-down').addClass('fa-angle-up'); // 切换为向上箭头
+            // } else {
+            //     arrow.removeClass('fa-angle-up').addClass('fa-angle-down'); // 切换为向下箭头
+            // }
+        });
+    })
+ 
+  
+  
+  
+ 
+	$(function(){
+	  $("#file_email").change(function(e){
+		  // 增加样式
+		  $('#quo_sub').css("background","#27ae61");
+		  // 增加属性
+		  $('#quo_sub').attr("disabled",false);
+	  })
+	})
+   
+
+ 
+     
+         
+             
+                       
+                 Whatsapp  
+             
+         
+         
+                    
+             Wechat 
+         
+         
+             
+                                       
+                 Message 
+             
+         
+         
+                         
+            Email  
+         
+         
+                   
+             Phone  
+         
+     
+    
+     
+         
+                        
+         
+                    
+     
+ 
+
+
+ 
+      
+		 Phone 
+	 
+     
+		 wechat 
+	 
+	 
+		 E-mail 
+	 
+     
+		 whats 
+	  -->
+	 
+         Quote 
+	  
+	     
+  -->
+ 
+ 
+     ✖ 
+     
+         
+             Phone contact 
+             
+                 
+             
+         
+         
+             +86-755-27218592 
+             
+                In addition, we've prepared a   Help Center.  
+                We recommend checking it before reaching out, as your question and its 
+                answer may already be clearly explained there.
+             
+         
+     
+ 
+
+ 
+ 
+     ✖ 
+     
+         
+             Wechat Support 
+             we chat scan  -->
+             
+                 
+             
+         
+         
+             
+                In addition, we've prepared a   Help Center.  
+                We recommend checking it before reaching out, as your question and its 
+                answer may already be clearly explained there.
+             
+         
+     
+ 
+
+ 
+ 
+     ✖ 
+     
+         
+             WhatsApp Support 
+             WhatsApp scan  -->
+             
+                 
+             
+         
+         
+             
+                In addition, we've prepared a   Help Center.  
+                We recommend checking it before reaching out, as your question and its 
+                answer may already be clearly explained there.
+             
+         
+     
+ 
+
+ 
+     
+         
+     
+ 
+
+
+ 
+  
+
+
+  
+
+ 
+	#think_page_trace_open{opacity: 0 !important;}
+ 
+ 
+    // 页面加载完成后执行
+    window.onload = function(){
+        const hidePages = ['standard_pcb','pcb-prototype'];
+        if(hidePages.some(p=>location.href.includes(p))){
+            document.querySelector('.yd_phone').style.display = 'none';
+        }
+    }
+ 
+ 
+_linkedin_partner_id = "4334860";
+window._linkedin_data_partner_ids = window._linkedin_data_partner_ids || [];
+window._linkedin_data_partner_ids.push(_linkedin_partner_id);
+ 
+ 
+// layer.open({
+//     type: 1,
+//     area: ['500px', '300px'],
+//     title: '',
+//     shade: 0.6,
+//     shadeClose: true,
+//     maxmin: false,
+//     anim: 0,
+//     content: ' 11111 '
+// })
+	(function () {
+		$("#upTop").click(function (e) {
+			e.preventDefault();
+			$('html,body').animate({
+				scrollTop: 0
+			}, 800)
+		})
+
+        // $("#kefu a").click(function() {
+        //     $("#kefu a").removeClass("active");
+        //     $(this).addClass("active");
+        //     $("#mask_layer").show();
+        //     if ($(this)[0].id === 'phone') {
+        //         $("#whats_box").show();
+        //         $("#info_box, #wechat_box").hide();
+        //     } else if ($(this)[0].id === 'wechat') {
+        //         $("#wechat_box").show();
+        //         $("#info_box, #whats_box").hide();
+        //     } else if ($(this)[0].id === 'whats') {
+        //         $("#info_box").show();
+        //         $("#wechat_box, #whats_box").hide();
+        //     } else {
+        //         $(".right_dialog").hide();
+        //         $("#mask_layer").hide();
+        //     }
+        // })
+
+        $(".info_close").click(function() {
+            $(this).parent().hide();
+            $("#mask_layer").hide();
+        })
+
+        // $(".yd_phone").click(function() {
+        //     window.location.href = "https://bit.ly/3Is8LlB"
+        // })
+        let isVisible = true;
+        if ($.cookie('showFunction') == 'true' || window.location.host.startsWith("member")) {
+            showFunction();
+        }
+        $(".show_function").click(function() {
+            $.cookie('showFunction', isVisible, {expires: 1, path: '/', domain: 'pcbasic.com'});
+            showFunction();
+        })
+        function showFunction() {
+            if (!isVisible) {
+                $(".hide_function").removeClass('hide');
+                $(".bb").each(function(index) {
+                    $(this).delay(index * 100).animate({ opacity: 1 }, 300)
+                })
+                $(".arrow_icon").css('transform', 'rotateX(0deg)');
+            } else {
+                $(".hide_function").addClass('hide');
+                $(".bb").each(function(index) {
+                    $(this).delay(index * 100).animate({ opacity: 0 }, 300)
+                })
+                $(".arrow_icon").css('transform', 'rotateX(180deg)');
+                $(".hide_function > div").removeClass("active");
+            }
+            isVisible = !isVisible;
+        }
+        $(".hide_function > div").click(function() {
+            
+            $(".hide_function > div").removeClass("active");
+            $(this).addClass("active");
+            if ($(this)[0].id === 'phone') return;
+            $("#mask_layer").show();
+            // if ($(this)[0].id === 'phone') {
+            //      $("#whats_box").show();
+            //      $("#info_box, #wechat_box").hide();
+            // } else 
+            
+            if ($(this)[0].id === 'wechat') {
+                $("#wechat_box").show();
+                $("#info_box, #whats_box").hide();
+            } else if ($(this)[0].id === 'whats') {
+                $("#info_box").show();
+                $("#wechat_box, #whats_box").hide();
+            } else {
+                $(".right_dialog").hide();
+                $("#mask_layer").hide();
+            }
+        })
+        $("#email_for_fixed").click(function() {
+            window.location.href = "mailto:JS@pcbasic.com";
+        })
+        // 点击弹窗外部关闭
+        $("#mask_layer").click(function() {
+            $('#whats_box, #wechat_box, #info_box, #mask_layer').hide();
+            $(".hide_function > div").removeClass("active");
+        })
+        
+	})();
+	(function (l) {
+		if (!l) {
+			window.lintrk = function (a, b) {
+				window.lintrk.q.push([a, b])
+			};
+			window.lintrk.q = []
+		}
+		var s = document.getElementsByTagName("script")[0];
+		var b = document.createElement("script");
+		b.type = "text/javascript";
+		b.async = true;
+		b.src = "https://snap.licdn.com/li.lms-analytics/insight.min.js";
+		s.parentNode.insertBefore(b, s);
+	})(window.lintrk);
+ 
+ 
+ 
+    window.__lc = window.__lc || {};
+    // ========== 配置：在这里填写【禁止自动弹窗的页面】 ==========
+    const disableAutoPopupPages = [
+        '/standard_pcb.html',
+        '/pcb-prototype.html'
+    ];
+
+    function isDisablePage() {
+        const path = window.location.pathname;
+        return disableAutoPopupPages.some(item => path.includes(item));
+    }
+
+    // 监听问候弹窗事件：阻止自动弹出欢迎卡片
+    if(isDisablePage()){
+        window.__lc.on("greeting_display", function(event) {
+            // return false 阻止问候弹窗（就是截图那个hello卡片）
+            return false;
+        })
+    }
+ 
+ 
+    window.__lc = window.__lc || {};
+    window.__lc.license = 16484265;
+    window.__lc.integration_name = "manual_channels";
+    window.__lc.product_name = "livechat";
+    ;(function (n, t, c) {
+        function i(n) {
+            return e._h ? e._h.apply(null, n) : e._q.push(n)
+        }
+
+        var e = {
+            _q: [], _h: null, _v: "2.0", on: function () {
+                i(["on", c.call(arguments)])
+            }, once: function () {
+                i(["once", c.call(arguments)])
+            }, off: function () {
+                i(["off", c.call(arguments)])
+            }, get: function () {
+                if (!e._h) throw new Error("[LiveChatWidget] You can't use getters before load.");
+                return i(["get", c.call(arguments)])
+            }, call: function () {
+                i(["call", c.call(arguments)])
+            }, init: function () {
+                var n = t.createElement("script");
+                n.async = !0, n.type = "text/javascript", n.src = "https://cdn.livechatinc.com/tracking.js", t.head.appendChild(n)
+            }
+        };
+        !n.__lc.asyncInit && e.init(), n.LiveChatWidget = n.LiveChatWidget || e
+    }(window, document, [].slice))
+ 
+ Chat with us, powered by 
+ 
+
+
+ 
+ 

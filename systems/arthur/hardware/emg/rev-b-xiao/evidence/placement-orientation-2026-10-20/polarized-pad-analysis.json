@@ -1,0 +1,2172 @@
+[
+  {
+    "reference": "D304",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 0,
+    "before_CPL_deg": 180.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 4.2625,
+    "pad1_Y_mm": 52.4,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          4.2625,
+          52.4
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          4.2625,
+          54.3
+        ],
+        "net": "unconnected-(D304-K2-Pad2)",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          6.1375,
+          53.35
+        ],
+        "net": "/CH3_N",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.470882,
+      "90": 1.750631,
+      "180": 0.155432,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D401",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 0.0,
+    "public_2D_best_CPL_deg": 0,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 10.1375,
+    "pad1_Y_mm": 14.95,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          10.1375,
+          14.95
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          10.1375,
+          13.05
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          8.2625,
+          14.0
+        ],
+        "net": "/CH4/HIZ_P",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 0.155432,
+      "90": 1.750631,
+      "180": 2.470882,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "J1",
+    "MPN": "S2B-PH-SM4-TB(LF)(SN)",
+    "LCSC": "C295747",
+    "PCB_deg": 90.0,
+    "before_CPL_deg": 270.0,
+    "candidate_CPL_deg": 270.0,
+    "public_2D_best_CPL_deg": 90,
+    "public_2D_best_RMS_mm": 0.00076,
+    "pad1_X_mm": 41.55,
+    "pad1_Y_mm": 39.3,
+    "pad1_net": "VBAT",
+    "library_result": "MISMATCH_WITH_PUBLIC_2D_LIBRARY_HOLD",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          41.55,
+          39.3
+        ],
+        "net": "VBAT",
+        "local_xy_mm": [
+          -1.0,
+          -2.85
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          41.55,
+          37.3
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          1.0,
+          -2.85
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 1.414751,
+      "90": 0.00076,
+      "180": 1.414751,
+      "270": 2.00076
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D302",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 0.0,
+    "public_2D_best_CPL_deg": 0,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 14.8375,
+    "pad1_Y_mm": 14.95,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          14.8375,
+          14.95
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          14.8375,
+          13.05
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          12.9625,
+          14.0
+        ],
+        "net": "/CH3/HIZ_N",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 0.155432,
+      "90": 1.750631,
+      "180": 2.470882,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D202",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 0.0,
+    "public_2D_best_CPL_deg": 0,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 24.2375,
+    "pad1_Y_mm": 14.95,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          24.2375,
+          14.95
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          24.2375,
+          13.05
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          22.3625,
+          14.0
+        ],
+        "net": "/CH2/HIZ_N",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 0.155432,
+      "90": 1.750631,
+      "180": 2.470882,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D204",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 0,
+    "before_CPL_deg": 180.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 8.1625,
+    "pad1_Y_mm": 48.8,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          8.1625,
+          48.8
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          8.1625,
+          50.7
+        ],
+        "net": "unconnected-(D204-K2-Pad2)",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          10.0375,
+          49.75
+        ],
+        "net": "/CH2_N",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.470882,
+      "90": 1.750631,
+      "180": 0.155432,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "Q3001",
+    "MPN": "2N7002",
+    "LCSC": "C8545",
+    "PCB_deg": 0,
+    "before_CPL_deg": 180.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.059642,
+    "pad1_X_mm": 27.8625,
+    "pad1_Y_mm": 36.8,
+    "pad1_net": "/Analog_Power_Interlock/VBUS_GATE",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          27.8625,
+          36.8
+        ],
+        "net": "/Analog_Power_Interlock/VBUS_GATE",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          27.8625,
+          38.7
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          29.7375,
+          37.75
+        ],
+        "net": "/Analog_Power_Interlock/AFE_EN",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.397079,
+      "90": 1.695516,
+      "180": 0.059642,
+      "270": 1.695516
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "J101",
+    "MPN": "S2B-PH-SM4-TB(LF)(SN)",
+    "LCSC": "C295747",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.00076,
+    "pad1_X_mm": 36.05,
+    "pad1_Y_mm": 8.0,
+    "pad1_net": "/CH1/ELEC_P",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          36.05,
+          8.0
+        ],
+        "net": "/CH1/ELEC_P",
+        "local_xy_mm": [
+          -1.0,
+          -2.85
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          34.05,
+          8.0
+        ],
+        "net": "/CH1/ELEC_N",
+        "local_xy_mm": [
+          1.0,
+          -2.85
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.00076,
+      "90": 1.414751,
+      "180": 0.00076,
+      "270": 1.414751
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D301",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 0.0,
+    "public_2D_best_CPL_deg": 0,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 19.5375,
+    "pad1_Y_mm": 14.95,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          19.5375,
+          14.95
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          19.5375,
+          13.05
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          17.6625,
+          14.0
+        ],
+        "net": "/CH3/HIZ_P",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 0.155432,
+      "90": 1.750631,
+      "180": 2.470882,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "J5001",
+    "MPN": "S2B-PH-SM4-TB(LF)(SN)",
+    "LCSC": "C295747",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.00076,
+    "pad1_X_mm": 45.45,
+    "pad1_Y_mm": 8.0,
+    "pad1_net": "unconnected-(J5001-Pad1)",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          45.45,
+          8.0
+        ],
+        "net": "unconnected-(J5001-Pad1)",
+        "local_xy_mm": [
+          -1.0,
+          -2.85
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          43.45,
+          8.0
+        ],
+        "net": "/Reference_VCM/RLD_SAFE",
+        "local_xy_mm": [
+          1.0,
+          -2.85
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.00076,
+      "90": 1.414751,
+      "180": 0.00076,
+      "270": 1.414751
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "J401",
+    "MPN": "S2B-PH-SM4-TB(LF)(SN)",
+    "LCSC": "C295747",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.00076,
+    "pad1_X_mm": 7.85,
+    "pad1_Y_mm": 8.0,
+    "pad1_net": "/CH4/ELEC_P",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          7.85,
+          8.0
+        ],
+        "net": "/CH4/ELEC_P",
+        "local_xy_mm": [
+          -1.0,
+          -2.85
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          5.85,
+          8.0
+        ],
+        "net": "/CH4/ELEC_N",
+        "local_xy_mm": [
+          1.0,
+          -2.85
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.00076,
+      "90": 1.414751,
+      "180": 0.00076,
+      "270": 1.414751
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D403",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 0,
+    "before_CPL_deg": 180.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 4.2625,
+    "pad1_Y_mm": 56.0,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          4.2625,
+          56.0
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          4.2625,
+          57.9
+        ],
+        "net": "unconnected-(D403-K2-Pad2)",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          6.1375,
+          56.95
+        ],
+        "net": "/CH4_P",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.470882,
+      "90": 1.750631,
+      "180": 0.155432,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D101",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 0.0,
+    "public_2D_best_CPL_deg": 0,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 38.3375,
+    "pad1_Y_mm": 14.95,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          38.3375,
+          14.95
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          38.3375,
+          13.05
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          36.4625,
+          14.0
+        ],
+        "net": "/CH1/HIZ_P",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 0.155432,
+      "90": 1.750631,
+      "180": 2.470882,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "J201",
+    "MPN": "S2B-PH-SM4-TB(LF)(SN)",
+    "LCSC": "C295747",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.00076,
+    "pad1_X_mm": 26.65,
+    "pad1_Y_mm": 8.0,
+    "pad1_net": "/CH2/ELEC_P",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          26.65,
+          8.0
+        ],
+        "net": "/CH2/ELEC_P",
+        "local_xy_mm": [
+          -1.0,
+          -2.85
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          24.65,
+          8.0
+        ],
+        "net": "/CH2/ELEC_N",
+        "local_xy_mm": [
+          1.0,
+          -2.85
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.00076,
+      "90": 1.414751,
+      "180": 0.00076,
+      "270": 1.414751
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "U501",
+    "MPN": "TLV9064IPWR",
+    "LCSC": "C779410",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 90.0,
+    "candidate_CPL_deg": 90.0,
+    "public_2D_best_CPL_deg": 90,
+    "public_2D_best_RMS_mm": 0.063422,
+    "pad1_X_mm": 33.2125,
+    "pad1_Y_mm": 24.55,
+    "pad1_net": "/CH1/BUF_P",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          33.2125,
+          24.55
+        ],
+        "net": "/CH1/BUF_P",
+        "local_xy_mm": [
+          -2.8625,
+          -1.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          33.2125,
+          23.9
+        ],
+        "net": "/CH1/BUF_P",
+        "local_xy_mm": [
+          -2.8625,
+          -1.3
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          33.2125,
+          23.25
+        ],
+        "net": "/CH1/HIZ_P",
+        "local_xy_mm": [
+          -2.8625,
+          -0.65
+        ]
+      },
+      "4": {
+        "board_xy_mm": [
+          33.2125,
+          22.6
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          -2.8625,
+          0.0
+        ]
+      },
+      "5": {
+        "board_xy_mm": [
+          33.2125,
+          21.95
+        ],
+        "net": "/CH1/HIZ_N",
+        "local_xy_mm": [
+          -2.8625,
+          0.65
+        ]
+      },
+      "6": {
+        "board_xy_mm": [
+          33.2125,
+          21.3
+        ],
+        "net": "/CH1/BUF_N",
+        "local_xy_mm": [
+          -2.8625,
+          1.3
+        ]
+      },
+      "7": {
+        "board_xy_mm": [
+          33.2125,
+          20.65
+        ],
+        "net": "/CH1/BUF_N",
+        "local_xy_mm": [
+          -2.8625,
+          1.95
+        ]
+      },
+      "8": {
+        "board_xy_mm": [
+          27.4875,
+          20.65
+        ],
+        "net": "/CH2/BUF_P",
+        "local_xy_mm": [
+          2.8625,
+          1.95
+        ]
+      },
+      "9": {
+        "board_xy_mm": [
+          27.4875,
+          21.3
+        ],
+        "net": "/CH2/BUF_P",
+        "local_xy_mm": [
+          2.8625,
+          1.3
+        ]
+      },
+      "10": {
+        "board_xy_mm": [
+          27.4875,
+          21.95
+        ],
+        "net": "/CH2/HIZ_P",
+        "local_xy_mm": [
+          2.8625,
+          0.65
+        ]
+      },
+      "11": {
+        "board_xy_mm": [
+          27.4875,
+          22.6
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          2.8625,
+          0.0
+        ]
+      },
+      "12": {
+        "board_xy_mm": [
+          27.4875,
+          23.25
+        ],
+        "net": "/CH2/HIZ_N",
+        "local_xy_mm": [
+          2.8625,
+          -0.65
+        ]
+      },
+      "13": {
+        "board_xy_mm": [
+          27.4875,
+          23.9
+        ],
+        "net": "/CH2/BUF_N",
+        "local_xy_mm": [
+          2.8625,
+          -1.3
+        ]
+      },
+      "14": {
+        "board_xy_mm": [
+          27.4875,
+          24.55
+        ],
+        "net": "/CH2/BUF_N",
+        "local_xy_mm": [
+          2.8625,
+          -1.95
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 4.405679,
+      "90": 0.063422,
+      "180": 4.405679,
+      "270": 6.230248
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "J301",
+    "MPN": "S2B-PH-SM4-TB(LF)(SN)",
+    "LCSC": "C295747",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.00076,
+    "pad1_X_mm": 17.25,
+    "pad1_Y_mm": 8.0,
+    "pad1_net": "/CH3/ELEC_P",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          17.25,
+          8.0
+        ],
+        "net": "/CH3/ELEC_P",
+        "local_xy_mm": [
+          -1.0,
+          -2.85
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          15.25,
+          8.0
+        ],
+        "net": "/CH3/ELEC_N",
+        "local_xy_mm": [
+          1.0,
+          -2.85
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.00076,
+      "90": 1.414751,
+      "180": 0.00076,
+      "270": 1.414751
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D402",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 0.0,
+    "public_2D_best_CPL_deg": 0,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 5.4375,
+    "pad1_Y_mm": 14.95,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          5.4375,
+          14.95
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          5.4375,
+          13.05
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          3.5625,
+          14.0
+        ],
+        "net": "/CH4/HIZ_N",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 0.155432,
+      "90": 1.750631,
+      "180": 2.470882,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "X1",
+    "MPN": "SX3M8.192M20F30TNN",
+    "LCSC": "C2901557",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 180.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.000182,
+    "pad1_X_mm": 25.3,
+    "pad1_Y_mm": 46.175,
+    "pad1_net": "DVDD_F",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          25.3,
+          46.175
+        ],
+        "net": "DVDD_F",
+        "local_xy_mm": [
+          -1.1,
+          0.875
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          23.1,
+          46.175
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          1.1,
+          0.875
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          23.1,
+          47.925
+        ],
+        "net": "/ADC/X1_OUT",
+        "local_xy_mm": [
+          1.1,
+          -0.875
+        ]
+      },
+      "4": {
+        "board_xy_mm": [
+          25.3,
+          47.925
+        ],
+        "net": "DVDD_F",
+        "local_xy_mm": [
+          -1.1,
+          -0.875
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.811016,
+      "90": 1.987689,
+      "180": 0.000182,
+      "270": 1.987689
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D203",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 0,
+    "before_CPL_deg": 180.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 4.2625,
+    "pad1_Y_mm": 48.8,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          4.2625,
+          48.8
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          4.2625,
+          50.7
+        ],
+        "net": "unconnected-(D203-K2-Pad2)",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          6.1375,
+          49.75
+        ],
+        "net": "/CH2_P",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.470882,
+      "90": 1.750631,
+      "180": 0.155432,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "U503",
+    "MPN": "TLV9064IPWR",
+    "LCSC": "C779410",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 90.0,
+    "candidate_CPL_deg": 90.0,
+    "public_2D_best_CPL_deg": 90,
+    "public_2D_best_RMS_mm": 0.063422,
+    "pad1_X_mm": 44.3125,
+    "pad1_Y_mm": 24.55,
+    "pad1_net": "/VCM",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          44.3125,
+          24.55
+        ],
+        "net": "/VCM",
+        "local_xy_mm": [
+          -2.8625,
+          -1.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          44.3125,
+          23.9
+        ],
+        "net": "/VCM",
+        "local_xy_mm": [
+          -2.8625,
+          -1.3
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          44.3125,
+          23.25
+        ],
+        "net": "/Reference_VCM/VCM_BUF_IN",
+        "local_xy_mm": [
+          -2.8625,
+          -0.65
+        ]
+      },
+      "4": {
+        "board_xy_mm": [
+          44.3125,
+          22.6
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          -2.8625,
+          0.0
+        ]
+      },
+      "5": {
+        "board_xy_mm": [
+          44.3125,
+          21.95
+        ],
+        "net": "/VCM",
+        "local_xy_mm": [
+          -2.8625,
+          0.65
+        ]
+      },
+      "6": {
+        "board_xy_mm": [
+          44.3125,
+          21.3
+        ],
+        "net": "/Reference_VCM/U503B_OUT",
+        "local_xy_mm": [
+          -2.8625,
+          1.3
+        ]
+      },
+      "7": {
+        "board_xy_mm": [
+          44.3125,
+          20.65
+        ],
+        "net": "/Reference_VCM/U503B_OUT",
+        "local_xy_mm": [
+          -2.8625,
+          1.95
+        ]
+      },
+      "8": {
+        "board_xy_mm": [
+          38.5875,
+          20.65
+        ],
+        "net": "/Reference_VCM/U503C_OUT",
+        "local_xy_mm": [
+          2.8625,
+          1.95
+        ]
+      },
+      "9": {
+        "board_xy_mm": [
+          38.5875,
+          21.3
+        ],
+        "net": "/Reference_VCM/U503C_OUT",
+        "local_xy_mm": [
+          2.8625,
+          1.3
+        ]
+      },
+      "10": {
+        "board_xy_mm": [
+          38.5875,
+          21.95
+        ],
+        "net": "/VCM",
+        "local_xy_mm": [
+          2.8625,
+          0.65
+        ]
+      },
+      "11": {
+        "board_xy_mm": [
+          38.5875,
+          22.6
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          2.8625,
+          0.0
+        ]
+      },
+      "12": {
+        "board_xy_mm": [
+          38.5875,
+          23.25
+        ],
+        "net": "/VCM",
+        "local_xy_mm": [
+          2.8625,
+          -0.65
+        ]
+      },
+      "13": {
+        "board_xy_mm": [
+          38.5875,
+          23.9
+        ],
+        "net": "/Reference_VCM/U503D_OUT",
+        "local_xy_mm": [
+          2.8625,
+          -1.3
+        ]
+      },
+      "14": {
+        "board_xy_mm": [
+          38.5875,
+          24.55
+        ],
+        "net": "/Reference_VCM/U503D_OUT",
+        "local_xy_mm": [
+          2.8625,
+          -1.95
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 4.405679,
+      "90": 0.063422,
+      "180": 4.405679,
+      "270": 6.230248
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D303",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 0,
+    "before_CPL_deg": 180.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 8.1625,
+    "pad1_Y_mm": 52.4,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          8.1625,
+          52.4
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          8.1625,
+          54.3
+        ],
+        "net": "unconnected-(D303-K2-Pad2)",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          10.0375,
+          53.35
+        ],
+        "net": "/CH3_P",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.470882,
+      "90": 1.750631,
+      "180": 0.155432,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "U6001",
+    "MPN": "ADS131M04IPWR",
+    "LCSC": "C2862562",
+    "PCB_deg": 0,
+    "before_CPL_deg": 270.0,
+    "candidate_CPL_deg": 270.0,
+    "public_2D_best_CPL_deg": 270,
+    "public_2D_best_RMS_mm": 0.007731,
+    "pad1_X_mm": 15.4375,
+    "pad1_Y_mm": 49.025,
+    "pad1_net": "AFE_3V0",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          15.4375,
+          49.025
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          -2.8625,
+          -2.925
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          15.4375,
+          49.675
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -2.8625,
+          -2.275
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          15.4375,
+          50.325
+        ],
+        "net": "/CH1_P",
+        "local_xy_mm": [
+          -2.8625,
+          -1.625
+        ]
+      },
+      "4": {
+        "board_xy_mm": [
+          15.4375,
+          50.975
+        ],
+        "net": "/CH1_N",
+        "local_xy_mm": [
+          -2.8625,
+          -0.975
+        ]
+      },
+      "5": {
+        "board_xy_mm": [
+          15.4375,
+          51.625
+        ],
+        "net": "/CH2_N",
+        "local_xy_mm": [
+          -2.8625,
+          -0.325
+        ]
+      },
+      "6": {
+        "board_xy_mm": [
+          15.4375,
+          52.275
+        ],
+        "net": "/CH2_P",
+        "local_xy_mm": [
+          -2.8625,
+          0.325
+        ]
+      },
+      "7": {
+        "board_xy_mm": [
+          15.4375,
+          52.925
+        ],
+        "net": "/CH3_P",
+        "local_xy_mm": [
+          -2.8625,
+          0.975
+        ]
+      },
+      "8": {
+        "board_xy_mm": [
+          15.4375,
+          53.575
+        ],
+        "net": "/CH3_N",
+        "local_xy_mm": [
+          -2.8625,
+          1.625
+        ]
+      },
+      "9": {
+        "board_xy_mm": [
+          15.4375,
+          54.225
+        ],
+        "net": "/CH4_N",
+        "local_xy_mm": [
+          -2.8625,
+          2.275
+        ]
+      },
+      "10": {
+        "board_xy_mm": [
+          15.4375,
+          54.875
+        ],
+        "net": "/CH4_P",
+        "local_xy_mm": [
+          -2.8625,
+          2.925
+        ]
+      },
+      "11": {
+        "board_xy_mm": [
+          21.1625,
+          54.875
+        ],
+        "net": "/SYNC_RESET_N",
+        "local_xy_mm": [
+          2.8625,
+          2.925
+        ]
+      },
+      "12": {
+        "board_xy_mm": [
+          21.1625,
+          54.225
+        ],
+        "net": "/CS_N",
+        "local_xy_mm": [
+          2.8625,
+          2.275
+        ]
+      },
+      "13": {
+        "board_xy_mm": [
+          21.1625,
+          53.575
+        ],
+        "net": "/ADC/ADC_DRDY_N",
+        "local_xy_mm": [
+          2.8625,
+          1.625
+        ]
+      },
+      "14": {
+        "board_xy_mm": [
+          21.1625,
+          52.925
+        ],
+        "net": "/SCLK",
+        "local_xy_mm": [
+          2.8625,
+          0.975
+        ]
+      },
+      "15": {
+        "board_xy_mm": [
+          21.1625,
+          52.275
+        ],
+        "net": "/ADC/ADC_DOUT",
+        "local_xy_mm": [
+          2.8625,
+          0.325
+        ]
+      },
+      "16": {
+        "board_xy_mm": [
+          21.1625,
+          51.625
+        ],
+        "net": "/MOSI",
+        "local_xy_mm": [
+          2.8625,
+          -0.325
+        ]
+      },
+      "17": {
+        "board_xy_mm": [
+          21.1625,
+          50.975
+        ],
+        "net": "/ADC/ADC_CLKIN",
+        "local_xy_mm": [
+          2.8625,
+          -0.975
+        ]
+      },
+      "18": {
+        "board_xy_mm": [
+          21.1625,
+          50.325
+        ],
+        "net": "/ADC/AFE_CAP",
+        "local_xy_mm": [
+          2.8625,
+          -1.625
+        ]
+      },
+      "19": {
+        "board_xy_mm": [
+          21.1625,
+          49.675
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          2.8625,
+          -2.275
+        ]
+      },
+      "20": {
+        "board_xy_mm": [
+          21.1625,
+          49.025
+        ],
+        "net": "DVDD_F",
+        "local_xy_mm": [
+          2.8625,
+          -2.925
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 4.837952,
+      "90": 6.841893,
+      "180": 4.837952,
+      "270": 0.007731
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D104",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 0,
+    "before_CPL_deg": 180.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 4.2625,
+    "pad1_Y_mm": 45.2,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          4.2625,
+          45.2
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          4.2625,
+          47.1
+        ],
+        "net": "unconnected-(D104-K2-Pad2)",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          6.1375,
+          46.15
+        ],
+        "net": "/CH1_N",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.470882,
+      "90": 1.750631,
+      "180": 0.155432,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D102",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 0.0,
+    "public_2D_best_CPL_deg": 0,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 33.6375,
+    "pad1_Y_mm": 14.95,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          33.6375,
+          14.95
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          33.6375,
+          13.05
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          31.7625,
+          14.0
+        ],
+        "net": "/CH1/HIZ_N",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 0.155432,
+      "90": 1.750631,
+      "180": 2.470882,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "U502",
+    "MPN": "TLV9064IPWR",
+    "LCSC": "C779410",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 90.0,
+    "candidate_CPL_deg": 90.0,
+    "public_2D_best_CPL_deg": 90,
+    "public_2D_best_RMS_mm": 0.063422,
+    "pad1_X_mm": 14.4125,
+    "pad1_Y_mm": 24.55,
+    "pad1_net": "/CH3/BUF_P",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          14.4125,
+          24.55
+        ],
+        "net": "/CH3/BUF_P",
+        "local_xy_mm": [
+          -2.8625,
+          -1.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          14.4125,
+          23.9
+        ],
+        "net": "/CH3/BUF_P",
+        "local_xy_mm": [
+          -2.8625,
+          -1.3
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          14.4125,
+          23.25
+        ],
+        "net": "/CH3/HIZ_P",
+        "local_xy_mm": [
+          -2.8625,
+          -0.65
+        ]
+      },
+      "4": {
+        "board_xy_mm": [
+          14.4125,
+          22.6
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          -2.8625,
+          0.0
+        ]
+      },
+      "5": {
+        "board_xy_mm": [
+          14.4125,
+          21.95
+        ],
+        "net": "/CH3/HIZ_N",
+        "local_xy_mm": [
+          -2.8625,
+          0.65
+        ]
+      },
+      "6": {
+        "board_xy_mm": [
+          14.4125,
+          21.3
+        ],
+        "net": "/CH3/BUF_N",
+        "local_xy_mm": [
+          -2.8625,
+          1.3
+        ]
+      },
+      "7": {
+        "board_xy_mm": [
+          14.4125,
+          20.65
+        ],
+        "net": "/CH3/BUF_N",
+        "local_xy_mm": [
+          -2.8625,
+          1.95
+        ]
+      },
+      "8": {
+        "board_xy_mm": [
+          8.6875,
+          20.65
+        ],
+        "net": "/CH4/BUF_P",
+        "local_xy_mm": [
+          2.8625,
+          1.95
+        ]
+      },
+      "9": {
+        "board_xy_mm": [
+          8.6875,
+          21.3
+        ],
+        "net": "/CH4/BUF_P",
+        "local_xy_mm": [
+          2.8625,
+          1.3
+        ]
+      },
+      "10": {
+        "board_xy_mm": [
+          8.6875,
+          21.95
+        ],
+        "net": "/CH4/HIZ_P",
+        "local_xy_mm": [
+          2.8625,
+          0.65
+        ]
+      },
+      "11": {
+        "board_xy_mm": [
+          8.6875,
+          22.6
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          2.8625,
+          0.0
+        ]
+      },
+      "12": {
+        "board_xy_mm": [
+          8.6875,
+          23.25
+        ],
+        "net": "/CH4/HIZ_N",
+        "local_xy_mm": [
+          2.8625,
+          -0.65
+        ]
+      },
+      "13": {
+        "board_xy_mm": [
+          8.6875,
+          23.9
+        ],
+        "net": "/CH4/BUF_N",
+        "local_xy_mm": [
+          2.8625,
+          -1.3
+        ]
+      },
+      "14": {
+        "board_xy_mm": [
+          8.6875,
+          24.55
+        ],
+        "net": "/CH4/BUF_N",
+        "local_xy_mm": [
+          2.8625,
+          -1.95
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 4.405679,
+      "90": 0.063422,
+      "180": 4.405679,
+      "270": 6.230248
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D201",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 180.0,
+    "before_CPL_deg": 0.0,
+    "candidate_CPL_deg": 0.0,
+    "public_2D_best_CPL_deg": 0,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 28.9375,
+    "pad1_Y_mm": 14.95,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          28.9375,
+          14.95
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          28.9375,
+          13.05
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          27.0625,
+          14.0
+        ],
+        "net": "/CH2/HIZ_P",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 0.155432,
+      "90": 1.750631,
+      "180": 2.470882,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "U4002",
+    "MPN": "TPS7A2030PDBVR",
+    "LCSC": "C963429",
+    "PCB_deg": 0,
+    "before_CPL_deg": 180.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.061397,
+    "pad1_X_mm": 21.3625,
+    "pad1_Y_mm": 36.6,
+    "pad1_net": "/Analog_Power_Interlock/VBAT_AFE",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          21.3625,
+          36.6
+        ],
+        "net": "/Analog_Power_Interlock/VBAT_AFE",
+        "local_xy_mm": [
+          -1.1375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          21.3625,
+          37.55
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -1.1375,
+          0.0
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          21.3625,
+          38.5
+        ],
+        "net": "/Analog_Power_Interlock/AFE_EN",
+        "local_xy_mm": [
+          -1.1375,
+          0.95
+        ]
+      },
+      "4": {
+        "board_xy_mm": [
+          23.6375,
+          38.5
+        ],
+        "net": "unconnected-(U4002-NC-Pad4)",
+        "local_xy_mm": [
+          1.1375,
+          0.95
+        ]
+      },
+      "5": {
+        "board_xy_mm": [
+          23.6375,
+          36.6
+        ],
+        "net": "AFE_3V0",
+        "local_xy_mm": [
+          1.1375,
+          -0.95
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.852338,
+      "90": 2.017833,
+      "180": 0.061397,
+      "270": 2.016917
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D103",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 0,
+    "before_CPL_deg": 180.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 8.1625,
+    "pad1_Y_mm": 45.2,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          8.1625,
+          45.2
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          8.1625,
+          47.1
+        ],
+        "net": "unconnected-(D103-K2-Pad2)",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          10.0375,
+          46.15
+        ],
+        "net": "/CH1_P",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.470882,
+      "90": 1.750631,
+      "180": 0.155432,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  },
+  {
+    "reference": "D404",
+    "MPN": "BAV199,215",
+    "LCSC": "C40919",
+    "PCB_deg": 0,
+    "before_CPL_deg": 180.0,
+    "candidate_CPL_deg": 180.0,
+    "public_2D_best_CPL_deg": 180,
+    "public_2D_best_RMS_mm": 0.155432,
+    "pad1_X_mm": 8.1625,
+    "pad1_Y_mm": 56.0,
+    "pad1_net": "GND",
+    "library_result": "ALIGNS_WITH_PUBLIC_2D_LIBRARY",
+    "assembly_3D_preview": "UNVERIFIED",
+    "all_numbered_pads": {
+      "1": {
+        "board_xy_mm": [
+          8.1625,
+          56.0
+        ],
+        "net": "GND",
+        "local_xy_mm": [
+          -0.9375,
+          -0.95
+        ]
+      },
+      "2": {
+        "board_xy_mm": [
+          8.1625,
+          57.9
+        ],
+        "net": "unconnected-(D404-K2-Pad2)",
+        "local_xy_mm": [
+          -0.9375,
+          0.95
+        ]
+      },
+      "3": {
+        "board_xy_mm": [
+          10.0375,
+          56.95
+        ],
+        "net": "/CH4_N",
+        "local_xy_mm": [
+          0.9375,
+          0.0
+        ]
+      }
+    },
+    "RMS_by_angle_mm": {
+      "0": 2.470882,
+      "90": 1.750631,
+      "180": 0.155432,
+      "270": 1.750631
+    },
+    "method": "centered numbered-pad fit; SVG coordinates \u00d70.254; CCW top-view rotations; origin translation removed"
+  }
+]

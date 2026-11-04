@@ -1,0 +1,3 @@
+# Rev A immutability baseline recorded 2026-10-10 before any RB-01R edit (HEAD 214e8a8)
+production_pcb  hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/ARTHUR_EMG_RevA_Cost.kicad_pcb  d7a585e8ae46299215d26c0aa58ea0ca5829d46ce72a45d279290263e94a0005
+tree_sha256     sha256 of `git ls-files hardware/emg/rev-a hardware/emg/rev-a-cost | xargs sha256sum` run in hardware/emg  d5d722898307447d77b327cacff40d451708a3b9fb76d2008e63e59cd0ea2c67
