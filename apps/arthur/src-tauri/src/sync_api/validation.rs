@@ -186,6 +186,9 @@ impl ValidatedEvent {
     pub fn envelope(&self) -> &Envelope {
         &self.envelope
     }
+    pub fn into_envelope(self) -> Envelope {
+        self.envelope
+    }
     pub fn core(&self) -> &JournalEvent {
         &self.core
     }

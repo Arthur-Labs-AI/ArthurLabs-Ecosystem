@@ -11,6 +11,32 @@ pub(crate) const MAX_FRAME: usize = 1024 * 1024;
 pub(crate) const MAX_BATCH: usize = 2;
 pub(crate) const MAX_ASSEMBLIES: usize = 2;
 pub(crate) const FEATURES: u32 = 31; // ledger, chunking, conflict receipts, paginated inventory, bootstrap v1
+pub(crate) const MAX_SIGNED_METADATA: usize = 16 * 1024;
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SyncProfile {
+    LedgerCandidate,
+    SignedOriginalCandidate,
+}
+impl SyncProfile {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::LedgerCandidate => "m05-ledger-candidate",
+            Self::SignedOriginalCandidate => "m05-signed-original-candidate-v1",
+        }
+    }
+    pub fn version(self) -> u32 {
+        match self {
+            Self::LedgerCandidate => 1,
+            Self::SignedOriginalCandidate => 2,
+        }
+    }
+    pub fn features(self) -> u32 {
+        match self {
+            Self::LedgerCandidate => FEATURES,
+            Self::SignedOriginalCandidate => (FEATURES & !16) | 32,
+        }
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Error {
     Trust,
@@ -122,6 +148,25 @@ pub(crate) struct Envelope {
     pub identity: Identity,
     pub bytes: Vec<u8>,
 }
+// Opaque canonical SignedOriginal bytes; the atomic store verifies the author.
+// Never Debug: metadata is not diagnostic output.
+#[derive(Clone)]
+#[cfg_attr(
+    any(test, all(target_os = "android", feature = "android-identity-tests")),
+    derive(serde::Serialize, serde::Deserialize)
+)]
+#[cfg_attr(
+    any(test, all(target_os = "android", feature = "android-identity-tests")),
+    serde(deny_unknown_fields)
+)]
+pub(crate) struct SignedMetadata {
+    pub identity: Identity,
+    pub bytes: Vec<u8>,
+}
+pub(crate) struct SignedExport {
+    pub event: Envelope,
+    pub metadata: SignedMetadata,
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(
     any(test, all(target_os = "android", feature = "android-identity-tests")),
@@ -207,6 +252,7 @@ pub(crate) enum Payload {
     SnapshotPublish(super::bootstrap::SnapshotOffer),
     SnapshotReceipt(super::bootstrap::SnapshotReceipt),
     Chunk(Chunk),
+    SignedMetadata(SignedMetadata),
     Receipt(Receipt),
     Request(Vec<Uuid>),
 }

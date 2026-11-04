@@ -11,4 +11,5 @@ public final class CrossDeviceSyncTest {
     @Test public void exchange() { assertTrue(NativeIdentityBridgeTest.runScenario(44)); }
     @Test public void resume() { assertTrue(NativeIdentityBridgeTest.runScenario(45)); }
     @Test public void cleanup() { assertTrue(NativeIdentityBridgeTest.runScenario(46)); }
+    @Test public void registry() { assertTrue(NativeIdentityBridgeTest.runScenario(49)); }
 }

@@ -50,6 +50,70 @@ impl TrustVerifier for ClosedTrust {
         Err(Error::Trust)
     }
 }
+// Explicit isolated fixture composition only. TLS independently checks the same
+// hello and pinned endpoint keys; this value is not release channel evidence.
+// Every store access revalidates this registry binding under the owner lock.
+#[cfg(any(
+    test,
+    all(
+        target_os = "android",
+        feature = "android-identity-tests",
+        debug_assertions
+    )
+))]
+pub(crate) struct RegistryTrust {
+    hello: PeerHello,
+    binding: super::security::enrollment::MembershipBinding,
+    expires: u64,
+    origins: BTreeSet<Uuid>,
+}
+#[cfg(any(
+    test,
+    all(
+        target_os = "android",
+        feature = "android-identity-tests",
+        debug_assertions
+    )
+))]
+impl RegistryTrust {
+    pub fn qualification(
+        hello: PeerHello,
+        binding: super::security::enrollment::MembershipBinding,
+        expires: u64,
+        origins: BTreeSet<Uuid>,
+    ) -> Result<Self> {
+        if !binding.matches(&hello) || origins.is_empty() || origins.len() > MAX_EVENTS {
+            return Err(Error::Trust);
+        }
+        Ok(Self {
+            hello,
+            binding,
+            expires,
+            origins,
+        })
+    }
+}
+#[cfg(any(
+    test,
+    all(
+        target_os = "android",
+        feature = "android-identity-tests",
+        debug_assertions
+    )
+))]
+impl TrustVerifier for RegistryTrust {
+    fn verify(&self, hello: &PeerHello) -> Result<VerifiedSession> {
+        if hello != &self.hello || !self.binding.matches(hello) {
+            return Err(Error::Trust);
+        }
+        Ok(VerifiedSession {
+            hello: hello.clone(),
+            expires: self.expires,
+            origins: self.origins.clone(),
+            registry: Some(self.binding.clone()),
+        })
+    }
+}
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) struct TestTrust {
     pub hello: PeerHello,

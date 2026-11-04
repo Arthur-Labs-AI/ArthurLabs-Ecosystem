@@ -1,6 +1,6 @@
 param([Parameter(Mandatory=$true)][string]$Serial,
     [string]$LanAddress,[string]$AndroidAddress,[ValidateRange(1024,65535)][int]$AndroidSourcePort=37432,
-    [switch]$Physical)
+    [switch]$Physical,[switch]$SignedOriginal)
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'qualification-common.ps1')
 # Supplying both addresses explicitly authorizes the narrow disposable LAN test.
@@ -16,7 +16,8 @@ $adb=Join-Path $env:ANDROID_HOME 'platform-tools/adb.exe'
 $selected=Get-QualificationTarget $(if($Physical){'aarch64'}else{'x86_64'})
 $device=Get-QualificationDevice $adb $Serial $selected -Physical:$Physical
 "Selected device: ABI $($device.Abi), API $($device.Api), emulator=$($device.Emulator)"
-'Scope: canonical Envelope events over pinned mutual TLS; per-original SignedOriginal envelopes are not exercised by this existing lab'
+if ($SignedOriginal) { 'Scope: R8 SignedOriginal candidate profile, real OS author signatures, explicit signed registry fixtures, pinned mutual TLS' }
+else { 'Scope: canonical Envelope events over pinned mutual TLS; per-original SignedOriginal envelopes are not exercised by this existing lab' }
 if ($lanMode) {
     $interfaces=@(Get-NetIPAddress -AddressFamily IPv4 -IPAddress $LanAddress -ErrorAction Stop)
     if ($interfaces.Count -ne 1 -or $interfaces[0].AddressState -ne 'Preferred') {throw 'Windows LAN address must belong to exactly one preferred local interface'}
@@ -86,6 +87,14 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Public manifest push failed' }
     & $adb -s $Serial shell run-as $app cp '/data/local/tmp/arthur-r3-public.json' "$deviceRoot/peer.json"
     if ($LASTEXITCODE -ne 0) { throw 'Public manifest install failed' }
+    if ($SignedOriginal) {
+        $process=Windows 49 'registry'; Finished $process
+        & $adb -s $Serial push (Join-Path $base 'registry.json') '/data/local/tmp/arthur-r8-registry.json' | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Public signed registry push failed' }
+        & $adb -s $Serial shell run-as $app cp '/data/local/tmp/arthur-r8-registry.json' "$deviceRoot/registry.json"
+        if ($LASTEXITCODE -ne 0) { throw 'Public signed registry install failed' }
+        Android registry
+    }
     $pids=@()
     foreach ($phase in @(1,2)) {
         & $adb -s $Serial shell am force-stop $app
@@ -142,6 +151,14 @@ try {
         $w=Get-Content -LiteralPath $windowsResult -Raw | ConvertFrom-Json
         $a=Get-Content -LiteralPath $androidResult -Raw | ConvertFrom-Json
         if ($w.pid -ne $process.Id -or $w.events.Count -ne 3 -or $a.events.Count -ne 3) {throw 'Endpoint/evidence count mismatch'}
+        $expectedProfile=if($SignedOriginal){'m05-signed-original-candidate-v1'}else{'m05-ledger-candidate'}
+        if ($w.profile -ne $expectedProfile -or $a.profile -ne $expectedProfile) {throw 'Native profile differs from explicit controller selection'}
+        if ($SignedOriginal) {
+            foreach ($event in @($w.events)+@($a.events)) {
+                if ($event.signed_original.Count -lt 1 -or $event.signed_original.Count -gt 16384 -or $event.author.Count -ne 65) {throw 'Missing native-verified original author/signature evidence'}
+            }
+            if ($w.original_seals.Count -ne 1 -or $a.original_seals.Count -ne 1) {throw 'Missing signed origin seal'}
+        }
         if (($w.events | ConvertTo-Json -Depth 100 -Compress) -cne ($a.events | ConvertTo-Json -Depth 100 -Compress)) {throw 'Canonical event/row evidence differs'}
         $expectedPending=if($phase -eq 1){2}else{0}
         if ($w.outstanding.Count -ne $expectedPending -or $a.outstanding.Count -ne 0) {throw 'Incorrect durable receipt/retry state'}
@@ -159,10 +176,13 @@ try {
     foreach ($endpoint in @('result','android-result')) {
         $first=Get-Content (Join-Path $base "$endpoint-1.json") -Raw | ConvertFrom-Json
         $second=Get-Content (Join-Path $base "$endpoint-2.json") -Raw | ConvertFrom-Json
-        foreach ($field in @('proofs','cursors')) {
+        $stableFields=@('proofs','cursors')
+        if ($SignedOriginal) { $stableFields+=@('original_seals') }
+        foreach ($field in $stableFields) {
             if (($first.$field | ConvertTo-Json -Depth 100 -Compress) -cne ($second.$field | ConvertTo-Json -Depth 100 -Compress)) {throw "Restart altered $endpoint $field"}
         }
     }
+    if ($SignedOriginal) { 'PASS R8 signed profile: exact original-author signatures and accepted seals survived both process restarts; full signature verification ran inside the native store' }
     if ($Physical) {'PASS — EXECUTED ON PHYSICAL DEVICE: direct native TCP, both process restarts, exact persisted OS public keys, no duplicates; no ADB reverse data path'}
     elseif ($lanMode) {'PASS direct native TCP; device provenance reported above; no ADB reverse data path'}
     else {'PASS both process restarts, exact persisted OS public keys, no duplicate application; ADB-mediated loopback only'}

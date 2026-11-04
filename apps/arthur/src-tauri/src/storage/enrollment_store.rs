@@ -600,6 +600,60 @@ fn apply(c: &Connection, u: &SignedUpdate) -> Result<()> {
     super::registry_verification::verified(c)?;
     Ok(())
 }
+/// Explicit public signed-history fixture acceptance, never enrollment or TLS
+/// trust conversion. The local OS key pins the chosen genesis; the existing
+/// verifier checks every update and its projections. No private key crosses.
+#[cfg(any(
+    test,
+    all(
+        target_os = "android",
+        feature = "android-identity-tests",
+        debug_assertions
+    )
+))]
+pub(crate) fn accept_qualification_history(
+    owner: &CaptureStore,
+    local: Uuid,
+    history: &[SignedUpdate],
+) -> Result<()> {
+    if history.is_empty() || history.len() > 4096 {
+        return Err(E::Limit);
+    }
+    #[cfg(any(windows, target_os = "android"))]
+    {
+        let mut c = owner.connection.lock().map_err(|_| E::Storage)?;
+        let tx = c
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(sql)?;
+        let (key, public) = super::device_identity_store::bound_key(&tx, local)?;
+        let genesis = history[0].bytes()?;
+        if !matches!(history[0].body.action, Action::Genesis { .. }) {
+            return Err(E::Trust);
+        }
+        let signature = key.sign_domain_separated(
+            Domain::Registry,
+            &super::registry_verification::pin_bytes(&genesis)?,
+        )?;
+        tx.execute(
+            "INSERT INTO e2_network_pin VALUES(1,?1,?2,?3)",
+            params![genesis, public.sec1(), signature],
+        )
+        .map_err(sql)?;
+        for update in history {
+            apply(&tx, update)?;
+        }
+        let registry = super::registry_verification::verified(&tx)?;
+        if registry.local_key != public || !registry.members.contains_key(&local.to_string()) {
+            return Err(E::Trust);
+        }
+        tx.commit().map_err(sql)
+    }
+    #[cfg(not(any(windows, target_os = "android")))]
+    {
+        let _ = (owner, local);
+        Err(E::PlatformUnverified)
+    }
+}
 pub(crate) fn authorize_binding(c: &Connection, b: &MembershipBinding, now: u64) -> Result<()> {
     let registry = super::registry_verification::verified(c)?;
     let r = &registry.root;

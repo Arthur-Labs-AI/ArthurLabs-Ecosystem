@@ -12,20 +12,24 @@ use super::{codec, sql_effects, storage::JournalKernel};
 use crate::{
     storage::{
         capture_store::CreateCaptureInput,
+        enrollment_store::{self, NetworkRegistry},
         migrations,
         security_tls_tests::Fixture,
+        signed_import::SignedImportStore,
         sync_store::{self, CandidateSyncStore},
     },
     sync::{
         security::{
             self,
-            identity::PublicIdentity,
+            enrollment::{Action, Role, SignedUpdate, Update},
+            identity::{DeviceIdentityStore, PublicIdentity},
             native_io_lab,
+            signed::SignedOriginal,
             tls::CertificateRole,
             tls_socket_lab::Endpoint,
             transport_candidate::{Expected, Interrupt},
         },
-        trust::TestTrust,
+        trust::{RegistryTrust, TestTrust},
         *,
     },
 };
@@ -246,6 +250,8 @@ fn prepare() {
         "finish-1",
         "finish-2",
         "failure.json",
+        "registry.json",
+        "signed-profile",
     ] {
         match std::fs::remove_file(base.join(name)) {
             Ok(()) => (),
@@ -296,6 +302,113 @@ fn prepare() {
     );
     f.preserve_for_restart();
 }
+// The controller explicitly chooses a disposable signed registry. This is not
+// pairing, enrollment from a TLS handshake, or a production trust producer.
+fn install_signed_registry() {
+    let base = root();
+    let mut fixture = Fixture::at(base.join("db"), true).unwrap();
+    fixture.preserve_for_restart();
+    let local: Public = read(base.join("public.json"));
+    let peer: Public = read(base.join("peer.json"));
+    #[cfg(windows)]
+    let history = {
+        struct Admin(security::windows::WindowsIdentity);
+        impl Drop for Admin {
+            fn drop(&mut self) {
+                self.0.invalidate_identity().unwrap();
+            }
+        }
+        let admin = Admin(security::windows::WindowsIdentity::slot(Uuid::new_v4()));
+        let public = admin.0.create_identity().unwrap();
+        let network = Uuid::new_v4();
+        let mut history = vec![SignedUpdate::sign(
+            Update {
+                network,
+                epoch: 1,
+                previous: [0; 32],
+                action: Action::Genesis { admin: public },
+            },
+            &admin.0,
+        )
+        .unwrap()];
+        for value in [&local, &peer] {
+            let previous = history.last().unwrap();
+            history.push(
+                SignedUpdate::sign(
+                    Update {
+                        network,
+                        epoch: previous.body.epoch + 1,
+                        previous: previous.body.hash().unwrap(),
+                        action: Action::Grant {
+                            device: PublicIdentity::from_sec1(value.key.clone()).unwrap(),
+                            role: Role::Member,
+                            capabilities: 3,
+                            enrollment: Uuid::new_v4(),
+                            expires: 1000,
+                            origins: vec![value.origin],
+                        },
+                    },
+                    &admin.0,
+                )
+                .unwrap(),
+            );
+        }
+        write(base.join("registry.json"), &history);
+        history
+    };
+    #[cfg(target_os = "android")]
+    let history: Vec<SignedUpdate> = read(base.join("registry.json"));
+    let owner = fixture.owner();
+    enrollment_store::accept_qualification_history(
+        owner.store(),
+        fixture.public.peer_id(),
+        &history,
+    )
+    .unwrap();
+    SignedImportStore::install_qualification(owner.store()).unwrap();
+    let registry = NetworkRegistry::candidate(owner.store())
+        .unwrap()
+        .root()
+        .unwrap();
+    {
+        let c = owner.store().connection.lock().unwrap();
+        c.execute(
+            "UPDATE import_candidate SET network=?1",
+            [registry.network.to_string()],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO import_members VALUES(?1,?2,1)",
+            rusqlite::params![
+                PublicIdentity::from_sec1(peer.key.clone())
+                    .unwrap()
+                    .peer_id()
+                    .to_string(),
+                registry.epoch
+            ],
+        )
+        .unwrap();
+    }
+    sync_store::grant_test_origins(
+        owner.store(),
+        PublicIdentity::from_sec1(peer.key).unwrap().peer_id(),
+        &BTreeSet::from([local.origin, peer.origin]),
+    );
+    owner
+        .store()
+        .connection
+        .lock()
+        .unwrap()
+        .execute(
+            "UPDATE import_origin_permissions SET epoch=?1",
+            [registry.epoch],
+        )
+        .unwrap();
+    write(
+        base.join("signed-profile"),
+        &serde_json::json!({"pid":std::process::id(),"version":1}),
+    );
+}
 fn evidence(f: &Fixture) -> serde_json::Value {
     let owner = f.owner();
     let events = sync_store::test_events(owner.store());
@@ -309,6 +422,10 @@ fn evidence(f: &Fixture) -> serde_json::Value {
     }
     assert_eq!(count(f, "import_events"), count(f, "import_g3_commits"));
     let c = owner.store().connection.lock().unwrap();
+    let registry = root()
+        .join("signed-profile")
+        .exists()
+        .then(|| crate::storage::registry_verification::verified(&c).unwrap());
     let mut values = Vec::new();
     for event in events {
         let v = ValidatedEvent::parse(event.clone()).unwrap();
@@ -328,7 +445,19 @@ fn evidence(f: &Fixture) -> serde_json::Value {
                 }
             })
             .collect::<Vec<_>>();
-        values.push(serde_json::json!({"event":event.identity.event,"origin":event.identity.origin,"incarnation":event.identity.incarnation,"seq":event.identity.seq,"hash":event.identity.hash,"bytes":event.bytes,"rows":rows}));
+        let mut value = serde_json::json!({"event":event.identity.event,"origin":event.identity.origin,"incarnation":event.identity.incarnation,"seq":event.identity.seq,"hash":event.identity.hash,"bytes":event.bytes,"rows":rows});
+        if let Some(registry) = &registry {
+            let signed: Vec<u8> = c.query_row("SELECT envelope FROM e2_export_signatures WHERE event=?1 UNION ALL SELECT envelope FROM e2_originals WHERE event=?1", [event.identity.event.to_string()], |r|r.get(0)).unwrap();
+            let author =
+                &registry.members[&registry.origins[&event.identity.origin.to_string()]].key;
+            SignedOriginal::decode(&signed)
+                .unwrap()
+                .verify(registry.root.network, &event, author)
+                .unwrap();
+            value["signed_original"] = serde_json::json!(signed);
+            value["author"] = serde_json::json!(author.sec1());
+        }
+        values.push(value);
     }
     values.sort_by_key(|v| v["event"].as_str().unwrap().to_owned());
     assert_eq!(
@@ -369,7 +498,25 @@ fn evidence(f: &Fixture) -> serde_json::Value {
         }).unwrap().collect::<rusqlite::Result<Vec<_>>>().unwrap();
     assert_eq!(proofs.len(), if cfg!(windows) { 1 } else { 2 });
     assert_eq!(cursors.len(), 1);
-    serde_json::json!({"pid":std::process::id(),"key":f.public.sec1(),"events":values,"proofs":proofs,"cursors":cursors})
+    let mut result = serde_json::json!({"pid":std::process::id(),"key":f.public.sec1(),"events":values,"proofs":proofs,"cursors":cursors});
+    result["profile"] = serde_json::json!(if registry.is_some() {
+        SyncProfile::SignedOriginalCandidate.name()
+    } else {
+        SyncProfile::LedgerCandidate.name()
+    });
+    if registry.is_some() {
+        let seals=c.prepare("SELECT origin,incarnation,hex(author),seq,hex(hash),hex(signature) FROM e2_origin_seals ORDER BY origin").unwrap()
+            .query_map([],|r|Ok(serde_json::json!({"origin":r.get::<_,String>(0)?,"incarnation":r.get::<_,String>(1)?,"author":r.get::<_,String>(2)?,"seq":r.get::<_,i64>(3)?,"hash":r.get::<_,String>(4)?,"signature":r.get::<_,String>(5)?}))).unwrap().collect::<rusqlite::Result<Vec<_>>>().unwrap();
+        assert_eq!(seals.len(), 1);
+        assert_eq!(
+            c.query_row("SELECT count(*) FROM e2_originals", [], |r| r
+                .get::<_, i64>(0))
+                .unwrap(),
+            proofs.len() as i64
+        );
+        result["original_seals"] = serde_json::json!(seals);
+    }
+    result
 }
 async fn exchange(phase: u32) {
     let base = root();
@@ -380,7 +527,8 @@ async fn exchange(phase: u32) {
     assert_eq!(local.key, f.public.sec1());
     let pin = PublicIdentity::from_sec1(peer.key).unwrap();
     let owner = f.owner();
-    {
+    let signed_profile = base.join("signed-profile").exists();
+    if !signed_profile {
         let c = owner.store().connection.lock().unwrap();
         c.execute(
             "INSERT OR IGNORE INTO import_members VALUES(?1,1,1)",
@@ -389,21 +537,41 @@ async fn exchange(phase: u32) {
         .unwrap();
     }
     let origins = BTreeSet::from([local.origin, peer.origin]);
-    sync_store::grant_test_origins(owner.store(), pin.peer_id(), &origins);
+    if !signed_profile {
+        sync_store::grant_test_origins(owner.store(), pin.peer_id(), &origins);
+    }
+    let registry = signed_profile.then(|| {
+        NetworkRegistry::candidate(owner.store())
+            .unwrap()
+            .root()
+            .unwrap()
+    });
     let hello = PeerHello {
-        network: NETWORK,
+        network: registry.as_ref().map_or(NETWORK, |r| r.network),
         session: Uuid::from_u128(7300 + phase as u128),
         local: f.public.peer_id(),
         peer: pin.peer_id(),
-        epoch: 1,
+        epoch: registry.as_ref().map_or(1, |r| r.epoch),
     };
-    let trust = TestTrust {
-        hello: hello.clone(),
-        expires: 100,
-        origins,
+    let trust: Box<dyn TrustVerifier> = if signed_profile {
+        let binding = NetworkRegistry::candidate(owner.store())
+            .unwrap()
+            .binding(hello.local, &pin, Clock.now())
+            .unwrap();
+        Box::new(RegistryTrust::qualification(hello.clone(), binding, 100, origins).unwrap())
+    } else {
+        Box::new(TestTrust {
+            hello: hello.clone(),
+            expires: 100,
+            origins,
+        })
     };
     let verified = trust.verify(&hello).unwrap();
-    let store = CandidateSyncStore::synthetic(owner.store());
+    let store: Box<dyn SyncStore> = if signed_profile {
+        Box::new(SignedImportStore::synthetic(owner.store()))
+    } else {
+        Box::new(CandidateSyncStore::synthetic(owner.store()))
+    };
     let cancel = Cancellation::default();
     let stop = Arc::new(Interrupt::default());
     let lan: Option<Lan> = base
@@ -432,7 +600,7 @@ async fn exchange(phase: u32) {
         }
     }
     let expected = Expected {
-        network: NETWORK,
+        network: hello.network,
         peer: pin.peer_id(),
     };
     let (pool, permit, timer) = if lan.is_some() {
@@ -525,7 +693,8 @@ async fn exchange(phase: u32) {
     // Reuse the existing receipt-loss fixture AFTER encrypted transport, not a
     // substitute transport. Phase 2 must recover both persisted offers.
     transport.lose_receipts = cfg!(windows) && phase == 1;
-    let mut engine = SyncEngine::start(&store, transport, &trust, &Clock, &cancel).unwrap();
+    let mut engine =
+        SyncEngine::start(store.as_ref(), transport, trust.as_ref(), &Clock, &cancel).unwrap();
     #[cfg(target_os = "android")]
     let mut created = false;
     let mut messages = 0;
@@ -630,6 +799,7 @@ pub(crate) fn run(case: i32) -> security::Result<()> {
         44 => native_io_lab::execute(exchange(1)),
         45 => native_io_lab::execute(exchange(2)),
         46 => cleanup(),
+        49 => install_signed_registry(),
         _ => panic!("cross-device case"),
     })
     .map_err(|_| security::SecurityError::State)

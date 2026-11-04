@@ -2,6 +2,28 @@ use super::{bootstrap::*, protocol::*, trust::VerifiedSession, validation::Valid
 use uuid::Uuid;
 
 pub(crate) trait SyncStore {
+    fn profile(&self) -> SyncProfile {
+        SyncProfile::LedgerCandidate
+    }
+    fn export_signed(
+        &self,
+        _session: &VerifiedSession,
+        _id: &Identity,
+        _clock: &dyn SyncClock,
+        _cancel: &Cancellation,
+    ) -> Result<SignedExport> {
+        Err(Error::Protocol)
+    }
+    fn retain_signed(
+        &self,
+        _session: &VerifiedSession,
+        _metadata: SignedMetadata,
+        _event: Envelope,
+        _clock: &dyn SyncClock,
+        _cancel: &Cancellation,
+    ) -> Result<Receipt> {
+        Err(Error::Protocol)
+    }
     fn settle(
         &self,
         session: &VerifiedSession,

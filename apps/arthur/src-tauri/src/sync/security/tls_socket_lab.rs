@@ -283,6 +283,7 @@ impl AuthenticatedTransport for TlsTransport {
         let oversized = match &message.payload {
             Payload::Hello { profile, .. } => profile.len() > 64,
             Payload::Chunk(c) => c.bytes.len() > CHUNK,
+            Payload::SignedMetadata(m) => m.bytes.is_empty() || m.bytes.len() > MAX_SIGNED_METADATA,
             Payload::Summary(s) => s.known.len() > SUMMARY_PAGE || s.progress.len() > MAX_EVENTS,
             Payload::Request(ids) => ids.len() > 32,
             _ => false,

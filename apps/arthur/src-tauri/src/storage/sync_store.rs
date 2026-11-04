@@ -1140,6 +1140,27 @@ pub(super) fn retain_in(
     clock: &dyn SyncClock,
     x: &Cancellation,
 ) -> Result<Receipt> {
+    retain_core_in(c, s, e, clock, x, true)
+}
+// Signed admission must seal each individual accepted original before another
+// deferred core can materialize. The signed adapter owns its verified retry scan.
+pub(super) fn retain_signed_core_in(
+    c: &Connection,
+    s: &VerifiedSession,
+    e: &ValidatedEvent,
+    clock: &dyn SyncClock,
+    x: &Cancellation,
+) -> Result<Receipt> {
+    retain_core_in(c, s, e, clock, x, false)
+}
+fn retain_core_in(
+    c: &Connection,
+    s: &VerifiedSession,
+    e: &ValidatedEvent,
+    clock: &dyn SyncClock,
+    x: &Cancellation,
+    reprocess_all: bool,
+) -> Result<Receipt> {
     let envelope = e.envelope();
     let id = &envelope.identity;
     if !s.permits(id.origin) {
@@ -1191,7 +1212,30 @@ pub(super) fn retain_in(
     )
     .map_err(sql)?;
     quota(c)?;
-    refresh(c, s, clock, x)?;
+    if reprocess_all {
+        refresh(c, s, clock, x)?;
+    } else {
+        authorize(c, s, clock, x)?;
+        let prior: String = c
+            .query_row(
+                "SELECT outcome FROM import_events WHERE event=?1",
+                [id.event.to_string()],
+                |r| r.get(0),
+            )
+            .map_err(sql)?;
+        if matches!(prior.as_str(), "deferred" | "unsupported") {
+            let (outcome, chain) = match classify(c, e) {
+                Ok(value) => value,
+                Err(Error::Integrity) => (Outcome::RejectedIntegrity, false),
+                Err(error) => return Err(error),
+            };
+            c.execute(
+                "UPDATE import_events SET outcome=?2,chain_ok=?3 WHERE event=?1",
+                params![id.event.to_string(), outcome.code(), chain],
+            )
+            .map_err(sql)?;
+        }
+    }
     cursors(c)?;
     let outcome: String = c
         .query_row(

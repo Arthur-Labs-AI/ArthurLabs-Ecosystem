@@ -15,13 +15,15 @@ struct Assembly {
     next: usize,
     bytes: Vec<u8>,
 }
-pub(crate) struct SyncEngine<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> {
+pub(crate) struct SyncEngine<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> {
     store: &'a S,
     transport: T,
     clock: &'a C,
     cancel: &'a Cancellation,
     session: VerifiedSession,
     negotiated: bool,
+    profile: SyncProfile,
+    signed_metadata: BTreeMap<Uuid, SignedMetadata>,
     advertised_after: Option<PageKey>,
     advertised_next: Option<PageKey>,
     assemblies: BTreeMap<Uuid, Assembly>,
@@ -43,7 +45,7 @@ pub(crate) struct SyncEngine<'a, S: SyncStore, T: AuthenticatedTransport, C: Syn
     settle_scan: usize,
     settle_changed: bool,
 }
-impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S, T, C> {
+impl<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S, T, C> {
     pub fn start(
         store: &'a S,
         transport: T,
@@ -55,6 +57,7 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
         session.check(clock, cancel)?;
         // Authorize against durable membership/admission before any disclosure.
         let summary = store.summary(&session, clock, cancel)?;
+        let profile = store.profile();
         let mut engine = Self {
             store,
             transport,
@@ -62,6 +65,8 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             cancel,
             session,
             negotiated: false,
+            profile,
+            signed_metadata: BTreeMap::new(),
             advertised_after: None,
             advertised_next: None,
             assemblies: BTreeMap::new(),
@@ -80,15 +85,18 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             settle_changed: false,
         };
         engine.send(Payload::Hello {
-            version: 1,
-            required: FEATURES,
-            supported: FEATURES,
-            profile: "m05-ledger-candidate".into(),
+            version: profile.version(),
+            required: profile.features(),
+            supported: profile.features(),
+            profile: profile.name().into(),
         })?;
         Ok(engine)
     }
     /// Cache a consistent source boundary now; disclose only after negotiation.
     pub fn bootstrap(&mut self, id: Uuid) -> Result<()> {
+        if self.profile == SyncProfile::SignedOriginalCandidate {
+            return Err(Error::Protocol);
+        }
         if let Some(e) = self.blocked {
             return Err(e);
         }
@@ -209,12 +217,31 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
         if self.in_flight.len() >= MAX_BATCH {
             return Err(Error::Limit);
         }
-        let e = self
-            .store
-            .export(&self.session, id, self.clock, self.cancel)?;
+        let (e, metadata) = if self.profile == SyncProfile::SignedOriginalCandidate {
+            let signed = self
+                .store
+                .export_signed(&self.session, id, self.clock, self.cancel)?;
+            if signed.event.identity != *id
+                || signed.metadata.identity != *id
+                || signed.metadata.bytes.is_empty()
+                || signed.metadata.bytes.len() > MAX_SIGNED_METADATA
+            {
+                return Err(Error::Integrity);
+            }
+            (signed.event, Some(signed.metadata))
+        } else {
+            (
+                self.store
+                    .export(&self.session, id, self.clock, self.cancel)?,
+                None,
+            )
+        };
         self.store
             .offered(&self.session, id, self.clock, self.cancel)?;
         self.in_flight.insert(id.event);
+        if let Some(metadata) = metadata {
+            self.send(Payload::SignedMetadata(metadata))?;
+        }
         for chunk in chunk_event(&e) {
             self.send(Payload::Chunk(chunk))?;
         }
@@ -281,6 +308,7 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
     pub fn tick(&mut self) -> Result<bool> {
         if self.cancel.cancelled() {
             self.assemblies.clear();
+            self.signed_metadata.clear();
             self.bootstrap = None;
             self.snapshot_pending = None;
             self.status = SyncStatus::Syncing;
@@ -303,6 +331,7 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
                     || self.snapshot_pending.is_some()
                     || !self.in_flight.is_empty()
                     || !self.assemblies.is_empty()
+                    || !self.signed_metadata.is_empty()
                     || !self.deferred.is_empty()
                     || self.settle_left > 0)
             {
@@ -329,6 +358,7 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             self.needs_attention = true;
             self.blocked = Some(e);
             self.assemblies.clear();
+            self.signed_metadata.clear();
             self.bootstrap = None;
             self.snapshot_pending = None;
         }
@@ -337,6 +367,7 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
     fn tick_message(&mut self) -> Result<bool> {
         if let Err(e) = self.session.check(self.clock, self.cancel) {
             self.assemblies.clear();
+            self.signed_metadata.clear();
             return Err(e);
         }
         let Some(message) = self.transport.receive()? else {
@@ -366,10 +397,10 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
         } = message.payload
         {
             if self.negotiated
-                || version != 1
-                || required & !FEATURES != 0
-                || FEATURES & !supported != 0
-                || profile != "m05-ledger-candidate"
+                || version != self.profile.version()
+                || required & !self.profile.features() != 0
+                || self.profile.features() & !supported != 0
+                || profile != self.profile.name()
             {
                 return Err(Error::Protocol);
             }
@@ -385,7 +416,40 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
         if !self.negotiated {
             return Err(Error::Protocol);
         }
+        if self.profile == SyncProfile::SignedOriginalCandidate
+            && matches!(
+                &message.payload,
+                Payload::SnapshotOffer(_)
+                    | Payload::SnapshotChunk(_)
+                    | Payload::SnapshotPublish(_)
+                    | Payload::SnapshotReceipt(_)
+            )
+        {
+            return Err(Error::Protocol);
+        }
         match message.payload {
+            Payload::SignedMetadata(metadata) => {
+                if self.profile != SyncProfile::SignedOriginalCandidate {
+                    return Err(Error::Protocol);
+                }
+                if metadata.bytes.is_empty() || metadata.bytes.len() > MAX_SIGNED_METADATA {
+                    return Err(Error::Limit);
+                }
+                if !self.session.permits(metadata.identity.origin) {
+                    return Err(Error::Trust);
+                }
+                if self.signed_metadata.contains_key(&metadata.identity.event)
+                    || self.assemblies.contains_key(&metadata.identity.event)
+                {
+                    return Err(Error::Protocol);
+                }
+                if self.signed_metadata.len() >= MAX_ASSEMBLIES {
+                    return Err(Error::Limit);
+                }
+                self.signed_metadata
+                    .insert(metadata.identity.event, metadata);
+                self.status = SyncStatus::Syncing;
+            }
             Payload::SnapshotOffer(o) => {
                 self.store
                     .snapshot_offer(&self.session, &o, self.clock, self.cancel)?;
@@ -480,6 +544,12 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
             Payload::Chunk(chunk) => {
                 self.status = SyncStatus::Syncing;
                 let id = chunk.identity.event;
+                if self.profile == SyncProfile::SignedOriginalCandidate {
+                    let metadata = self.signed_metadata.get(&id).ok_or(Error::Protocol)?;
+                    if metadata.identity != chunk.identity {
+                        return Err(Error::Integrity);
+                    }
+                }
                 let result = self.chunk(chunk);
                 let completed = match result {
                     Ok(e) => e,
@@ -493,9 +563,19 @@ impl<'a, S: SyncStore, T: AuthenticatedTransport, C: SyncClock> SyncEngine<'a, S
                     if !self.session.permits(validated.envelope().identity.origin) {
                         return Err(Error::Trust);
                     }
-                    let receipt =
+                    let receipt = if self.profile == SyncProfile::SignedOriginalCandidate {
+                        let metadata = self.signed_metadata.remove(&id).ok_or(Error::Protocol)?;
+                        self.store.retain_signed(
+                            &self.session,
+                            metadata,
+                            validated.into_envelope(),
+                            self.clock,
+                            self.cancel,
+                        )?
+                    } else {
                         self.store
-                            .retain(&self.session, validated, self.clock, self.cancel)?;
+                            .retain(&self.session, validated, self.clock, self.cancel)?
+                    };
                     self.needs_attention = self
                         .store
                         .summary(&self.session, self.clock, self.cancel)?

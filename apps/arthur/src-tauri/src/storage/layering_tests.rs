@@ -22,6 +22,10 @@ const QUALIFIED: &[QualifiedSource] = &[
     QualifiedSource { file: "sync/security/tls_lab.rs", parent: "native_security/mod.rs", declaration: "#[cfg(any(test, all(target_os = \"android\", feature = \"android-identity-tests\")))] #[path = \"../sync/security/tls_lab.rs\"] pub(crate) mod tls_lab;", inherited: false },
     QualifiedSource { file: "sync/security/tls_socket_lab.rs", parent: "native_security/mod.rs", declaration: "#[cfg(any(test, all(target_os = \"android\", feature = \"android-identity-tests\")))] #[path = \"../sync/security/tls_socket_lab.rs\"] pub(crate) mod tls_socket_lab;", inherited: false },
     // SQL fixtures retain their original storage paths and original gates.
+    // R8 composes the existing engine/TLS with owner-backed SQL fixtures.
+    // Check the exact test-only declaration; never exempt a production module.
+    QualifiedSource { file: "storage/signed_sync_tests.rs", parent: "storage/mod.rs", declaration: "#[cfg(test)] #[cfg(windows)] mod signed_sync_tests;", inherited: false },
+    QualifiedSource { file: "storage/signed_profile_fault_tests.rs", parent: "storage/signed_sync_tests.rs", declaration: "#[path = \"signed_profile_fault_tests.rs\"] mod faults;", inherited: true },
     QualifiedSource { file: "storage/security_e2_tests.rs", parent: "native_security/mod.rs", declaration: "#[cfg(test)] #[path = \"../storage/security_e2_tests.rs\"] mod e2_tests;", inherited: false },
     QualifiedSource { file: "storage/security_android_instrumentation.rs", parent: "storage/mod.rs", declaration: "#[cfg(all(target_os = \"android\", feature = \"android-identity-tests\"))] mod security_android_instrumentation;", inherited: false },
     QualifiedSource { file: "storage/security_pake_tests.rs", parent: "storage/mod.rs", declaration: "#[cfg(any(test, all(target_os = \"android\", feature = \"android-identity-tests\")))] pub(crate) mod security_pake_tests;", inherited: false },

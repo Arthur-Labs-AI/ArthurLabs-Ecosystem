@@ -41,6 +41,9 @@ pub(crate) mod security_pake_tests;
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod security_tls_tests;
 pub(crate) mod signed_import;
+#[cfg(test)]
+#[cfg(windows)]
+mod signed_sync_tests;
 pub mod summary_store;
 pub(crate) mod sync_store;
 pub(crate) mod tls_identity;
