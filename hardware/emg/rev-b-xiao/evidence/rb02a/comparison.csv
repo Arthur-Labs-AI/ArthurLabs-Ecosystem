@@ -1,0 +1,158 @@
+group,feature,spec,cad,delta,unit,tol,status,provenance,note
+outline,module width (D0-D6 edge to D7-5V edge),17.78,17.78,0.0,mm,0.05,MATCH,CAD,
+outline,module length (USB end edge to far edge),21.02,21.135,0.115,mm,0.05,MINOR,CAD,RB-00.6 used the Seeed footprint courtyard (21.02); the PCB Edge.Cuts outline is longer
+outline,far-edge board y (module north edge),10.98,10.865,-0.115,mm,0.05,MINOR,CAD,
+outline,corner radius (Edge.Cuts arcs),,1.905,,mm,0.05,INFO,CAD,"4 arcs, R1.905 (DXF v1.1 art shows ~1.9 mm 45-degree chamfers)"
+outline,internal routed slots (count),,2,,pcs,0.05,INFO,CAD,"0.41 x 1.25 mm at u = 2.54 and 15.24, v = 15.26-16.51; not mentioned in RB-00.6"
+castellation,pin 1 (D0) centre y,29.1,29.079,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 1 (D0) module edge x,72.78,72.78,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 1 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 1 module copper depth not under the host pad,,0.488,,mm,0.05,INFO,CALC,module copper x 70.69..72.83; host pad x 71.18..74.08
+castellation,pin 1 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 1 function,D0,D0,,,0.05,MATCH,CAD,
+castellation,pin 2 (D1) centre y,26.56,26.539,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 2 (D1) module edge x,72.78,72.78,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 2 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 2 module copper depth not under the host pad,,0.3705,,mm,0.05,INFO,CALC,module copper x 70.81..72.83; host pad x 71.18..74.08
+castellation,pin 2 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 2 function,D1,D1,,,0.05,MATCH,CAD,
+castellation,pin 3 (D2) centre y,24.02,23.999,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 3 (D2) module edge x,72.78,72.78,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 3 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 3 module copper depth not under the host pad,,0.488,,mm,0.05,INFO,CALC,module copper x 70.69..72.83; host pad x 71.18..74.08
+castellation,pin 3 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 3 function,D2,D2,,,0.05,MATCH,CAD,
+castellation,pin 4 (D3) centre y,21.48,21.459,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 4 (D3) module edge x,72.78,72.78,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 4 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 4 module copper depth not under the host pad,,0.488,,mm,0.05,INFO,CALC,module copper x 70.69..72.83; host pad x 71.18..74.08
+castellation,pin 4 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 4 function,D3,D3,,,0.05,MATCH,CAD,
+castellation,pin 5 (D4) centre y,18.94,18.919,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 5 (D4) module edge x,72.78,72.78,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 5 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 5 module copper depth not under the host pad,,0.488,,mm,0.05,INFO,CALC,module copper x 70.69..72.83; host pad x 71.18..74.08
+castellation,pin 5 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 5 function,D4,D4,,,0.05,MATCH,CAD,
+castellation,pin 6 (D5) centre y,16.4,16.379,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 6 (D5) module edge x,72.78,72.78,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 6 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 6 module copper depth not under the host pad,,0.3705,,mm,0.05,INFO,CALC,module copper x 70.81..72.83; host pad x 71.18..74.08
+castellation,pin 6 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 6 function,D5,D5,,,0.05,MATCH,CAD,
+castellation,pin 7 (D6) centre y,13.86,13.839,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 7 (D6) module edge x,72.78,72.78,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 7 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 7 module copper depth not under the host pad,,0.488,,mm,0.05,INFO,CALC,module copper x 70.69..72.83; host pad x 71.18..74.08
+castellation,pin 7 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 7 function,D6,D6,,,0.05,MATCH,CAD,
+castellation,pin 8 (D7) centre y,13.86,13.839,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 8 (D7) module edge x,55.0,55.0,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 8 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 8 module copper depth not under the host pad,,0.488,,mm,0.05,INFO,CALC,module copper x 54.95..57.09; host pad x 53.70..56.60
+castellation,pin 8 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 8 function,D7,D7,,,0.05,MATCH,CAD,
+castellation,pin 9 (D8) centre y,16.4,16.379,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 9 (D8) module edge x,55.0,55.0,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 9 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 9 module copper depth not under the host pad,,0.3705,,mm,0.05,INFO,CALC,module copper x 54.95..56.97; host pad x 53.70..56.60
+castellation,pin 9 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 9 function,D8,D8,,,0.05,MATCH,CAD,
+castellation,pin 10 (D9) centre y,18.94,18.919,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 10 (D9) module edge x,55.0,55.0,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 10 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 10 module copper depth not under the host pad,,0.488,,mm,0.05,INFO,CALC,module copper x 54.95..57.09; host pad x 53.70..56.60
+castellation,pin 10 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 10 function,D9,D9,,,0.05,MATCH,CAD,
+castellation,pin 11 (D10) centre y,21.48,21.459,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 11 (D10) module edge x,55.0,55.0,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 11 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 11 module copper depth not under the host pad,,0.488,,mm,0.05,INFO,CALC,module copper x 54.95..57.09; host pad x 53.70..56.60
+castellation,pin 11 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 11 function,D10,D10,,,0.05,MATCH,CAD,
+castellation,pin 12 (3V3) centre y,24.02,23.999,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 12 (3V3) module edge x,55.0,55.0,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 12 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 12 module copper depth not under the host pad,,0.488,,mm,0.05,INFO,CALC,module copper x 54.95..57.09; host pad x 53.70..56.60
+castellation,pin 12 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 12 function,3V3,3V3_OUT,,,0.05,MATCH,CAD,
+castellation,pin 13 (GND) centre y,26.56,26.539,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 13 (GND) module edge x,55.0,55.0,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 13 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 13 module copper depth not under the host pad,,0.3705,,mm,0.05,INFO,CALC,module copper x 54.95..56.97; host pad x 53.70..56.60
+castellation,pin 13 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 13 function,GND,GND,,,0.05,MATCH,CAD,
+castellation,pin 14 (5V) centre y,29.1,29.079,-0.021,mm,0.05,MATCH,CAD,
+castellation,pin 14 (5V) module edge x,55.0,55.0,0.0,mm,0.05,MATCH,CAD,
+castellation,pin 14 module copper width along the edge,1.325,1.626,0.301,mm,0.05,DISCREPANCY,CAD,RB-00.6 text: 'covers the 1.325 mm module pad'; CAD copper is the 1.626 mm dimension
+castellation,pin 14 module copper depth not under the host pad,,0.488,,mm,0.05,INFO,CALC,module copper x 54.95..57.09; host pad x 53.70..56.60
+castellation,pin 14 module copper overhang beyond each host pad side,,0.063,,mm,0.05,INFO,CALC,
+castellation,pin 14 function,5V,VBUS,,,0.05,MATCH,CAD,
+castellation,module copper outside the board edge (pin 1 type),0.2,0.0505,-0.1495,mm,0.05,MINOR,CAD,RB-00.6 read the 1.626 dimension as the edge-normal depth; the PCB file has 1.626 along the edge
+castellation,"module copper depth inside the edge, incl. header-hole cap (pin 1 type)",1.43,2.088,0.658,mm,0.05,DISCREPANCY,CAD,
+castellation,module copper depth inside the edge (pin 2/6/9/13 type),1.43,1.9705,0.5405,mm,0.05,DISCREPANCY,CAD,
+castellation,"header-hole ring centre inside the edge, minimum over 14 pins",1.17,1.17,0.0,mm,0.05,MATCH,CAD,"pins 1, 7, 8, 14 (corner pads) at 1.17; pins 2-6 and 9-13 at 1.27 mm (0.1 in header grid)"
+castellation,"header-hole ring centre inside the edge, maximum over 14 pins",1.17,1.27,0.1,mm,0.05,MINOR,CAD,
+castellation,header-hole ring diameter,1.4,1.4,0.0,mm,0.01,MATCH,CAD,
+castellation,"header-hole drill (plated, open on the plain module)",,0.95,,mm,0.05,INFO,CAD,
+castellation,half-hole drill at the edge,,0.7,,mm,0.05,INFO,CAD,"RB-00.6 says 'half-hole Ø≈1.0'; the pad is Ø1.27, the drill Ø0.70"
+castellation,"pitch (6 intervals, mean)",2.54,2.54,0.0,mm,0.01,MATCH,CAD,
+castellation,pitch spread (max - min over 6 intervals),0.0,0.0,0.0,mm,0.005,MATCH,CAD,
+castellation,host pad-to-pad gap,1.04,1.04,0.0,mm,0.01,MATCH,CALC,
+castellation,module pad-to-pad copper gap,,0.914,,mm,0.05,INFO,CALC,
+battery,BAT+ pad net,VBAT,/03 XIAO ESP32-S3-Sense/VBAT,,,0.05,MATCH,CAD,V1.5 net is the hierarchical VBAT label; the secondary file names it VBAT
+battery,BAT+ pad centre x (board),68.335,68.335,0.0,mm,0.05,MATCH,CAD,
+battery,BAT+ pad centre y (board),21.862,21.84,-0.022,mm,0.05,MATCH,CAD,
+battery,BAT+ pad length (along x),2.032,2.032,0.0,mm,0.01,MATCH,CAD,
+battery,BAT+ pad height (along y),1.016,1.016,0.0,mm,0.01,MATCH,CAD,
+battery,GND0 (BAT-) pad centre x (board),68.335,68.335,0.0,mm,0.05,MATCH,CAD,
+battery,GND0 pad centre y (board),23.767,23.745,-0.022,mm,0.05,MATCH,CAD,23.767 = XIAO_MOUNTING_1TO1.py GND0; 23.26-24.28 keep-out box centre = 23.77
+battery,GND0 pad box x0,67.32,67.319,-0.001,mm,0.05,MATCH,CAD,
+battery,GND0 pad box x1,69.35,69.351,0.001,mm,0.05,MATCH,CAD,
+battery,GND0 pad box y0,23.26,23.237,-0.023,mm,0.05,MATCH,CAD,
+battery,GND0 pad box y1,24.28,24.253,-0.027,mm,0.05,MATCH,CAD,
+battery,BAT+ to GND0 centre distance,1.9,1.905,0.005,mm,0.05,MATCH,CAD,
+battery,BAT+ to GND0 pad-to-pad gap,,0.889,,mm,0.05,INFO,CALC,RB-00.5 'ADC pad gap 0.89 mm'
+battery,GND0 pad net,GND,GND,,,0.05,MATCH,CAD,
+battery,castellation pin 13 net,GND,GND,,,0.05,MATCH,CAD,same net as GND0: BAT- via pin 13 is electrically valid on the module
+post,"hole centre minus BAT+ pad centre, x",0.0,-0.0,-0.0,mm,0.05,MATCH,CALC,
+post,"hole centre minus BAT+ pad centre, y",0.0,0.022,0.022,mm,0.05,MATCH,CALC,
+post,post offset from pad centre allowed before the post edge leaves the pad (y),,0.253,,mm,0.05,INFO,CALC,
+post,"hole edge to GND0 pad nearest edge, from hole axis",,1.375,,mm,0.05,INFO,CALC,
+underside,exposed bottom pads: TP1-TP8 (pads 15-22),8,8,0,pcs,0,MATCH,CAD,
+underside,exposed bottom pads: USB shell THT ovals S1-S4 (GND),0,4,4,pcs,0,DISCREPANCY,CAD,RB-00.5/RB-00.6 inventories list no USB shell pads; they have *.Mask openings -> exposed GND copper on the underside
+underside,USB shell S1 box (board frame),,"[59.1275, 30.0315, 60.0165, 31.8095]",,,0.05,INFO,CAD,
+underside,USB shell S2 box (board frame),,"[67.7635, 30.0315, 68.6525, 31.8095]",,,0.05,INFO,CAD,
+underside,USB shell S3 box (board frame),,"[59.1275, 25.8405, 60.0165, 27.6185]",,,0.05,INFO,CAD,
+underside,USB shell S4 box (board frame),,"[67.7635, 25.8405, 68.6525, 27.6185]",,,0.05,INFO,CAD,
+keepout,pads 15-22 keep-out x0 (spec) vs CAD copper box +/- 0.5,61.27,61.5485,0.2785,mm,0.05,INFO,CAD,"spec box was built from the Seeed footprint Ø1.7 pads; PCB TP pads are Ø1.143, so the spec box is larger by 0.28 mm (conservative)"
+keepout,pads 15-22 keep-out y0 (spec) vs CAD copper box +/- 0.5,21.14,21.4035,0.2635,mm,0.05,INFO,CAD,"spec box was built from the Seeed footprint Ø1.7 pads; PCB TP pads are Ø1.143, so the spec box is larger by 0.26 mm (conservative)"
+keepout,pads 15-22 keep-out x1 (spec) vs CAD copper box +/- 0.5,66.51,66.2315,-0.2785,mm,0.05,INFO,CAD,"spec box was built from the Seeed footprint Ø1.7 pads; PCB TP pads are Ø1.143, so the spec box is larger by 0.28 mm (conservative)"
+keepout,pads 15-22 keep-out y1 (spec) vs CAD copper box +/- 0.5,31.46,31.1665,-0.2935,mm,0.05,INFO,CAD,"spec box was built from the Seeed footprint Ø1.7 pads; PCB TP pads are Ø1.143, so the spec box is larger by 0.29 mm (conservative)"
+keepout,spec box contains CAD pads 15-22 + 0.5,True,True,0,,0.05,MATCH,CALC,
+keepout,pad 25 window width,2.75,2.75,0.0,mm,0.01,MATCH,CAD,
+keepout,pad 25 window height,2.5,2.5,0.0,mm,0.01,MATCH,CAD,
+keepout,pad 25 window x0 (spec lists the window; +0.5 margin is applied by rule),61.4,61.395,-0.005,mm,0.05,MATCH,CAD,
+keepout,pad 25 window y0,18.23,18.21,-0.02,mm,0.05,MATCH,CAD,
+keepout,pad 25 window x1,64.15,64.145,-0.005,mm,0.05,MATCH,CAD,
+keepout,pad 25 window y1,20.73,20.71,-0.02,mm,0.05,MATCH,CAD,
+keepout,USB shell ovals covered by an RB-00.6 keep-out box,4,0,-4,pcs,0,DISCREPANCY,CAD,uncovered => RB-00.6 §4 keep-out table is incomplete (GND copper only; shorts only if a non-GND host net lies under them)
+post,post axis to nearest exposed TP pad centre,3.5,3.2336,-0.2664,mm,0.05,DISCREPANCY,CAD,RB-00.6 §3 says '>= 3.5 mm'; centre-to-centre is 3.24 mm (edge 2.67 mm)
+post,host ring (r 0.95) edge to nearest TP pad edge,,1.7121,,mm,0.05,INFO,CALC,
+post,host ring (r 0.95) edge to GND0 pad edge,,0.425,,mm,0.05,INFO,CALC,
+usb,receptacle width,9.0,9.0,0.0,mm,0.05,MATCH,CAD,
+usb,receptacle centre u (module frame),8.8924,8.89,-0.0024,mm,0.05,MATCH,CAD,
+usb,receptacle overhang beyond the USB end edge,1.51,1.508,-0.002,mm,0.05,MATCH,CAD,
+usb,receptacle body depth (silkscreen outline),7.35,7.35,0.0,mm,0.1,MATCH,CAD,1:1 drawing uses 26.16..33.51
+ufl,U.FL centre x (board),68.71,68.7414,0.0314,mm,0.05,MATCH,CAD,
+ufl,U.FL centre y (board),12.62,12.5944,-0.0256,mm,0.05,MATCH,CAD,
+ufl,U.FL distance to the D0-D6 edge,,4.0386,,mm,0.05,INFO,CAD,
+ufl,U.FL distance to the far end edge,,1.7294,,mm,0.05,INFO,CAD,
+top,Sense/B2B connector J3 populated on this PCB,,True,,,0.05,INFO,CAD,the plain module render (Seeed 3D model 'Top view.jpg') also shows the B2B connector populated
+underside,footprints on the bottom side,,"[""BAT0"", ""G***"", ""GND0"", ""TP1"", ""TP2"", ""TP3"", ""TP4"", ""TP5"", ""TP6"", ""TP7"", ""TP8""]",,,0.05,INFO,CAD,"only TP1-TP8, GND0, BAT0 and a logo: no components, as RB-00.6 assumes"
+underside,vias exposed (tenting front/back = yes),,220,,pcs,0.05,INFO,CAD,all vias are tented per the PCB setup: no exposed via copper
+thickness,module PCB thickness,to be measured (checklist M4); KiCad file default 1.6,1.6,,mm,0.05,UNRESOLVED,CAD(default),general.thickness = 1.6 is the KiCad default; no stackup is stored in the file
+tolerance,published manufacturing tolerances,,none published,,,0.05,UNRESOLVED,DOC,Seeed publishes nominal CAD only; wiki lists '21 x 17.8 mm'
+revision,secondary file outline bbox equals primary,True,True,0,,0.05,MATCH,CAD,
+revision,"max pad-centre difference primary vs secondary file (42 pads: castellation half-holes, TP, BAT0, GND0, USB)",0.0,0.0,0.0,mm,0.01,MATCH,CAD,"primary = Sense v1.5 project served as 'plain v1.4'; secondary = OPL_Kicad_Library ESP32S3.kicad_pcb (2 signal layers, different build)"
+revision,copper layers primary / secondary,,4 / 2,,,0.05,INFO,CAD,

@@ -1,5 +1,7 @@
 # A.R.T.H.U.R EMG Rev B — RB-01 Schematic Implementation Report
 
+> **RB-01R (2026-10-10):** this is the RB-01 record. Superseded: X1 is now SCTF SX3M8.192M20F30TNN (C2901557); J1 is frozen as S2B-PH-SM4-TB(LF)(SN) (C295747); the "PGA gain ≥ 4" contract is withdrawn; §7.1 (R_OPT0/U_ID/R_SDA/R_SCL) and §8 (C_BAT) are closed; footprint libraries are now vendored (REVB_RB01R_FOOTPRINT_QUALIFICATION.md). See REVB_RB01R_INDEPENDENT_REVIEW.md.
+
 Status: **RB-01 schematic created**. Schematic only: no `.kicad_pcb`, placement, routing, Gerber, CPL or production output exists.
 Date: 2026-09-28. Tool: `10.0.6` (kicad-cli). Role: implementer (architecture frozen by RB-00 / RB-00.5 / RB-00.6, precedence RB-00.6 > RB-00.5 > RB-00).
 
@@ -125,7 +127,7 @@ These are interpretations made while implementing. None changes a frozen connect
 
 | Where | Observation | RB-01 handling |
 |---|---|---|
-| Mounting Spec §5 | "R_PRE, C_PRE, C_BAT 22 µF" — a separate C_BAT appears nowhere else; the cost model counts one 22 µF | One 22 µF (C4007 = C_PRE). Flagged |
+| Mounting Spec §5 | "R_PRE, C_PRE, C_BAT 22 µF" — a separate C_BAT appears nowhere else; the cost model counts one 22 µF | One 22 µF (C4007 = C_PRE). **[RB-01R] Resolved: wording corrected in the Mounting Spec; no second capacitor** |
 | Cost Model §1 | Omits C6009 220 nF (CAP, KEEP in the migration matrix) and C7103 100 nF (C_VB, migration matrix §6) | Both implemented; +2 parts vs the cost count |
 | Manufacturing Constraints §2 | "≤ 7 extended lines … JST-PH" counts the JST once, but J_BAT (side entry) ≠ electrode JST (vertical) | Reported as 7 firm extended lines + 10 nF C0G conditional (REVB_RB01_BOM.md) |
 | Interface Spec §4 row 12 | Refers to a future FPC brain (not in RB-00.6) | No impact |
@@ -135,11 +137,11 @@ These are interpretations made while implementing. None changes a frozen connect
 | ID | Risk | Status |
 |---|---|---|
 | R3/R9 | Seeed plain-v1.4 files unobtainable; geometry verified on Sense v1.5 | Open, incoming inspection before RB-02 (does not affect the schematic) |
-| R4-res | X1: family datasheet only; 3.3 V is the top of the stated VDD range | Accepted residual; ask YXC before production |
+| R4-res | X1: family datasheet only; 3.3 V is the top of the stated VDD range | **[RB-01R] Closed by replacing X1 with the SCTF SX3M8.192M20F30TNN (1.62–3.63 V range, 0.3 V headroom); its residuals are listed in REVB_RB01R_INDEPENDENT_REVIEW.md** |
 | TT-14 | Q3001 open-circuit with USB present and D3 high leaves the AFE on | Single point, defense-in-depth only (D6 lets FW drop D3) |
 | R1 | XIAO 5V leakage on battery | Mitigated by R3009; measure < 0.5 V at bring-up |
 | R2 / S1 / S2 | BLE in-band lines; 50 mA no-NTC charging; USB GND common with electrodes | Unchanged; operating rule "no electrodes while USB connected", no isolation claimed |
-| Gain | PGA gain ≥ 4 required with the ADC-input clamps fitted | Firmware contract |
+| Gain | ~~PGA gain ≥ 4 required with the ADC-input clamps fitted~~ **[RB-01R] withdrawn**: unproven and not a hardware-safety requirement | Replaced by REVB_INTERFACE_SPEC.md §9 (operating limits; gain 8–32 is a performance recommendation) |
 | J1 | JST-PH battery polarity not standardised | Verify cell lead before first power (assembly procedure step 0.5) |
 
 ## 10. Post-work record
@@ -231,11 +233,11 @@ UNRESOLVED MPNS:
 
 OPEN ELECTRICAL RISKS:
 - R3/R9 XIAO plain-v1.4 geometry: incoming inspection of 2 modules before RB-02 (unchanged, open)
-- X1 residuals: family datasheet only; 3.3 V is the top of the stated VDD range (no absmax)
+- X1 residuals: [RB-01R] SCTF family datasheet publishes no absolute-maximum table; 8.192 MHz is a catalogue line outside the datasheet's standard-frequency list
 - Q3001 open-circuit single point (truth table row 14): FW backup via D6 only; defense-in-depth
 - R1 XIAO 5V leakage on battery: mitigated by R3009 4.7k; confirm < 0.5 V at bring-up
 - R2 BLE-interval in-band lines; S1 50 mA / no-NTC charging; no isolation (operating rule unchanged)
-- PGA gain >= 4 firmware contract while the ADC-input clamps are fitted
+- [RB-01R] "PGA gain >= 4" firmware contract withdrawn; ADC operating limits in REVB_INTERFACE_SPEC.md §9; clamp leakage/linearity requires a bench measurement
 - J1 battery polarity not standardised between LiPo vendors (verify cell lead before first power)
 
 ARCHITECTURE CHANGES MADE:

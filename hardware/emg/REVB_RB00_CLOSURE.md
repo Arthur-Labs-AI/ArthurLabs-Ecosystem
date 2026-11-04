@@ -4,6 +4,8 @@ Status: closure of the four RB-01 blockers (R5, R6, R3/R9, R4). No schematic, PC
 The Rev A production PCB SHA-256 was re-checked and still matches `d7a585e8…0005`.
 Date: 2026-09-28.
 
+> **RB-01R amendments (2026-10-10).** This is a historical closure record. Three items were corrected after independent review, marked **[RB-01R]** below: (1) the diode forward-conduction derivation in R6 §6 ("Is ≤ 4.4 pA from VF max") was mathematically backwards and is replaced; (2) the "PGA gain ≥ 4" contract is withdrawn; the worst-case clamp voltage is restated as −1.09 V; (3) X1 is now the SCTF SX3M8.192M20F30TNN (C2901557), not the YXC part qualified in R4. See REVB_RB01R_INDEPENDENT_REVIEW.md.
+
 ## Sources read in this pass
 
 | Source | Used for |
@@ -102,12 +104,12 @@ A dual common-anode part (BAW156, same Nexperia low-leakage family) would halve 
 | Quantity | Value | Basis |
 |---|---|---|
 | Peak clamp current | ≤ (3.05 V − 0) / 990 Ω = **3.1 mA** (ignoring VF, conservative) | R1x7 1 k −1 % |
-| VF (Nexperia max, 25 °C) at 3.1 mA | 0.90 V @1 mA, 1.00 V @10 mA → log-interp. **0.95 V** | Table 7 |
+| VF (Nexperia max, 25 °C) at ≤ 3.1 mA | 0.90 V @1 mA, 1.00 V @10 mA. VF rises monotonically with IF, so **≤ 1.00 V** is a valid bound for any IF ≤ 10 mA. **[RB-01R]** RB-00.5 interpolated to 0.95 V; the interpolation is a model assumption, the 10 mA maximum is a datasheet number | Table 7 |
 | Temperature (−2 mV/°C), design floor −20 °C | +0.09 V | Silicon junction; operating range 0–45 °C, so this is conservative |
 | Forward recovery (VFRM 1.75 V @ 10 mA, tr = 20 ns) | Not applicable. AIN has 1 k × 1 nF = 1 µs edge limiting, and the current is ≤ 3.1 mA | Table 7 |
-| **Worst-case AIN** | **≥ −1.04 V** | — |
-| Margin to recommended minimum (−1.3 V) | **0.26 V**: the transient stays inside the *recommended* range | — |
-| Margin to absmax (−1.6 V) | **0.56 V** | — |
+| **Worst-case AIN** | **≥ −1.09 V** **[RB-01R, was −1.04 V]** | 1.00 + 0.09 |
+| Margin to recommended minimum (−1.3 V) | **0.21 V**: the transient stays inside the *recommended* range | — |
+| Margin to absmax (−1.6 V) | **0.51 V** | — |
 | ADC pin current | ≤ 3.1 mA total (the ADC's own ESD cell can only share it) vs 10 mA absmax | — |
 | Op-amp output current during the event | ≤ 3.1 mA; the output is not driven beyond its rails | TLV906x |
 | Node N | Swings to ≈ −V_C, but only passives are attached (C, 100 k, 1 k) | — |
@@ -119,14 +121,14 @@ Normal operating point: AIN ≈ 0 V ± a few mV DC, ≤ ±150 mV signal at gain 
 
 | Effect | Worst case | Typical | Verdict |
 |---|---|---|---|
-| DC leakage | IR ≤ 5 nA is specified at **75 V**. At ~0 V bias the zero-bias conductance is ≤ Is/nVT → r0 ≥ 5 MΩ (25 °C); ≥ 1.3 MΩ even at IR×4 (45 °C) | IR typ 3 pA → r0 ≈ GΩ | Negligible |
-| HPF corner (2.2 µF with 100 k ∥ r0) | 0.72 → 0.78 Hz | unchanged | Irrelevant to the 20–450 Hz band |
-| CM→DM conversion from P/N HPF mismatch at 50 Hz | ≈ −58 dB (one diode at extreme leakage, one typical) | > 100 dB | Worst case is equal to the existing ±10 % C / 1 % R mismatch floor (≈ −57 dB). No new floor |
+| DC leakage | IR ≤ 5 nA is specified at **75 V, 25 °C** and ≤ 80 nA at 150 °C (doubles every 31 K). Is ≤ IR(max): at 45 °C Is ≤ 7.8 nA, zero-bias conductance ≤ Is/(n·VT) → r0 ≥ 3.5 MΩ (n = 1). **[RB-01R]** the RB-00.5 "IR × 4" scaling was a guess; the datasheet's own two maxima give ×1.56 | IR typ 3 pA → r0 ≈ GΩ | Negligible |
+| HPF corner (2.2 µF with 100 k ∥ r0) | 0.72 → 0.75 Hz [RB-01R: 100 k ∥ 3.5 MΩ] | unchanged | Irrelevant to the 20–450 Hz band |
+| CM→DM conversion from P/N HPF mismatch at 50 Hz | ≈ −67 dB (one diode at the 45 °C leakage bound, r0 = 3.5 MΩ → 2.8 % R mismatch; ΔH ≈ (1/ωRC)·ΔR/R, [RB-01R] was −58 dB) | > 100 dB | Worst case is equal to the existing ±10 % C / 1 % R mismatch floor (≈ −57 dB). No new floor |
 | Noise | i_n = √(4kT/r0) ≤ 56 fA/√Hz × ~1.7 kΩ source → **≤ 0.1 nV/√Hz** vs 4 nV/√Hz from the 1 k | ≪ | Negligible |
 | Capacitance | Cd ≈ 2 pF (VR = 0) ∥ 1 nF C0G → +0.2 % | — | Inside the C0G ±5 % tolerance |
-| Forward conduction on signal | Is ≤ 4.4 pA (derived from VF max, n ≈ 1.8). At −150 mV: 0.1 nA; at −300 mV: 2.7 nA → ≤ 5 µV error | — | Negligible **for |AIN| ≤ 0.3 V** |
+| Forward conduction on signal | **[RB-01R correction]** RB-00.5 wrote "Is ≤ 4.4 pA (derived from VF max, n ≈ 1.8)". That is wrong in direction: VF(max) at IF only says the diode conducts IF at or below that voltage, i.e. it bounds Is from **below** (Is ≥ IF/exp(VF/nVT)); it gives no upper bound. The only datasheet upper bound is Is ≤ IR(max) (7.8 nA at 45 °C), and n is bounded only by n ≥ 1. With those, the forward current of one clamp is ≤ 0.1 µA at 75 mV, ≤ 1.8 µA at 150 mV and ≤ 0.44 mA at 300 mV (loose upper bounds; typical parts are ~1000× better, Fig. 2 shows conduction only above ~0.6 V). Not provable from the datasheet; **bench measurement required** | typ. IR 3 pA | **Open until measured** (see REVB_INTERFACE_SPEC.md §9) |
 
-**Contract added:** with the clamps fitted, **PGA gain ≥ 4** (FS ≤ ±0.3 V). Gains 1/2 would put the clamp into conduction on large negative swings. EMG operation is planned at gain 8–32.
+**[RB-01R] Contract withdrawn.** RB-00.5 added "PGA gain ≥ 4 (FS ≤ ±0.3 V)", justified by the 4.4 pA figure above. With that figure invalid the contract is unproven, and it was never a hardware-safety requirement (clamp conduction depends on pin voltage, not on the PGA setting). Replaced by the derived operating limits in REVB_INTERFACE_SPEC.md §9. Gain 8–32 remains the *performance recommendation* (noise/dynamic range).
 
 ### 7. Related finding closed in the same pass (R6b)
 
@@ -270,7 +272,7 @@ Candidate: **YXC OT2JI-111-8.192M**, JLCPCB **C7425393**, SMD3225-4P.
 | Footprint | 3.2 × 2.5 × 1.2 mm max. Land pattern: pads 1.3 × 1.2 mm, gaps 0.8 mm (x) / 0.7 mm (y), overall 3.4 × 3.1 mm | New KiCad footprint from this land pattern (not a generic Oscillator lib guess) | **Defined** |
 | PCBA | Economic + Standard, MSL 1 | Economic PCBA | **PASS** |
 
-**Frozen as X1:** YXC OT2JI-111-8.192M / LCSC-JLC C7425393.
+**Frozen as X1 (RB-00.5):** YXC OT2JI-111-8.192M / LCSC-JLC C7425393. **[RB-01R] Superseded:** X1 = SCTF SX3M8.192M20F30TNN / C2901557 (REVB_RB01R_INDEPENDENT_REVIEW.md §5). The YXC residuals below no longer apply.
 
 Residuals (non-blocking):
 1. The datasheet is a family sheet; the OT2JI ordering code is not decoded in it. Identity rests on the JLC/LCSC listing attributes, which match every row.
@@ -286,7 +288,7 @@ Residuals (non-blocking):
 | ARCHITECTURE_PROPOSAL | J5001 pin 1 NC; ADC-input clamps; R_VCMIN; R_VBUSLD; XIAO 3V3 = buck; U.FL orientation; risk table closed/updated |
 | MIGRATION_MATRIX | J5001, R103 (review → keep), U503 row; new rows: 8× BAV199, R_VCMIN, R_VBUSLD, X1 MPN, XIAO DNP |
 | POWER_ARCHITECTURE | XIAO buck + power path; R6 section rewritten; DVDD_F budget with X1 5 mA max; R1 mitigated |
-| INTERFACE_SPEC | 5V row + truth-table case 15; X1 frozen; XIAO 25-pad map; gain ≥ 4 contract |
+| INTERFACE_SPEC | 5V row + truth-table case 15; X1 frozen; XIAO 25-pad map; gain ≥ 4 contract (withdrawn in RB-01R) |
 | MANUFACTURING_CONSTRAINTS | XIAO mounting decision (Option B); footprint edits; board-edge rule; X1 footprint |
 | COST_MODEL | +8 BAV199, +2 R; XIAO not JLC-placed; X1 line |
 
@@ -305,12 +307,12 @@ CLOSED
 chosen circuit: GND-referenced AC-coupled bias retained. 8 × BAV199 (same MPN/line)
                 negative clamps at the ADC inputs behind the existing 1 k
                 (pin 1 GND, pin 3 AIN, pin 2 NC). Plus 10 k in series with U503A +IN.
-                PGA gain ≥ 4 contract.
-worst-case ADC input voltage: ≥ −1.04 V (3.1 mA, VF max, −20 °C).
-                              Margin 0.26 V to the recommended −1.3 V, 0.56 V to absmax −1.6 V.
+                PGA gain ≥ 4 contract [WITHDRAWN in RB-01R: unproven, not a safety requirement].
+worst-case ADC input voltage: ≥ −1.09 V [RB-01R; was −1.04 V] (≤ 3.1 mA, VF max(10 mA), −20 °C).
+                              Margin 0.21 V to the recommended −1.3 V, 0.51 V to absmax −1.6 V.
                               Unprotected Rev A worst case: −1.84 V … −3.05 V.
-normal-operation leakage/noise impact: r0 ≥ 1.3–5 MΩ worst (GΩ typ) → HPF 0.72 → ≤ 0.78 Hz;
-                              CM→DM at 50 Hz ≤ −58 dB worst (equal to the existing
+normal-operation leakage/noise impact: r0 ≥ 3.5–5 MΩ worst (GΩ typ) [RB-01R] → HPF 0.72 → ≤ 0.75 Hz;
+                              CM→DM at 50 Hz ≤ −67 dB worst [RB-01R] (equal to the existing
                               tolerance floor), > 100 dB typ; noise ≤ 0.1 nV/√Hz;
                               +2 pF on the 1 nF CM caps. Negligible.
 

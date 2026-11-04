@@ -1,0 +1,42 @@
+{
+ "rho_linear": 0.447,
+ "rho_with_jig": 0.34700000000000003,
+ "variants": {
+  "V0 (current) \u00d81.40 / ring 1.90 / mask 1.45": {
+   "shift_needed_cone_1.0": 0.287,
+   "shift_needed_cone_1.1": 0.337,
+   "shift_needed_cone_1.2": 0.387,
+   "shift_needed_cone_1.0_with_jig_0.15": 0.187,
+   "ring_to_GND0_edge_nominal": 0.447,
+   "ring_to_GND0_edge_at_0.2_shift": 0.247,
+   "R_hole_min": 0.66
+  },
+  "V1 \u00d81.60 / ring 2.00 / mask 1.65": {
+   "shift_needed_cone_1.0": 0.187,
+   "shift_needed_cone_1.1": 0.237,
+   "shift_needed_cone_1.2": 0.287,
+   "shift_needed_cone_1.0_with_jig_0.15": 0.087,
+   "ring_to_GND0_edge_nominal": 0.397,
+   "ring_to_GND0_edge_at_0.2_shift": 0.197,
+   "R_hole_min": 0.76
+  },
+  "V2 \u00d81.70 / ring 2.10 / mask 1.75": {
+   "shift_needed_cone_1.0": 0.137,
+   "shift_needed_cone_1.1": 0.187,
+   "shift_needed_cone_1.2": 0.237,
+   "shift_needed_cone_1.0_with_jig_0.15": 0.037,
+   "ring_to_GND0_edge_nominal": 0.347,
+   "ring_to_GND0_edge_at_0.2_shift": 0.147,
+   "R_hole_min": 0.81
+  },
+  "V3 \u00d81.80 / ring 2.20 / mask 1.85": {
+   "shift_needed_cone_1.0": 0.087,
+   "shift_needed_cone_1.1": 0.137,
+   "shift_needed_cone_1.2": 0.187,
+   "shift_needed_cone_1.0_with_jig_0.15": 0,
+   "ring_to_GND0_edge_nominal": 0.297,
+   "ring_to_GND0_edge_at_0.2_shift": 0.097,
+   "R_hole_min": 0.86
+  }
+ }
+}

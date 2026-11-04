@@ -1,0 +1,3522 @@
+[
+ {
+  "ref": "C101",
+  "value": "2.2uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 38.95,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "C102",
+  "value": "2.2uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 34.25,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "C103",
+  "value": "100pF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 38.6,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "C104",
+  "value": "100pF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 33.9,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "C105",
+  "value": "10nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic or Extended (10 nF C0G - confirm)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 7.1,
+  "y": 40.25,
+  "rot": 0.0
+ },
+ {
+  "ref": "C106",
+  "value": "1.0nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 12.6,
+  "y": 44.85,
+  "rot": 0.0
+ },
+ {
+  "ref": "C107",
+  "value": "1.0nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 12.6,
+  "y": 46.35,
+  "rot": 0.0
+ },
+ {
+  "ref": "C201",
+  "value": "2.2uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 29.55,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "C202",
+  "value": "2.2uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 24.85,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "C203",
+  "value": "100pF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 29.2,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "C204",
+  "value": "100pF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 24.5,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "C205",
+  "value": "10nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic or Extended (10 nF C0G - confirm)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 10.9,
+  "y": 40.25,
+  "rot": 0.0
+ },
+ {
+  "ref": "C206",
+  "value": "1.0nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 12.6,
+  "y": 49.35,
+  "rot": 0.0
+ },
+ {
+  "ref": "C207",
+  "value": "1.0nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 12.6,
+  "y": 47.85,
+  "rot": 0.0
+ },
+ {
+  "ref": "C301",
+  "value": "2.2uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 20.15,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "C302",
+  "value": "2.2uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 15.45,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "C303",
+  "value": "100pF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 19.8,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "C304",
+  "value": "100pF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 15.1,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "C305",
+  "value": "10nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic or Extended (10 nF C0G - confirm)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 7.1,
+  "y": 58.65,
+  "rot": 0.0
+ },
+ {
+  "ref": "C306",
+  "value": "1.0nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 12.6,
+  "y": 50.85,
+  "rot": 0.0
+ },
+ {
+  "ref": "C307",
+  "value": "1.0nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 12.6,
+  "y": 52.35,
+  "rot": 0.0
+ },
+ {
+  "ref": "C401",
+  "value": "2.2uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 10.75,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "C402",
+  "value": "2.2uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 6.05,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "C403",
+  "value": "100pF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 10.4,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "C404",
+  "value": "100pF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 5.7,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "C405",
+  "value": "10nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic or Extended (10 nF C0G - confirm)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 10.9,
+  "y": 58.65,
+  "rot": 0.0
+ },
+ {
+  "ref": "C406",
+  "value": "1.0nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 12.6,
+  "y": 55.35,
+  "rot": 0.0
+ },
+ {
+  "ref": "C407",
+  "value": "1.0nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 12.6,
+  "y": 53.85,
+  "rot": 0.0
+ },
+ {
+  "ref": "C501",
+  "value": "100nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 35.55,
+  "y": 22.6,
+  "rot": -90.0
+ },
+ {
+  "ref": "C502",
+  "value": "100nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 16.75,
+  "y": 22.6,
+  "rot": -90.0
+ },
+ {
+  "ref": "C503",
+  "value": "100nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 46.65,
+  "y": 22.6,
+  "rot": -90.0
+ },
+ {
+  "ref": "C4005",
+  "value": "1uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 18.8,
+  "y": 35.05,
+  "rot": 90.0
+ },
+ {
+  "ref": "C4006",
+  "value": "1uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 25.9,
+  "y": 35.05,
+  "rot": 90.0
+ },
+ {
+  "ref": "C4007",
+  "value": "22uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0805_2012Metric",
+  "package": "C_0805_2012Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 33.9,
+  "y": 36.05,
+  "rot": 0.0
+ },
+ {
+  "ref": "C5001",
+  "value": "1uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 43.25,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "C5002",
+  "value": "100nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 41.65,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "C6007",
+  "value": "1uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 15.9,
+  "y": 43.75,
+  "rot": 90.0
+ },
+ {
+  "ref": "C6008",
+  "value": "1uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 20.7,
+  "y": 44.35,
+  "rot": 90.0
+ },
+ {
+  "ref": "C6009",
+  "value": "220nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 23.9,
+  "y": 46.9,
+  "rot": 0.0
+ },
+ {
+  "ref": "C6010",
+  "value": "100nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 24.2,
+  "y": 42.15,
+  "rot": 0.0
+ },
+ {
+  "ref": "C7101",
+  "value": "10uF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 27.0,
+  "y": 56.0,
+  "rot": 0.0
+ },
+ {
+  "ref": "C7102",
+  "value": "100nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 27.0,
+  "y": 57.55,
+  "rot": 0.0
+ },
+ {
+  "ref": "C7103",
+  "value": "100nF",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Capacitor_SMD:C_0603_1608Metric",
+  "package": "C_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 36.6,
+  "y": 33.7,
+  "rot": 90.0
+ },
+ {
+  "ref": "D101",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 37.4,
+  "y": 14.0,
+  "rot": 180.0
+ },
+ {
+  "ref": "D102",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 32.7,
+  "y": 14.0,
+  "rot": 180.0
+ },
+ {
+  "ref": "D103",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 9.1,
+  "y": 43.65,
+  "rot": 0.0
+ },
+ {
+  "ref": "D104",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 5.2,
+  "y": 43.65,
+  "rot": 0.0
+ },
+ {
+  "ref": "D201",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 28.0,
+  "y": 14.0,
+  "rot": 180.0
+ },
+ {
+  "ref": "D202",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 23.3,
+  "y": 14.0,
+  "rot": 180.0
+ },
+ {
+  "ref": "D203",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 5.2,
+  "y": 47.25,
+  "rot": 0.0
+ },
+ {
+  "ref": "D204",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 9.1,
+  "y": 47.25,
+  "rot": 0.0
+ },
+ {
+  "ref": "D301",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 18.6,
+  "y": 14.0,
+  "rot": 180.0
+ },
+ {
+  "ref": "D302",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 13.9,
+  "y": 14.0,
+  "rot": 180.0
+ },
+ {
+  "ref": "D303",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 9.1,
+  "y": 50.85,
+  "rot": 0.0
+ },
+ {
+  "ref": "D304",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 5.2,
+  "y": 50.85,
+  "rot": 0.0
+ },
+ {
+  "ref": "D401",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 9.2,
+  "y": 14.0,
+  "rot": 180.0
+ },
+ {
+  "ref": "D402",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 4.5,
+  "y": 14.0,
+  "rot": 180.0
+ },
+ {
+  "ref": "D403",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 5.2,
+  "y": 54.45,
+  "rot": 0.0
+ },
+ {
+  "ref": "D404",
+  "value": "BAV199",
+  "mpn": "BAV199",
+  "lcsc": null,
+  "jlc_class": "Extended (expected), 1 line for all 16",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 9.1,
+  "y": 54.45,
+  "rot": 0.0
+ },
+ {
+  "ref": "FB1",
+  "value": "600R@100MHz",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Inductor_SMD:L_0603_1608Metric",
+  "package": "L_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 27.0,
+  "y": 54.45,
+  "rot": 0.0
+ },
+ {
+  "ref": "J1",
+  "value": "S2B-PH-SM4-TB",
+  "mpn": "S2B-PH-SM4-TB(LF)(SN)",
+  "lcsc": "C295747",
+  "jlc_class": "Extended (JLC library type expand); Economic + Standard PCBA; MSL 1",
+  "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+  "package": "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 4,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 44.4,
+  "y": 35.8,
+  "rot": 90.0
+ },
+ {
+  "ref": "J101",
+  "value": "B2B-PH-SM4-TB",
+  "mpn": "B2B-PH-SM4-TB(LF)(SN)",
+  "lcsc": "C160352",
+  "jlc_class": "Extended (expected)",
+  "footprint": "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+  "package": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 4,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 35.05,
+  "y": 3.75,
+  "rot": 180.0
+ },
+ {
+  "ref": "J201",
+  "value": "B2B-PH-SM4-TB",
+  "mpn": "B2B-PH-SM4-TB(LF)(SN)",
+  "lcsc": "C160352",
+  "jlc_class": "Extended (expected)",
+  "footprint": "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+  "package": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 4,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 25.65,
+  "y": 3.75,
+  "rot": 180.0
+ },
+ {
+  "ref": "J301",
+  "value": "B2B-PH-SM4-TB",
+  "mpn": "B2B-PH-SM4-TB(LF)(SN)",
+  "lcsc": "C160352",
+  "jlc_class": "Extended (expected)",
+  "footprint": "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+  "package": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 4,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 16.25,
+  "y": 3.75,
+  "rot": 180.0
+ },
+ {
+  "ref": "J401",
+  "value": "B2B-PH-SM4-TB",
+  "mpn": "B2B-PH-SM4-TB(LF)(SN)",
+  "lcsc": "C160352",
+  "jlc_class": "Extended (expected)",
+  "footprint": "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+  "package": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 4,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 6.85,
+  "y": 3.75,
+  "rot": 180.0
+ },
+ {
+  "ref": "J5001",
+  "value": "B2B-PH-SM4-TB",
+  "mpn": "B2B-PH-SM4-TB(LF)(SN)",
+  "lcsc": "C160352",
+  "jlc_class": "Extended (expected)",
+  "footprint": "Connector_JST:JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+  "package": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 4,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 44.45,
+  "y": 3.75,
+  "rot": 180.0
+ },
+ {
+  "ref": "Q3001",
+  "value": "2N7002",
+  "mpn": "2N7002",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Package_TO_SOT_SMD:SOT-23",
+  "package": "SOT-23",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 3,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 28.7,
+  "y": 35.25,
+  "rot": 0.0
+ },
+ {
+  "ref": "R101",
+  "value": "10k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 37.4,
+  "y": 10.1,
+  "rot": -90.0
+ },
+ {
+  "ref": "R102",
+  "value": "10k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 32.7,
+  "y": 10.1,
+  "rot": -90.0
+ },
+ {
+  "ref": "R103",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 37.4,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R104",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 32.7,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R105",
+  "value": "10M",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 36.2,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "R106",
+  "value": "10M",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 31.5,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "R107",
+  "value": "1.0k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 35.85,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R108",
+  "value": "1.0k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 31.15,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R201",
+  "value": "10k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 28.0,
+  "y": 10.1,
+  "rot": -90.0
+ },
+ {
+  "ref": "R202",
+  "value": "10k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 23.3,
+  "y": 10.1,
+  "rot": -90.0
+ },
+ {
+  "ref": "R203",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 28.0,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R204",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 23.3,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R205",
+  "value": "10M",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 26.8,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "R206",
+  "value": "10M",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 22.1,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "R207",
+  "value": "1.0k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 26.45,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R208",
+  "value": "1.0k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 21.75,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R301",
+  "value": "10k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 18.6,
+  "y": 10.1,
+  "rot": -90.0
+ },
+ {
+  "ref": "R302",
+  "value": "10k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 13.9,
+  "y": 10.1,
+  "rot": -90.0
+ },
+ {
+  "ref": "R303",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 18.6,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R304",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 13.9,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R305",
+  "value": "10M",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 17.4,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "R306",
+  "value": "10M",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 12.7,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "R307",
+  "value": "1.0k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 17.05,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R308",
+  "value": "1.0k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 12.35,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R401",
+  "value": "10k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 9.2,
+  "y": 10.1,
+  "rot": -90.0
+ },
+ {
+  "ref": "R402",
+  "value": "10k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 4.5,
+  "y": 10.1,
+  "rot": -90.0
+ },
+ {
+  "ref": "R403",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 9.2,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R404",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 4.5,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R405",
+  "value": "10M",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 8.0,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "R406",
+  "value": "10M",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 3.3,
+  "y": 18.0,
+  "rot": -90.0
+ },
+ {
+  "ref": "R407",
+  "value": "1.0k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 7.65,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R408",
+  "value": "1.0k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 2.95,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R3004",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 24.5,
+  "y": 39.05,
+  "rot": 0.0
+ },
+ {
+  "ref": "R3006",
+  "value": "10k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 27.7,
+  "y": 39.05,
+  "rot": 0.0
+ },
+ {
+  "ref": "R3007",
+  "value": "10k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 18.1,
+  "y": 39.05,
+  "rot": 0.0
+ },
+ {
+  "ref": "R3008",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 21.3,
+  "y": 39.05,
+  "rot": 0.0
+ },
+ {
+  "ref": "R3009",
+  "value": "4.7k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 27.0,
+  "y": 59.49,
+  "rot": 0.0
+ },
+ {
+  "ref": "R4001",
+  "value": "4.7",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 33.9,
+  "y": 33.25,
+  "rot": 0.0
+ },
+ {
+  "ref": "R5002",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0805_2012Metric",
+  "package": "R_0805_2012Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 44.45,
+  "y": 10.3,
+  "rot": -90.0
+ },
+ {
+  "ref": "R5003",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 48.05,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R5004",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 46.45,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R5005",
+  "value": "10k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 44.85,
+  "y": 28.8,
+  "rot": -90.0
+ },
+ {
+  "ref": "R6001",
+  "value": "33",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 23.9,
+  "y": 48.45,
+  "rot": 0.0
+ },
+ {
+  "ref": "R6002",
+  "value": "33",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 23.9,
+  "y": 50.0,
+  "rot": 0.0
+ },
+ {
+  "ref": "R6003",
+  "value": "100",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 23.9,
+  "y": 51.55,
+  "rot": 0.0
+ },
+ {
+  "ref": "R7101",
+  "value": "33",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 27.0,
+  "y": 47.0,
+  "rot": 0.0
+ },
+ {
+  "ref": "R7102",
+  "value": "33",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 27.0,
+  "y": 51.95,
+  "rot": 0.0
+ },
+ {
+  "ref": "R7103",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 23.9,
+  "y": 53.1,
+  "rot": 0.0
+ },
+ {
+  "ref": "R7104",
+  "value": "10k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 23.9,
+  "y": 54.65,
+  "rot": 0.0
+ },
+ {
+  "ref": "R7105",
+  "value": "100k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 23.9,
+  "y": 57.05,
+  "rot": 0.0
+ },
+ {
+  "ref": "R7106",
+  "value": "150k",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 23.9,
+  "y": 58.65,
+  "rot": 0.0
+ },
+ {
+  "ref": "R7107",
+  "value": "1M",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 36.6,
+  "y": 37.0,
+  "rot": 90.0
+ },
+ {
+  "ref": "R7108",
+  "value": "1M",
+  "mpn": "GENERIC (spec-defined; JLC Basic part selected at RB-03)",
+  "lcsc": null,
+  "jlc_class": "Basic (expected)",
+  "footprint": "Resistor_SMD:R_0603_1608Metric",
+  "package": "R_0603_1608Metric",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 2,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 34.8,
+  "y": 38.8,
+  "rot": 90.0
+ },
+ {
+  "ref": "TP1",
+  "value": "VBAT",
+  "mpn": "N/A (bare copper pad)",
+  "lcsc": null,
+  "jlc_class": "N/A (not assembled)",
+  "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+  "package": "TestPoint_Pad_D1.5mm",
+  "side": "bottom",
+  "layer": "B.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 1,
+  "attr": [
+   "exclude_from_pos_files",
+   "exclude_from_bom"
+  ],
+  "excluded_from_pos": true,
+  "excluded_from_bom": true,
+  "dnp": false,
+  "assembly_method": "bare copper pad: no component, not assembled",
+  "jlc_assembled": false,
+  "x": 36.8,
+  "y": 39.45,
+  "rot": 0.0
+ },
+ {
+  "ref": "TP2",
+  "value": "AFE_3V0",
+  "mpn": "N/A (bare copper pad)",
+  "lcsc": null,
+  "jlc_class": "N/A (not assembled)",
+  "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+  "package": "TestPoint_Pad_D1.5mm",
+  "side": "bottom",
+  "layer": "B.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 1,
+  "attr": [
+   "exclude_from_pos_files",
+   "exclude_from_bom"
+  ],
+  "excluded_from_pos": true,
+  "excluded_from_bom": true,
+  "dnp": false,
+  "assembly_method": "bare copper pad: no component, not assembled",
+  "jlc_assembled": false,
+  "x": 28.3,
+  "y": 31.95,
+  "rot": 0.0
+ },
+ {
+  "ref": "TP3",
+  "value": "DVDD_F",
+  "mpn": "N/A (bare copper pad)",
+  "lcsc": null,
+  "jlc_class": "N/A (not assembled)",
+  "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+  "package": "TestPoint_Pad_D1.5mm",
+  "side": "bottom",
+  "layer": "B.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 1,
+  "attr": [
+   "exclude_from_pos_files",
+   "exclude_from_bom"
+  ],
+  "excluded_from_pos": true,
+  "excluded_from_bom": true,
+  "dnp": false,
+  "assembly_method": "bare copper pad: no component, not assembled",
+  "jlc_assembled": false,
+  "x": 20.3,
+  "y": 55.45,
+  "rot": 0.0
+ },
+ {
+  "ref": "TP4",
+  "value": "VCM",
+  "mpn": "N/A (bare copper pad)",
+  "lcsc": null,
+  "jlc_class": "N/A (not assembled)",
+  "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+  "package": "TestPoint_Pad_D1.5mm",
+  "side": "bottom",
+  "layer": "B.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 1,
+  "attr": [
+   "exclude_from_pos_files",
+   "exclude_from_bom"
+  ],
+  "excluded_from_pos": true,
+  "excluded_from_bom": true,
+  "dnp": false,
+  "assembly_method": "bare copper pad: no component, not assembled",
+  "jlc_assembled": false,
+  "x": 48.15,
+  "y": 20.0,
+  "rot": 180.0
+ },
+ {
+  "ref": "TP5",
+  "value": "RLD_SAFE",
+  "mpn": "N/A (bare copper pad)",
+  "lcsc": null,
+  "jlc_class": "N/A (not assembled)",
+  "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+  "package": "TestPoint_Pad_D1.5mm",
+  "side": "bottom",
+  "layer": "B.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 1,
+  "attr": [
+   "exclude_from_pos_files",
+   "exclude_from_bom"
+  ],
+  "excluded_from_pos": true,
+  "excluded_from_bom": true,
+  "dnp": false,
+  "assembly_method": "bare copper pad: no component, not assembled",
+  "jlc_assembled": false,
+  "x": 45.95,
+  "y": 15.0,
+  "rot": 180.0
+ },
+ {
+  "ref": "TP6",
+  "value": "AFE_EN",
+  "mpn": "N/A (bare copper pad)",
+  "lcsc": null,
+  "jlc_class": "N/A (not assembled)",
+  "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+  "package": "TestPoint_Pad_D1.5mm",
+  "side": "bottom",
+  "layer": "B.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 1,
+  "attr": [
+   "exclude_from_pos_files",
+   "exclude_from_bom"
+  ],
+  "excluded_from_pos": true,
+  "excluded_from_bom": true,
+  "dnp": false,
+  "assembly_method": "bare copper pad: no component, not assembled",
+  "jlc_assembled": false,
+  "x": 14.3,
+  "y": 39.05,
+  "rot": 0.0
+ },
+ {
+  "ref": "TP7",
+  "value": "GND",
+  "mpn": "N/A (bare copper pad)",
+  "lcsc": null,
+  "jlc_class": "N/A (not assembled)",
+  "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+  "package": "TestPoint_Pad_D1.5mm",
+  "side": "bottom",
+  "layer": "B.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 1,
+  "attr": [
+   "exclude_from_pos_files",
+   "exclude_from_bom"
+  ],
+  "excluded_from_pos": true,
+  "excluded_from_bom": true,
+  "dnp": false,
+  "assembly_method": "bare copper pad: no component, not assembled",
+  "jlc_assembled": false,
+  "x": 12.3,
+  "y": 34.45,
+  "rot": 0.0
+ },
+ {
+  "ref": "TP8",
+  "value": "GND",
+  "mpn": "N/A (bare copper pad)",
+  "lcsc": null,
+  "jlc_class": "N/A (not assembled)",
+  "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+  "package": "TestPoint_Pad_D1.5mm",
+  "side": "bottom",
+  "layer": "B.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 1,
+  "attr": [
+   "exclude_from_pos_files",
+   "exclude_from_bom"
+  ],
+  "excluded_from_pos": true,
+  "excluded_from_bom": true,
+  "dnp": false,
+  "assembly_method": "bare copper pad: no component, not assembled",
+  "jlc_assembled": false,
+  "x": 8.3,
+  "y": 34.45,
+  "rot": 0.0
+ },
+ {
+  "ref": "U1",
+  "value": "XIAO_ESP32S3",
+  "mpn": "Seeed PN 202003751 (XIAO ESP32S3 plain, v1.4, unsoldered-header version)",
+  "lcsc": null,
+  "jlc_class": "N/A - DNP at JLC (bought retail, hand-soldered)",
+  "footprint": "ARTHUR:XIAO_ESP32S3_HANDSOLDER",
+  "package": "XIAO_ESP32S3_HANDSOLDER",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd",
+   "thru_hole"
+  ],
+  "n_pads": 16,
+  "attr": [
+   "through_hole",
+   "dnp"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": true,
+  "assembly_method": "DNP: not assembled by JLC; retail module hand-soldered after delivery",
+  "jlc_assembled": false,
+  "x": 40.19,
+  "y": 51.883,
+  "rot": 180.0
+ },
+ {
+  "ref": "U501",
+  "value": "TLV9064IPWR",
+  "mpn": "TLV9064IPWR",
+  "lcsc": null,
+  "jlc_class": "Extended (expected)",
+  "footprint": "Package_SO:TSSOP-14_4.4x5mm_P0.65mm",
+  "package": "TSSOP-14_4.4x5mm_P0.65mm",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 14,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 30.35,
+  "y": 22.6,
+  "rot": 180.0
+ },
+ {
+  "ref": "U502",
+  "value": "TLV9064IPWR",
+  "mpn": "TLV9064IPWR",
+  "lcsc": null,
+  "jlc_class": "Extended (expected)",
+  "footprint": "Package_SO:TSSOP-14_4.4x5mm_P0.65mm",
+  "package": "TSSOP-14_4.4x5mm_P0.65mm",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 14,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 11.55,
+  "y": 22.6,
+  "rot": 180.0
+ },
+ {
+  "ref": "U503",
+  "value": "TLV9064IPWR",
+  "mpn": "TLV9064IPWR",
+  "lcsc": null,
+  "jlc_class": "Extended (expected)",
+  "footprint": "Package_SO:TSSOP-14_4.4x5mm_P0.65mm",
+  "package": "TSSOP-14_4.4x5mm_P0.65mm",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 14,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 41.45,
+  "y": 22.6,
+  "rot": 180.0
+ },
+ {
+  "ref": "U4002",
+  "value": "TPS7A2030PDBVR",
+  "mpn": "TPS7A2030PDBVR",
+  "lcsc": null,
+  "jlc_class": "Extended (expected)",
+  "footprint": "Package_TO_SOT_SMD:SOT-23-5",
+  "package": "SOT-23-5",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 5,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 22.3,
+  "y": 35.05,
+  "rot": 0.0
+ },
+ {
+  "ref": "U6001",
+  "value": "ADS131M04IPWR",
+  "mpn": "ADS131M04IPWR",
+  "lcsc": null,
+  "jlc_class": "Extended (expected)",
+  "footprint": "Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm",
+  "package": "TSSOP-20_4.4x6.5mm_P0.65mm",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 20,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 18.3,
+  "y": 49.45,
+  "rot": 0.0
+ },
+ {
+  "ref": "X1",
+  "value": "SX3M8.192M20F30TNN",
+  "mpn": "SX3M8.192M20F30TNN",
+  "lcsc": "C2901557",
+  "jlc_class": "Extended (JLC library type expand); Economic + Standard PCBA; MSL 1",
+  "footprint": "ARTHUR:OSC_SCTF_SX3M_SMD3225-4P",
+  "package": "OSC_SCTF_SX3M_SMD3225-4P",
+  "side": "top",
+  "layer": "F.Cu",
+  "pad_types": [
+   "smd"
+  ],
+  "n_pads": 4,
+  "attr": [
+   "smd"
+  ],
+  "excluded_from_pos": false,
+  "excluded_from_bom": false,
+  "dnp": false,
+  "assembly_method": "SMT reflow, single side",
+  "jlc_assembled": true,
+  "x": 24.2,
+  "y": 44.55,
+  "rot": 180.0
+ }
+]

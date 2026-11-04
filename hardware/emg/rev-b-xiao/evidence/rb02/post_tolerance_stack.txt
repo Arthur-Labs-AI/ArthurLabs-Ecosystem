@@ -1,0 +1,80 @@
+
+A frozen (RB-00.6): drill 1.40, ring 1.90, mask 1.45, cone <= 1.1
+   finished hole range                                                    (1.32, 1.53)
+   post play (min..max)                                                   (0.38, 0.515)
+   cone-in-hole margin, worst                                             0.11
+   annular ring, worst (hole max)                                         0.185
+   mask opening minus hole, worst (hole max)                              -0.04
+   mask annulus over the ring                                             0.225
+   castellation overlap, worst (post 0.253 off, hole +/-0.075, module +/-0.2) 1.035
+   cone to GND0 pad edge, worst (post 0.253 toward GND0)                  0.594
+   host ring to GND0 pad edge, worst plan gap                             -0.103
+   MC P(cone does not fit)                                                0.0
+   MC P(ring plan-overlaps GND0 pad)                                      0.0458
+   MC P(castellation overlap < 1.0 mm)                                    0.0
+   MC P(annular ring < 0.20 recommended)                                  0.14453
+   MC min cone-to-GND0 clearance                                          0.594
+
+B = A with cone target <= 1.0 (process control only)
+   finished hole range                                                    (1.32, 1.53)
+   post play (min..max)                                                   (0.38, 0.515)
+   cone-in-hole margin, worst                                             0.16
+   annular ring, worst (hole max)                                         0.185
+   mask opening minus hole, worst (hole max)                              -0.04
+   mask annulus over the ring                                             0.225
+   castellation overlap, worst (post 0.253 off, hole +/-0.075, module +/-0.2) 1.035
+   cone to GND0 pad edge, worst (post 0.253 toward GND0)                  0.644
+   host ring to GND0 pad edge, worst plan gap                             -0.103
+   MC P(cone does not fit)                                                0.0
+   MC P(ring plan-overlaps GND0 pad)                                      0.04745
+   MC P(castellation overlap < 1.0 mm)                                    0.0
+   MC P(annular ring < 0.20 recommended)                                  0.14306
+   MC min cone-to-GND0 clearance                                          0.644
+
+E = B with mask opening 1.55 (mask edit only; ring, drill unchanged)
+   finished hole range                                                    (1.32, 1.53)
+   post play (min..max)                                                   (0.38, 0.515)
+   cone-in-hole margin, worst                                             0.16
+   annular ring, worst (hole max)                                         0.185
+   mask opening minus hole, worst (hole max)                              0.01
+   mask annulus over the ring                                             0.175
+   castellation overlap, worst (post 0.253 off, hole +/-0.075, module +/-0.2) 1.035
+   cone to GND0 pad edge, worst (post 0.253 toward GND0)                  0.644
+   host ring to GND0 pad edge, worst plan gap                             -0.103
+   MC P(cone does not fit)                                                0.0
+   MC P(ring plan-overlaps GND0 pad)                                      0.0469
+   MC P(castellation overlap < 1.0 mm)                                    0.0
+   MC P(annular ring < 0.20 recommended)                                  0.14615
+   MC min cone-to-GND0 clearance                                          0.646
+
+C = B with ring 2.00 / mask 1.55 (copper + mask edit, drill unchanged)
+   finished hole range                                                    (1.32, 1.53)
+   post play (min..max)                                                   (0.38, 0.515)
+   cone-in-hole margin, worst                                             0.16
+   annular ring, worst (hole max)                                         0.235
+   mask opening minus hole, worst (hole max)                              0.01
+   mask annulus over the ring                                             0.225
+   castellation overlap, worst (post 0.253 off, hole +/-0.075, module +/-0.2) 1.035
+   cone to GND0 pad edge, worst (post 0.253 toward GND0)                  0.644
+   host ring to GND0 pad edge, worst plan gap                             -0.153
+   MC P(cone does not fit)                                                0.0
+   MC P(ring plan-overlaps GND0 pad)                                      0.1367
+   MC P(castellation overlap < 1.0 mm)                                    0.0
+   MC P(annular ring < 0.20 recommended)                                  0.0
+   MC min cone-to-GND0 clearance                                          0.645
+
+D = drill 1.50, ring 2.10, mask 1.60, cone <= 1.1
+   finished hole range                                                    (1.42, 1.63)
+   post play (min..max)                                                   (0.43, 0.565)
+   cone-in-hole margin, worst                                             0.16
+   annular ring, worst (hole max)                                         0.235
+   mask opening minus hole, worst (hole max)                              -0.015
+   mask annulus over the ring                                             0.25
+   castellation overlap, worst (post 0.253 off, hole +/-0.075, module +/-0.2) 1.035
+   cone to GND0 pad edge, worst (post 0.253 toward GND0)                  0.594
+   host ring to GND0 pad edge, worst plan gap                             -0.203
+   MC P(cone does not fit)                                                0.0
+   MC P(ring plan-overlaps GND0 pad)                                      0.27351
+   MC P(castellation overlap < 1.0 mm)                                    0.0
+   MC P(annular ring < 0.20 recommended)                                  0.0
+   MC min cone-to-GND0 clearance                                          0.595

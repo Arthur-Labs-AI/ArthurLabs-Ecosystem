@@ -1,0 +1,48 @@
+BAT+ pad 2.032 x 1.016; GND0 pitch 1.905; pad-to-pad gap 0.889
+1. post centre may deviate at most 0.253 mm (y) from the pad centre before its edge leaves the pad (0.760 mm in x)
+2. flat seating (cone enters the plated hole)   radial margin = (finished hole - cone)/2 [mm]
+   finished hole:  1.45  1.40  1.35  1.30  1.25
+   cone Ø0.8      +0.325  +0.300  +0.275  +0.250  +0.225
+   cone Ø0.9      +0.275  +0.250  +0.225  +0.200  +0.175
+   cone Ø1.0      +0.225  +0.200  +0.175  +0.150  +0.125
+   cone Ø1.1      +0.175  +0.150  +0.125  +0.100  +0.075
+   cone Ø1.2      +0.125  +0.100  +0.075  +0.050  +0.025
+   cone Ø1.3      +0.075  +0.050  +0.025  +0.000  -0.025
+   -> with the RB-00.6 limit Ø1.1 and a plated hole of Ø1.25-1.35 the margin is +0.075..+0.125 mm: the module must be shifted to centre the cone; it will not sit flat if the cone is Ø1.2 or more.
+3. castellation coverage vs module shift delta (host pad 1.50, module copper 1.626)
+   shift 0.0 mm -> overlap 1.50 mm along the edge (min needed for a visible fillet ~1.0)
+   shift 0.1 mm -> overlap 1.46 mm along the edge (min needed for a visible fillet ~1.0)
+   shift 0.2 mm -> overlap 1.36 mm along the edge (min needed for a visible fillet ~1.0)
+   shift 0.3 mm -> overlap 1.26 mm along the edge (min needed for a visible fillet ~1.0)
+   shift 0.4 mm -> overlap 1.16 mm along the edge (min needed for a visible fillet ~1.0)
+   shift 0.5 mm -> overlap 1.06 mm along the edge (min needed for a visible fillet ~1.0)
+   shift 0.6 mm -> overlap 0.96 mm along the edge (min needed for a visible fillet ~1.0)
+4. solder cone to GND0 pad edge (module frame; independent of the host hole)
+   post offset toward GND0:   0.00  0.10  0.20  0.25
+   cone r 0.45:              +0.947  +0.847  +0.747  +0.695
+   cone r 0.55:              +0.847  +0.747  +0.647  +0.595
+   cone r 0.65:              +0.747  +0.647  +0.547  +0.495
+   cone r 0.80:              +0.597  +0.497  +0.397  +0.345
+   (a cone cannot be wider than the pad's wettable 1.016 mm in y, so r > 0.51 only extends along x)
+5. host annular ring (Ø1.90) to GND0 pad edge in plan view
+   hole is +0.022 mm off the pad centre (toward GND0); nominal ring-to-GND0 gap 0.425 mm; shrinks by the module offset toward GND0:
+   offset 0.00 -> +0.425 mm 
+   offset 0.10 -> +0.325 mm 
+   offset 0.20 -> +0.225 mm 
+   offset 0.30 -> +0.125 mm 
+   offset 0.40 -> +0.025 mm 
+   offset 0.45 -> -0.025 mm (plan overlap, no metal contact: mask-covered)
+6. host mask: opening Ø1.45 over ring Ø1.9: annulus 0.225 mm per side (registration +/-0.05 typical -> >= 0.175 mm; JLC minimum mask dam 0.1 mm); ring annulus 0.250 mm
+7. differential thermal growth over the 21.1 mm module length (FR4 host vs module, dalpha assumed)
+   dalpha 2 ppm/K, dT 25 K -> 1.1 um
+   dalpha 2 ppm/K, dT 60 K -> 2.5 um
+   dalpha 5 ppm/K, dT 25 K -> 2.6 um
+   dalpha 5 ppm/K, dT 60 K -> 6.3 um
+   dalpha 10 ppm/K, dT 25 K -> 5.3 um
+   dalpha 10 ppm/K, dT 60 K -> 12.7 um
+8. USB-C plug insertion load (estimate; forces are assumptions: USB-C spec insertion 5-20 N)
+   F =  5 N pushed along the module axis; if only 1 of 15 joints carried it: 0.3 N each (copper post shear capacity ~31 N for Ø0.51 at 150 MPa; solder-to-pad ~15 N)
+   F = 10 N pushed along the module axis; if only 1 of 15 joints carried it: 0.7 N each (copper post shear capacity ~31 N for Ø0.51 at 150 MPa; solder-to-pad ~15 N)
+   F = 20 N pushed along the module axis; if only 1 of 15 joints carried it: 1.3 N each (copper post shear capacity ~31 N for Ø0.51 at 150 MPa; solder-to-pad ~15 N)
+   -> the post must not be the load path: enclosure wall/E1 support and the 14 castellation fillets carry plug force.
+9. bottom joint access: host B.Cu Ø3.00 pad; RB-00.6 puts no B.Cu components, so a 1.6-2.4 mm tip reaches it. Post protrusion 1.0 mm after trimming.

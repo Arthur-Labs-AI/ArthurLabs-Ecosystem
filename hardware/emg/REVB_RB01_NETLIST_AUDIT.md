@@ -1,5 +1,7 @@
 # A.R.T.H.U.R EMG Rev B — RB-01 Netlist Audit
 
+> **RB-01R (2026-10-10):** historical RB-01 audit. It relied on the generator's intended-net map for X0 and is not an independent oracle. It is superseded by `rev-b-xiao/tools/rb01r_netlist_audit.py` + `test_audit_mutations.py` (fresh KiCad export, REVB_RB01R_INDEPENDENT_REVIEW.md §2). X1 in row P2 is now the SCTF SX3M8.192M20F30TNN; connectivity is unchanged (357 pins identical).
+
 Source: `hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_sch`, netlist exported with
 `kicad-cli sch export netlist --format kicadxml` (10.0.6) from the files in the repo location.
 

@@ -1,0 +1,11 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "Resistor_SMD")(type "KiCad")(uri "${KIPRJMOD}/fp-libs/Resistor_SMD.pretty")(options "")(descr "stock KiCad 10.0.0 footprints used by Rev B (subset, vendored unmodified)"))
+  (lib (name "Capacitor_SMD")(type "KiCad")(uri "${KIPRJMOD}/fp-libs/Capacitor_SMD.pretty")(options "")(descr "stock KiCad 10.0.0 footprints used by Rev B (subset, vendored unmodified)"))
+  (lib (name "Inductor_SMD")(type "KiCad")(uri "${KIPRJMOD}/fp-libs/Inductor_SMD.pretty")(options "")(descr "stock KiCad 10.0.0 footprints used by Rev B (subset, vendored unmodified)"))
+  (lib (name "Package_SO")(type "KiCad")(uri "${KIPRJMOD}/fp-libs/Package_SO.pretty")(options "")(descr "stock KiCad 10.0.0 footprints used by Rev B (subset, vendored unmodified)"))
+  (lib (name "Package_TO_SOT_SMD")(type "KiCad")(uri "${KIPRJMOD}/fp-libs/Package_TO_SOT_SMD.pretty")(options "")(descr "stock KiCad 10.0.0 footprints used by Rev B (subset, vendored unmodified)"))
+  (lib (name "Connector_JST")(type "KiCad")(uri "${KIPRJMOD}/fp-libs/Connector_JST.pretty")(options "")(descr "stock KiCad 10.0.0 footprints used by Rev B (subset, vendored unmodified)"))
+  (lib (name "TestPoint")(type "KiCad")(uri "${KIPRJMOD}/fp-libs/TestPoint.pretty")(options "")(descr "stock KiCad 10.0.0 footprints used by Rev B (subset, vendored unmodified)"))
+  (lib (name "ARTHUR")(type "KiCad")(uri "${KIPRJMOD}/fp-libs/ARTHUR.pretty")(options "")(descr "Rev B custom footprints (OSC_SCTF_SX3M_SMD3225-4P, XIAO_ESP32S3_HANDSOLDER), authored in RB-02"))
+)

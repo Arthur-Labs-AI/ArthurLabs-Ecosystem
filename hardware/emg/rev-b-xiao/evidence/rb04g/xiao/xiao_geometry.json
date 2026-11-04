@@ -1,0 +1,1572 @@
+{
+ "assume": {
+  "module_outline_tol": 0.2,
+  "module_pad_reg": 0.1,
+  "hand_place": 0.2,
+  "host_pad_tol": 0.05,
+  "hole_pos": 0.075,
+  "hole_dia_lo": 1.3199999999999998,
+  "hole_dia_hi": 1.5299999999999998,
+  "post_d": 0.511,
+  "post_on_pad": 0.25,
+  "cone_d_target": 1.0,
+  "cone_d_max": 1.1,
+  "cone_h_max": 0.5
+ },
+ "module_outline": {
+  "w": 17.78,
+  "h": 21.135000000000005
+ },
+ "fit": {
+  "Ty": 64.95009999999999,
+  "Ty_spread": 1.4210854715202004e-14,
+  "Tx_from_outline_centre": 49.08,
+  "Tx_from_pad_centroid": 49.080000000000005
+ },
+ "castellations": [
+  {
+   "pin": 1,
+   "module_fn": "D0/A0",
+   "module_u": 0.0,
+   "module_v": 2.921,
+   "board_x": 49.08,
+   "board_y": 62.029,
+   "host_x": 48.93,
+   "host_y": 62.029,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "/XIAO_Brain_Interface/VBAT_SENSE",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 2,
+   "module_fn": "D1/A1",
+   "module_u": 0.0,
+   "module_v": 5.461,
+   "board_x": 49.08,
+   "board_y": 59.489,
+   "host_x": 48.93,
+   "host_y": 59.489,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "/DRDY_N",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 3,
+   "module_fn": "D2/A2",
+   "module_u": 0.0,
+   "module_v": 8.001,
+   "board_x": 49.08,
+   "board_y": 56.949,
+   "host_x": 48.93,
+   "host_y": 56.949,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "/SYNC_RESET_N",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 4,
+   "module_fn": "D3/A3",
+   "module_u": 0.0,
+   "module_v": 10.541,
+   "board_x": 49.08,
+   "board_y": 54.409,
+   "host_x": 48.93,
+   "host_y": 54.409,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "/AFE_EN_REQ",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 5,
+   "module_fn": "D4/I2C_SDA",
+   "module_u": 0.0,
+   "module_v": 13.081,
+   "board_x": 49.08,
+   "board_y": 51.869,
+   "host_x": 48.93,
+   "host_y": 51.869,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "unconnected-(U1-D4{slash}GPIO5{slash}SDA-Pad5)",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 6,
+   "module_fn": "D5/I2C_SCL",
+   "module_u": 0.0,
+   "module_v": 15.621,
+   "board_x": 49.08,
+   "board_y": 49.329,
+   "host_x": 48.93,
+   "host_y": 49.329,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "unconnected-(U1-D5{slash}GPIO6{slash}SCL-Pad6)",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 7,
+   "module_fn": "D6/TX",
+   "module_u": 0.0,
+   "module_v": 18.161,
+   "board_x": 49.08,
+   "board_y": 46.789,
+   "host_x": 48.93,
+   "host_y": 46.789,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "/XIAO_Brain_Interface/USB_PRESENT",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 8,
+   "module_fn": "D7/RX",
+   "module_u": 17.78,
+   "module_v": 18.161,
+   "board_x": 31.3,
+   "board_y": 46.789,
+   "host_x": 31.45,
+   "host_y": 46.789,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "/CS_N",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 9,
+   "module_fn": "D8/A8/SCK",
+   "module_u": 17.78,
+   "module_v": 15.621,
+   "board_x": 31.3,
+   "board_y": 49.329,
+   "host_x": 31.45,
+   "host_y": 49.329,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "/XIAO_Brain_Interface/SCLK_MCU",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 10,
+   "module_fn": "D9/A9/MISO",
+   "module_u": 17.78,
+   "module_v": 13.081,
+   "board_x": 31.3,
+   "board_y": 51.869,
+   "host_x": 31.45,
+   "host_y": 51.869,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "/MISO",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 11,
+   "module_fn": "D10/A10/MOSI",
+   "module_u": 17.78,
+   "module_v": 10.541,
+   "board_x": 31.3,
+   "board_y": 54.409,
+   "host_x": 31.45,
+   "host_y": 54.409,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "/XIAO_Brain_Interface/MOSI_MCU",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 12,
+   "module_fn": "VCC_3V3",
+   "module_u": 17.78,
+   "module_v": 8.001,
+   "board_x": 31.3,
+   "board_y": 56.949,
+   "host_x": 31.45,
+   "host_y": 56.949,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "/XIAO_Brain_Interface/XIAO_3V3",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 13,
+   "module_fn": "GND",
+   "module_u": 17.78,
+   "module_v": 5.461,
+   "board_x": 31.3,
+   "board_y": 59.489,
+   "host_x": 31.45,
+   "host_y": 59.489,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "GND",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  },
+  {
+   "pin": 14,
+   "module_fn": "VBUS",
+   "module_u": 17.78,
+   "module_v": 2.921,
+   "board_x": 31.3,
+   "board_y": 62.029,
+   "host_x": 31.45,
+   "host_y": 62.029,
+   "d_along_edge": 0.0,
+   "d_normal_vs_nominal_inset": -0.0,
+   "host_pad": "2.9x1.5",
+   "host_net": "/XIAO_5V",
+   "toe_mm": 1.3,
+   "under_module_mm": 1.6,
+   "bot_copper_bbox_board": null
+  }
+ ],
+ "bat": {
+  "module": {
+   "GND0": {
+    "u": 4.444999999999993,
+    "v": 8.25500000000001,
+    "w": 2.032,
+    "h": 1.016,
+    "bx": 44.635000000000005,
+    "by": 56.69509999999998
+   },
+   "BAT0": {
+    "u": 4.444999999999993,
+    "v": 10.16000000000001,
+    "w": 2.032,
+    "h": 1.016,
+    "bx": 44.635000000000005,
+    "by": 54.79009999999998
+   }
+  },
+  "host_post": {
+   "x": 44.635,
+   "y": 54.79,
+   "drill": 1.9,
+   "ring": 2.3,
+   "bot_pad": 3.0
+  },
+  "hole_vs_BAT0": [
+   -0.0,
+   -0.0
+  ],
+  "BAT0_to_GND0_centre": 1.905,
+  "pad_gap": 0.889
+ },
+ "underside": [
+  {
+   "name": "USB_NPTH",
+   "fn": "hole",
+   "u": 11.765000000000015,
+   "v": 4.742000000000004,
+   "w": 0.58,
+   "h": 0.58,
+   "shape": "circle",
+   "bx": 37.31499999999998,
+   "by": 60.20809999999999,
+   "host_f_cu_within_2mm": [],
+   "min_clear_host_copper": null,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "USB_NPTH",
+   "fn": "hole",
+   "u": 6.015000000000015,
+   "v": 4.742000000000004,
+   "w": 0.58,
+   "h": 0.58,
+   "shape": "circle",
+   "bx": 43.06499999999998,
+   "by": 60.20809999999999,
+   "host_f_cu_within_2mm": [],
+   "min_clear_host_copper": null,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "USB_S1",
+   "fn": "GND(shell)",
+   "u": 13.208000000000027,
+   "v": 1.079499999999996,
+   "w": 1.778,
+   "h": 0.889,
+   "shape": "rect",
+   "bx": 35.87199999999997,
+   "by": 63.870599999999996,
+   "host_f_cu_within_2mm": [],
+   "min_clear_host_copper": null,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "USB_S2",
+   "fn": "GND(shell)",
+   "u": 4.572000000000003,
+   "v": 1.079499999999996,
+   "w": 1.778,
+   "h": 0.889,
+   "shape": "rect",
+   "bx": 44.507999999999996,
+   "by": 63.870599999999996,
+   "host_f_cu_within_2mm": [],
+   "min_clear_host_copper": null,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "USB_S3",
+   "fn": "GND(shell)",
+   "u": 13.208000000000027,
+   "v": 5.270499999999998,
+   "w": 1.778,
+   "h": 0.889,
+   "shape": "rect",
+   "bx": 35.87199999999997,
+   "by": 59.67959999999999,
+   "host_f_cu_within_2mm": [
+    [
+     0.608,
+     "track",
+     "trk",
+     "/XIAO_Brain_Interface/USB_PRESENT",
+     false
+    ],
+    [
+     0.788,
+     "track",
+     "trk",
+     "/XIAO_Brain_Interface/USB_PRESENT",
+     false
+    ]
+   ],
+   "min_clear_host_copper": 0.608,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "USB_S4",
+   "fn": "GND(shell)",
+   "u": 4.572000000000003,
+   "v": 5.270499999999998,
+   "w": 1.778,
+   "h": 0.889,
+   "shape": "rect",
+   "bx": 44.507999999999996,
+   "by": 59.67959999999999,
+   "host_f_cu_within_2mm": [
+    [
+     1.103,
+     "track",
+     "trk",
+     "/XIAO_Brain_Interface/VBAT_SENSE",
+     false
+    ],
+    [
+     1.612,
+     "track",
+     "trk",
+     "/XIAO_Brain_Interface/VBAT_SENSE",
+     false
+    ]
+   ],
+   "min_clear_host_copper": 1.103,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "TP4",
+   "fn": "MTDO/IO40/CAM_SDA",
+   "u": 10.159999999999997,
+   "v": 1.9050000000000011,
+   "w": 1.143,
+   "h": 1.143,
+   "shape": "circle",
+   "bx": 38.92,
+   "by": 63.04509999999999,
+   "host_f_cu_within_2mm": [],
+   "min_clear_host_copper": null,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "GND0",
+   "fn": "GND",
+   "u": 4.444999999999993,
+   "v": 8.25500000000001,
+   "w": 2.032,
+   "h": 1.016,
+   "shape": "rect",
+   "bx": 44.635000000000005,
+   "by": 56.69509999999998,
+   "host_f_cu_within_2mm": [
+    [
+     0.849,
+     "track",
+     "trk",
+     "/XIAO_Brain_Interface/VBAT_SENSE",
+     false
+    ],
+    [
+     1.147,
+     "track",
+     "trk",
+     "VBAT",
+     false
+    ],
+    [
+     1.737,
+     "track",
+     "trk",
+     "VBAT",
+     false
+    ],
+    [
+     1.737,
+     "track",
+     "trk",
+     "VBAT",
+     false
+    ],
+    [
+     1.745,
+     "track",
+     "trk",
+     "VBAT",
+     false
+    ]
+   ],
+   "min_clear_host_copper": 0.849,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "TP3",
+   "fn": "MTDI/IO41/PDM_DATA",
+   "u": 7.6200000000000045,
+   "v": 1.9050000000000011,
+   "w": 1.143,
+   "h": 1.143,
+   "shape": "circle",
+   "bx": 41.459999999999994,
+   "by": 63.04509999999999,
+   "host_f_cu_within_2mm": [],
+   "min_clear_host_copper": null,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "TP5",
+   "fn": "MTCK/IO39/CAM_SCL",
+   "u": 10.159999999999997,
+   "v": 6.984999999999999,
+   "w": 1.143,
+   "h": 1.143,
+   "shape": "circle",
+   "bx": 38.92,
+   "by": 57.96509999999999,
+   "host_f_cu_within_2mm": [],
+   "min_clear_host_copper": null,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "TP1",
+   "fn": "GND",
+   "u": 10.159999999999997,
+   "v": 4.445000000000007,
+   "w": 1.143,
+   "h": 1.143,
+   "shape": "circle",
+   "bx": 38.92,
+   "by": 60.505099999999985,
+   "host_f_cu_within_2mm": [],
+   "min_clear_host_copper": null,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "TP8",
+   "fn": "ESP_USB_D+",
+   "u": 10.159999999999997,
+   "v": 9.525000000000006,
+   "w": 1.143,
+   "h": 1.143,
+   "shape": "circle",
+   "bx": 38.92,
+   "by": 55.425099999999986,
+   "host_f_cu_within_2mm": [],
+   "min_clear_host_copper": null,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "BAT0",
+   "fn": "VBAT",
+   "u": 4.444999999999993,
+   "v": 10.16000000000001,
+   "w": 2.032,
+   "h": 1.016,
+   "shape": "rect",
+   "bx": 44.635000000000005,
+   "by": 54.79009999999998,
+   "host_f_cu_within_2mm": [
+    [
+     0.0,
+     "track",
+     "trk",
+     "VBAT",
+     false
+    ],
+    [
+     0.0,
+     "track",
+     "trk",
+     "VBAT",
+     false
+    ],
+    [
+     0.0,
+     "track",
+     "trk",
+     "VBAT",
+     false
+    ],
+    [
+     0.169,
+     "track",
+     "trk",
+     "VBAT",
+     false
+    ],
+    [
+     0.849,
+     "track",
+     "trk",
+     "/XIAO_Brain_Interface/VBAT_SENSE",
+     false
+    ],
+    [
+     1.402,
+     "track",
+     "trk",
+     "/AFE_EN_REQ",
+     false
+    ]
+   ],
+   "min_clear_host_copper": 0.0,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "TP6",
+   "fn": "EN",
+   "u": 7.6200000000000045,
+   "v": 4.445000000000007,
+   "w": 1.143,
+   "h": 1.143,
+   "shape": "circle",
+   "bx": 41.459999999999994,
+   "by": 60.505099999999985,
+   "host_f_cu_within_2mm": [],
+   "min_clear_host_copper": null,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "TP7",
+   "fn": "ESP_USB_D-",
+   "u": 7.6200000000000045,
+   "v": 9.525000000000006,
+   "w": 1.143,
+   "h": 1.143,
+   "shape": "circle",
+   "bx": 41.459999999999994,
+   "by": 55.425099999999986,
+   "host_f_cu_within_2mm": [
+    [
+     1.003,
+     "track",
+     "trk",
+     "VBAT",
+     false
+    ],
+    [
+     1.003,
+     "track",
+     "trk",
+     "VBAT",
+     false
+    ],
+    [
+     1.668,
+     "track",
+     "trk",
+     "VBAT",
+     false
+    ]
+   ],
+   "min_clear_host_copper": 1.003,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "TP2",
+   "fn": "MTMS/IO42/PDM_CLK",
+   "u": 7.6200000000000045,
+   "v": 6.984999999999999,
+   "w": 1.143,
+   "h": 1.143,
+   "shape": "circle",
+   "bx": 41.459999999999994,
+   "by": 57.96509999999999,
+   "host_f_cu_within_2mm": [],
+   "min_clear_host_copper": null,
+   "overlap_exposed_host_copper": []
+  },
+  {
+   "name": "PAD25_window",
+   "fn": "GND(pour)",
+   "u": 10.01,
+   "v": 12.54,
+   "w": 2.75,
+   "h": 2.5,
+   "shape": "rect",
+   "bx": 39.07,
+   "by": 52.41009999999999,
+   "host_f_cu_within_2mm": [],
+   "min_clear_host_copper": null,
+   "overlap_exposed_host_copper": []
+  }
+ ],
+ "module_board_bbox": {
+  "x0": 31.299999999999997,
+  "x1": 49.08,
+  "y0": 43.81509999999999,
+  "y1": 64.95009999999999
+ },
+ "host_courtyards_within_4mm_of_module": [
+  [
+   1.04,
+   "R7108",
+   [
+    34.07,
+    39.82,
+    35.53,
+    42.78
+   ]
+  ],
+  [
+   2.62,
+   "R3006",
+   [
+    26.22,
+    40.82,
+    29.18,
+    42.28
+   ]
+  ],
+  [
+   2.82,
+   "C7101",
+   [
+    25.52,
+    57.77,
+    28.48,
+    59.23
+   ]
+  ],
+  [
+   2.82,
+   "C7102",
+   [
+    25.52,
+    59.32,
+    28.48,
+    60.78
+   ]
+  ],
+  [
+   2.82,
+   "FB1",
+   [
+    25.52,
+    56.22,
+    28.48,
+    57.68
+   ]
+  ],
+  [
+   2.82,
+   "R3009",
+   [
+    25.52,
+    61.26,
+    28.48,
+    62.72
+   ]
+  ],
+  [
+   2.82,
+   "R7101",
+   [
+    25.52,
+    48.77,
+    28.48,
+    50.23
+   ]
+  ],
+  [
+   2.84,
+   "R7107",
+   [
+    35.87,
+    38.02,
+    37.33,
+    40.98
+   ]
+  ],
+  [
+   2.92,
+   "R7102",
+   [
+    25.42,
+    53.72,
+    28.38,
+    55.18
+   ]
+  ]
+ ],
+ "ufl": {
+  "centre_board": [
+   45.041399999999996,
+   45.544499999999985
+  ],
+  "crtyd": [
+   142.2527,
+   111.8097,
+   145.0467,
+   115.8737
+  ]
+ },
+ "usb": {
+  "centre_u": 8.890000000000015,
+  "width": 9.0,
+  "overhang_beyond_module_edge": 1.508,
+  "board_edge_y": null,
+  "module_usb_edge_y": 64.95009999999999,
+  "inset_from_board_edge": -0.0
+ },
+ "host_outline": [
+  0.0,
+  0.0,
+  51.3,
+  64.95
+ ],
+ "_seeed_outline_u_v": [
+  [
+   [
+    15.179,
+    15.268
+   ],
+   [
+    15.235,
+    15.256
+   ]
+  ],
+  [
+   [
+    0.0,
+    1.905
+   ],
+   [
+    0.037,
+    1.533
+   ],
+   [
+    0.145,
+    1.176
+   ],
+   [
+    0.321,
+    0.847
+   ],
+   [
+    0.558,
+    0.558
+   ],
+   [
+    0.847,
+    0.321
+   ],
+   [
+    1.176,
+    0.145
+   ],
+   [
+    1.533,
+    0.037
+   ],
+   [
+    1.905,
+    0.0
+   ]
+  ],
+  [
+   [
+    2.538,
+    15.256
+   ],
+   [
+    2.533,
+    15.256
+   ]
+  ],
+  [
+   [
+    1.905,
+    21.135
+   ],
+   [
+    1.533,
+    21.098
+   ],
+   [
+    1.176,
+    20.99
+   ],
+   [
+    0.847,
+    20.814
+   ],
+   [
+    0.558,
+    20.577
+   ],
+   [
+    0.321,
+    20.288
+   ],
+   [
+    0.145,
+    19.959
+   ],
+   [
+    0.037,
+    19.602
+   ],
+   [
+    0.0,
+    19.23
+   ]
+  ],
+  [
+   [
+    15.441,
+    16.256
+   ],
+   [
+    15.441,
+    15.494
+   ]
+  ],
+  [
+   [
+    2.743,
+    15.494
+   ],
+   [
+    2.743,
+    16.256
+   ]
+  ],
+  [
+   [
+    15.037,
+    15.436
+   ],
+   [
+    15.032,
+    15.494
+   ]
+  ],
+  [
+   [
+    16.01,
+    0.005
+   ],
+   [
+    15.873,
+    0.0
+   ]
+  ],
+  [
+   [
+    2.743,
+    16.315
+   ],
+   [
+    2.726,
+    16.373
+   ]
+  ],
+  [
+   [
+    15.294,
+    16.495
+   ],
+   [
+    15.235,
+    16.51
+   ]
+  ],
+  [
+   [
+    15.177,
+    16.495
+   ],
+   [
+    15.123,
+    16.467
+   ]
+  ],
+  [
+   [
+    15.875,
+    0.0
+   ],
+   [
+    16.247,
+    0.037
+   ],
+   [
+    16.604,
+    0.145
+   ],
+   [
+    16.933,
+    0.321
+   ],
+   [
+    17.222,
+    0.558
+   ],
+   [
+    17.459,
+    0.847
+   ],
+   [
+    17.635,
+    1.176
+   ],
+   [
+    17.743,
+    1.533
+   ],
+   [
+    17.78,
+    1.905
+   ]
+  ],
+  [
+   [
+    2.335,
+    15.494
+   ],
+   [
+    2.337,
+    15.436
+   ]
+  ],
+  [
+   [
+    15.055,
+    15.383
+   ],
+   [
+    15.085,
+    15.334
+   ]
+  ],
+  [
+   [
+    15.238,
+    15.256
+   ],
+   [
+    15.235,
+    15.256
+   ]
+  ],
+  [
+   [
+    15.423,
+    16.376
+   ],
+   [
+    15.39,
+    16.427
+   ]
+  ],
+  [
+   [
+    15.05,
+    16.373
+   ],
+   [
+    15.035,
+    16.317
+   ]
+  ],
+  [
+   [
+    2.355,
+    15.383
+   ],
+   [
+    2.337,
+    15.436
+   ]
+  ],
+  [
+   [
+    15.438,
+    16.317
+   ],
+   [
+    15.441,
+    16.256
+   ]
+  ],
+  [
+   [
+    15.238,
+    16.51
+   ],
+   [
+    15.233,
+    16.51
+   ]
+  ],
+  [
+   [
+    15.032,
+    15.494
+   ],
+   [
+    15.032,
+    16.256
+   ]
+  ],
+  [
+   [
+    15.39,
+    16.427
+   ],
+   [
+    15.347,
+    16.467
+   ]
+  ],
+  [
+   [
+    2.604,
+    16.495
+   ],
+   [
+    2.545,
+    16.51
+   ]
+  ],
+  [
+   [
+    2.545,
+    16.51
+   ],
+   [
+    2.487,
+    16.498
+   ]
+  ],
+  [
+   [
+    2.335,
+    16.256
+   ],
+   [
+    2.335,
+    15.494
+   ]
+  ],
+  [
+   [
+    2.688,
+    15.332
+   ],
+   [
+    2.721,
+    15.38
+   ]
+  ],
+  [
+   [
+    2.428,
+    15.296
+   ],
+   [
+    2.479,
+    15.268
+   ]
+  ],
+  [
+   [
+    2.644,
+    15.294
+   ],
+   [
+    2.594,
+    15.268
+   ]
+  ],
+  [
+   [
+    16.01,
+    0.005
+   ],
+   [
+    15.873,
+    0.0
+   ]
+  ],
+  [
+   [
+    2.479,
+    15.268
+   ],
+   [
+    2.535,
+    15.256
+   ]
+  ],
+  [
+   [
+    15.875,
+    0.0
+   ],
+   [
+    1.905,
+    0.0
+   ]
+  ],
+  [
+   [
+    15.344,
+    15.294
+   ],
+   [
+    15.388,
+    15.332
+   ]
+  ],
+  [
+   [
+    15.037,
+    15.436
+   ],
+   [
+    15.055,
+    15.383
+   ]
+  ],
+  [
+   [
+    17.78,
+    19.23
+   ],
+   [
+    17.743,
+    19.602
+   ],
+   [
+    17.635,
+    19.959
+   ],
+   [
+    17.459,
+    20.288
+   ],
+   [
+    17.222,
+    20.577
+   ],
+   [
+    16.933,
+    20.814
+   ],
+   [
+    16.604,
+    20.99
+   ],
+   [
+    16.247,
+    21.098
+   ],
+   [
+    15.875,
+    21.135
+   ]
+  ],
+  [
+   [
+    15.123,
+    16.467
+   ],
+   [
+    15.08,
+    16.424
+   ]
+  ],
+  [
+   [
+    15.235,
+    15.256
+   ],
+   [
+    15.294,
+    15.268
+   ]
+  ],
+  [
+   [
+    2.543,
+    16.51
+   ],
+   [
+    2.548,
+    16.51
+   ]
+  ],
+  [
+   [
+    17.78,
+    19.23
+   ],
+   [
+    17.78,
+    1.905
+   ]
+  ],
+  [
+   [
+    0.0,
+    19.23
+   ],
+   [
+    0.0,
+    1.905
+   ]
+  ],
+  [
+   [
+    2.698,
+    16.424
+   ],
+   [
+    2.655,
+    16.465
+   ]
+  ],
+  [
+   [
+    2.726,
+    16.373
+   ],
+   [
+    2.698,
+    16.424
+   ]
+  ],
+  [
+   [
+    2.487,
+    16.498
+   ],
+   [
+    2.431,
+    16.47
+   ]
+  ],
+  [
+   [
+    2.738,
+    15.436
+   ],
+   [
+    2.721,
+    15.38
+   ]
+  ],
+  [
+   [
+    15.388,
+    15.332
+   ],
+   [
+    15.421,
+    15.383
+   ]
+  ],
+  [
+   [
+    15.032,
+    16.256
+   ],
+   [
+    15.035,
+    16.317
+   ]
+  ],
+  [
+   [
+    2.355,
+    15.383
+   ],
+   [
+    2.385,
+    15.334
+   ]
+  ],
+  [
+   [
+    2.431,
+    16.47
+   ],
+   [
+    2.388,
+    16.427
+   ]
+  ],
+  [
+   [
+    2.388,
+    16.427
+   ],
+   [
+    2.355,
+    16.376
+   ]
+  ],
+  [
+   [
+    15.438,
+    16.317
+   ],
+   [
+    15.423,
+    16.376
+   ]
+  ],
+  [
+   [
+    2.644,
+    15.294
+   ],
+   [
+    2.688,
+    15.332
+   ]
+  ],
+  [
+   [
+    15.344,
+    15.294
+   ],
+   [
+    15.294,
+    15.268
+   ]
+  ],
+  [
+   [
+    2.535,
+    15.256
+   ],
+   [
+    2.594,
+    15.268
+   ]
+  ],
+  [
+   [
+    2.337,
+    16.317
+   ],
+   [
+    2.335,
+    16.256
+   ]
+  ],
+  [
+   [
+    15.235,
+    16.51
+   ],
+   [
+    15.177,
+    16.495
+   ]
+  ],
+  [
+   [
+    15.438,
+    15.436
+   ],
+   [
+    15.421,
+    15.383
+   ]
+  ],
+  [
+   [
+    2.385,
+    15.334
+   ],
+   [
+    2.428,
+    15.296
+   ]
+  ],
+  [
+   [
+    1.905,
+    21.135
+   ],
+   [
+    15.875,
+    21.135
+   ]
+  ],
+  [
+   [
+    15.347,
+    16.467
+   ],
+   [
+    15.294,
+    16.495
+   ]
+  ],
+  [
+   [
+    15.128,
+    15.294
+   ],
+   [
+    15.179,
+    15.268
+   ]
+  ],
+  [
+   [
+    2.355,
+    16.376
+   ],
+   [
+    2.337,
+    16.317
+   ]
+  ],
+  [
+   [
+    15.085,
+    15.334
+   ],
+   [
+    15.128,
+    15.294
+   ]
+  ],
+  [
+   [
+    2.743,
+    16.256
+   ],
+   [
+    2.743,
+    16.315
+   ]
+  ],
+  [
+   [
+    15.08,
+    16.424
+   ],
+   [
+    15.05,
+    16.373
+   ]
+  ],
+  [
+   [
+    2.655,
+    16.465
+   ],
+   [
+    2.604,
+    16.495
+   ]
+  ],
+  [
+   [
+    2.738,
+    15.436
+   ],
+   [
+    2.743,
+    15.494
+   ]
+  ],
+  [
+   [
+    15.441,
+    15.494
+   ],
+   [
+    15.438,
+    15.436
+   ]
+  ]
+ ],
+ "_T": [
+  49.08,
+  64.95009999999999
+ ]
+}

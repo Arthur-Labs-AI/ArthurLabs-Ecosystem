@@ -54,10 +54,11 @@ Data rate check: frame = status + 4 ch + CRC = 6 words × 24 bit = 144 bit.
 - The ADS131M04 has **no crystal oscillator input**, only CLKIN (the datasheet pin table shows CLKIN only; no XTAL pin exists on the TSSOP-20).
 - An external clock is mandatory, and it must run **before and during** a pin reset.
 - **Decision: local 8.192 MHz CMOS XO on DVDD_F**, ≤ 5 mm from pin 17, 33 Ω source series.
-- **X1 frozen (RB-00.5): YXC OT2JI-111-8.192M, JLC C7425393, SMD3225-4P.**
+- **X1 frozen (RB-01R, replaces the RB-00.5 YXC part): SCTF SX3M8.192M20F30TNN, LCSC/JLC C2901557, SMD3225-4P (3.2 × 2.5 × 0.95 mm).**
   - Pin 1 OE → DVDD_F (never float), 2 GND, 3 OUT → 33 Ω → CLKIN, 4 VDD with 100 nF.
-  - Checked: VOH ≥ 0.9·VDD, VOL ≤ 0.1·VDD, duty 45–55 %, start-up ≤ 3 ms, ≤ 5 mA, 15 pF load, ±20 ppm.
-  - Land pattern: pads 1.3 × 1.2 mm, gaps 0.8/0.7 mm.
+  - Checked against the exact-code datasheet (family sheet rev 05/12/2026): VDD 1.62–3.63 V, VOH ≥ 0.9·VDD, VOL ≤ 0.1·VDD, duty 45–55 %, start-up ≤ 5 ms, Icc ≤ 10 mA (15 pF), ±20 ppm @25 °C / ±30 ppm over −40…85 °C, OE low = disabled, high or open = enabled.
+  - Land pattern (manufacturer): pad centres 2.20 × 1.75 mm, pads 1.20 × 0.95 mm. Footprint `ARTHUR:OSC_SCTF_SX3M_SMD3225-4P` is authored at RB-02 from REVB_RB01R_FOOTPRINT_QUALIFICATION.md §3.
+  - The RB-00.5 land pattern (1.3 × 1.2 mm pads) belonged to the YXC part and must not be reused.
 - Rejected alternative: ESP32 LEDC/CLK_OUT. It gives an 8.000 MHz fractional/integer clock, which is not 8.192, with jitter. It routes a continuous clock across the boundary, needs a spare pin (none free), and ties sample timing to the brain.
 - With the local XO, ODR = 8.192 MHz / (2 × OSR) gives the exact binary rates (e.g., OSR 1024 → 4 kSPS, OSR 2048 → 2 kSPS).
 
@@ -176,7 +177,29 @@ RB-00.6 solders **only pads 1–14 and the BAT+ post**. The table keeps all modu
 | 24 (GND0) | BAT− | **Not soldered**; F.Cu keep-out (BAT− via pin 13) |
 | 25 | Exposed GND window (2.75 × 2.5) | **Not soldered**; F.Cu keep-out |
 
-## 9. ADC gain contract
+## 9. ADC operating limits (RB-01R; replaces the "PGA gain ≥ 4" contract)
 
-- PGA gain **≥ 4** on all channels while the ADC-input clamps are fitted. **Planned gain is 8–32.**
-- At gain ≥ 8 the AIN window is AGND − 1.3 V … AVDD − 1.8 V (≈ 1.155 V min AVDD). The GND-referenced input bias (≈ 0 V) is inside it.
+The RB-00.5 firmware contract "PGA gain ≥ 4 while the ADC-input clamps are fitted" is **withdrawn**. It rested on a diode-saturation-current estimate that was derived backwards from VF(max) (see REVB_RB00_CLOSURE.md, RB-01R correction) and cannot be proven. Gain does not switch the clamps on or off; the *pin voltage* does. The requirements below come from ADS131M04 SBAS890D §6.1, §6.3, §6.5 and Table 7-1.
+
+**Hardware limits (independent of gain, not firmware-selectable):**
+
+| Quantity | Limit | Source |
+|---|---|---|
+| Absolute maximum, each AINxP/AINxN | AGND − 1.6 V … AVDD + 0.3 V | §6.1 |
+| Continuous current into any pin except supplies | ±10 mA | §6.1 |
+| AVDD (LDO 3.0 V ±1.5 %) | 2.955 … 3.045 V | TPS7A20 |
+
+**Recommended operating window (performance/accuracy, not safety):**
+
+| Gain | Each AIN, absolute | Differential FSR |
+|---|---|---|
+| 1, 2, 4 | AGND − 1.3 V … AVDD | ±1.2 V, ±600 mV, ±300 mV |
+| 8 … 128 | AGND − 1.3 V … AVDD − 1.8 V (= 1.155 V at AVDD min) | ±150 mV … ±9.4 mV |
+
+- The GND-referenced AC-coupled bias (AIN ≈ 0 V DC, ±20 mV from the ADC input bias current through the 100 k returns) is inside the window at **every** gain. No gain setting is unsafe for the hardware.
+- Common-mode pickup passes the 0.72 Hz high-pass: keep |AIN| (DC offset + 50/60 Hz common-mode) below 1.1 V at gain ≥ 8 and below 1.3 V (negative) at gain ≤ 4.
+- **Start-up:** after AFE_EN rises, AIN steps up to the follower output (1.5 V typ, 1.84 V with electrode offset, 3.05 V if a follower saturates) and decays with τ = 100 kΩ × C (0.11–0.26 s with the 2.2 µF X7R derated). It exceeds the gain ≥ 8 ceiling (1.155 V) for up to 0.21 s and never exceeds AVDD (absolute-maximum safe). **Firmware:** keep the ADC in standby or at gain ≤ 4 until ≥ 0.3 s after AFE_EN, discard data until ≥ 1.1 s (5τ).
+- **Shut-down / inhibit:** AIN is held ≥ −1.09 V (clamp, 3.1 mA, cold) — 0.21 V inside the recommended −1.3 V, 0.51 V inside absolute maximum.
+- **Gain policy (recommendation only):** 8 … 32. ADC input-referred noise at 1 kSPS: 1.74 / 1.17 / 0.77 µVrms at gain 8 / 16 / 32 (Table 7-1) against ≈ 0.6 µVrms front-end (20–450 Hz, excluding skin impedance); above 32 the ADC noise no longer improves and only headroom is lost. Default 16, final choice by bench measurement of electrode noise, motion artefact and clipping.
+- **Clamp conduction and leakage cannot be bounded tighter than a bench measurement by the datasheet.** Upper bound used: Is ≤ IR(max) = 5 nA @25 °C (7.8 nA @45 °C), n ≥ 1. At −75 mV (full scale per leg at gain 8) the bound gives a nonlinear error current ≤ 91 nA (≈ −45 dB re signal); typical BAV199 leakage is 3 pA. **Measure** THD/offset of one populated channel with a shorted-input and a large-signal sweep before declaring a gain range for human use.
+- Full derivation: `tools/rb01r_calcs.py`, REVB_RB01R_INDEPENDENT_REVIEW.md §4.

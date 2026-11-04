@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="766" height="899" font-family="DejaVu Sans, sans-serif">
+<rect width="100%" height="100%" fill="#fff"/>
+<text x="12" y="24" font-size="16" font-weight="bold">V1: battery pockets (plan view)</text>
+<g transform="translate(20,40) scale(12.0)">
+<rect x="0" y="0" width="51.3" height="62.45" rx="1" fill="#f4f1e6" stroke="#222" stroke-width="0.12"/>
+<rect x="2.0" y="1.5" width="30.5" height="47.0" fill="#8fd19e" fill-opacity="0.35" stroke="#333" stroke-width="0.1" stroke-dasharray="0.5 0.3"/><text x="2.6" y="3.1" font-size="1.3">503035 pack 30.5x47.0 (north)</text>
+<rect x="2.0" y="13.5" width="30.5" height="47.0" fill="#ffd27f" fill-opacity="0.35" stroke="#333" stroke-width="0.1" stroke-dasharray="0.5 0.3"/><text x="2.6" y="15.1" font-size="1.3">503035 pack 30.5x47.0 (south)</text>
+<circle cx="44.635" cy="52.29" r="3.0" fill="#d00" fill-opacity="0.25" stroke="#d00" stroke-width="0.1"/><text x="40.635" y="48.89" font-size="1.2" fill="#a00">BAT+ post tail</text>
+<circle cx="48.15" cy="20.0" r="0.75" fill="#555"/><text x="49.05" y="19.4" font-size="1.0">TP4</text>
+<circle cx="45.95" cy="15.0" r="0.75" fill="#555"/><text x="46.85" y="14.4" font-size="1.0">TP5</text>
+<circle cx="12.3" cy="34.45" r="0.75" fill="#555"/><text x="13.200000000000001" y="33.85" font-size="1.0">TP7</text>
+<circle cx="36.8" cy="39.45" r="0.75" fill="#555"/><text x="37.699999999999996" y="38.85" font-size="1.0">TP1</text>
+<circle cx="28.3" cy="31.95" r="0.75" fill="#555"/><text x="29.2" y="31.349999999999998" font-size="1.0">TP2</text>
+<circle cx="14.3" cy="39.05" r="0.75" fill="#555"/><text x="15.200000000000001" y="38.449999999999996" font-size="1.0">TP6</text>
+<circle cx="20.3" cy="55.45" r="0.75" fill="#555"/><text x="21.2" y="54.85" font-size="1.0">TP3</text>
+<circle cx="8.3" cy="34.45" r="0.75" fill="#555"/><text x="9.200000000000001" y="33.85" font-size="1.0">TP8</text>
+<circle cx="45.0" cy="43.0" r="12.2" fill="none" stroke="#2060c0" stroke-width="0.1" stroke-dasharray="0.6 0.4"/><circle cx="45.0" cy="43.0" r="0.8" fill="#2060c0"/><text x="39.0" y="41.8" font-size="1.2" fill="#2060c0">U.FL</text>
+<rect x="31.30" y="41.31" width="17.78" height="21.135" fill="none" stroke="#1f5fa8" stroke-width="0.15"/>
+<circle cx="49.5" cy="35.8" r="0.9" fill="#c00"/><text x="41.5" y="34.6" font-size="1.2" fill="#c00">J1 plug mouth</text>
+</g></svg>

@@ -1,0 +1,40 @@
+{
+ "package": "ARTHUR_EMG_RevB R1b staging",
+ "status": "QUOTE ONLY - NOT FOR PRODUCTION",
+ "generated": "2026-10-12",
+ "source": {
+  "footprint_sha256": "c8703292766625345f78a221ab7682acadf4131a4296d330a8a2671e67d7a36e",
+  "pre_R1b_pcb_sha256": "111e1cd3d0c9fae12b53f5f816aea8a5ce2c7e3a4bf09cca314970c2bca30698",
+  "pre_R1b_footprint_sha256": "510594ced920387443fb03c3491d962eeab8c7d05f788d900fd9acebf3fccb23",
+  "pcb_sha256_at_export": "75875df32d63d202dda0c06eb8957979373d83a36fb3a82091d5aabf8637ed21",
+  "current_pcb_sha256": "7fda8d9c6fa568d703dfdf91c5fbd35bc0b9001164543d38d661ca0690ae75a9",
+  "note": "RB-04H changed only hidden footprint metadata properties after export; Gerber/drill/BOM/CPL regenerated from the new PCB are semantically identical (timestamps only), so this package remains valid."
+ },
+ "change": {
+  "object": "U1 pad 23 (BAT+ post)",
+  "drill": "1.40 -> 1.90 mm",
+  "copper": "1.90 -> 2.30 mm",
+  "f_mask_opening": "1.45 -> 1.95 mm",
+  "b_cu_pad": "3.00 unchanged"
+ },
+ "superseded": "quote-package/SUPERSEDED_pre_R1b__DO_NOT_USE",
+ "flags": {
+  "manufacturing_release": false,
+  "ready_to_order": false,
+  "uploaded": false,
+  "jlc_confirmation": "PENDING",
+  "seeed_confirmation": "PENDING",
+  "physical_module_verification": "PENDING"
+ },
+ "files": {
+  "ARTHUR_EMG_RevB_R1b_QUOTE-ONLY_BOM.csv": "ac2d234318184a4ed69228982aec58050bd4d2bb5bb4b3bddd6fdb9a7a9fac6c",
+  "ARTHUR_EMG_RevB_R1b_QUOTE-ONLY_CPL.csv": "25cc5c409678bbb30a507cd4de650295625d35f588ed11179d53f1c20e9ff653",
+  "ARTHUR_EMG_RevB_R1b_QUOTE-ONLY_Gerbers.zip": "d6c2b39e2d0010917cf9802d339969ca13051d40a23994c8b9529407ecbaa48d",
+  "NOT_FOR_PRODUCTION__QUOTE_ONLY.txt": "aa959fbfdac920d991a0e15919804c6afef1d37d5ae7bc6de6561ba823750275",
+  "QUOTE_README.md": "cbf092eda28cd1e7f40e2ce543a5a3e37558e2376e062683776278842300a87f",
+  "alternate/ARTHUR_EMG_RevB_R1b_QUOTE-ONLY_CPL_raw_KiCad_rotation.csv": "74578f5fba99ed4dc2db5a5c63a5c99a8645770a0a6d578e56bde90f9c17dd5a",
+  "verification/gerber_vs_kicad_report.json": "90626f369a03a7fc120433c019c52c6a8d66909fd127c2ef6bcecfab4c46d72b",
+  "verification/package_verification.json": "c83c157311ada54ed7bb8f6a927af4876d2059942d5873237ea82ec238628762",
+  "verification/structural_diff_pre_vs_post_R1b.json": "9e9e6f68d54f7261d98533659c72c3c22efc8cdd3fb2de2fbf5dc7714d4901ae"
+ }
+}

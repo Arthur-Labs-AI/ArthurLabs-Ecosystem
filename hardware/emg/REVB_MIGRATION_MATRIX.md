@@ -22,7 +22,7 @@ Actions:
 | R105/R106 (…R406) | 10 M 5 % 0603 | DC bias of the follower input to VCM | **KEEP** | Sets input impedance. Must get a dedicated `EMG_HIZ` netclass and guard (not `Default`, as in Rev A) |
 | U501, U502 | TLV9064IPWR TSSOP-14 | 8 unity-gain followers | **KEEP** | Verified: 0.5 pA IB, RRIO, 1.8–5.5 V, 538 µA/amp typ. Footprint `ARTHUR:TSSOP-14`: re-validate vs TI PW land pattern; no vias in pads |
 | C101/C102 (…C402) | 2.2 µF 16 V 0603 | AC coupling, follower → ADC | **KEEP** | HPF 0.72 Hz with 100 k. Power-down transient (R6) is bounded by the new ADC-input clamps D1x3/D1x4. Require X7R, 16 V |
-| R103/R104 (…R404) | 100 k 1 % | AC-coupling DC return to GND | **KEEP** | GND return confirmed in RB-00.5. AIN ≈ 0 V is mid-window for gain ≥ 8 (AGND − 1.3 … AVDD − 1.8 V). A VCM return is **invalid** (1.5 V > 1.155 V) |
+| R103/R104 (…R404) | 100 k 1 % | AC-coupling DC return to GND | **KEEP** | GND return confirmed in RB-00.5. AIN ≈ 0 V is inside the recommended window at every gain (AGND − 1.3 … AVDD, or AVDD − 1.8 V at gain ≥ 8). A VCM return is **invalid** at gain ≥ 8 (1.5 V > 1.155 V) |
 | R107/R108 (…R408) | 1.0 k 1 % | AAF series R | **KEEP** | AAF with 1 nF / 10 nF: ≈ 7.6 kHz differential pole |
 | C106/C107 (…C407) | 1.0 nF C0G | CM AAF shunt | **KEEP** | Match tolerance → CMRR; C0G mandatory |
 | C105 (…C405) | 10 nF 50 V C0G | Differential AAF | **KEEP** | — |
@@ -96,15 +96,15 @@ Actions:
 |---|---|---|---|
 | U1 | Seeed XIAO ESP32S3 plain, unsoldered-header version (PN 202003751, v1.4) | Brain: MCU, BLE/Wi-Fi, USB-C, charger, 3V3 (SGM6029 buck) | RB-00.6 hand-solder footprint `ARTHUR:XIAO_ESP32S3_HANDSOLDER` (14 extended castellation pads). **DNP in the JLC BOM**; hand-soldered. JLC C9900124959 not used (0 stock / MOQ 445) |
 | H_BAT | Plated hole Ø1.40 + Ø3.00 B.Cu pad (board feature, no part) | XIAO BAT+ post landing | RB-00.6; post = 6 mm AWG 24 solid tinned Cu, installed with the XIAO |
-| J1 | JST-PH 2p SMD (same family as J101) | Battery BAT+/GND | Same MPN family → can share the JLC line if the right-angle/vertical choice matches |
-| X1 | **YXC OT2JI-111-8.192M**, JLC **C7425393**, SMD3225-4P | ADC master clock | Frozen in RB-00.5: pin 1 OE → DVDD_F, 2 GND, 3 OUT, 4 VDD |
-| D103/D104 … D403/D404 | BAV199 (same MPN as D101–D402) ×8 | Negative clamp on each ADC input (pin 1 GND, pin 3 CHx_y, pin 2 NC) | RB-00.5 R6. AIN ≥ −1.04 V worst case |
+| J1 | **JST S2B-PH-SM4-TB(LF)(SN)**, JLC **C295747**, side entry (RB-01R frozen) | Battery BAT+/GND | Own JLC line (side entry ≠ the vertical B2B, C160352). 2 A / 100 V; polarity of the cell lead must be verified |
+| X1 | **SCTF SX3M8.192M20F30TNN**, JLC **C2901557**, SMD3225-4P | ADC master clock | Frozen in RB-01R (replaced YXC C7425393): pin 1 OE → DVDD_F, 2 GND, 3 OUT, 4 VDD |
+| D103/D104 … D403/D404 | BAV199 (same MPN as D101–D402) ×8 | Negative clamp on each ADC input (pin 1 GND, pin 3 CHx_y, pin 2 NC) | RB-00.5 R6. AIN ≥ −1.09 V worst case (RB-01R) |
 | R_VCMIN | 10 k 1 % 0603 | Series R, divider node → U503A +IN | RB-00.5 R6b: limits back-drive to ≤ 0.16 mA |
 | R_VBUSLD | 4.7 k 1 % 0603 | Load on XIAO 5V | RB-00.5: defeats XIAO D2 Schottky leakage (keeps 5V ≤ 0.42 V on battery) |
 | C_X1 | 100 nF | X1 decoupling | — |
 | R_CLK | 33 Ω | CLKIN source termination at X1 | — |
 | R_PRE | 4.7 Ω 0603 | LDO input RC | 56 mV drop at 12 mA |
-| C_PRE | 22 µF 10 V X5R 0805 | LDO input RC bulk | Effective ≈ 10 µF at 4 V; corner ≈ 1.5–3 kHz |
+| C_PRE (= C4007, the **only** 22 µF part; there is no separate C_BAT) | 22 µF 10 V X5R 0805 | LDO input RC bulk | Effective ≈ 10 µF at 4 V; corner ≈ 1.5–3.4 kHz |
 | FB1 | 600 Ω@100 MHz 0603, ≥ 200 mA | DVDD filter | Place at the XIAO 3V3 exit |
 | C_DV1, C_DV2 | 10 µF, 100 nF | DVDD_F bulk/HF | — |
 | R_EN_S | 10 k | D3 → EN series | — |
@@ -117,10 +117,10 @@ Actions:
 | R_SYNC_PU | 10 k → DVDD_F | SYNC/RESET_N idle-high | A 60 µs GPIO3 glitch < 250 µs reset threshold (2048 tCLKIN) |
 | R_VB1, R_VB2, C_VB | 1 M / 1 M / 100 nF | VBAT sense to D0 | The S3 has no on-board VBAT sense (Seeed wiki). Draw ≈ 2.1 µA |
 | R_US1, R_US2 | 100 k / 150 k | 5V → D6 USB_PRESENT sense | 3.0 V at 5.0 V; firmware information only |
-| R_OPT0 (DNP) | 0 Ω | LDO input from 3V3 instead of VBAT | For socketed/other XIAO models without reachable BAT pads |
+| ~~R_OPT0 (DNP)~~ | — | **OMITTED (RB-01R).** Obsolete since the RB-00.6 BAT+ post; fitting it would tie VBAT_AFE (VBAT via 4.7 Ω, up to 4.2 V) to the XIAO 3V3 buck output | Must not be re-added without a new review |
 | TP set | Bare pads | VBAT, AFE_3V0, DVDD_F, VCM, RLD_SAFE, AFE_EN, GND ×2 | No vias in TP pads |
-| U_ID (DNP) | 24C02 SOT-23-5 | Board ID EEPROM on I²C | Optional; DNP in the first build |
-| R_SDA/R_SCL (DNP) | 4.7 k | I²C pull-ups | Only if U_ID is fitted |
+| ~~U_ID (DNP)~~ | — | **OMITTED (RB-01R)** | D4/D5 stay NC |
+| ~~R_SDA/R_SCL (DNP)~~ | — | **OMITTED (RB-01R)** | — |
 
 ## 7. Count summary
 

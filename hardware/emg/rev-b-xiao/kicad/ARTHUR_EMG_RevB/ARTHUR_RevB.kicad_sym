@@ -1648,7 +1648,7 @@
 				)
 			)
 		)
-		(property "Value" "OT2JI-111-8.192M"
+		(property "Value" "SX3M8.192M20F30TNN"
 			(at 1.27 -6.35 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1658,7 +1658,7 @@
 				)
 			)
 		)
-		(property "Footprint" "ARTHUR:OSC_YXC_SMD3225-4P"
+		(property "Footprint" "ARTHUR:OSC_SCTF_SX3M_SMD3225-4P"
 			(at 0 0 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1669,7 +1669,7 @@
 				)
 			)
 		)
-		(property "Datasheet" "https://www.lcsc.com/product-detail/C7425393.html"
+		(property "Datasheet" "https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2110091030_Shenzhen-SCTF-Elec-SX3M8-192M20F30TNN_C2901557.pdf"
 			(at 0 0 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -1680,7 +1680,7 @@
 				)
 			)
 		)
-		(property "Description" "8.192 MHz CMOS clock oscillator 1.8-3.3 V, SMD3225-4P (YXC OT2JI-111-8.192M, LCSC C7425393). 1 = OE (high/float = enable), 2 = GND, 3 = OUT, 4 = VDD"
+		(property "Description" "8.192 MHz CMOS clock oscillator 1.62-3.63 V, SMD3225-4P 3.2x2.5x0.95 (SCTF SX3M8.192M20F30TNN, LCSC C2901557). 1 = OE (high/float = enable), 2 = GND, 3 = OUT, 4 = VDD"
 			(at 0 0 0)
 			(show_name no)
 			(do_not_autoplace no)

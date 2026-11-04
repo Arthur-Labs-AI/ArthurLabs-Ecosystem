@@ -1,0 +1,5 @@
+QUOTE ONLY - NOT FOR PRODUCTION / NOT A MANUFACTURING RELEASE
+
+Staging package for a preliminary JLCPCB quotation / DFM view of Rev B with the R1b BAT+ post hole (RB-04G, 2026-10-12).
+Manufacturing release and purchasing remain BLOCKED (physical XIAO verification, JLC and Seeed confirmations pending).
+Do NOT order PCBs or assemblies from these files.

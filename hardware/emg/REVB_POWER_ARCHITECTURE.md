@@ -6,7 +6,7 @@ Datasheets used, all read in RB-00 (not recalled):
 - TI TLV906x (current rev)
 - Espressif ESP32-S3 Series Datasheet v2.2
 - Seeed Wiki "XIAO ESP32S3 getting started"
-- RB-00.5: Seeed official XIAO ESP32S3 KiCad module netlist (served as Sense v1.5), Nexperia BAV199, LRC LMBR4010, YXC YSO110TR ([REVB_RB00_CLOSURE.md](REVB_RB00_CLOSURE.md))
+- RB-00.5: Seeed official XIAO ESP32S3 KiCad module netlist (served as Sense v1.5), Nexperia BAV199, LRC LMBR4010, YXC YSO110TR (superseded in RB-01R by the SCTF SX3M datasheet) ([REVB_RB00_CLOSURE.md](REVB_RB00_CLOSURE.md), [REVB_RB01R_INDEPENDENT_REVIEW.md](REVB_RB01R_INDEPENDENT_REVIEW.md))
 
 ## 1. Power tree
 
@@ -18,8 +18,8 @@ Datasheets used, all read in RB-00 (not recalled):
                                      │
                                      ├── R_VB1 1M ─┬─ R_VB2 1M ─ GND ; C_VB 100n ─► D0 VBAT_SENSE
                                      │
-                                     └── R_PRE 4.7Ω ─ VBAT_AFE ─┬─ C_PRE 22µF ─ GND
-                                          (R_OPT0 0Ω DNP from 3V3)│
+                                     └── R_PRE 4.7Ω ─ VBAT_AFE ─┬─ C_PRE 22µF ─ GND   (C4007, the only 22 µF part)
+                                          (no R_OPT0: omitted)    │
                                                                  └─ C4005 1µF ─ U4002 TPS7A2030P IN
             └─────────────────────────────────────────────────┘
                      U4002 EN ◄── AFE_EN (interlock, REVB_INTERFACE_SPEC §4)
@@ -32,7 +32,7 @@ Datasheets used, all read in RB-00 (not recalled):
 
  XIAO 3V3 ── FB1 ── DVDD_F ─┬─ C_DV1 10µF, C_DV2 100n
                             ├─ U6001 DVDD (C6008 1µF) ; CAP C6009 220n
-                            ├─ X1 YXC OT2JI-111-8.192M, OE→DVDD_F (C_X1 100n)
+                            ├─ X1 SCTF SX3M8.192M20F30TNN (C2901557), OE→DVDD_F (C_X1 100n)
                             └─ R_CS_PU 100k, R_SYNC_PU 10k
 
  XIAO 5V (= raw VBUS; XIAO R9 100k to GND) ── R_VBUSLD 4.7k ── GND   (swamps D2 reverse leakage)
@@ -66,8 +66,10 @@ Acquisition low-battery cutoff: **VBAT_SENSE < 3.30 V → firmware stops acquisi
 | **AFE_3V0 total** | | **≈ 10 mA** | **≈ 13 mA** | Rev A POWER_BUDGET said 3–5 mA (stale, omitted the op-amps) |
 | TPS7A20 IQ | VBAT | 6.5 µA | — | |
 | ADS131M04 DVDD | DVDD_F | 0.4 mA | 0.5 mA | |
-| X1 YXC OT2JI-111-8.192M | DVDD_F | ≤ 5 mA | 5 mA (datasheet max, 3.3 V, 15 pF) | YSO110TR table |
-| **DVDD_F total** | | **≈ 3–5.5 mA** | 5.5 mA | FB1 DC drop negligible |
+| X1 SCTF SX3M8.192M20F30TNN | DVDD_F | ≈ 3–5 mA (not specified; 8 pF load) | **10 mA** (datasheet max, 1–40 MHz, 15 pF) | SCTF 3CM sheet |
+| Pull-ups R7104 10 k / R7103 100 k (driven low, 3.6 V) | DVDD_F | — | 0.40 mA | — |
+| ADS131M04 SPI activity allowance | DVDD_F | — | 0.5 mA | — |
+| **DVDD_F total** | | **≈ 4–6 mA** | **11.4 mA** (1.6 % of the 700 mA 3V3 capability; FB1 at 5.7 % of its 200 mA rating, drop 5.7 mV) | RB-01R `tools/rb01r_calcs.py` |
 | VBAT divider | VBAT | 2.1 µA | | |
 | ESP32-S3 BLE streaming | VBAT via XIAO | 30–45 mA avg (estimate) | 300 mA+ Wi-Fi bursts | Not datasheet-verified at system level; measure |
 
@@ -103,10 +105,10 @@ Battery life (500 mAh, BLE only, estimate): 500 / (≈ 40 + 13 + 4) ≈ **8–10
 - C1x1 (2.2 µF) holds V_C = follower DC − 0 V: 1.50 V nominal, **1.84 V** with tolerances + 300 mV electrode offset, **3.05 V** with a saturated follower.
 - The rail collapses in ≈ 1 ms ≪ τ_N = 0.22 s, so an unprotected AIN steps to −V_C. **The RB-00 statement "within ratings, 0.1 V margin" was wrong:** the tolerance cases exceed the −1.6 V absmax, and SBAS890D has no current-limited exemption.
 - **Fix:** BAV199 negative clamp at each ADC input, behind the existing 1 k (pin 1 GND, pin 3 AIN, pin 2 NC).
-  - Worst-case AIN **≥ −1.04 V**: 3.1 mA, VF max, −20 °C.
-  - That is 0.26 V inside the recommended −1.3 V and 0.56 V from absmax.
-- The GND-referenced bias is retained: AIN ≈ 0 V is mid-window for gain ≥ 8 (AGND − 1.3 … AVDD − 1.8 V). A VCM return is invalid there.
-- **PGA gain ≥ 4 with the clamps fitted.**
+  - Worst-case AIN **≥ −1.09 V**: ≤ 3.1 mA, VF(max, 10 mA) = 1.0 V (a monotonic bound for any current ≤ 10 mA), +0.09 V at −20 °C.
+  - That is 0.21 V inside the recommended −1.3 V and 0.51 V from absmax. (RB-00.5 quoted −1.04 V from a log interpolation.)
+- The GND-referenced bias is retained: AIN ≈ 0 V is inside the recommended window at every gain (AGND − 1.3 … AVDD, or AVDD − 1.8 V at gain ≥ 8). A VCM return is invalid at gain ≥ 8.
+- **No gain restriction is required for hardware safety.** (RB-00.5's "PGA gain ≥ 4" is withdrawn in RB-01R; see REVB_INTERFACE_SPEC.md §9 for the derived operating limits.)
 - **Also fixed:** 10 k in series with U503A +IN, so C5001/C5002 cannot back-drive > 0.16 mA into the collapsing rail (the TLV906x input limit is 10 mA).
 - Full derivation: [REVB_RB00_CLOSURE.md](REVB_RB00_CLOSURE.md) §R6.
 

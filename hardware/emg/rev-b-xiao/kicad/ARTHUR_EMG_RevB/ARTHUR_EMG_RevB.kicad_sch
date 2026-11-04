@@ -5,12 +5,12 @@
 	(uuid "25c9b9c0-55e2-5aa3-a8dc-e4d10bf04a6e")
 	(paper "A3")
 	(title_block
-		(title "A.R.T.H.U.R EMG Rev B - RB-01 root")
-		(date "2026-09-28")
-		(rev "B / RB-01")
+		(title "A.R.T.H.U.R EMG Rev B - root")
+		(date "2026-10-11")
+		(rev "B / RB-04A")
 		(company "A.R.T.H.U.R EMG")
 		(comment 1 "Architecture frozen: RB-00 + RB-00.5 + RB-00.6")
-		(comment 2 "RB-01 schematic only - no PCB, placement or routing")
+		(comment 2 "RB-04A: BOM fields filled (MPN/LCSC); 2.2 uF 16 V X7R line pending approval; manufacturing BLOCKED")
 	)
 	(lib_symbols)
 	(text "DESIGN INTENT (this sheet):\n- ONE 4-layer EMG PCB + ONE directly mounted Seeed XIAO ESP32S3 (DNP at JLC, hand-soldered) + ONE protected 1S LiPo\n- Architecture frozen RB-00 / RB-00.5 / RB-00.6 (precedence RB-00.6 > RB-00.5 > RB-00). RB-01 = schematic only, no PCB.\n- Removed vs Rev A: MDBT50Q, BQ24074, TPS63031, USB-C/CC/ESD, SWD, Q3002/R3005, charger nets, channel/SPI test points"

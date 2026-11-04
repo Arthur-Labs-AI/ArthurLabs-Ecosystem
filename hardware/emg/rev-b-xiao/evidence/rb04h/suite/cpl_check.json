@@ -1,0 +1,277 @@
+{
+ "cpl_rows": 126,
+ "issues": [],
+ "parts_in_pcb_not_in_cpl_excluding_U1_TP": [],
+ "oriented_parts": [
+  {
+   "ref": "D101",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 180.0,
+   "x": 37.4,
+   "y": "-14.000000",
+   "pin1_side": "ES"
+  },
+  {
+   "ref": "D102",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 180.0,
+   "x": 32.7,
+   "y": "-14.000000",
+   "pin1_side": "ES"
+  },
+  {
+   "ref": "D103",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 0.0,
+   "x": 9.1,
+   "y": "-46.150000",
+   "pin1_side": "WN"
+  },
+  {
+   "ref": "D104",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 0.0,
+   "x": 5.2,
+   "y": "-46.150000",
+   "pin1_side": "WN"
+  },
+  {
+   "ref": "D201",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 180.0,
+   "x": 28.0,
+   "y": "-14.000000",
+   "pin1_side": "ES"
+  },
+  {
+   "ref": "D202",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 180.0,
+   "x": 23.3,
+   "y": "-14.000000",
+   "pin1_side": "ES"
+  },
+  {
+   "ref": "D203",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 0.0,
+   "x": 5.2,
+   "y": "-49.750000",
+   "pin1_side": "WN"
+  },
+  {
+   "ref": "D204",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 0.0,
+   "x": 9.1,
+   "y": "-49.750000",
+   "pin1_side": "WN"
+  },
+  {
+   "ref": "D301",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 180.0,
+   "x": 18.6,
+   "y": "-14.000000",
+   "pin1_side": "ES"
+  },
+  {
+   "ref": "D302",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 180.0,
+   "x": 13.9,
+   "y": "-14.000000",
+   "pin1_side": "ES"
+  },
+  {
+   "ref": "D303",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 0.0,
+   "x": 9.1,
+   "y": "-53.350000",
+   "pin1_side": "WN"
+  },
+  {
+   "ref": "D304",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 0.0,
+   "x": 5.2,
+   "y": "-53.350000",
+   "pin1_side": "WN"
+  },
+  {
+   "ref": "D401",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 180.0,
+   "x": 9.2,
+   "y": "-14.000000",
+   "pin1_side": "ES"
+  },
+  {
+   "ref": "D402",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 180.0,
+   "x": 4.5,
+   "y": "-14.000000",
+   "pin1_side": "ES"
+  },
+  {
+   "ref": "D403",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 0.0,
+   "x": 5.2,
+   "y": "-56.950000",
+   "pin1_side": "WN"
+  },
+  {
+   "ref": "D404",
+   "package": "SOT-23",
+   "value": "BAV199",
+   "cpl_rot": 0.0,
+   "x": 9.1,
+   "y": "-56.950000",
+   "pin1_side": "WN"
+  },
+  {
+   "ref": "FB1",
+   "package": "L_0603_1608Metric",
+   "value": "600R@100MHz",
+   "cpl_rot": 0.0,
+   "x": 27.0,
+   "y": "-56.950000",
+   "pin1_side": "W"
+  },
+  {
+   "ref": "J1",
+   "package": "JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+   "value": "S2B-PH-SM4-TB",
+   "cpl_rot": 90.0,
+   "x": 44.4,
+   "y": "-38.300000",
+   "pin1_side": "WS"
+  },
+  {
+   "ref": "J101",
+   "package": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+   "value": "B2B-PH-SM4-TB",
+   "cpl_rot": 180.0,
+   "x": 35.05,
+   "y": "-3.750000",
+   "pin1_side": "EN"
+  },
+  {
+   "ref": "J201",
+   "package": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+   "value": "B2B-PH-SM4-TB",
+   "cpl_rot": 180.0,
+   "x": 25.65,
+   "y": "-3.750000",
+   "pin1_side": "EN"
+  },
+  {
+   "ref": "J301",
+   "package": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+   "value": "B2B-PH-SM4-TB",
+   "cpl_rot": 180.0,
+   "x": 16.25,
+   "y": "-3.750000",
+   "pin1_side": "EN"
+  },
+  {
+   "ref": "J401",
+   "package": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+   "value": "B2B-PH-SM4-TB",
+   "cpl_rot": 180.0,
+   "x": 6.85,
+   "y": "-3.750000",
+   "pin1_side": "EN"
+  },
+  {
+   "ref": "J5001",
+   "package": "JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical",
+   "value": "B2B-PH-SM4-TB",
+   "cpl_rot": 180.0,
+   "x": 44.45,
+   "y": "-3.750000",
+   "pin1_side": "EN"
+  },
+  {
+   "ref": "Q3001",
+   "package": "SOT-23",
+   "value": "2N7002",
+   "cpl_rot": 0.0,
+   "x": 28.8,
+   "y": "-37.750000",
+   "pin1_side": "WN"
+  },
+  {
+   "ref": "U501",
+   "package": "TSSOP-14_4.4x5mm_P0.65mm",
+   "value": "TLV9064IPWR",
+   "cpl_rot": 180.0,
+   "x": 30.35,
+   "y": "-22.600000",
+   "pin1_side": "ES"
+  },
+  {
+   "ref": "U502",
+   "package": "TSSOP-14_4.4x5mm_P0.65mm",
+   "value": "TLV9064IPWR",
+   "cpl_rot": 180.0,
+   "x": 11.55,
+   "y": "-22.600000",
+   "pin1_side": "ES"
+  },
+  {
+   "ref": "U503",
+   "package": "TSSOP-14_4.4x5mm_P0.65mm",
+   "value": "TLV9064IPWR",
+   "cpl_rot": 180.0,
+   "x": 41.45,
+   "y": "-22.600000",
+   "pin1_side": "ES"
+  },
+  {
+   "ref": "U4002",
+   "package": "SOT-23-5",
+   "value": "TPS7A2030PDBVR",
+   "cpl_rot": 0.0,
+   "x": 22.5,
+   "y": "-37.550000",
+   "pin1_side": "WN"
+  },
+  {
+   "ref": "U6001",
+   "package": "TSSOP-20_4.4x6.5mm_P0.65mm",
+   "value": "ADS131M04IPWR",
+   "cpl_rot": 0.0,
+   "x": 18.3,
+   "y": "-51.950000",
+   "pin1_side": "WN"
+  },
+  {
+   "ref": "X1",
+   "package": "OSC_SCTF_SX3M_SMD3225-4P",
+   "value": "SX3M8.192M20F30TNN",
+   "cpl_rot": 180.0,
+   "x": 24.2,
+   "y": "-47.050000",
+   "pin1_side": "EN"
+  }
+ ]
+}

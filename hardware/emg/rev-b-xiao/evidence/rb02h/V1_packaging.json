@@ -1,0 +1,133 @@
+{
+ "name": "V1",
+ "outline": [
+  51.3,
+  62.45
+ ],
+ "post": [
+  44.63,
+  52.29
+ ],
+ "ufl": [
+  45.0,
+  43.0
+ ],
+ "j1_plug_mouth": [
+  49.5,
+  35.8
+ ],
+ "j1_exit": [
+  1,
+  0
+ ],
+ "test_pads": {
+  "TP4": [
+   48.1,
+   20.0
+  ],
+  "TP5": [
+   46.0,
+   15.0
+  ],
+  "TP7": [
+   12.3,
+   34.5
+  ],
+  "TP1": [
+   36.8,
+   39.5
+  ],
+  "TP2": [
+   28.3,
+   31.9
+  ],
+  "TP6": [
+   14.3,
+   39.0
+  ],
+  "TP3": [
+   20.3,
+   55.5
+  ],
+  "TP8": [
+   8.3,
+   34.5
+  ]
+ },
+ "battery_fit": {
+  "503035": {
+   "north_biased": {
+    "x": 2.0,
+    "y": 1.5,
+    "w": 30.5,
+    "l": 47.0,
+    "orient": 0,
+    "post_gap": 12.7,
+    "tps_covered": [
+     "TP7",
+     "TP2",
+     "TP6",
+     "TP8"
+    ],
+    "antenna_gap": 12.5,
+    "lead_path_mm": 29.0
+   },
+   "south_biased": {
+    "x": 2.0,
+    "y": 13.5,
+    "w": 30.5,
+    "l": 47.0,
+    "orient": 0,
+    "post_gap": 12.1,
+    "tps_covered": [
+     "TP7",
+     "TP2",
+     "TP6",
+     "TP3",
+     "TP8"
+    ],
+    "antenna_gap": 12.5,
+    "lead_path_mm": 29.0
+   }
+  },
+  "503040": {
+   "north_biased": {
+    "x": 2.0,
+    "y": 1.5,
+    "w": 30.5,
+    "l": 52.0,
+    "orient": 0,
+    "post_gap": 12.1,
+    "tps_covered": [
+     "TP7",
+     "TP2",
+     "TP6",
+     "TP8"
+    ],
+    "antenna_gap": 12.5,
+    "lead_path_mm": 29.0
+   },
+   "south_biased": {
+    "x": 2.0,
+    "y": 8.5,
+    "w": 30.5,
+    "l": 52.0,
+    "orient": 0,
+    "post_gap": 12.1,
+    "tps_covered": [
+     "TP7",
+     "TP2",
+     "TP6",
+     "TP3",
+     "TP8"
+    ],
+    "antenna_gap": 12.5,
+    "lead_path_mm": 29.0
+   }
+  },
+  "603450": {
+   "north_biased": null,
+   "south_biased": null
+  }
+ }
+}

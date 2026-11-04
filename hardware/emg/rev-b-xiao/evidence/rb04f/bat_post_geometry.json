@@ -1,0 +1,198 @@
+{
+ "tolerances": {
+  "hole_lo": 0.08,
+  "hole_hi": 0.13,
+  "wander": 0.075,
+  "reg": 0.05,
+  "ring_tol": 0.025,
+  "gnd_tol": 0.05,
+  "e_axis": 0.497,
+  "cone_d": 1.0,
+  "gnd0_edge": 1.397,
+  "post_d": 0.511,
+  "pad_half_v": 0.508,
+  "s_v_max": 0.513
+ },
+ "candidates": {
+  "C0 current 1.40/1.90/1.45 (T0)": {
+   "drill": 1.4,
+   "ring": 1.9,
+   "mask": 1.45,
+   "finished_hole": [
+    1.32,
+    1.53
+   ],
+   "annulus_nominal": 0.25,
+   "annulus_worst": 0.085,
+   "mask_lip_into_hole_typical": 0.0,
+   "mask_lip_into_hole_worst": 0.165,
+   "mask_dam_over_ring_nominal": 0.225,
+   "mask_dam_over_ring_worst": 0.15,
+   "covered_ring_to_GND0_nominal": 0.447,
+   "covered_ring_to_GND0_worst": 0.035,
+   "exposed_copper_to_GND0_worst": 0.235,
+   "cone_fit_shift_needed": 0.337,
+   "cone_fit_u_margin": -0.187,
+   "bottom_joint_radial_gap_post_to_barrel": 0.404
+  },
+  "R1 1.70/2.10/1.75 (T0)": {
+   "drill": 1.7,
+   "ring": 2.1,
+   "mask": 1.75,
+   "finished_hole": [
+    1.62,
+    1.83
+   ],
+   "annulus_nominal": 0.2,
+   "annulus_worst": 0.035,
+   "mask_lip_into_hole_typical": 0.0,
+   "mask_lip_into_hole_worst": 0.165,
+   "mask_dam_over_ring_nominal": 0.175,
+   "mask_dam_over_ring_worst": 0.1,
+   "covered_ring_to_GND0_nominal": 0.347,
+   "covered_ring_to_GND0_worst": 0.085,
+   "exposed_copper_to_GND0_worst": 0.235,
+   "cone_fit_shift_needed": 0.187,
+   "cone_fit_u_margin": -0.037,
+   "bottom_joint_radial_gap_post_to_barrel": 0.554
+  },
+  "R1b 1.90/2.30/1.95 (T0)": {
+   "drill": 1.9,
+   "ring": 2.3,
+   "mask": 1.95,
+   "finished_hole": [
+    1.82,
+    2.03
+   ],
+   "annulus_nominal": 0.2,
+   "annulus_worst": 0.035,
+   "mask_lip_into_hole_typical": 0.0,
+   "mask_lip_into_hole_worst": 0.165,
+   "mask_dam_over_ring_nominal": 0.175,
+   "mask_dam_over_ring_worst": 0.1,
+   "covered_ring_to_GND0_nominal": 0.247,
+   "covered_ring_to_GND0_worst": 0.085,
+   "exposed_copper_to_GND0_worst": 0.235,
+   "cone_fit_shift_needed": 0.087,
+   "cone_fit_u_margin": 0.063,
+   "bottom_joint_radial_gap_post_to_barrel": 0.654
+  },
+  "R1c 1.90/2.30/2.05 (T0)": {
+   "drill": 1.9,
+   "ring": 2.3,
+   "mask": 2.05,
+   "finished_hole": [
+    1.82,
+    2.03
+   ],
+   "annulus_nominal": 0.2,
+   "annulus_worst": 0.035,
+   "mask_lip_into_hole_typical": 0.0,
+   "mask_lip_into_hole_worst": 0.115,
+   "mask_dam_over_ring_nominal": 0.125,
+   "mask_dam_over_ring_worst": 0.05,
+   "covered_ring_to_GND0_nominal": 0.247,
+   "covered_ring_to_GND0_worst": 0.085,
+   "exposed_copper_to_GND0_worst": 0.185,
+   "cone_fit_shift_needed": 0.087,
+   "cone_fit_u_margin": 0.063,
+   "bottom_joint_radial_gap_post_to_barrel": 0.654
+  },
+  "R1d 1.90/2.30/2.15 (T0)": {
+   "drill": 1.9,
+   "ring": 2.3,
+   "mask": 2.15,
+   "finished_hole": [
+    1.82,
+    2.03
+   ],
+   "annulus_nominal": 0.2,
+   "annulus_worst": 0.035,
+   "mask_lip_into_hole_typical": 0.0,
+   "mask_lip_into_hole_worst": 0.065,
+   "mask_dam_over_ring_nominal": 0.075,
+   "mask_dam_over_ring_worst": -0.0,
+   "covered_ring_to_GND0_nominal": 0.247,
+   "covered_ring_to_GND0_worst": 0.085,
+   "exposed_copper_to_GND0_worst": 0.135,
+   "cone_fit_shift_needed": 0.087,
+   "cone_fit_u_margin": 0.063,
+   "bottom_joint_radial_gap_post_to_barrel": 0.654
+  },
+  "A1 1.40/1.90/1.65 (T1)": {
+   "drill": 1.4,
+   "ring": 1.9,
+   "mask": 1.65,
+   "finished_hole": [
+    1.32,
+    1.53
+   ],
+   "annulus_nominal": 0.25,
+   "annulus_worst": 0.085,
+   "mask_lip_into_hole_typical": 0.0,
+   "mask_lip_into_hole_worst": 0.065,
+   "mask_dam_over_ring_nominal": 0.125,
+   "mask_dam_over_ring_worst": 0.05,
+   "covered_ring_to_GND0_nominal": 0.447,
+   "covered_ring_to_GND0_worst": 0.372,
+   "exposed_copper_to_GND0_worst": 0.472,
+   "post_to_barrel_radial_gap_min_max": [
+    0.404,
+    0.509
+   ],
+   "solder_front_to_GND0_worst": 0.335,
+   "post_offset_from_pad_centre_worst": 0.651,
+   "post_area_fraction_on_pad_worst": 0.16
+  },
+  "A2 1.10/1.50/1.35 (T1)": {
+   "drill": 1.1,
+   "ring": 1.5,
+   "mask": 1.35,
+   "finished_hole": [
+    1.02,
+    1.23
+   ],
+   "annulus_nominal": 0.2,
+   "annulus_worst": 0.035,
+   "mask_lip_into_hole_typical": 0.0,
+   "mask_lip_into_hole_worst": 0.065,
+   "mask_dam_over_ring_nominal": 0.075,
+   "mask_dam_over_ring_worst": -0.0,
+   "covered_ring_to_GND0_nominal": 0.647,
+   "covered_ring_to_GND0_worst": 0.572,
+   "exposed_copper_to_GND0_worst": 0.622,
+   "post_to_barrel_radial_gap_min_max": [
+    0.255,
+    0.359
+   ],
+   "solder_front_to_GND0_worst": 0.485,
+   "post_offset_from_pad_centre_worst": 0.502,
+   "post_area_fraction_on_pad_worst": 0.52
+  },
+  "A3 0.80/1.20/1.00 (T1)": {
+   "drill": 0.8,
+   "ring": 1.2,
+   "mask": 1.0,
+   "finished_hole": [
+    0.72,
+    0.93
+   ],
+   "annulus_nominal": 0.2,
+   "annulus_worst": 0.035,
+   "mask_lip_into_hole_typical": 0.0,
+   "mask_lip_into_hole_worst": 0.09,
+   "mask_dam_over_ring_nominal": 0.1,
+   "mask_dam_over_ring_worst": 0.025,
+   "covered_ring_to_GND0_nominal": 0.797,
+   "covered_ring_to_GND0_worst": 0.722,
+   "exposed_copper_to_GND0_worst": 0.797,
+   "post_to_barrel_radial_gap_min_max": [
+    0.105,
+    0.21
+   ],
+   "solder_front_to_GND0_worst": 0.635,
+   "post_offset_from_pad_centre_worst": 0.352,
+   "post_area_fraction_on_pad_worst": 0.86
+  }
+ }
+}
