@@ -1,0 +1,16 @@
+.settings {
+  padding: 26px 36px 56px 36px;
+  max-width: 720px;
+}
+.settings .kv {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px 12px;
+  font-size: 13px;
+}
+.settings .kv dt {
+  color: var(--ink-3);
+}
+.settings .kv dd {
+  color: var(--ink);
+}

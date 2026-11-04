@@ -1,0 +1,108 @@
+{
+    "$schema": "https://schemas.kicad.org/erc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-09-20T20:15:39",
+    "ignored_checks": [
+        {
+            "description": "Global label only appears once in the schematic",
+            "key": "single_global_label"
+        },
+        {
+            "description": "Four connection points are joined together",
+            "key": "four_way_junction"
+        },
+        {
+            "description": "SPICE model issue",
+            "key": "simulation_model_issue"
+        },
+        {
+            "description": "Assigned footprint doesn't match footprint filters",
+            "key": "footprint_filter"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "sheets": [
+        {
+            "path": "/",
+            "uuid_path": "/987ec9b9-694a-51dd-a673-e7db18e53010",
+            "violations": [
+                {
+                    "description": "Label connected to only one pin",
+                    "items": [
+                        {
+                            "description": "Global Label 'USB_SHIELD'",
+                            "pos": {
+                                "x": 0.4064,
+                                "y": 0.4572
+                            },
+                            "uuid": "8aa994c0-7dd5-5272-8607-0a3cc47c28e5"
+                        }
+                    ],
+                    "severity": "warning",
+                    "type": "isolated_pin_label"
+                }
+            ]
+        },
+        {
+            "path": "/Power + LiPo charging/",
+            "uuid_path": "/987ec9b9-694a-51dd-a673-e7db18e53010/30a59320-7095-5cc8-98fe-12c820a0e607",
+            "violations": []
+        },
+        {
+            "path": "/USB-C + hardware interlock/",
+            "uuid_path": "/987ec9b9-694a-51dd-a673-e7db18e53010/d9a09c5f-c619-5095-b7b4-47fffb5bbbee",
+            "violations": []
+        },
+        {
+            "path": "/Low-noise analog power/",
+            "uuid_path": "/987ec9b9-694a-51dd-a673-e7db18e53010/f7618005-1322-5992-b073-28f222966ef6",
+            "violations": []
+        },
+        {
+            "path": "/Shared reference / VCM/",
+            "uuid_path": "/987ec9b9-694a-51dd-a673-e7db18e53010/5d3b6bdd-7a3f-5a4d-ab1d-8269c36911e0",
+            "violations": []
+        },
+        {
+            "path": "/4-channel simultaneous ADC/",
+            "uuid_path": "/987ec9b9-694a-51dd-a673-e7db18e53010/ab6c8d6a-92f3-56e3-a107-474253be7f0c",
+            "violations": []
+        },
+        {
+            "path": "/MCU / BLE/",
+            "uuid_path": "/987ec9b9-694a-51dd-a673-e7db18e53010/25706f7c-04c2-5d7c-b661-977d4a398063",
+            "violations": []
+        },
+        {
+            "path": "/Programming / debug/",
+            "uuid_path": "/987ec9b9-694a-51dd-a673-e7db18e53010/24a5e863-07d2-543d-8449-b1135e00e14e",
+            "violations": []
+        },
+        {
+            "path": "/EMG channel 1/",
+            "uuid_path": "/987ec9b9-694a-51dd-a673-e7db18e53010/e89a0f5e-20db-555c-a35b-ab3a8a1ff732",
+            "violations": []
+        },
+        {
+            "path": "/EMG channel 2/",
+            "uuid_path": "/987ec9b9-694a-51dd-a673-e7db18e53010/3bc8baec-2361-5ae9-9978-6ccd998bda82",
+            "violations": []
+        },
+        {
+            "path": "/EMG channel 3/",
+            "uuid_path": "/987ec9b9-694a-51dd-a673-e7db18e53010/c25c7857-2ecf-55ed-8a5d-3d53647252d8",
+            "violations": []
+        },
+        {
+            "path": "/EMG channel 4/",
+            "uuid_path": "/987ec9b9-694a-51dd-a673-e7db18e53010/448094d7-de46-5d65-b108-c52a79bf462a",
+            "violations": []
+        }
+    ],
+    "source": "ARTHUR_EMG_RevA.kicad_sch"
+}

@@ -1,0 +1,28 @@
+{
+  "review_local_date": "2026-10-22 Europe/Sofia",
+  "sources": [
+    {
+      "url": "https://www.ti.com/lit/ds/symlink/ads131m04.pdf",
+      "checked": "Supply/input ranges, gain-dependent common-mode limits, clock and sinc3+sinc1 filter topology; original manufacturer PDF also archived by earlier audit."
+    },
+    {
+      "url": "https://www.ti.com/lit/ds/symlink/tps7a20.pdf",
+      "checked": "Supply/output tolerance, enable and effective output-capacitance requirements."
+    },
+    {
+      "url": "https://www.jscj-elec.com/gallery/file/2N7002%20SOT-23%20J.pdf",
+      "checked": "Exact selected vendor pinout and limitations of gate-voltage qualification."
+    },
+    {
+      "url": "https://www.nexperia.com/chemical-content/BAV199.html",
+      "checked": "OPN BAV199,215 -> type BAV199, SOT23, 12NC934032640215. Existing D06 exact-string failure is not evidence of a wrong diode."
+    },
+    {
+      "url": "https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/",
+      "checked": "Module battery connection/polarity; exact received module mechanical revision and charger behavior still unverified."
+    }
+  ],
+  "prior_report": "../pre-manufacturing-audit/FINAL_AUDIT.md",
+  "prior_closure": "../pre-manufacturing-audit/jlcpcb-closure/CLOSURE_REPORT.md",
+  "current_preview": "../gerber-orientation-check-2026-10-22/REPORT.md"
+}

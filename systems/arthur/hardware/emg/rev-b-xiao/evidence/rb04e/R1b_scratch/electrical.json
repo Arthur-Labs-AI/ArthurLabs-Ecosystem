@@ -1,0 +1,292 @@
+{
+ "coupling_fF_upper_bound": {
+  "hiz_to_anything": [
+   [
+    146.89,
+    "/CH1/HIZ_N",
+    "AFE_3V0"
+   ],
+   [
+    114.82,
+    "/CH3/HIZ_P",
+    "AFE_3V0"
+   ],
+   [
+    102.76,
+    "/CH2/HIZ_N",
+    "/CH2/HIZ_P"
+   ],
+   [
+    102.76,
+    "/CH4/HIZ_N",
+    "/CH4/HIZ_P"
+   ],
+   [
+    96.01,
+    "/CH3/HIZ_N",
+    "AFE_3V0"
+   ],
+   [
+    73.36,
+    "/CH1/BUF_N",
+    "/CH1/HIZ_N"
+   ],
+   [
+    60.2,
+    "/CH2/BUF_N",
+    "/CH2/HIZ_N"
+   ],
+   [
+    60.2,
+    "/CH4/BUF_N",
+    "/CH4/HIZ_N"
+   ],
+   [
+    57.6,
+    "/CH1/HIZ_P",
+    "AFE_3V0"
+   ],
+   [
+    54.54,
+    "/CH4/HIZ_P",
+    "AFE_3V0"
+   ]
+  ],
+  "adc_input_to_spi_clock": [],
+  "AFE_CAP_to_anything": [
+   [
+    24.3,
+    "/ADC/ADC_DOUT",
+    "/ADC/AFE_CAP"
+   ],
+   [
+    23.38,
+    "/ADC/AFE_CAP",
+    "/ADC/X1_OUT"
+   ],
+   [
+    0.55,
+    "/ADC/AFE_CAP",
+    "DVDD_F"
+   ]
+  ],
+  "ADC_CLKIN_to_anything": [
+   [
+    201.42,
+    "/ADC/ADC_CLKIN",
+    "/MOSI"
+   ],
+   [
+    160.33,
+    "/ADC/ADC_CLKIN",
+    "/SCLK"
+   ],
+   [
+    34.77,
+    "/ADC/ADC_CLKIN",
+    "DVDD_F"
+   ],
+   [
+    31.67,
+    "/ADC/ADC_CLKIN",
+    "/MISO"
+   ],
+   [
+    4.26,
+    "/ADC/ADC_CLKIN",
+    "/ADC/X1_OUT"
+   ],
+   [
+    2.66,
+    "/ADC/ADC_CLKIN",
+    "/XIAO_Brain_Interface/SCLK_MCU"
+   ]
+  ],
+  "X1_OUT_to_anything": [
+   [
+    23.38,
+    "/ADC/AFE_CAP",
+    "/ADC/X1_OUT"
+   ],
+   [
+    4.26,
+    "/ADC/ADC_CLKIN",
+    "/ADC/X1_OUT"
+   ]
+  ]
+ },
+ "length_by_layer_mm": {
+  "/XIAO_Brain_Interface/SCLK_MCU": {
+   "F.Cu": 4.1,
+   "In2.Cu": 3.6
+  },
+  "/MISO": {
+   "F.Cu": 5.3,
+   "In2.Cu": 3.7
+  },
+  "/XIAO_Brain_Interface/MOSI_MCU": {
+   "F.Cu": 3.1,
+   "In2.Cu": 4.4
+  },
+  "/SCLK": {
+   "F.Cu": 3.7,
+   "B.Cu": 8.9
+  },
+  "/ADC/X1_OUT": {
+   "F.Cu": 4.3
+  },
+  "/ADC/ADC_CLKIN": {
+   "F.Cu": 3.3,
+   "B.Cu": 6.5
+  },
+  "/ADC/ADC_DOUT": {
+   "F.Cu": 2.3
+  },
+  "/MOSI": {
+   "F.Cu": 5.5,
+   "B.Cu": 6.4
+  }
+ },
+ "in2_length_mm": {
+  "/XIAO_Brain_Interface/SCLK_MCU": 3.6,
+  "/MISO": 3.7,
+  "/XIAO_Brain_Interface/MOSI_MCU": 4.4
+ },
+ "bcu_length_mm": {
+  "/SCLK": 8.9,
+  "/ADC/ADC_CLKIN": 6.5,
+  "/MOSI": 6.4
+ },
+ "fast_signal_vias_nearest_gnd_via_mm": [
+  [
+   "/MISO",
+   30.3,
+   53.1,
+   6.04
+  ],
+  [
+   "/XIAO_Brain_Interface/SCLK_MCU",
+   30.3,
+   48.2,
+   5.18
+  ],
+  [
+   "/XIAO_Brain_Interface/MOSI_MCU",
+   26.8,
+   54.6,
+   4.66
+  ],
+  [
+   "/MISO",
+   26.8,
+   53.3,
+   4.49
+  ],
+  [
+   "/XIAO_Brain_Interface/MOSI_MCU",
+   30.3,
+   55.5,
+   3.8
+  ],
+  [
+   "/SCLK",
+   19.9,
+   52.6,
+   2.9
+  ],
+  [
+   "/MOSI",
+   26.3,
+   51.7,
+   2.82
+  ],
+  [
+   "/SCLK",
+   27.2,
+   51.0,
+   2.76
+  ],
+  [
+   "/ADC/ADC_CLKIN",
+   26.3,
+   50.8,
+   2.02
+  ],
+  [
+   "/MOSI",
+   19.9,
+   51.7,
+   2.0
+  ],
+  [
+   "/XIAO_Brain_Interface/SCLK_MCU",
+   26.8,
+   48.3,
+   1.79
+  ],
+  [
+   "/ADC/ADC_CLKIN",
+   19.8,
+   50.8,
+   1.1
+  ]
+ ],
+ "hiz_length_mm": {
+  "/CH1/HIZ_N": 15.7,
+  "/CH1/HIZ_P": 18.3,
+  "/CH2/HIZ_N": 19.8,
+  "/CH2/HIZ_P": 15.7,
+  "/CH3/HIZ_N": 16.5,
+  "/CH3/HIZ_P": 18.5,
+  "/CH4/HIZ_N": 19.9,
+  "/CH4/HIZ_P": 15.6
+ },
+ "hiz_node_capacitance_pF": {
+  "/CH1/HIZ_N": 111.4,
+  "/CH4/HIZ_P": 111.4,
+  "/CH1/HIZ_P": 111.6,
+  "/CH2/HIZ_N": 111.7,
+  "/CH3/HIZ_N": 111.5,
+  "/CH3/HIZ_P": 111.6,
+  "/CH2/HIZ_P": 111.4,
+  "/CH4/HIZ_N": 111.7
+ },
+ "hiz_to_xiao_centre_min_mm": 31.8,
+ "circuit": {
+  "Zin_single_ended_50Hz_Mohm": 9.45,
+  "hiz_node_C_pF_min": 111.4,
+  "CM_to_DM_at_50Hz_dB_for_electrode_imbalance_1k": -79.5,
+  "CM_to_DM_at_50Hz_dB_for_electrode_imbalance_10k": -59.5,
+  "CM_to_DM_at_50Hz_dB_for_electrode_imbalance_50k": -45.5,
+  "CM_to_DM_at_50Hz_dB_for_electrode_imbalance_100k": -39.5,
+  "CM_to_DM_from_1pct_bias_resistor_mismatch_dB_for_Zs50k": -86.0,
+  "noise_nV_rtHz_per_leg_10k_thermal": 12.9,
+  "input_noise_diff_nV_rtHz_electrode_0k_at_1kHz": 29.0,
+  "input_noise_uVrms_20_500Hz_electrode_0k": 0.64,
+  "input_noise_diff_nV_rtHz_electrode_10k_at_1kHz": 34.3,
+  "input_noise_uVrms_20_500Hz_electrode_10k": 0.75,
+  "input_noise_diff_nV_rtHz_electrode_50k_at_1kHz": 50.0,
+  "input_noise_uVrms_20_500Hz_electrode_50k": 1.1,
+  "input_noise_diff_nV_rtHz_electrode_100k_at_1kHz": 64.5,
+  "input_noise_uVrms_20_500Hz_electrode_100k": 1.41,
+  "TLV9064_0.1-10Hz_noise_uVpp_datasheet": 4.77,
+  "clamp_current_mA_electrode_5V": 0.13,
+  "clamp_current_mA_electrode_12V": 0.83,
+  "clamp_current_mA_electrode_50V": 4.63,
+  "limiter_resistor_power_W_at_230Vrms": 5.29,
+  "Vgate_min_V": 4.32,
+  "Vgate_max_V": 4.77,
+  "USB_PRESENT_V_at_4.5V_5.25V": [
+   2.7,
+   3.15
+  ],
+  "AFE_EN_V_when_USB_absent_and_request_high": 3.0,
+  "AFE_EN_V_when_inhibited_Rdson_7.5ohm": 2.5,
+  "shutdown_C101_tau_s": 0.22,
+  "AFE_cutoff_RC_Hz_R4_7_Ceff10uF": 3386.0,
+  "VCM_divider_tau_ms": 55.0,
+  "HPF_corner_Hz": 0.72,
+  "ADS131M04_Zin_diff_kohm_gain1": 300,
+  "gain_error_pct_from_R107_R108_into_300k": 0.67
+ }
+}

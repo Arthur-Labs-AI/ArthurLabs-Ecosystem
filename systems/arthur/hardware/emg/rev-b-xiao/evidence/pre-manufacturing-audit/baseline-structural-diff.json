@@ -1,0 +1,52 @@
+{
+  "changed_footprints_full": [
+    "R101",
+    "R5002",
+    "R202",
+    "J101",
+    "R102",
+    "J5001",
+    "R302",
+    "J401",
+    "J201",
+    "R301",
+    "R402",
+    "J301",
+    "R201",
+    "R401"
+  ],
+  "zone_definitions_equal_excluding_fill_cache": true,
+  "segment_changed_nets": {
+    "/VCM": 8,
+    "/CH1/HIZ_N": 5,
+    "/CH4/HIZ_P": 5,
+    "/CH1/ELEC_P": 9,
+    "/CH1/HIZ_P": 5,
+    "/CH2/HIZ_N": 5,
+    "/Reference_VCM/RLD_SAFE": 15,
+    "/CH3/HIZ_N": 5,
+    "/CH2/ELEC_N": 9,
+    "/CH1/ELEC_N": 9,
+    "unconnected-(J101-PadMP)": 8,
+    "/CH3/HIZ_P": 5,
+    "unconnected-(J5001-PadMP)": 8,
+    "/CH3/ELEC_N": 9,
+    "/CH4/ELEC_P": 9,
+    "/CH4/ELEC_N": 9,
+    "unconnected-(J401-PadMP)": 8,
+    "/CH2/ELEC_P": 9,
+    "unconnected-(J201-PadMP)": 8,
+    "/CH2/HIZ_P": 5,
+    "/CH3/ELEC_P": 9,
+    "/CH4/HIZ_N": 5,
+    "unconnected-(J301-PadMP)": 8
+  },
+  "via_changed_nets": {
+    "/Reference_VCM/RLD_SAFE": 2,
+    "unconnected-(J101-PadMP)": 2,
+    "unconnected-(J5001-PadMP)": 2,
+    "unconnected-(J401-PadMP)": 2,
+    "unconnected-(J201-PadMP)": 2,
+    "unconnected-(J301-PadMP)": 2
+  }
+}

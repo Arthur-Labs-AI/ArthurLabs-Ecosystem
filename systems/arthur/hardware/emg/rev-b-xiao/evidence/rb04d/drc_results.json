@@ -1,0 +1,26 @@
+{
+ "V0_base": {
+  "drc": {
+   "warning:lib_footprint_mismatch": 1
+  },
+  "unconnected": 0
+ },
+ "V1_h1.6": {
+  "drc": {
+   "warning:lib_footprint_mismatch": 1
+  },
+  "unconnected": 0
+ },
+ "V2_h1.7": {
+  "drc": {
+   "warning:lib_footprint_mismatch": 1
+  },
+  "unconnected": 0
+ },
+ "V3_h1.8": {
+  "drc": {
+   "warning:lib_footprint_mismatch": 1
+  },
+  "unconnected": 0
+ }
+}

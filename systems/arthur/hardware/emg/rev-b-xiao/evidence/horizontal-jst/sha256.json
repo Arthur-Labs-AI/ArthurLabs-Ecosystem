@@ -1,0 +1,13 @@
+{
+  "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb": "320836d6d7798b7993a3a488d088801edb394b9cfc7bfc1a5702a065013660e1",
+  "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pro": "ba3f3c36297e079341127a1d4a122eaa4b76979a9bc81286e58e7c5332a5b383",
+  "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/emg_channel.kicad_sch": "20ea86e37b5fa3e38226e47f970a8c5aa99eb7b71c023d647a2d680505a30450",
+  "hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/reference_vcm.kicad_sch": "0766bddbef34a794d5b9c8513f117d9a44952fbc7b92ae9e63c991d8051810be",
+  "hardware/emg/rev-b-xiao/evidence/horizontal-jst/baseline/ARTHUR_EMG_RevB.kicad_pcb": "b4e5c4a11291139322a208b42ba72d9d448159164df860f858a7bed205888e2b",
+  "hardware/emg/rev-b-xiao/evidence/horizontal-jst/baseline/ARTHUR_EMG_RevB.kicad_pro": "ba3f3c36297e079341127a1d4a122eaa4b76979a9bc81286e58e7c5332a5b383",
+  "hardware/emg/rev-b-xiao/evidence/horizontal-jst/NOT_RELEASED_fabrication/ARTHUR_EMG_RevB_BOM.csv": "d65684f9c3a2eeddaed7f4c90b4e91ab6a1e90eb3b5a96a63b3f48e09e3f231e",
+  "hardware/emg/rev-b-xiao/evidence/horizontal-jst/NOT_RELEASED_fabrication/ARTHUR_EMG_RevB_CPL.csv": "77a359d62a150ecd96707c8f7fc79a1988501d69c9f49e418e56fa6decbed0d1",
+  "hardware/emg/rev-b-xiao/evidence/horizontal-jst/NOT_RELEASED_fabrication/ARTHUR_EMG_RevB_CPL_raw_KiCad_rotation.csv": "f31ac0889e40c899bb10f31690c2813450911b9a6b56a41510ac98e7793b4259",
+  "hardware/emg/rev-b-xiao/evidence/horizontal-jst/NOT_RELEASED_fabrication/ARTHUR_EMG_RevB_Gerbers.zip": "38075bb9fc77668564bb39fc2c8666d2ec1530a975dbd45f25aeb95ae0761288",
+  "hardware/emg/rev-b-xiao/evidence/horizontal-jst/NOT_RELEASED_fabrication/README.md": "08c2d12799a1b7478524a398509f0163efd3d7ed213df85bcfa56ec912ac30a4"
+}

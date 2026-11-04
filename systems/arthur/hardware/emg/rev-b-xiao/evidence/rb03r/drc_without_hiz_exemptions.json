@@ -1,0 +1,1019 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-10-10T22:30:26",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.6",
+    "schematic_parity": [],
+    "source": "ARTHUR_EMG_RevB.kicad_pcb",
+    "unconnected_items": [],
+    "violations": [
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH3/BUF_P] on F.Cu, length 0,2000 mm",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 23.9
+                    },
+                    "uuid": "31d40310-1f5b-4969-a809-6f136bf2db5e"
+                },
+                {
+                    "description": "Pad 3 [/CH3/HIZ_P] of U502 on F.Cu",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 23.25
+                    },
+                    "uuid": "bccf9acd-77cd-403a-b7ec-26cce6f11567"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH4/BUF_N] on F.Cu, length 0,2000 mm",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 23.9
+                    },
+                    "uuid": "01afa5f5-cbe4-4a83-984e-c8f0bd089267"
+                },
+                {
+                    "description": "Pad 12 [/CH4/HIZ_N] of U502 on F.Cu",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 23.25
+                    },
+                    "uuid": "4734bf12-486b-4824-aa20-d518de7d9112"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,2562 mm)",
+            "items": [
+                {
+                    "description": "Pad 10 [/CH4/HIZ_P] of U502 on F.Cu",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 21.95
+                    },
+                    "uuid": "0c97e704-7c82-416f-93ab-6d81b3054839"
+                },
+                {
+                    "description": "Track [/CH4/BUF_P] on F.Cu, length 0,9000 mm",
+                    "pos": {
+                        "x": 9.4,
+                        "y": 21.4
+                    },
+                    "uuid": "f0ce2c69-a833-46a6-ad56-c62f7de3fdac"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Pad 10 [/CH4/HIZ_P] of U502 on F.Cu",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 21.95
+                    },
+                    "uuid": "0c97e704-7c82-416f-93ab-6d81b3054839"
+                },
+                {
+                    "description": "Track [/CH4/BUF_P] on F.Cu, length 0,1000 mm",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 21.3
+                    },
+                    "uuid": "930540f3-e349-479f-a21e-20c109ea85c7"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH4/HIZ_N] on F.Cu, length 0,0500 mm",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 23.25
+                    },
+                    "uuid": "9552298f-bdfb-4dc5-9539-3eea911c852b"
+                },
+                {
+                    "description": "Pad 13 [/CH4/BUF_N] of U502 on F.Cu",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 23.9
+                    },
+                    "uuid": "e5299935-8a75-41e7-a33b-7cdf66e246ee"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3000 mm)",
+            "items": [
+                {
+                    "description": "Pad 9 [/CH2/BUF_P] of U501 on F.Cu",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 21.3
+                    },
+                    "uuid": "198bdd55-a831-4627-8d48-0f9d683d18e3"
+                },
+                {
+                    "description": "Track [/CH2/HIZ_P] on F.Cu, length 0,0500 mm",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 21.95
+                    },
+                    "uuid": "fa1fdafb-269b-4f2e-9401-680d189eca6a"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3000 mm)",
+            "items": [
+                {
+                    "description": "Pad 9 [/CH2/BUF_P] of U501 on F.Cu",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 21.3
+                    },
+                    "uuid": "198bdd55-a831-4627-8d48-0f9d683d18e3"
+                },
+                {
+                    "description": "Track [/CH2/HIZ_P] on F.Cu, length 0,6875 mm",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 21.9
+                    },
+                    "uuid": "f0a02204-79a1-4796-8f1f-cd80e3b836e1"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,2500 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH2/HIZ_P] on F.Cu, length 2,8000 mm",
+                    "pos": {
+                        "x": 26.4,
+                        "y": 21.9
+                    },
+                    "uuid": "47e42f4b-5ed9-44ab-8d79-2d6f2ab8fe59"
+                },
+                {
+                    "description": "Pad 8 [/CH2/BUF_P] of U501 on F.Cu",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 20.65
+                    },
+                    "uuid": "4c55d80e-fca5-4914-b674-e7dbe582060b"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,2562 mm)",
+            "items": [
+                {
+                    "description": "Pad 10 [/CH2/HIZ_P] of U501 on F.Cu",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 21.95
+                    },
+                    "uuid": "1a837fe9-79e3-4f17-bc7a-4a617382a9d6"
+                },
+                {
+                    "description": "Track [/CH2/BUF_P] on F.Cu, length 1,3000 mm",
+                    "pos": {
+                        "x": 28.2,
+                        "y": 21.4
+                    },
+                    "uuid": "ea688b44-a171-49ae-b1ba-13e9f9613806"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3025 mm)",
+            "items": [
+                {
+                    "description": "Pad 9 [/CH2/BUF_P] of U501 on F.Cu",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 21.3
+                    },
+                    "uuid": "198bdd55-a831-4627-8d48-0f9d683d18e3"
+                },
+                {
+                    "description": "Track [/CH2/HIZ_P] on F.Cu, length 0,4000 mm",
+                    "pos": {
+                        "x": 26.8,
+                        "y": 21.9
+                    },
+                    "uuid": "97805483-6b2d-48c2-837c-f2eed004a00f"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Pad 10 [/CH2/HIZ_P] of U501 on F.Cu",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 21.95
+                    },
+                    "uuid": "1a837fe9-79e3-4f17-bc7a-4a617382a9d6"
+                },
+                {
+                    "description": "Track [/CH2/BUF_P] on F.Cu, length 0,1000 mm",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 21.3
+                    },
+                    "uuid": "1f04d377-c078-4b28-886c-6a38bf21796c"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Pad 5 [/CH1/HIZ_N] of U501 on F.Cu",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 21.95
+                    },
+                    "uuid": "3800525a-3e9a-432f-bae8-ffe51ff6dcd0"
+                },
+                {
+                    "description": "Track [/CH1/BUF_N] on F.Cu, length 0,1000 mm",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 21.3
+                    },
+                    "uuid": "688dd0b2-7677-43e4-92f3-4199675b0558"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH3/BUF_N] on F.Cu, length 0,1000 mm",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 21.3
+                    },
+                    "uuid": "80eceaf7-9d97-4838-b766-51324266bd94"
+                },
+                {
+                    "description": "Pad 5 [/CH3/HIZ_N] of U502 on F.Cu",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 21.95
+                    },
+                    "uuid": "9dae8649-9053-401f-a3f2-41294877c53c"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Pad 3 [/CH1/HIZ_P] of U501 on F.Cu",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 23.25
+                    },
+                    "uuid": "2b3417cb-8a11-4275-bd4a-4ea690d8c0bd"
+                },
+                {
+                    "description": "Track [/CH1/BUF_P] on F.Cu, length 0,2000 mm",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 23.9
+                    },
+                    "uuid": "f7540299-8928-4897-9905-fd550bd9877e"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,2500 mm)",
+            "items": [
+                {
+                    "description": "Pad 6 [/CH3/BUF_N] of U502 on F.Cu",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 21.3
+                    },
+                    "uuid": "649e7833-dbb0-414c-b385-9fae62adeb69"
+                },
+                {
+                    "description": "Track [/CH3/HIZ_P] on F.Cu, length 2,4000 mm",
+                    "pos": {
+                        "x": 15.5,
+                        "y": 20.8
+                    },
+                    "uuid": "e793d457-c348-47ce-8397-8899af58e4bc"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,2528 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH3/HIZ_P] on F.Cu, length 1,5000 mm",
+                    "pos": {
+                        "x": 17.0,
+                        "y": 20.8
+                    },
+                    "uuid": "65704861-5d5b-4fff-bce7-13da03c0e63b"
+                },
+                {
+                    "description": "Pad 7 [/CH3/BUF_N] of U502 on F.Cu",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 20.65
+                    },
+                    "uuid": "965cd239-ec9b-44ab-9dc1-2caff3e79f97"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Pad 2 [/CH3/BUF_P] of U502 on F.Cu",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 23.9
+                    },
+                    "uuid": "3d7bba10-98da-417a-99f1-e19e33af4592"
+                },
+                {
+                    "description": "Track [/CH3/HIZ_P] on F.Cu, length 0,0500 mm",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 23.25
+                    },
+                    "uuid": "c19f60ce-c21d-409f-a143-4b89750888f9"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3000 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH3/HIZ_P] on F.Cu, length 0,6875 mm",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 23.2
+                    },
+                    "uuid": "721b993e-e350-4536-bbaf-5e0363d1b052"
+                },
+                {
+                    "description": "Pad 4 [AFE_3V0] of U502 on F.Cu",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 22.6
+                    },
+                    "uuid": "ac992e2a-f59f-4ece-9811-0951d9e9f731"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3025 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH3/HIZ_P] on F.Cu, length 0,4000 mm",
+                    "pos": {
+                        "x": 15.5,
+                        "y": 23.2
+                    },
+                    "uuid": "93cb621b-77ea-4ea4-96c6-b267e93cd0f5"
+                },
+                {
+                    "description": "Pad 4 [AFE_3V0] of U502 on F.Cu",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 22.6
+                    },
+                    "uuid": "ac992e2a-f59f-4ece-9811-0951d9e9f731"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH2/BUF_N] on F.Cu, length 0,2000 mm",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 23.9
+                    },
+                    "uuid": "3c5d76ee-9634-4efe-9934-e39ff17c8f1a"
+                },
+                {
+                    "description": "Pad 12 [/CH2/HIZ_N] of U501 on F.Cu",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 23.25
+                    },
+                    "uuid": "cce2844d-6d94-423a-a106-dedc624b85e4"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3000 mm)",
+            "items": [
+                {
+                    "description": "Pad 6 [/CH3/BUF_N] of U502 on F.Cu",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 21.3
+                    },
+                    "uuid": "649e7833-dbb0-414c-b385-9fae62adeb69"
+                },
+                {
+                    "description": "Track [/CH3/HIZ_N] on F.Cu, length 0,0500 mm",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 21.95
+                    },
+                    "uuid": "918053c0-a504-4b56-ac31-b11fba7e6287"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3056 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH3/HIZ_N] on F.Cu, length 0,4000 mm",
+                    "pos": {
+                        "x": 13.3,
+                        "y": 21.9
+                    },
+                    "uuid": "26614c07-7f81-4484-95af-7c2910f04249"
+                },
+                {
+                    "description": "Pad 6 [/CH3/BUF_N] of U502 on F.Cu",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 21.3
+                    },
+                    "uuid": "649e7833-dbb0-414c-b385-9fae62adeb69"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,2750 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH3/HIZ_N] on F.Cu, length 3,1000 mm",
+                    "pos": {
+                        "x": 13.3,
+                        "y": 18.8
+                    },
+                    "uuid": "10c4a41c-a7da-4c5c-83be-7c12e1397503"
+                },
+                {
+                    "description": "Pad 6 [/CH3/BUF_N] of U502 on F.Cu",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 21.3
+                    },
+                    "uuid": "649e7833-dbb0-414c-b385-9fae62adeb69"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3000 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH3/HIZ_N] on F.Cu, length 0,7125 mm",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 21.9
+                    },
+                    "uuid": "2055f078-1b76-4cf0-93fe-f88cc67de612"
+                },
+                {
+                    "description": "Pad 6 [/CH3/BUF_N] of U502 on F.Cu",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 21.3
+                    },
+                    "uuid": "649e7833-dbb0-414c-b385-9fae62adeb69"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,2528 mm)",
+            "items": [
+                {
+                    "description": "Pad 7 [/CH1/BUF_N] of U501 on F.Cu",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 20.65
+                    },
+                    "uuid": "a523a55f-6030-43af-a319-0fe919eaa091"
+                },
+                {
+                    "description": "Track [/CH1/HIZ_P] on F.Cu, length 1,5000 mm",
+                    "pos": {
+                        "x": 35.8,
+                        "y": 20.8
+                    },
+                    "uuid": "ea39421b-6160-480e-ba15-b4d6d85d4732"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,2528 mm)",
+            "items": [
+                {
+                    "description": "Pad 7 [/CH1/BUF_N] of U501 on F.Cu",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 20.65
+                    },
+                    "uuid": "a523a55f-6030-43af-a319-0fe919eaa091"
+                },
+                {
+                    "description": "Track [/CH1/HIZ_P] on F.Cu, length 2,4000 mm",
+                    "pos": {
+                        "x": 34.3,
+                        "y": 20.8
+                    },
+                    "uuid": "d79f5752-04d8-4b4e-a222-ed695e448d2e"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Pad 2 [/CH1/BUF_P] of U501 on F.Cu",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 23.9
+                    },
+                    "uuid": "0ee2da30-0801-45b5-b623-c238b1f7a9ae"
+                },
+                {
+                    "description": "Track [/CH1/HIZ_P] on F.Cu, length 0,0500 mm",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 23.25
+                    },
+                    "uuid": "85e3846b-eedf-4983-b5ce-868bbd086e25"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Pad 13 [/CH2/BUF_N] of U501 on F.Cu",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 23.9
+                    },
+                    "uuid": "4ff83f88-0576-4034-92fc-663e07056e31"
+                },
+                {
+                    "description": "Track [/CH2/HIZ_N] on F.Cu, length 0,0500 mm",
+                    "pos": {
+                        "x": 27.4875,
+                        "y": 23.25
+                    },
+                    "uuid": "7cf74310-c25a-4697-8274-e7c18b66733e"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3000 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH1/HIZ_P] on F.Cu, length 0,6875 mm",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 23.2
+                    },
+                    "uuid": "46257a25-18a9-4376-95c9-d13b732df1cb"
+                },
+                {
+                    "description": "Pad 4 [AFE_3V0] of U501 on F.Cu",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 22.6
+                    },
+                    "uuid": "ddf2798d-ed21-48f9-8e8b-62337da9f818"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3025 mm)",
+            "items": [
+                {
+                    "description": "Pad 9 [/CH4/BUF_P] of U502 on F.Cu",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 21.3
+                    },
+                    "uuid": "78f26df1-49fc-4303-9264-34c91be00891"
+                },
+                {
+                    "description": "Track [/CH4/HIZ_P] on F.Cu, length 0,4000 mm",
+                    "pos": {
+                        "x": 8.0,
+                        "y": 21.9
+                    },
+                    "uuid": "9e729a07-4539-4191-acfc-27bb0089479a"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,2500 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH4/HIZ_P] on F.Cu, length 2,8000 mm",
+                    "pos": {
+                        "x": 7.6,
+                        "y": 21.9
+                    },
+                    "uuid": "b6bd1444-5d96-4dcf-976f-89641102cbe7"
+                },
+                {
+                    "description": "Pad 8 [/CH4/BUF_P] of U502 on F.Cu",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 20.65
+                    },
+                    "uuid": "e21ff918-6052-4521-9bc0-b54ddabe0064"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3025 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH1/HIZ_P] on F.Cu, length 0,4000 mm",
+                    "pos": {
+                        "x": 34.3,
+                        "y": 23.2
+                    },
+                    "uuid": "ddae2375-9068-4439-973c-cc57e7f84b8e"
+                },
+                {
+                    "description": "Pad 4 [AFE_3V0] of U501 on F.Cu",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 22.6
+                    },
+                    "uuid": "ddf2798d-ed21-48f9-8e8b-62337da9f818"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3000 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH4/HIZ_P] on F.Cu, length 0,6875 mm",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 21.9
+                    },
+                    "uuid": "7503b92b-c05f-4916-9d31-9601a4e7d9a5"
+                },
+                {
+                    "description": "Pad 9 [/CH4/BUF_P] of U502 on F.Cu",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 21.3
+                    },
+                    "uuid": "78f26df1-49fc-4303-9264-34c91be00891"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3000 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH4/HIZ_P] on F.Cu, length 0,0500 mm",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 21.95
+                    },
+                    "uuid": "1f1810c0-9184-4a95-a181-b3f645dbee23"
+                },
+                {
+                    "description": "Pad 9 [/CH4/BUF_P] of U502 on F.Cu",
+                    "pos": {
+                        "x": 8.6875,
+                        "y": 21.3
+                    },
+                    "uuid": "78f26df1-49fc-4303-9264-34c91be00891"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_leakage' clearance 0,4000 mm; actual 0,3000 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH3/HIZ_P] on F.Cu, length 0,6875 mm",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 23.2
+                    },
+                    "uuid": "721b993e-e350-4536-bbaf-5e0363d1b052"
+                },
+                {
+                    "description": "Track [AFE_3V0] on F.Cu, length 0,1000 mm",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 22.6
+                    },
+                    "uuid": "ee157935-30a2-458b-8b2d-ecf41d5474e2"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,3500 mm)",
+            "items": [
+                {
+                    "description": "Pad 3 [/CH1/HIZ_P] of U501 on F.Cu",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 23.25
+                    },
+                    "uuid": "2b3417cb-8a11-4275-bd4a-4ea690d8c0bd"
+                },
+                {
+                    "description": "Track [AFE_3V0] on F.Cu, length 0,7125 mm",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 22.6
+                    },
+                    "uuid": "eabcadd9-bb8e-4ea3-a2d0-3c04e65667c7"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,3551 mm)",
+            "items": [
+                {
+                    "description": "Pad 3 [/CH1/HIZ_P] of U501 on F.Cu",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 23.25
+                    },
+                    "uuid": "2b3417cb-8a11-4275-bd4a-4ea690d8c0bd"
+                },
+                {
+                    "description": "Track [AFE_3V0] on F.Cu, length 2,3000 mm",
+                    "pos": {
+                        "x": 30.2,
+                        "y": 22.6
+                    },
+                    "uuid": "e22aaff1-7d72-4e86-9067-fc52b21f0a82"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_leakage' clearance 0,4000 mm; actual 0,3000 mm)",
+            "items": [
+                {
+                    "description": "Track [AFE_3V0] on F.Cu, length 0,7125 mm",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 22.7
+                    },
+                    "uuid": "417a31f8-4436-43d4-ba24-6850554002a9"
+                },
+                {
+                    "description": "Track [/CH3/HIZ_P] on F.Cu, length 0,6875 mm",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 23.2
+                    },
+                    "uuid": "721b993e-e350-4536-bbaf-5e0363d1b052"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_pad_to_foreign_track' clearance 0,4000 mm; actual 0,2562 mm)",
+            "items": [
+                {
+                    "description": "Track [AFE_3V0] on F.Cu, length 0,8000 mm",
+                    "pos": {
+                        "x": 12.9,
+                        "y": 22.7
+                    },
+                    "uuid": "0952b37f-8350-4c75-9475-40c97770911c"
+                },
+                {
+                    "description": "Pad 3 [/CH3/HIZ_P] of U502 on F.Cu",
+                    "pos": {
+                        "x": 14.4125,
+                        "y": 23.25
+                    },
+                    "uuid": "bccf9acd-77cd-403a-b7ec-26cce6f11567"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3056 mm)",
+            "items": [
+                {
+                    "description": "Pad 6 [/CH1/BUF_N] of U501 on F.Cu",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 21.3
+                    },
+                    "uuid": "6bd91117-0c0e-40ea-b508-2926a7d4e36c"
+                },
+                {
+                    "description": "Track [/CH1/HIZ_N] on F.Cu, length 0,6000 mm",
+                    "pos": {
+                        "x": 31.9,
+                        "y": 21.9
+                    },
+                    "uuid": "de2913b8-8249-47fd-b922-d20079e32fd7"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3000 mm)",
+            "items": [
+                {
+                    "description": "Pad 6 [/CH1/BUF_N] of U501 on F.Cu",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 21.3
+                    },
+                    "uuid": "6bd91117-0c0e-40ea-b508-2926a7d4e36c"
+                },
+                {
+                    "description": "Track [/CH1/HIZ_N] on F.Cu, length 0,7125 mm",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 21.9
+                    },
+                    "uuid": "9e272ae5-cf83-4c4a-b307-6b36247b6e15"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Clearance violation (rule 'hiz_track_to_foreign_pad' clearance 0,4000 mm; actual 0,3000 mm)",
+            "items": [
+                {
+                    "description": "Track [/CH1/HIZ_N] on F.Cu, length 0,0500 mm",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 21.95
+                    },
+                    "uuid": "22fdb1ab-2d2a-4d34-856f-34eadfd000e8"
+                },
+                {
+                    "description": "Pad 6 [/CH1/BUF_N] of U501 on F.Cu",
+                    "pos": {
+                        "x": 33.2125,
+                        "y": 21.3
+                    },
+                    "uuid": "6bd91117-0c0e-40ea-b508-2926a7d4e36c"
+                }
+            ],
+            "severity": "error",
+            "type": "clearance"
+        },
+        {
+            "description": "Footprint 'XIAO_ESP32S3_HANDSOLDER' does not match copy in library 'ARTHUR'",
+            "items": [
+                {
+                    "description": "Footprint U1",
+                    "pos": {
+                        "x": 40.19,
+                        "y": 54.3825
+                    },
+                    "uuid": "43557376-63cc-495b-a107-e50a998105c8"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        }
+    ]
+}

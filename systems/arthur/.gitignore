@@ -1,0 +1,56 @@
+node_modules/
+dist/
+data/
+.npm-cache/
+.tmptest/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.env
+*.log
+coverage/
+.DS_Store
+ARTHUR Software Core v1/
+# Machine-local trusted capability catalogs (e.g. ARTHUR_GIT_CONFIG,
+# ARTHUR_LOCAL_CONFIG) - physical paths differ per machine and must
+# never be committed.
+.arthur-git.local.json
+*.git-catalog.json
+arthur.git.json
+.git-catalog/
+.arthur-local.json
+*.local-capabilities.json
+arthur.local.json
+.local-capabilities/
+# AI harness runtime/task state is machine-local and controller-owned.
+.ai-harness/
+.venv-parakeet/
+# Whisper/voice model binaries are machine-local downloads (e.g.
+# ggml-large-v3-turbo.bin) - never commit them.
+models/
+.tmp/
+# Python generated files
+__pycache__/
+*.py[cod]
+
+# Tauri/Rust build output and generated capability schemas for the Arthur app.
+# (node_modules/ and dist/ above already cover the app's JS output.)
+apps/arthur/src-tauri/target/
+apps/arthur/src-tauri/gen/schemas/
+
+# EMG/KiCad machine-local and recovery artifacts (curated integration)
+**/*.kicad_prl
+**/~*.lck
+**/*-drc.rpt
+**/*-erc.rpt
+**/*.kicad_pcb.bak
+/hardware/emg/var/
+/hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3c0_staging/
+
+# Historical KiCad snapshots are preserved on archive/pre-cleanup-2026-11-04; do not recommit them.
+/hardware/emg/rev-b-xiao/archive/
+/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/_restore_backup_*/
+
+# Keep benchmark code, frozen policy, ledgers and reports, but not large raw output.
+/tools/jev-bench/results/**/raw-*.json

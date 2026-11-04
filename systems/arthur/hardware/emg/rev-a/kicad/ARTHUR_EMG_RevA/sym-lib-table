@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "ARTHUR")(type "KiCad")(uri "${KIPRJMOD}/ARTHUR.kicad_sym")(options "")(descr "ARTHUR EMG Rev A verified architecture symbols"))
+)

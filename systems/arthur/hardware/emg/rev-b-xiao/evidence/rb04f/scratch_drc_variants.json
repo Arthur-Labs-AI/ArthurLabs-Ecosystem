@@ -1,0 +1,26 @@
+{
+ "R1c_1.9_2.3_m2.05": {
+  "drc": {
+   "warning:lib_footprint_mismatch": 1
+  },
+  "unconnected": 0
+ },
+ "A2_1.1_1.5_m1.35": {
+  "drc": {
+   "warning:lib_footprint_mismatch": 1
+  },
+  "unconnected": 0
+ },
+ "A3_0.8_1.2_m1.0": {
+  "drc": {
+   "warning:lib_footprint_mismatch": 1
+  },
+  "unconnected": 0
+ },
+ "A1_1.4_1.9_m1.65": {
+  "drc": {
+   "warning:lib_footprint_mismatch": 1
+  },
+  "unconnected": 0
+ }
+}

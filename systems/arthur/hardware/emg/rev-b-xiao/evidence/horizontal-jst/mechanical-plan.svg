@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1050" viewBox="-2 -23 56 39.2"><rect x="-2" y="-23" width="56" height="39.2" fill="#101a26"/>
+<text x="0" y="-21.5" font-family="sans-serif" font-size="1.0" fill="#eaf4ff">HORIZONTAL JST — NOMINAL CLEARANCE STUDY</text>
+<text x="0" y="-20" font-family="sans-serif" font-size="0.65" fill="#ffbf75">NOT RELEASED • Envelope illustration; no vendor 3D / enclosure CAD</text>
+<rect x="0" y="0" width="51.3" height="16" fill="#163d37" fill-opacity="1" stroke="#86b9a6" stroke-width=".06"/>
+<text x="0.4" y="15" font-family="sans-serif" font-size="0.65" fill="#eaf4ff">Board continues below; north edge at y = 0; all dimensions mm</text>
+<rect x="2.25" y="0.05" width="9.2" height="10.2" fill="none" fill-opacity="1" stroke="#dc87ff" stroke-width=".06"/>
+<rect x="2.8999999999999995" y="0.75" width="7.9" height="8.6" fill="#e0d5b1" fill-opacity="0.7" stroke="#fff0bd" stroke-width=".06"/>
+<rect x="3.9499999999999997" y="-6.1" width="5.8" height="6.85" fill="#208ba7" fill-opacity="0.8" stroke="#75dcf0" stroke-width=".06"/>
+<rect x="2.8499999999999996" y="-16.1" width="8" height="10" fill="none" fill-opacity="1" stroke="#8599aa" stroke-width=".06"/>
+<rect x="5.35" y="-14.1" width="1" height="8" fill="#bc4f46" fill-opacity="1" stroke="#ffafa0" stroke-width=".06"/>
+<rect x="7.35" y="-14.1" width="1" height="8" fill="#bc4f46" fill-opacity="1" stroke="#ffafa0" stroke-width=".06"/>
+<path d="M6.85,-14 L6.85,-17 M6.85,-17 l-.6,1 M6.85,-17 l.6,1" stroke="#8ad6ff" stroke-width=".15" fill="none"/>
+<text x="5.3" y="5" font-family="sans-serif" font-size="0.8" fill="#eaf4ff">J401</text>
+<text x="4.85" y="6.2" font-family="sans-serif" font-size="0.6" fill="#eaf4ff">180° / -Y</text>
+<text x="3.9499999999999997" y="-6.7" font-family="sans-serif" font-size="0.53" fill="#eaf4ff">PHR-2 5.8 wide</text>
+<rect x="11.65" y="0.05" width="9.2" height="10.2" fill="none" fill-opacity="1" stroke="#dc87ff" stroke-width=".06"/>
+<rect x="12.3" y="0.75" width="7.9" height="8.6" fill="#e0d5b1" fill-opacity="0.7" stroke="#fff0bd" stroke-width=".06"/>
+<rect x="13.35" y="-6.1" width="5.8" height="6.85" fill="#208ba7" fill-opacity="0.8" stroke="#75dcf0" stroke-width=".06"/>
+<rect x="12.25" y="-16.1" width="8" height="10" fill="none" fill-opacity="1" stroke="#8599aa" stroke-width=".06"/>
+<rect x="14.75" y="-14.1" width="1" height="8" fill="#bc4f46" fill-opacity="1" stroke="#ffafa0" stroke-width=".06"/>
+<rect x="16.75" y="-14.1" width="1" height="8" fill="#bc4f46" fill-opacity="1" stroke="#ffafa0" stroke-width=".06"/>
+<path d="M16.25,-14 L16.25,-17 M16.25,-17 l-.6,1 M16.25,-17 l.6,1" stroke="#8ad6ff" stroke-width=".15" fill="none"/>
+<text x="14.7" y="5" font-family="sans-serif" font-size="0.8" fill="#eaf4ff">J301</text>
+<text x="14.25" y="6.2" font-family="sans-serif" font-size="0.6" fill="#eaf4ff">180° / -Y</text>
+<text x="13.35" y="-6.7" font-family="sans-serif" font-size="0.53" fill="#eaf4ff">PHR-2 5.8 wide</text>
+<rect x="21.049999999999997" y="0.05" width="9.2" height="10.2" fill="none" fill-opacity="1" stroke="#dc87ff" stroke-width=".06"/>
+<rect x="21.7" y="0.75" width="7.9" height="8.6" fill="#e0d5b1" fill-opacity="0.7" stroke="#fff0bd" stroke-width=".06"/>
+<rect x="22.75" y="-6.1" width="5.8" height="6.85" fill="#208ba7" fill-opacity="0.8" stroke="#75dcf0" stroke-width=".06"/>
+<rect x="21.65" y="-16.1" width="8" height="10" fill="none" fill-opacity="1" stroke="#8599aa" stroke-width=".06"/>
+<rect x="24.15" y="-14.1" width="1" height="8" fill="#bc4f46" fill-opacity="1" stroke="#ffafa0" stroke-width=".06"/>
+<rect x="26.15" y="-14.1" width="1" height="8" fill="#bc4f46" fill-opacity="1" stroke="#ffafa0" stroke-width=".06"/>
+<path d="M25.65,-14 L25.65,-17 M25.65,-17 l-.6,1 M25.65,-17 l.6,1" stroke="#8ad6ff" stroke-width=".15" fill="none"/>
+<text x="24.099999999999998" y="5" font-family="sans-serif" font-size="0.8" fill="#eaf4ff">J201</text>
+<text x="23.65" y="6.2" font-family="sans-serif" font-size="0.6" fill="#eaf4ff">180° / -Y</text>
+<text x="22.75" y="-6.7" font-family="sans-serif" font-size="0.53" fill="#eaf4ff">PHR-2 5.8 wide</text>
+<rect x="30.449999999999996" y="0.05" width="9.2" height="10.2" fill="none" fill-opacity="1" stroke="#dc87ff" stroke-width=".06"/>
+<rect x="31.099999999999998" y="0.75" width="7.9" height="8.6" fill="#e0d5b1" fill-opacity="0.7" stroke="#fff0bd" stroke-width=".06"/>
+<rect x="32.15" y="-6.1" width="5.8" height="6.85" fill="#208ba7" fill-opacity="0.8" stroke="#75dcf0" stroke-width=".06"/>
+<rect x="31.049999999999997" y="-16.1" width="8" height="10" fill="none" fill-opacity="1" stroke="#8599aa" stroke-width=".06"/>
+<rect x="33.55" y="-14.1" width="1" height="8" fill="#bc4f46" fill-opacity="1" stroke="#ffafa0" stroke-width=".06"/>
+<rect x="35.55" y="-14.1" width="1" height="8" fill="#bc4f46" fill-opacity="1" stroke="#ffafa0" stroke-width=".06"/>
+<path d="M35.05,-14 L35.05,-17 M35.05,-17 l-.6,1 M35.05,-17 l.6,1" stroke="#8ad6ff" stroke-width=".15" fill="none"/>
+<text x="33.5" y="5" font-family="sans-serif" font-size="0.8" fill="#eaf4ff">J101</text>
+<text x="33.05" y="6.2" font-family="sans-serif" font-size="0.6" fill="#eaf4ff">180° / -Y</text>
+<text x="32.15" y="-6.7" font-family="sans-serif" font-size="0.53" fill="#eaf4ff">PHR-2 5.8 wide</text>
+<rect x="39.85" y="0.05" width="9.2" height="10.2" fill="none" fill-opacity="1" stroke="#dc87ff" stroke-width=".06"/>
+<rect x="40.5" y="0.75" width="7.9" height="8.6" fill="#e0d5b1" fill-opacity="0.7" stroke="#fff0bd" stroke-width=".06"/>
+<rect x="41.550000000000004" y="-6.1" width="5.8" height="6.85" fill="#208ba7" fill-opacity="0.8" stroke="#75dcf0" stroke-width=".06"/>
+<rect x="40.45" y="-16.1" width="8" height="10" fill="none" fill-opacity="1" stroke="#8599aa" stroke-width=".06"/>
+<rect x="42.95" y="-14.1" width="1" height="8" fill="#bc4f46" fill-opacity="1" stroke="#ffafa0" stroke-width=".06"/>
+<rect x="44.95" y="-14.1" width="1" height="8" fill="#bc4f46" fill-opacity="1" stroke="#ffafa0" stroke-width=".06"/>
+<path d="M44.45,-14 L44.45,-17 M44.45,-17 l-.6,1 M44.45,-17 l.6,1" stroke="#8ad6ff" stroke-width=".15" fill="none"/>
+<text x="42.900000000000006" y="5" font-family="sans-serif" font-size="0.8" fill="#eaf4ff">J5001</text>
+<text x="42.45" y="6.2" font-family="sans-serif" font-size="0.6" fill="#eaf4ff">180° / -Y</text>
+<text x="41.550000000000004" y="-6.7" font-family="sans-serif" font-size="0.53" fill="#eaf4ff">PHR-2 5.8 wide</text>
+<text x="0.5" y="12" font-family="sans-serif" font-size="0.68" fill="#eaf4ff">Body gap 1.50 • courtyard gap 0.20 • copper-to-edge 0.55</text>
+<text x="0.5" y="13.2" font-family="sans-serif" font-size="0.61" fill="#eaf4ff">Blue: conservative full plug envelope • grey: assumed service corridor</text>
+<text x="0" y="-18.5" font-family="sans-serif" font-size="0.61" fill="#eaf4ff">8 mm straight lead shown; bend radius, strain relief, and case aperture UNVERIFIED</text>
+</svg>

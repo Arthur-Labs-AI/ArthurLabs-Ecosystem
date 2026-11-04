@@ -1,0 +1,11 @@
+equivalent ARTHUR_EMG_RevB-B_Cu.gbl
+equivalent ARTHUR_EMG_RevB-B_Mask.gbs
+equivalent ARTHUR_EMG_RevB-B_Silkscreen.gbo
+equivalent ARTHUR_EMG_RevB.drl
+equivalent ARTHUR_EMG_RevB-Edge_Cuts.gm1
+equivalent ARTHUR_EMG_RevB-F_Cu.gtl
+equivalent ARTHUR_EMG_RevB-F_Mask.gts
+equivalent ARTHUR_EMG_RevB-F_Paste.gtp
+equivalent ARTHUR_EMG_RevB-F_Silkscreen.gto
+equivalent ARTHUR_EMG_RevB-In1_Cu.g1
+equivalent ARTHUR_EMG_RevB-In2_Cu.g2

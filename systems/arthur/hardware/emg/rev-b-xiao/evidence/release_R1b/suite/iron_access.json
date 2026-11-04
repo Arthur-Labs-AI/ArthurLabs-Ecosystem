@@ -1,0 +1,235 @@
+{
+ "summary": {
+  "30": {
+   "worst": {
+    "toe": "12",
+    "part": "FB1",
+    "height_mm": 0.95,
+    "distance_mm": 1.52,
+    "required_mm": 1.65,
+    "margin_mm": -0.13,
+    "elevation_deg": 30
+   },
+   "toes_with_negative_margin": [
+    "12",
+    "13"
+   ]
+  },
+  "45": {
+   "worst": {
+    "toe": "12",
+    "part": "C7101",
+    "height_mm": 0.95,
+    "distance_mm": 1.52,
+    "required_mm": 0.95,
+    "margin_mm": 0.57,
+    "elevation_deg": 45
+   },
+   "toes_with_negative_margin": []
+  },
+  "60": {
+   "worst": {
+    "toe": "12",
+    "part": "FB1",
+    "height_mm": 0.95,
+    "distance_mm": 1.52,
+    "required_mm": 0.55,
+    "margin_mm": 0.97,
+    "elevation_deg": 60
+   },
+   "toes_with_negative_margin": []
+  },
+  "tip_band_1p5mm_violations": []
+ },
+ "rows": [
+  {
+   "toe": "8",
+   "part": "X1",
+   "height_mm": 1.1,
+   "distance_mm": 3.85,
+   "required_mm": 1.91,
+   "margin_mm": 1.94,
+   "elevation_deg": 30
+  },
+  {
+   "toe": "9",
+   "part": "R7101",
+   "height_mm": 0.55,
+   "distance_mm": 1.52,
+   "required_mm": 0.95,
+   "margin_mm": 0.57,
+   "elevation_deg": 30
+  },
+  {
+   "toe": "10",
+   "part": "R6002",
+   "height_mm": 0.55,
+   "distance_mm": 4.62,
+   "required_mm": 0.95,
+   "margin_mm": 3.67,
+   "elevation_deg": 30
+  },
+  {
+   "toe": "11",
+   "part": "R7102",
+   "height_mm": 0.55,
+   "distance_mm": 1.62,
+   "required_mm": 0.95,
+   "margin_mm": 0.67,
+   "elevation_deg": 30
+  },
+  {
+   "toe": "12",
+   "part": "FB1",
+   "height_mm": 0.95,
+   "distance_mm": 1.52,
+   "required_mm": 1.65,
+   "margin_mm": -0.13,
+   "elevation_deg": 30
+  },
+  {
+   "toe": "13",
+   "part": "C7101",
+   "height_mm": 0.95,
+   "distance_mm": 1.52,
+   "required_mm": 1.65,
+   "margin_mm": -0.13,
+   "elevation_deg": 30
+  },
+  {
+   "toe": "14",
+   "part": "R3009",
+   "height_mm": 0.55,
+   "distance_mm": 1.52,
+   "required_mm": 0.95,
+   "margin_mm": 0.57,
+   "elevation_deg": 30
+  },
+  {
+   "toe": "8",
+   "part": "X1",
+   "height_mm": 1.1,
+   "distance_mm": 3.85,
+   "required_mm": 1.1,
+   "margin_mm": 2.75,
+   "elevation_deg": 45
+  },
+  {
+   "toe": "9",
+   "part": "R7101",
+   "height_mm": 0.55,
+   "distance_mm": 1.52,
+   "required_mm": 0.55,
+   "margin_mm": 0.97,
+   "elevation_deg": 45
+  },
+  {
+   "toe": "10",
+   "part": "R6002",
+   "height_mm": 0.55,
+   "distance_mm": 4.62,
+   "required_mm": 0.55,
+   "margin_mm": 4.07,
+   "elevation_deg": 45
+  },
+  {
+   "toe": "11",
+   "part": "R7102",
+   "height_mm": 0.55,
+   "distance_mm": 1.62,
+   "required_mm": 0.55,
+   "margin_mm": 1.07,
+   "elevation_deg": 45
+  },
+  {
+   "toe": "12",
+   "part": "C7101",
+   "height_mm": 0.95,
+   "distance_mm": 1.52,
+   "required_mm": 0.95,
+   "margin_mm": 0.57,
+   "elevation_deg": 45
+  },
+  {
+   "toe": "13",
+   "part": "C7102",
+   "height_mm": 0.95,
+   "distance_mm": 1.52,
+   "required_mm": 0.95,
+   "margin_mm": 0.57,
+   "elevation_deg": 45
+  },
+  {
+   "toe": "14",
+   "part": "R3009",
+   "height_mm": 0.55,
+   "distance_mm": 1.52,
+   "required_mm": 0.55,
+   "margin_mm": 0.97,
+   "elevation_deg": 45
+  },
+  {
+   "toe": "8",
+   "part": "X1",
+   "height_mm": 1.1,
+   "distance_mm": 3.85,
+   "required_mm": 0.64,
+   "margin_mm": 3.21,
+   "elevation_deg": 60
+  },
+  {
+   "toe": "9",
+   "part": "R7101",
+   "height_mm": 0.55,
+   "distance_mm": 1.52,
+   "required_mm": 0.32,
+   "margin_mm": 1.2,
+   "elevation_deg": 60
+  },
+  {
+   "toe": "10",
+   "part": "R6001",
+   "height_mm": 0.55,
+   "distance_mm": 4.62,
+   "required_mm": 0.32,
+   "margin_mm": 4.3,
+   "elevation_deg": 60
+  },
+  {
+   "toe": "11",
+   "part": "R7102",
+   "height_mm": 0.55,
+   "distance_mm": 1.62,
+   "required_mm": 0.32,
+   "margin_mm": 1.3,
+   "elevation_deg": 60
+  },
+  {
+   "toe": "12",
+   "part": "FB1",
+   "height_mm": 0.95,
+   "distance_mm": 1.52,
+   "required_mm": 0.55,
+   "margin_mm": 0.97,
+   "elevation_deg": 60
+  },
+  {
+   "toe": "13",
+   "part": "C7101",
+   "height_mm": 0.95,
+   "distance_mm": 1.52,
+   "required_mm": 0.55,
+   "margin_mm": 0.97,
+   "elevation_deg": 60
+  },
+  {
+   "toe": "14",
+   "part": "C7102",
+   "height_mm": 0.95,
+   "distance_mm": 1.52,
+   "required_mm": 0.55,
+   "margin_mm": 0.97,
+   "elevation_deg": 60
+  }
+ ]
+}

@@ -1,0 +1,111 @@
+{
+  "status": "MODEL ONLY; not hardware test or full transient simulation",
+  "analog_method": "Ideal unity buffers, symmetric differential half-circuit: 2.2uF coupling,100k return,1k series,1n shunt+10n cross ->21n half circuit, typical ADC differential resistance330k at fMOD4.096MHz, gain1.",
+  "digital_method": "ADS131M04 RevD sections8.3.7.1.2/8.3.7.2: fCLK8.192MHz, fMOD4.096MHz. OSR<=1024 sinc3; OSR>=2048 sinc3 fixed1024 followed by sinc1 of OSR/1024. No additional firmware/software filters assumed.",
+  "rows": [
+    {
+      "Hz": 0.1,
+      "analog_gain1_linearized_ratio": 0.085420979904988,
+      "analog_dB": -21.368709017610698,
+      "ADS131M04_1kSPS_dB": -1.6073677672809682e-07,
+      "ADS131M04_2kSPS_dB": -5.357890692330859e-08,
+      "ADS131M04_4kSPS_dB": -2.6789439437593308e-08
+    },
+    {
+      "Hz": 0.5,
+      "analog_gain1_linearized_ratio": 0.3930802606125595,
+      "analog_dB": -8.110375293645868,
+      "ADS131M04_1kSPS_dB": -4.018419714602622e-06,
+      "ADS131M04_2kSPS_dB": -1.3394727326957328e-06,
+      "ADS131M04_4kSPS_dB": -6.697360396572442e-07
+    },
+    {
+      "Hz": 1,
+      "analog_gain1_linearized_ratio": 0.6466429702304676,
+      "analog_dB": -3.7867087871302467,
+      "ADS131M04_1kSPS_dB": -1.6073682420692255e-05,
+      "ADS131M04_2kSPS_dB": -5.357891188478022e-06,
+      "ADS131M04_4kSPS_dB": -2.6789442071410588e-06
+    },
+    {
+      "Hz": 1.2,
+      "analog_gain1_linearized_ratio": 0.7114063519725974,
+      "analog_dB": -2.957645228483188,
+      "ADS131M04_1kSPS_dB": -2.3146105689339813e-05,
+      "ADS131M04_2kSPS_dB": -7.715363522442086e-06,
+      "ADS131M04_4kSPS_dB": -3.857679694811692e-06
+    },
+    {
+      "Hz": 10,
+      "analog_gain1_linearized_ratio": 0.9782576501694412,
+      "analog_dB": -0.19093494289508778,
+      "ADS131M04_1kSPS_dB": -0.0016074151431256234,
+      "ADS131M04_2kSPS_dB": -0.0005357923908278014,
+      "ADS131M04_4kSPS_dB": -0.00026789496597826495
+    },
+    {
+      "Hz": 20,
+      "analog_gain1_linearized_ratio": 0.9830655056007913,
+      "analog_dB": -0.14835084838047913,
+      "ADS131M04_1kSPS_dB": -0.0064302292124678905,
+      "ADS131M04_2kSPS_dB": -0.0021432092263721616,
+      "ADS131M04_4kSPS_dB": -0.001071586474075005
+    },
+    {
+      "Hz": 50,
+      "analog_gain1_linearized_ratio": 0.984407716795729,
+      "analog_dB": -0.13649981022039148,
+      "ADS131M04_1kSPS_dB": -0.040213847790828955,
+      "ADS131M04_2kSPS_dB": -0.013396793522215976,
+      "ADS131M04_4kSPS_dB": -0.006697704684882449
+    },
+    {
+      "Hz": 100,
+      "analog_gain1_linearized_ratio": 0.9845400911906956,
+      "analog_dB": -0.13533188755362077,
+      "ADS131M04_1kSPS_dB": -0.16121346500277495,
+      "ADS131M04_2kSPS_dB": -0.05361200630417403,
+      "ADS131M04_4kSPS_dB": -0.026794952035560447
+    },
+    {
+      "Hz": 250,
+      "analog_gain1_linearized_ratio": 0.984158688978019,
+      "analog_dB": -0.13869737708593585,
+      "ADS131M04_1kSPS_dB": -1.023864002825152,
+      "ADS131M04_2kSPS_dB": -0.33617092124406417,
+      "ADS131M04_4kSPS_dB": -0.1676497081316996
+    },
+    {
+      "Hz": 450,
+      "analog_gain1_linearized_ratio": 0.9830061935290001,
+      "analog_dB": -0.14887491686706364,
+      "ADS131M04_1kSPS_dB": -3.4780243807219717,
+      "ADS131M04_2kSPS_dB": -1.0989346881201136,
+      "ADS131M04_4kSPS_dB": -0.5447630476285547
+    },
+    {
+      "Hz": 500,
+      "analog_gain1_linearized_ratio": 0.9826142710390802,
+      "analog_dB": -0.15233865322980078,
+      "ADS131M04_1kSPS_dB": -4.371205906656687,
+      "ADS131M04_2kSPS_dB": -1.3609059500168772,
+      "ADS131M04_4kSPS_dB": -0.6732128684357891
+    },
+    {
+      "Hz": 1000,
+      "analog_gain1_linearized_ratio": 0.9764800224595206,
+      "analog_dB": -0.20673274796990856,
+      "ADS131M04_1kSPS_dB": -330.00697303253537,
+      "ADS131M04_2kSPS_dB": -5.746590153686817,
+      "ADS131M04_4kSPS_dB": -2.736290197047006
+    },
+    {
+      "Hz": 5000,
+      "analog_gain1_linearized_ratio": 0.8257440097669215,
+      "analog_dB": -1.6630913629545774,
+      "ADS131M04_1kSPS_dB": -357.96571188972086,
+      "ADS131M04_2kSPS_dB": -47.68472909759264,
+      "ADS131M04_4kSPS_dB": -44.674429140952824
+    }
+  ]
+}

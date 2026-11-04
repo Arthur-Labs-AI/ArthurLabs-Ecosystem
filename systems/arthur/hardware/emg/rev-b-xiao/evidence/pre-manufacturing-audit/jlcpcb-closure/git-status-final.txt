@@ -1,0 +1,30 @@
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pcb
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.kicad_pro
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/adc.kicad_sch
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/analog_power_interlock.kicad_sch
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/emg_channel.kicad_sch
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-lib-table
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/ARTHUR.pretty/OSC_SCTF_SX3M_SMD3225-4P.kicad_mod
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Capacitor_SMD.pretty/C_0603_1608Metric.kicad_mod
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Capacitor_SMD.pretty/C_0805_2012Metric.kicad_mod
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Inductor_SMD.pretty/L_0603_1608Metric.kicad_mod
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Resistor_SMD.pretty/R_0603_1608Metric.kicad_mod
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/Resistor_SMD.pretty/R_0805_2012Metric.kicad_mod
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/fp-libs/TestPoint.pretty/TestPoint_Pad_D1.5mm.kicad_mod
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/reference_vcm.kicad_sch
+ M hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/xiao_brain_interface.kicad_sch
+ M hardware/emg/rev-b-xiao/tools/rb01r_netlist_audit.py
+?? hardware/emg/rev-b-xiao/evidence/horizontal-jst/
+?? hardware/emg/rev-b-xiao/evidence/pre-manufacturing-audit/
+?? hardware/emg/rev-b-xiao/evidence/rb02g/variants/
+?? hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/.history/
+?? hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/ARTHUR_EMG_RevB.glb
+?? hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/_restore_backup_2026-10-15T18-53-15-837/
+?? hardware/emg/rev-b-xiao/quote-package/SUPERSEDED_pre_R1b__DO_NOT_USE/
+?? hardware/emg/rev-b-xiao/tools/horizontal_jst_eco.py
+?? hardware/emg/rev-b-xiao/tools/horizontal_jst_export_verify.py
+?? hardware/emg/rev-b-xiao/tools/horizontal_jst_mechanical.py
+?? hardware/emg/rev-b-xiao/tools/horizontal_jst_preview.py
+?? hardware/emg/rev-b-xiao/tools/horizontal_jst_verify.py
+?? hardware/emg/rev-b-xiao/tools/test_horizontal_jst_mechanical.py
+?? tools/jev-bench/

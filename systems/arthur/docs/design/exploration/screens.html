@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arthur — desktop screens</title>
+<link rel="stylesheet" href="arthur.css">
+<style>
+  /* ============ Home ============ */
+  .home{ padding:36px 56px 56px 56px; max-width:1240px; }
+  .home .hello{ display:flex; align-items:baseline; gap:12px; margin-bottom:14px; padding-left:2px; }
+  .home .hello span{ font:italic 400 18px/1 var(--serif); color:var(--ink-3); }
+  .composer{ background:var(--raised); border:1px solid var(--line); border-radius:var(--r-md); transition:border-color var(--t-med), box-shadow var(--t-med); }
+  .composer:focus-within{ border-color:color-mix(in srgb,var(--accent) 55%,var(--line)); box-shadow:0 0 0 4px var(--accent-soft); }
+  .composer textarea{
+    display:block; width:100%; height:96px; resize:none; background:none; border:0; outline:0; padding:24px 28px 0;
+    font:400 42px/1.12 var(--serif); letter-spacing:-.02em; color:var(--ink);
+  }
+  .composer textarea::placeholder{ color:var(--ink-3); opacity:.9; }
+  .c-bar{ display:flex; align-items:center; gap:8px; padding:10px 14px 12px 20px; }
+  .speak{ display:inline-flex; align-items:center; gap:9px; height:36px; padding:0 15px 0 11px; border-radius:18px; background:var(--accent); color:var(--accent-ink); font-weight:600; transition:transform var(--t-fast) var(--ease); }
+  .speak:hover{ transform:translateY(-1px); }
+  .speak .ic{ width:17px; height:17px; }
+  .speak em{ font-style:normal; font-weight:500; opacity:.62; font-size:12px; margin-left:2px; }
+  .c-bar .sp{ flex:1; }
+  .c-bar .hint{ color:var(--ink-3); font-size:12px; margin-right:6px; }
+
+  .home-grid{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:56px; margin-top:44px; }
+  .h2{ display:flex; align-items:baseline; gap:10px; margin:0 0 6px; }
+  .h2 h2{ margin:0; font:430 22px/1.1 var(--serif); letter-spacing:-.01em; }
+  .h2 small{ color:var(--ink-3); font-size:12.5px; }
+  .h2 .link{ margin-left:auto; }
+  /* the thread: raw capture → what Arthur distilled from it */
+  .grp{ position:relative; padding:14px 0 6px 38px; }
+  .grp::before{ content:""; position:absolute; left:13px; top:36px; bottom:20px; width:1px; background:var(--line); }
+  .grp .cap{ display:flex; align-items:center; gap:10px; color:var(--ink-3); font-size:12.5px; margin-bottom:4px; min-width:0; }
+  .grp .cap .node{ position:absolute; left:2px; width:23px; height:23px; border-radius:50%; background:var(--ground); border:1px solid var(--line); display:grid; place-items:center; color:var(--ink-2); }
+  .grp .cap .node .ic{ width:12px; height:12px; }
+  .grp .cap q{ quotes:"“" "”"; font:italic 400 14px var(--serif); color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .grp .cap b{ font-weight:500; color:var(--ink-2); white-space:nowrap; }
+  .grp .cap > span{ white-space:nowrap; }
+  .grp .obj{ display:grid; grid-template-columns:20px minmax(0,1fr) auto; gap:12px; align-items:center; padding:9px 12px 9px 0; position:relative; cursor:pointer; border-radius:var(--r-sm); }
+  .grp .obj::before{ content:""; position:absolute; left:-25px; top:50%; width:18px; height:1px; background:var(--line); }
+  .grp .obj:hover{ background:var(--hover); }
+  .grp .obj .t{ font:450 17px/1.25 var(--serif); }
+  .grp .obj .s{ color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .grp .obj > svg.kind{ margin-left:8px; }
+  .aside{ display:flex; flex-direction:column; gap:36px; }
+  .aside .map{ margin:4px 0 0; border-top:1px solid var(--line-soft); padding-top:10px; }
+  .aside .map svg{ width:100%; height:auto; overflow:visible; }
+  .aside .cap-line{ color:var(--ink-3); font-size:12.5px; margin-top:4px; }
+  .evo{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 14px; align-items:center; padding:11px 0; border-top:1px solid var(--line-soft); cursor:pointer; }
+  .evo:hover .t{ color:#fff; }
+  .evo .t{ font:450 15px/1.25 var(--serif); }
+  .evo .m{ grid-column:1; color:var(--ink-3); font-size:12px; }
+  .evo svg{ grid-row:1 / span 2; grid-column:2; }
+
+  /* ============ Ideas ============ */
+  .ideas{ display:grid; grid-template-columns:minmax(0,1fr) 430px; height:100%; min-height:0; }
+  .ideas .lcol{ display:flex; flex-direction:column; min-height:0; min-width:0; }
+  .ideas .toolbar{ display:flex; gap:10px; align-items:center; padding:16px var(--pad) 0 calc(var(--pad) + 8px); }
+  .ideas .tabs{ padding:12px var(--pad) 0 calc(var(--pad) + 8px); }
+  .ideas .scroll{ overflow:auto; flex:1; min-height:0; }
+  .ideas .inspector{ display:flex; flex-direction:column; }
+  .ego{ width:100%; height:176px; margin:0 0 6px; }
+  .spine{ position:relative; }
+  .spine .rv{ display:grid; grid-template-columns:18px 30px minmax(0,1fr) auto; gap:8px; align-items:center; padding:6px 0; position:relative; font-size:13px; }
+  .spine .rv::before{ content:""; position:absolute; left:6px; top:-8px; bottom:-8px; width:1px; background:var(--line); }
+  .spine .rv:first-child::before{ top:50%; } .spine .rv:last-child::before{ bottom:50%; }
+  .spine .rv i{ width:13px; height:13px; border-radius:4px; border:1.4px solid var(--ink-3); background:var(--ground); position:relative; z-index:1; }
+  .spine .rv.cur i{ background:var(--accent); border-color:var(--accent); }
+  .spine .rv b{ font-weight:650; }
+  .spine .rv span{ color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .spine .rv em{ font-style:normal; color:var(--ink-3); font-size:12px; }
+  .actions{ display:flex; gap:8px; padding:16px 26px 0; }
+
+  /* ============ Connections ============ */
+  .conn{ display:grid; grid-template-columns:minmax(0,1fr) 392px; height:100%; min-height:0; }
+  .conn .stage{ position:relative; min-width:0; min-height:0; display:flex; flex-direction:column; }
+  .conn .canvas{ position:relative; flex:1; min-height:0; margin:14px 0 0;
+    background-image:radial-gradient(circle, color-mix(in srgb,var(--ink-4) 55%,transparent) 1px, transparent 1.3px); background-size:30px 30px; background-position:15px 15px;
+    border-top:1px solid var(--line-soft); }
+  .conn .canvas svg.g{ position:absolute; inset:0; width:100%; height:100%; }
+  .conn .tools{ position:absolute; left:calc(var(--pad) + 8px); right:var(--pad); top:14px; display:flex; gap:10px; align-items:center; z-index:2; }
+  .legend{ position:absolute; left:calc(var(--pad) + 8px); bottom:18px; display:grid; grid-template-columns:repeat(4,auto); gap:0 6px; z-index:2; background:var(--ground); border:1px solid var(--line); border-radius:var(--r-md); padding:4px; }
+  .legend button{ display:flex; align-items:center; gap:7px; padding:5px 9px 5px 7px; border-radius:var(--r-sm); color:var(--ink-2); font-size:12.5px; transition:background var(--t-fast), opacity var(--t-fast); }
+  .legend button:hover{ background:var(--hover); }
+  .legend button[aria-pressed="false"]{ opacity:.38; }
+  .legend button[aria-pressed="false"] span{ text-decoration:line-through; text-decoration-color:var(--ink-4); }
+  .hintbar{ position:absolute; left:calc(var(--pad) + 8px); top:14px; z-index:2; color:var(--ink-3); font-size:12px; display:flex; gap:12px; align-items:center; }
+  .conn .inspector .sec:first-of-type{ margin-top:16px; }
+  .edge-hero{ display:grid; grid-template-columns:1fr; gap:10px; padding:4px 0 2px; }
+  .edge-end{ display:flex; align-items:center; gap:10px; font:450 17px/1.25 var(--serif); }
+  .edge-mid{ display:flex; align-items:center; gap:12px; padding:6px 0 6px 6px; color:var(--ink-2); }
+  .edge-mid .relsw{ width:44px; }
+  .edge-mid b{ font:500 13px var(--sans); color:var(--ink); }
+  .kv{ display:grid; grid-template-columns:96px 1fr; gap:8px 12px; font-size:13px; }
+  .kv dt{ color:var(--ink-3); } .kv dd{ margin:0; color:var(--ink); }
+  .pencil{ display:inline-block; width:8px; height:8px; border-radius:50%; border:1.3px dashed var(--pencil); vertical-align:-0px; margin-right:6px; }
+  .solid{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--ink-2); margin-right:6px; }
+  .group-h{ font:500 12px var(--sans); color:var(--ink-3); margin:12px 0 2px; display:flex; gap:8px; align-items:center; }
+
+  /* ============ Evolution ============ */
+  .evolution{ display:grid; grid-template-columns:300px minmax(0,1fr); height:100%; min-height:0; }
+  .evolution .picker{ border-right:1px solid var(--line-soft); overflow:auto; }
+  .evolution .picker h2{ margin:0; padding:26px 22px 4px 26px; font:400 28px/1 var(--serif); letter-spacing:-.015em; }
+  .evolution .picker p{ margin:4px 22px 14px 26px; color:var(--ink-3); }
+  .pick{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 10px; align-items:center; padding:11px 20px 11px 26px; border-top:1px solid var(--line-soft); cursor:pointer; position:relative; }
+  .pick:hover{ background:var(--hover); }
+  .pick[aria-selected="true"]{ background:var(--selected); }
+  .pick[aria-selected="true"]::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--accent); }
+  .pick .t{ font:450 15.5px/1.25 var(--serif); }
+  .pick .m{ color:var(--ink-3); font-size:12px; grid-column:1; }
+  .pick svg{ grid-column:2; grid-row:1 / span 2; }
+  .evolution .work{ overflow:auto; min-width:0; }
+  .work .head{ padding:26px 36px 0; display:flex; align-items:flex-end; gap:20px; }
+  .work .head h1{ margin:0; font:430 30px/1.1 var(--serif); letter-spacing:-.015em; }
+  .work .head p{ margin:6px 0 0; color:var(--ink-3); }
+  .work .head .spacer{ flex:1; }
+  .rail-wrap{ padding:12px 24px 0 24px; }
+  .rail-wrap svg{ width:100%; height:auto; overflow:visible; }
+  .detail{ display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:44px; padding:6px 36px 56px; border-top:1px solid var(--line-soft); margin:10px 0 0; }
+  .detail .dh{ display:flex; align-items:baseline; gap:10px; padding:18px 0 14px; }
+  .detail .dh h2{ margin:0; font:430 21px/1 var(--serif); }
+  .detail .dh .spacer{ flex:1; }
+  .detail .dh small{ color:var(--ink-3); }
+  .stat{ display:flex; gap:14px; color:var(--ink-3); font-size:12.5px; margin:-4px 0 14px; }
+  .stat b{ font-weight:500; } .stat .a{ color:var(--add); } .stat .d{ color:var(--del); }
+  .diffbox{ display:flex; flex-direction:column; gap:20px; max-width:64ch; }
+  .sidecol{ padding-top:18px; }
+  .sidecol .sec{ padding-left:0; padding-right:0; margin-top:0; }
+  .sidecol .sec:first-child{ border-top:0; padding-top:0; }
+  .tabbtn{ display:flex; gap:4px; }
+  .note{ color:var(--ink-3); font-size:13px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="arthur-ui.js"></script>
+<script>
+const A = Arthur, ic = A.ic;
+const $ = (s, r = document) => r.querySelector(s);
+const params = new URLSearchParams(location.search);
+const state = { screen: (params.get("s") || location.hash.slice(1) || "home"), idea: "o1", filter: "all", sel: { type: "node", id: params.get("edge") ? null : "o1" }, enabled: new Set(Object.keys(A.REL)), origin: "all", rev: params.get("rev") || "R5", pick: "o1", theme: params.get("t") || "dark" };
+if (params.get("edge")) state.sel = { type: "edge", id: params.get("edge") };
+if (params.get("sel") === "none") state.sel = null;
+if (params.get("filter")) state.filter = params.get("filter");
+document.documentElement.dataset.theme = state.theme;
+const style = document.createElement("style"); style.textContent = A.graphCss + A.lineageCss; document.head.appendChild(style);
+
+const kindWord = { idea: "Idea", task: "Task", decision: "Decision", question: "Question", note: "Note" };
+const marginHtml = (o) => `<div class="margin"><span class="src">${A.srcIc(o.src)}${A.srcName(o.src)}</span><span title="Connections">${ic("link")}<span class="num">${A.deg(o.id)}</span></span><span title="Revisions">${ic("rev")}<span class="num">r${o.rev}</span></span></div>`;
+const snippet = (o) => o.body;
+
+/* ---------------- HOME ---------------- */
+function home() {
+  const groups = [
+    { src: "text", ago: "34 min ago", q: "Email Ignatov — share the latest build and check the presentation flow", objs: ["o2"] },
+    { src: "voice", ago: "2 h ago", q: "Maybe the EMG wristband could start a capture so I do not even have to touch the phone. But then, how do we handle two ideas that conflict?", objs: ["o3", "o4"] },
+    { src: "text", ago: "5 h ago", q: "Architecture overview: capture, distillation, graph, lineage and recall", objs: ["o5"] },
+  ];
+  const pos = { o1: [180, 128], o7: [64, 62], o10: [58, 186], o3: [292, 54], o9: [300, 160], o2: [214, 226] };
+  return `<div class="app">${A.rail("home")}
+  <main class="main"><div class="home">
+    <div class="hello"><span>Good evening</span></div>
+    <div class="composer">
+      <textarea aria-label="Capture a thought" placeholder="What's on your mind?" rows="2"></textarea>
+      <div class="c-bar">
+        <button class="speak">${ic("mic")}Speak<em>⌥ Space</em></button>
+        <button class="btn ghost">${ic("paperclip", "sm")}Add context</button>
+        <span class="sp"></span><span class="hint">Arthur organizes it after you capture</span>
+        <button class="btn primary">Capture <kbd style="border-color:currentColor;color:inherit;opacity:.6">⌘↵</kbd></button>
+      </div>
+    </div>
+    <div class="home-grid">
+      <section>
+        <div class="h2"><h2>Today</h2><small>5 thoughts from 3 captures</small><a class="link" href="#ideas">All ideas ${ic("arrow")}</a></div>
+        ${groups.map((g) => `<div class="grp">
+          <div class="cap"><span class="node">${A.srcIc(g.src)}</span><b>${A.srcName(g.src)}</b><span>${g.ago}</span><q>${g.q}</q></div>
+          ${g.objs.map((id) => { const o = A.obj(id); return `<div class="obj" data-id="${id}">${A.kind(o.kind)}<div style="min-width:0"><div class="t">${o.title}</div><div class="s">${snippet(o)}</div></div>${marginHtml(o).replace(/<span class="src">.*?<\/span>/, "")}</div>`; }).join("")}
+        </div>`).join("")}
+      </section>
+      <div class="aside">
+        <section>
+          <div class="h2"><h2>Connected thinking</h2><a class="link" href="#connections">Open ${ic("arrow")}</a></div>
+          <div class="map"><svg id="mini" role="img" aria-label="Connections around Arthur mobile app experience"></svg>
+          <div class="cap-line">Around <span class="serif" style="color:var(--ink-2)">Arthur mobile app experience</span> · 6 ideas, 5 links</div></div>
+        </section>
+        <section>
+          <div class="h2"><h2>Recently evolving</h2><a class="link" href="#evolution">Open ${ic("arrow")}</a></div>
+          <div>${A.evolving.map((e) => `<div class="evo"><div class="t">${e.title}</div>${A.sparkRail(e.shape)}<div class="m">r${e.n} current · ${e.ago} ago</div></div>`).join("")}</div>
+        </section>
+      </div>
+    </div>
+  </div></main></div>`;
+}
+function homeAfter() {
+  const ids = ["o1", "o7", "o10", "o3", "o9", "o2"];
+  A.renderGraph($("#mini"), { objects: A.objects.filter((o) => ids.includes(o.id)), pos: { o1: [178, 120], o7: [62, 52], o10: [56, 182], o3: [290, 46], o9: [302, 152], o2: [212, 208] }, mini: true, bounds: [0, 8, 360, 236] });
+}
+
+/* ---------------- IDEAS ---------------- */
+function inspectorIdea(o) {
+  const cap = A.captures[o.cap || "c1"]; const [s, e] = (() => { const i = cap.content.indexOf("quickly capture ideas on my phone, ideally using voice"); return i >= 0 && o.id === "o1" ? [i, i + 54] : [0, Math.min(cap.content.length, 80)]; })();
+  const edges = A.edgesOf(o.id);
+  const revs = o.id === "o1" ? [...A.revs].reverse() : [];
+  return `
+  <div class="insp-head"><div class="meta">${A.kind(o.kind)}<span class="kindname">${kindWord[o.kind]}</span><span>·</span><span>Edited ${o.ago} ago</span></div><h2>${o.title}</h2></div>
+  <div class="insp-body">${o.body}</div>
+  <div class="actions"><button class="btn">${ic("edit", "sm")}Revise</button><button class="btn ghost">${ic("branch", "sm")}Branch</button></div>
+  <div class="sec" style="margin-top:22px">
+    <div class="sec-h"><h3>Source</h3></div>
+    <div class="cap-meta">${A.srcIc(cap.source)}<span>${A.srcName(cap.source)} capture · ${cap.at}</span></div>
+    <blockquote class="quote">${cap.content.slice(0, s)}<mark>${cap.content.slice(s, e)}</mark>${cap.content.slice(e)}</blockquote>
+  </div>
+  <div class="sec">
+    <div class="sec-h"><h3>Connections</h3><span class="n">${edges.length}</span><a class="link" href="#connections">Open in Connections ${ic("arrow")}</a></div>
+    <svg class="ego" id="ego" aria-label="Neighbourhood graph"></svg>
+    ${edges.map((r) => { const out = r.s === o.id; const other = A.obj(out ? r.t : r.s); const verb = A.REL[r.kind].sym || out ? A.REL[r.kind].label : A.INV[r.kind]; return `<div class="rel" data-id="${other.id}">${A.relSwatch(r.kind, 30)}<div class="rt">${other.title}</div><div class="rv"><span class="origin ${r.origin === "model" ? "model" : ""}"></span>${verb}</div></div>`; }).join("")}
+  </div>
+  ${revs.length ? `<div class="sec">
+    <div class="sec-h"><h3>Revisions</h3><span class="n">${revs.length}</span><a class="link" href="#evolution">Open in Evolution ${ic("arrow")}</a></div>
+    <div class="spine">${revs.map((r) => `<div class="rv ${r.current ? "cur" : ""}"><i></i><b>${r.id}</b><span>${r.current ? "Current · " : ""}${A.revCaption(r)}</span><em>${r.ago}</em></div>`).join("")}</div>
+  </div>` : `<div class="sec"><div class="sec-h"><h3>Revisions</h3><span class="n">${o.rev}</span><a class="link" href="#evolution">Open in Evolution ${ic("arrow")}</a></div></div>`}
+  <div style="height:40px"></div>`;
+}
+function ideas() {
+  const kinds = ["idea", "task", "decision", "question", "note"]; const plural = { idea: "Ideas", task: "Tasks", decision: "Decisions", question: "Questions", note: "Notes" };
+  const list = A.objects.filter((o) => state.filter === "all" || o.kind === state.filter);
+  let last = ""; const rows = list.map((o) => { const h = o.group !== last ? `<div class="day">${o.group}</div>` : ""; last = o.group;
+    return h + `<div class="row" role="option" aria-selected="${o.id === state.idea}" data-id="${o.id}">${A.kind(o.kind)}<div style="min-width:0"><div class="t">${o.title}</div><div class="s">${snippet(o)}</div></div><div class="margin">${marginHtml(o).replace('<div class="margin">', "").replace(/<\/div>$/, "")}<span class="when">${o.ago}</span></div></div>`; }).join("");
+  const sel = A.obj(state.idea);
+  return `<div class="app">${A.rail("ideas")}<main class="main" style="overflow:hidden"><div class="ideas">
+    <div class="lcol">
+      <div class="page-head" style="padding-top:26px"><div><h1>Ideas</h1><p>What Arthur distilled from your captures</p></div><span class="spacer"></span></div>
+      <div class="toolbar"><label class="input" style="flex:1;max-width:380px">${ic("search", "sm")}<input placeholder="Search ideas" aria-label="Search ideas"><kbd>/</kbd></label><span style="flex:1"></span><button class="btn ghost">Recent ${ic("chev", "sm")}</button><button class="btn ghost">${ic("filter", "sm")}Filter</button></div>
+      <div class="tabs"><div class="seg" role="tablist">
+        <button role="tab" aria-selected="${state.filter === "all"}" data-f="all">All<i>${A.objects.length}</i></button>
+        ${kinds.map((k) => { const n = A.objects.filter((o) => o.kind === k).length; return `<button role="tab" class="${n ? "" : "zero"}" aria-selected="${state.filter === k}" data-f="${k}">${plural[k]}<i>${n}</i></button>`; }).join("")}
+      </div></div>
+      <div class="scroll"><div class="list" role="listbox" aria-label="Ideas">${rows}</div></div>
+    </div>
+    <aside class="inspector" aria-label="Idea detail">${inspectorIdea(sel)}</aside>
+  </div></main></div>`;
+}
+function ideasAfter() {
+  document.querySelectorAll(".row").forEach((r) => r.onclick = () => { state.idea = r.dataset.id; render(); });
+  document.querySelectorAll(".seg button").forEach((b) => b.onclick = () => { state.filter = b.dataset.f; render(); });
+  const o = A.obj(state.idea); const ids = new Set([o.id, ...A.edgesOf(o.id).flatMap((r) => [r.s, r.t])]);
+  const pos = {}; const others = [...ids].filter((i) => i !== o.id); pos[o.id] = [200, 88];
+  others.forEach((id, i) => { const a = (i / others.length) * Math.PI * 2 - Math.PI / 2; pos[id] = [200 + Math.cos(a) * 150, 88 + Math.sin(a) * 62]; });
+  A.renderGraph($("#ego"), { objects: A.objects.filter((x) => ids.has(x.id)), pos, mini: true, bounds: [0, 0, 400, 176], rel: A.rel.filter((r) => r.s === o.id || r.t === o.id) });
+  $("#ego").querySelectorAll(".g-label.mini").forEach((t) => t.remove());
+}
+
+/* ---------------- CONNECTIONS ---------------- */
+function nodeInspector(o) {
+  const edges = A.edgesOf(o.id); const byKind = {}; edges.forEach((r) => (byKind[r.kind] = byKind[r.kind] || []).push(r));
+  return `<div class="insp-head"><div class="meta">${A.kind(o.kind)}<span class="kindname">${kindWord[o.kind]}</span><span>·</span><span>Edited ${o.ago} ago</span></div><h2>${o.title}</h2></div>
+  <div class="insp-body" style="font-size:15px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">${o.body}</div>
+  <div class="actions"><button class="btn" data-go="ideas">Open idea ${ic("arrow", "sm")}</button><button class="btn ghost" data-go="evolution">${ic("rev", "sm")}${o.rev} revisions</button></div>
+  <div class="sec" style="margin-top:22px"><div class="sec-h"><h3>Connections</h3><span class="n">${edges.length}</span></div>
+  ${Object.entries(byKind).map(([k, rs]) => `<div class="group-h">${A.relSwatch(k, 30)}<span>${A.REL[k].label}</span></div>${rs.map((r) => { const out = r.s === o.id; const other = A.obj(out ? r.t : r.s); return `<div class="rel" data-edge="${r.id}" style="grid-template-columns:22px minmax(0,1fr) auto">${A.kind(other.kind)}<div class="rt">${A.REL[k].sym ? "" : out ? "" : "← "}${other.title}</div><div class="rv"><span class="origin ${r.origin === "model" ? "model" : ""}"></span>${r.origin === "model" ? "Arthur" : r.origin === "user" ? "You" : "System"}</div></div>`; }).join("")}`).join("")}
+  </div>`;
+}
+function edgeInspector(r) {
+  const a = A.obj(r.s), b = A.obj(r.t), K = A.REL[r.kind];
+  return `<div class="insp-head"><div class="meta"><span class="kindname">Connection</span><span>·</span><span>${K.sym ? "No direction" : "Directional"}</span></div>
+    <h2 style="font-size:23px"><span style="color:var(--ink)">${a.title}</span> <em style="color:var(--rel-${r.kind});font-style:italic">${K.label}</em> ${b.title}</h2></div>
+  <div class="sec" style="margin-top:22px"><div class="edge-hero">
+    <div class="edge-end" data-node="${a.id}">${A.kind(a.kind)}${a.title}</div>
+    <div class="edge-mid">${A.relSwatch(r.kind, 44)}<b>${K.label}</b></div>
+    <div class="edge-end" data-node="${b.id}">${A.kind(b.kind)}${b.title}</div>
+  </div></div>
+  <div class="sec"><div class="sec-h"><h3>What this means</h3></div><p class="note" style="margin:0">${K.meaning}</p></div>
+  <div class="sec"><div class="sec-h"><h3>Origin</h3></div>
+    <dl class="kv"><dt>Created by</dt><dd>${r.origin === "model" ? '<span class="pencil"></span>' : '<span class="solid"></span>'}${A.ORIGIN[r.origin]}</dd><dt>Created</dt><dd>${r.at}</dd><dt>Direction</dt><dd>${K.sym ? "Reads the same both ways" : `${a.title} → ${b.title}`}</dd></dl>
+    ${r.origin === "model" ? `<p class="note" style="margin:12px 0 0">Arthur proposed this link after checking it twice. Nothing here changes your ideas.</p>` : ""}
+  </div>`;
+}
+function conn() {
+  const sel = state.sel; const inspector = sel && sel.type === "edge" ? edgeInspector(A.rel.find((r) => r.id === sel.id)) : sel ? nodeInspector(A.obj(sel.id)) : `<div class="state"><h4>Pick something on the map</h4><p>Select an idea to see what it connects to, or select a line to see how and why two ideas are linked.</p></div>`;
+  const rels = A.rel.filter((r) => state.origin === "all" || (state.origin === "yours" ? r.origin === "user" : r.origin !== "user"));
+  return `<div class="app">${A.rail("connections")}<main class="main" style="overflow:hidden"><div class="conn">
+    <div class="stage">
+      <div class="page-head" style="padding-top:26px"><div><h1>Connections</h1><p>${A.objects.length} ideas, ${A.rel.length} links</p></div><span class="spacer"></span>
+        <div class="seg" style="border:0;gap:6px"><button class="btn" aria-pressed="true" style="background:var(--selected)">${ic("graph", "sm")}Map</button><button class="btn ghost">${ic("list", "sm")}List</button></div>
+        <label class="input" style="width:230px">${ic("search", "sm")}<input placeholder="Find an idea" aria-label="Find an idea"><kbd>/</kbd></label>
+        <button class="btn" title="Asks the model to propose links between your ideas">${ic("wand", "sm")}Find connections</button></div>
+      <div class="canvas" id="canvas"><svg class="g" id="g" aria-label="Knowledge map"></svg>
+        <div class="legend" role="group" aria-label="Show relation types">${Object.keys(A.REL).map((k) => `<button aria-pressed="${state.enabled.has(k)}" data-k="${k}">${A.relSwatch(k, 30)}<span>${A.REL[k].label}</span></button>`).join("")}</div>
+        <div class="hintbar"><div class="seg" style="border:0;gap:16px">${["all", "yours", "proposed"].map((o) => `<button style="padding:2px 0" aria-selected="${state.origin === o}" data-o="${o}">${{ all: "All links", yours: "Yours", proposed: "Proposed by Arthur" }[o]}</button>`).join("")}</div></div>
+      </div>
+    </div>
+    <aside class="inspector" aria-label="Details">${inspector}</aside>
+  </div></main></div>`;
+}
+function connAfter() {
+  const draw = () => A.renderGraph($("#g"), { rel: A.rel.filter((r) => state.origin === "all" || (state.origin === "yours" ? r.origin === "user" : r.origin !== "user")), selected: state.sel, enabled: state.enabled, regions: true, bounds: [30, 62, 950, 590], onSelect: (s) => { state.sel = s; render(); } });
+  draw(); $("#canvas").addEventListener("click", () => { state.sel = null; render(); });
+  document.querySelectorAll(".legend button").forEach((b) => b.onclick = (e) => { e.stopPropagation(); const k = b.dataset.k; state.enabled.has(k) ? state.enabled.delete(k) : state.enabled.add(k); render(); });
+  document.querySelectorAll("[data-o]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); state.origin = b.dataset.o; render(); });
+  document.querySelectorAll("[data-edge]").forEach((r) => r.onclick = () => { state.sel = { type: "edge", id: r.dataset.edge }; render(); });
+  document.querySelectorAll("[data-node]").forEach((r) => r.onclick = () => { state.sel = { type: "node", id: r.dataset.node }; render(); });
+}
+
+/* ---------------- EVOLUTION ---------------- */
+function evolution() {
+  const r = A.rev(state.rev), parents = r.parents.map(A.rev); const cap = r.prov && A.captures[r.prov.cap];
+  const cmp = parents[0]; const tabs = parents.length > 1 ? `<div class="tabbtn">${parents.map((p) => `<button class="btn ${state.cmp === p.id || (!state.cmp && p === parents[0]) ? "" : "ghost"}" data-cmp="${p.id}" style="height:26px">vs ${p.id}</button>`).join("")}</div>` : "";
+  const base = parents.length ? (parents.find((p) => p.id === state.cmp) || parents[0]) : null;
+  const st = A.revStat(r.id, base && base.id);
+  const bodyDiff = base ? A.diffHtml(A.wordDiff(base.body, r.body)) : r.body; const titleDiff = base ? A.diffHtml(A.wordDiff(base.title, r.title)) : r.title;
+  const originName = A.ORIGIN_REV[r.origin];
+  const prov = cap ? (() => { const i = cap.content.indexOf(r.id === "R1" ? "quickly capture ideas on my phone, ideally using voice" : "Mobile capture has to work on the train"); const e = i + (r.id === "R1" ? 54 : 40); return `<div class="cap-meta">${A.srcIc(cap.source)}<span>${A.srcName(cap.source)} capture · ${cap.at}</span></div><blockquote class="quote">${cap.content.slice(0, i)}<mark>${cap.content.slice(i, e)}</mark>${cap.content.slice(e)}</blockquote>`; })() : `<p class="note" style="margin:0">${r.origin === "merge" ? "Merged text is written by you. Arthur never claims it came from a capture." : "This text is your edit, so it has no capture source."}</p>`;
+  return `<div class="app">${A.rail("evolution")}<main class="main" style="overflow:hidden"><div class="evolution">
+    <div class="picker"><h2>Evolution</h2><p>How ideas change over time</p>
+      ${A.evolving.map((e) => `<div class="pick" aria-selected="${e.id === state.pick}" data-pick="${e.id}"><div class="t">${e.title}</div>${A.sparkRail(e.shape)}<div class="m">r${e.n} · ${e.ago} ago</div></div>`).join("")}
+      <div class="pick" style="opacity:.6"><div class="t">Voice-first capture flow</div><div class="m">r3 · 1 d ago</div></div>
+      <div class="pick" style="opacity:.6"><div class="t">Arthur UI redesign</div><div class="m">r3 · 1 d ago</div></div>
+      <div class="pick" style="opacity:.6"><div class="t">Improve graph visualization</div><div class="m">r2 · 1 d ago</div></div>
+      <div class="note" style="padding:14px 26px">Showing ideas with more than one revision.</div>
+    </div>
+    <div class="work">
+      <div class="head"><div><h1>Arthur mobile app experience</h1><p>5 revisions · 1 branch · 1 merge · <span style="color:var(--accent)">R5 is current</span></p></div><span class="spacer"></span>
+        <button class="btn">${ic("edit", "sm")}Revise</button><button class="btn ghost">${ic("branch", "sm")}Branch from ${r.id}</button><button class="btn ghost">${ic("merge", "sm")}Merge…</button></div>
+      <div class="rail-wrap"><svg id="lin" role="group" aria-label="Revision history"></svg></div>
+      <div class="detail">
+        <div><div class="dh"><h2>${r.id}</h2><small>${originName} · ${r.at}</small>${r.current ? '<small style="color:var(--accent)">Current</small>' : ""}<span class="spacer"></span>${tabs}</div>
+          <div class="stat">${base ? `<span>Changes from <b>${base.id}</b></span><span class="a">+${st.add} words</span><span class="d">−${st.del} words</span>${st.title ? "<span>Title changed</span>" : "<span>Title unchanged</span>"}` : "<span>First version of this idea</span>"}</div>
+          <div class="diffbox diff"><div><span class="dl">Title</span><div style="font-size:21px;line-height:1.3">${titleDiff}</div></div><div><span class="dl">Body</span>${bodyDiff}</div></div></div>
+        <div class="sidecol">
+          <div class="sec"><div class="sec-h"><h3>Source</h3></div>${prov}</div>
+          <div class="sec"><div class="sec-h"><h3>${parents.length > 1 ? "Merged from" : "Continues from"}</h3></div>${parents.length ? parents.map((p) => `<div class="rel" data-rev="${p.id}" style="grid-template-columns:34px 1fr auto"><b style="font-weight:650">${p.id}</b><div class="rt" style="font-family:var(--sans);font-size:13px;color:var(--ink-2)">${A.revCaption(p)}</div><div class="rv">${p.ago}</div></div>`).join("") : '<p class="note" style="margin:0">Nothing. This is where the idea starts.</p>'}</div>
+        </div>
+      </div>
+    </div>
+  </div></main></div>`;
+}
+function evoAfter() {
+  A.renderLineage($("#lin"), { selected: state.rev, w: 960, h: 262, onSelect: (id) => { state.rev = id; state.cmp = null; render(); } });
+  document.querySelectorAll("[data-cmp]").forEach((b) => b.onclick = () => { state.cmp = b.dataset.cmp; render(); });
+  document.querySelectorAll("[data-rev]").forEach((b) => b.onclick = () => { state.rev = b.dataset.rev; state.cmp = null; render(); });
+}
+
+/* ---------------- router ---------------- */
+function render() {
+  const s = state.screen; $("#root").innerHTML = { home, ideas, connections: conn, evolution }[s]();
+  ({ home: homeAfter, ideas: ideasAfter, connections: connAfter, evolution: evoAfter })[s]();
+  document.querySelectorAll(".nav a[href^='#']").forEach((a) => a.onclick = (e) => { e.preventDefault(); const t = a.getAttribute("href").slice(1); if (["home", "ideas", "connections", "evolution"].includes(t)) { state.screen = t; render(); } });
+  document.querySelectorAll(".link[href^='#']").forEach((a) => a.onclick = (e) => { e.preventDefault(); const t = a.getAttribute("href").slice(1); if (["home", "ideas", "connections", "evolution"].includes(t)) { state.screen = t; render(); } });
+  document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => { state.screen = b.dataset.go; render(); });
+  document.querySelectorAll(".grp .obj").forEach((b) => b.onclick = () => { state.idea = b.dataset.id; state.screen = "ideas"; render(); });
+}
+render();
+</script>
+</body>
+</html>

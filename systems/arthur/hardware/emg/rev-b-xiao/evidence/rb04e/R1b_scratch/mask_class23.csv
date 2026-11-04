@@ -1,0 +1,43 @@
+x,y,net,class,why,pad,same_net,centre_to_opening,hole_to_opening,annulus_to_opening,shift_needed_mm,courtyard_slack_mm,feasible
+36.4,16.5,/VCM,3,annulus overlaps an opening,R105.1,True,0.275,0.125,-0.025,0.13,1.55,True
+31.7,16.5,/VCM,3,annulus overlaps an opening,R106.1,True,0.275,0.125,-0.025,0.13,0.28,True
+34.5,39.7,GND,2,"annulus outside the opening, dam 0.00-0.09 mm",R7108.2,True,0.3758,0.2258,0.0758,0.026,0.445,True
+34.5,39.7,GND,2,"annulus outside the opening, dam 0.00-0.09 mm",C4007.2,True,0.4363,0.2863,0.1363,0.026,0.445,True
+25.2,49.1,GND,3,annulus overlaps an opening,R7101.1,False,0.5883,0.4383,0.2883,0.152,0.0,False
+25.2,49.1,GND,3,annulus overlaps an opening,C6009.2,True,0.2599,0.1099,-0.0401,0.152,0.0,False
+25.2,49.1,GND,3,annulus overlaps an opening,X1.4,False,0.7,0.55,0.4,0.152,0.0,False
+7.2,36.7,GND,2,"annulus outside the opening, dam 0.00-0.09 mm",TP8.1,True,0.3812,0.2312,0.0812,0.019,,True
+14.2,57.5,GND,2,"annulus outside the opening, dam 0.00-0.09 mm",C407.2,True,0.861,0.711,0.561,0.014,0.0,False
+14.2,57.5,GND,2,"annulus outside the opening, dam 0.00-0.09 mm",C406.2,True,0.3873,0.2373,0.0873,0.014,0.0,False
+14.3,18.7,GND,2,"annulus outside the opening, dam 0.00-0.09 mm",C304.2,True,0.325,0.175,0.025,0.075,0.75,True
+14.3,18.7,GND,2,"annulus outside the opening, dam 0.00-0.09 mm",R306.2,False,0.8284,0.6784,0.5284,0.075,0.75,True
+13.4,36.7,GND,2,"annulus outside the opening, dam 0.00-0.09 mm",TP7.1,True,0.3812,0.2312,0.0812,0.019,,True
+28.7,37.8,/Analog_Power_Interlock/AFE_EN,2,"annulus outside the opening, dam 0.00-0.09 mm",Q3001.1,False,0.737,0.587,0.437,0.1,1.38,True
+28.7,37.8,/Analog_Power_Interlock/AFE_EN,2,"annulus outside the opening, dam 0.00-0.09 mm",Q3001.2,False,0.641,0.491,0.341,0.1,1.38,True
+28.7,37.8,/Analog_Power_Interlock/AFE_EN,2,"annulus outside the opening, dam 0.00-0.09 mm",Q3001.3,True,0.3,0.15,0.0,0.1,1.38,True
+11.1,49.9,/CH2_N,2,"annulus outside the opening, dam 0.00-0.09 mm",D204.3,True,0.325,0.175,0.025,0.102,0.28,True
+11.1,49.9,/CH2_N,2,"annulus outside the opening, dam 0.00-0.09 mm",C207.1,True,0.3135,0.1635,0.0135,0.102,0.28,True
+11.1,49.9,/CH2_N,2,"annulus outside the opening, dam 0.00-0.09 mm",C107.1,False,0.7223,0.5723,0.4223,0.102,0.28,True
+23.0,56.4,DVDD_F,3,annulus overlaps an opening,R7103.1,True,0.325,0.175,0.025,0.126,0.85,True
+23.0,56.4,DVDD_F,3,annulus overlaps an opening,R7104.1,True,0.275,0.125,-0.025,0.126,0.85,True
+26.3,59.3,DVDD_F,3,annulus overlaps an opening,C7101.1,True,0.325,0.175,0.025,0.126,0.39,True
+26.3,59.3,DVDD_F,3,annulus overlaps an opening,C7102.1,True,0.275,0.125,-0.025,0.126,0.39,True
+28.5,56.7,DVDD_F,3,annulus overlaps an opening,FB1.2,True,0.275,0.125,-0.025,0.132,0.05,False
+24.1,54.5,/DRDY_N,3,annulus overlaps an opening,R7103.2,False,0.7289,0.5789,0.4289,0.173,4.03,True
+24.1,54.5,/DRDY_N,3,annulus overlaps an opening,R6003.1,False,0.6471,0.4971,0.3471,0.173,4.03,True
+24.1,54.5,/DRDY_N,3,annulus overlaps an opening,R6003.2,True,0.2596,0.1096,-0.0404,0.173,4.03,True
+49.4,58.0,/SYNC_RESET_N,3,annulus overlaps an opening,U1.2,False,0.6891,0.5391,0.3891,0.163,0.325,True
+49.4,58.0,/SYNC_RESET_N,3,annulus overlaps an opening,U1.3,True,0.2509,0.1009,-0.0491,0.163,0.325,True
+22.4,60.7,/XIAO_Brain_Interface/USB_PRESENT,2,"annulus outside the opening, dam 0.00-0.09 mm",R7106.1,True,0.3065,0.1565,0.0065,0.112,0.05,False
+22.4,60.7,/XIAO_Brain_Interface/USB_PRESENT,2,"annulus outside the opening, dam 0.00-0.09 mm",R7105.1,False,0.797,0.647,0.497,0.112,0.05,False
+30.3,48.2,/XIAO_Brain_Interface/SCLK_MCU,2,"annulus outside the opening, dam 0.00-0.09 mm",U1.8,False,0.6109,0.4609,0.3109,0.099,,True
+30.3,48.2,/XIAO_Brain_Interface/SCLK_MCU,2,"annulus outside the opening, dam 0.00-0.09 mm",U1.9,True,0.3291,0.1791,0.0291,0.099,,True
+26.8,54.6,/XIAO_Brain_Interface/MOSI_MCU,2,"annulus outside the opening, dam 0.00-0.09 mm",R7102.1,True,0.325,0.175,0.025,0.077,3.18,True
+26.8,54.6,/XIAO_Brain_Interface/MOSI_MCU,2,"annulus outside the opening, dam 0.00-0.09 mm",R7102.2,False,0.525,0.375,0.225,0.077,3.18,True
+30.3,55.5,/XIAO_Brain_Interface/MOSI_MCU,3,annulus overlaps an opening,U1.11,True,0.2909,0.1409,-0.0091,0.15,,True
+30.3,55.5,/XIAO_Brain_Interface/MOSI_MCU,3,annulus overlaps an opening,U1.12,False,0.6491,0.4991,0.3491,0.15,,True
+11.1,48.4,/CH1_N,2,"annulus outside the opening, dam 0.00-0.09 mm",C106.1,False,0.7223,0.5723,0.4223,0.102,0.28,True
+11.1,48.4,/CH1_N,2,"annulus outside the opening, dam 0.00-0.09 mm",C107.1,True,0.3135,0.1635,0.0135,0.102,0.28,True
+11.1,53.2,/CH3_P,3,annulus overlaps an opening,D303.3,True,0.325,0.175,0.025,0.128,0.28,True
+11.1,53.2,/CH3_P,3,annulus overlaps an opening,C306.1,True,0.275,0.125,-0.025,0.128,0.28,True
+14.6,20.1,/CH3/BUF_N,2,"annulus outside the opening, dam 0.00-0.09 mm",U502.7,True,0.35,0.2,0.05,0.053,1.88,True

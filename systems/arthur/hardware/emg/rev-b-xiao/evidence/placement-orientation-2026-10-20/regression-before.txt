@@ -1,0 +1,77 @@
+..FFFFFFFF
+======================================================================
+FAIL: test_five_north_headers_use_180_for_preview (test_jlc_rotations.RotationTests.test_five_north_headers_use_180_for_preview) (reference='J101')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/tools/test_jlc_rotations.py", line 15, in test_five_north_headers_use_180_for_preview
+    self.assertEqual(factory_rotation(ref, JST_PACKAGE, 180), 180)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0.0 != 180
+
+======================================================================
+FAIL: test_five_north_headers_use_180_for_preview (test_jlc_rotations.RotationTests.test_five_north_headers_use_180_for_preview) (reference='J201')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/tools/test_jlc_rotations.py", line 15, in test_five_north_headers_use_180_for_preview
+    self.assertEqual(factory_rotation(ref, JST_PACKAGE, 180), 180)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0.0 != 180
+
+======================================================================
+FAIL: test_five_north_headers_use_180_for_preview (test_jlc_rotations.RotationTests.test_five_north_headers_use_180_for_preview) (reference='J301')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/tools/test_jlc_rotations.py", line 15, in test_five_north_headers_use_180_for_preview
+    self.assertEqual(factory_rotation(ref, JST_PACKAGE, 180), 180)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0.0 != 180
+
+======================================================================
+FAIL: test_five_north_headers_use_180_for_preview (test_jlc_rotations.RotationTests.test_five_north_headers_use_180_for_preview) (reference='J401')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/tools/test_jlc_rotations.py", line 15, in test_five_north_headers_use_180_for_preview
+    self.assertEqual(factory_rotation(ref, JST_PACKAGE, 180), 180)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0.0 != 180
+
+======================================================================
+FAIL: test_five_north_headers_use_180_for_preview (test_jlc_rotations.RotationTests.test_five_north_headers_use_180_for_preview) (reference='J5001')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/tools/test_jlc_rotations.py", line 15, in test_five_north_headers_use_180_for_preview
+    self.assertEqual(factory_rotation(ref, JST_PACKAGE, 180), 180)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0.0 != 180
+
+======================================================================
+FAIL: test_north_exception_refuses_changed_footprint_or_pose (test_jlc_rotations.RotationTests.test_north_exception_refuses_changed_footprint_or_pose) (package='Wrong_Connector', angle=180)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/tools/test_jlc_rotations.py", line 36, in test_north_exception_refuses_changed_footprint_or_pose
+    with self.assertRaises(ValueError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_north_exception_refuses_changed_footprint_or_pose (test_jlc_rotations.RotationTests.test_north_exception_refuses_changed_footprint_or_pose) (package='JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal', angle=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/tools/test_jlc_rotations.py", line 36, in test_north_exception_refuses_changed_footprint_or_pose
+    with self.assertRaises(ValueError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_north_exception_refuses_changed_footprint_or_pose (test_jlc_rotations.RotationTests.test_north_exception_refuses_changed_footprint_or_pose) (package='JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal', angle=90)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/tools/test_jlc_rotations.py", line 36, in test_north_exception_refuses_changed_footprint_or_pose
+    with self.assertRaises(ValueError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.018s
+
+FAILED (failures=8)

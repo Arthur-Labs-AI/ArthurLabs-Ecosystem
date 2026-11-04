@@ -1,0 +1,21 @@
+{
+  "zip_files": [
+    "ARTHUR_EMG_RevB-B_Cu.gbl",
+    "ARTHUR_EMG_RevB-B_Mask.gbs",
+    "ARTHUR_EMG_RevB-B_Silkscreen.gbo",
+    "ARTHUR_EMG_RevB-Edge_Cuts.gm1",
+    "ARTHUR_EMG_RevB-F_Cu.gtl",
+    "ARTHUR_EMG_RevB-F_Mask.gts",
+    "ARTHUR_EMG_RevB-F_Paste.gtp",
+    "ARTHUR_EMG_RevB-F_Silkscreen.gto",
+    "ARTHUR_EMG_RevB-In1_Cu.g1",
+    "ARTHUR_EMG_RevB-In2_Cu.g2",
+    "ARTHUR_EMG_RevB.drl"
+  ],
+  "via_drills_matched_to_source": 191,
+  "connector_pad_flashes_checked": 60,
+  "cpl_and_bom_refs": 126,
+  "J1_factory_rotation": 270,
+  "result": "PASS",
+  "limits": "Pad centres verified; this does not qualify paste stencil, assembly tolerances, or factory feeder rotation."
+}

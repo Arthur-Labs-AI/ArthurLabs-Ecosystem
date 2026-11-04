@@ -1,0 +1,224 @@
+{
+  "status": "NOT RELEASED — PENDING FACTORY APPROVAL",
+  "candidate_revision": "HJ-JLC-RC1-2026-10-19",
+  "board_revision": "RevB",
+  "generated_UTC": "2026-10-19T16:09:16.438103+00:00",
+  "branch": "codex/revb-horizontal-jst",
+  "git_HEAD": "98cc84e07fe4cf2791a56baba2cde3e9bb599724",
+  "working_tree": "Includes preserved uncommitted horizontal-JST ECO plus minimal closure corrections; HEAD alone does not identify candidate",
+  "review_readiness": "READY FOR JLCPCB REVIEW BEFORE PAYMENT",
+  "production_approved": false,
+  "human_contact_approved": false,
+  "externally_submitted": false,
+  "email_sent": false,
+  "order_or_payment_performed": false,
+  "nominal_board_mm": [
+    51.3,
+    64.95
+  ],
+  "requested_settings": {
+    "layers": 4,
+    "thickness_mm": 1.6,
+    "finish": "ENIG",
+    "solder_mask": "Green",
+    "silkscreen": "White",
+    "fabricated_quantity": 5,
+    "assembled_quantity": 2,
+    "assembly_side": "Top",
+    "service": "Economic requested; exactcomponenteligibility and5/2split requireconfirmation",
+    "panelization": "Factory plan pending; single-boardoutlinepreserved",
+    "ReviewBeforePayment": true,
+    "ConfirmProductionFile": true
+  },
+  "special_BAT_component_hole": {
+    "finished_diameter_mm": 1.9,
+    "top_land_mm": 2.3,
+    "top_mask_opening_mm": 1.95,
+    "bottom_land_mask_union_mm": 3.0,
+    "board_center_mm": [
+      44.635,
+      54.79
+    ],
+    "instruction": "OPEN PLATED COMPONENT HOLE; no tent/plug/fill/cover or dimensionalchanges without EQ/customer approval"
+  },
+  "counts": {
+    "SMT_references": 126,
+    "BOM_groups": 28,
+    "horizontal_JSTs": 6,
+    "vias": 191,
+    "component_PTHs": 1
+  },
+  "factory_exclusions": [
+    "U1:manualXIAOassembly,do notsource/place",
+    "TP1-TP8:coppertestfeatures,notpurchasedparts"
+  ],
+  "source_root": "/home/kaloyan/Projects/A.R.T.H.U.R/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB",
+  "source_files_sha256": {
+    "ARTHUR_EMG_RevB.kicad_dru": "21c0e80350f66cac29bd8dca1b4f562997b66288776b39d838a0c812d51ea1c0",
+    "ARTHUR_EMG_RevB.kicad_pcb": "f520aa99c4b628969668b3081001378df26c54faacd3e49b434ea802a4bbdc0e",
+    "ARTHUR_EMG_RevB.kicad_pro": "ba3f3c36297e079341127a1d4a122eaa4b76979a9bc81286e58e7c5332a5b383",
+    "ARTHUR_EMG_RevB.kicad_sch": "427a55517e233e27ce1116ce04e3861a8772bcb57cb9a14dfea20baab0b0ba9a",
+    "ARTHUR_RevB.kicad_sym": "85e722d9c7617f377c5cc0823d960241a1efa3ffddb814730bf801e52148084b",
+    "adc.kicad_sch": "382034adaa879142a35047f5eb7b4eeeeafc2ef207c01cb7fc878151f906e9d7",
+    "analog_power_interlock.kicad_sch": "17445ddfae7db28a920b1d951a2071135a0bedf5dacd5673fd8785bee569fdaf",
+    "emg_channel.kicad_sch": "f5d4e5ada7807383736b581ee12fceb957b657ae11a69b08471fa207c437184f",
+    "fp-lib-table": "eced61d33d29b1d3098799d1d6ea25131439ed638760f6dc98e4e6855d29943e",
+    "fp-libs/ARTHUR.pretty/OSC_SCTF_SX3M_SMD3225-4P.kicad_mod": "ee7cf1921675216962273ebd0774aec1c1b5b3dd9f75facb6c3fc1f00bba436d",
+    "fp-libs/ARTHUR.pretty/XIAO_ESP32S3_HANDSOLDER.kicad_mod": "c8703292766625345f78a221ab7682acadf4131a4296d330a8a2671e67d7a36e",
+    "fp-libs/Capacitor_SMD.pretty/C_0603_1608Metric.kicad_mod": "0fc6d5da5b04714c37537931e035d9b6d1df8fdf3609b0a122d5521e37c7b7ba",
+    "fp-libs/Capacitor_SMD.pretty/C_0805_2012Metric.kicad_mod": "cc8657834ba381314195c294a98cd732dc54c379a83720250bc18a70b93ccb49",
+    "fp-libs/Connector_JST.pretty/JST_PH_B2B-PH-SM4-TB_1x02-1MP_P2.00mm_Vertical.kicad_mod": "a56b5bd30ebe49d006ab78823913bb8a2016bd9f95ec4d3af6f67fe2347f872f",
+    "fp-libs/Connector_JST.pretty/JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal.kicad_mod": "47c7b317c6e5f13694f33abcd6383353999e07e54c02739b006a9a771f436e3c",
+    "fp-libs/Inductor_SMD.pretty/L_0603_1608Metric.kicad_mod": "7b0040268d5166f0ea917b964dca9070a27c399fccd5a31ce46e7168e19614db",
+    "fp-libs/Package_SO.pretty/TSSOP-14_4.4x5mm_P0.65mm.kicad_mod": "e4bf82cea6d3b3259ddf42469b1407628ad1181a28ae6f3f340190c0cca31ccd",
+    "fp-libs/Package_SO.pretty/TSSOP-20_4.4x6.5mm_P0.65mm.kicad_mod": "b7ca3a31dd45c1225609f9b94e8ba1534bd16edd193628c8d67a8ea669b26b72",
+    "fp-libs/Package_TO_SOT_SMD.pretty/SOT-23-5.kicad_mod": "455a3f7c3e5eb5b8847eaa5df23e18651e78ab9f75afd09a0883758a0d901761",
+    "fp-libs/Package_TO_SOT_SMD.pretty/SOT-23.kicad_mod": "0d88c86c1b6d8c1aae4aa8c09386264c089d4451a128b6ccd63ed253f4300b15",
+    "fp-libs/README.md": "eef1a41728c2cb73da056e1f87715b75607342528f03be7c1e8fe6ca362768cd",
+    "fp-libs/Resistor_SMD.pretty/R_0603_1608Metric.kicad_mod": "e3316f6cbb94042f4ffc9938fc994b90483c96a54ae16ee01335d45de5d82999",
+    "fp-libs/Resistor_SMD.pretty/R_0805_2012Metric.kicad_mod": "87a6229f800ff68a57b66de87fed884fc717e6e5970a425777d761b19d2813bf",
+    "fp-libs/TestPoint.pretty/TestPoint_Pad_D1.5mm.kicad_mod": "9758c3b55d89a2263720410079b5232a96f2160a2cafcc3b5203f040a658d3b5",
+    "reference_vcm.kicad_sch": "ee59fff43df3f0774c720cc9932e5964609cafd3f91cd037b33213678c2eebed",
+    "sym-lib-table": "fd599146dee6f251c34a74b1e975c3660c69e331696478fd32c1b04946127b02",
+    "xiao_brain_interface.kicad_sch": "ba190de1aa44bc0d2688d3ca9e080184b69ee7edb0cd5604104818e9450ebaff"
+  },
+  "factory_review_files": [
+    {
+      "path": "NOT_RELEASED_PENDING_FACTORY_APPROVAL/ARTHUR_Neuron_RevB_HJ_JLC_RC1_NOT_RELEASED_BOM.csv",
+      "sha256": "d65684f9c3a2eeddaed7f4c90b4e91ab6a1e90eb3b5a96a63b3f48e09e3f231e",
+      "bytes": 2124,
+      "role": "factory_review_input"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_FACTORY_APPROVAL/ARTHUR_Neuron_RevB_HJ_JLC_RC1_NOT_RELEASED_CPL.csv",
+      "sha256": "77a359d62a150ecd96707c8f7fc79a1988501d69c9f49e418e56fa6decbed0d1",
+      "bytes": 4350,
+      "role": "factory_review_input"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_FACTORY_APPROVAL/ARTHUR_Neuron_RevB_HJ_JLC_RC1_NOT_RELEASED_CPL_raw_KiCad_rotation.csv",
+      "sha256": "f31ac0889e40c899bb10f31690c2813450911b9a6b56a41510ac98e7793b4259",
+      "bytes": 4356,
+      "role": "reference_only_raw_rotation"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_FACTORY_APPROVAL/ARTHUR_Neuron_RevB_HJ_JLC_RC1_NOT_RELEASED_Gerbers.zip",
+      "sha256": "2dba5ebe1220329af378240519455e628f2672eb88e753b587c8c0f893d82dfd",
+      "bytes": 70524,
+      "role": "factory_review_input"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_FACTORY_APPROVAL/COMPONENT_REVIEW_REQUEST.csv",
+      "sha256": "3b220fdacc5d45bfb2c0206dd0e6f2009ed9e8a42222795008ac0eb87ad032c9",
+      "bytes": 6924,
+      "role": "factory_review_input"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_FACTORY_APPROVAL/MANUAL_XIAO_ASSEMBLY.md",
+      "sha256": "f6b6ecaf45fc9841faa9f090cd0308725fe754333c0c6c877cd4d87e1327fec0",
+      "bytes": 3238,
+      "role": "factory_review_input"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_FACTORY_APPROVAL/MANUFACTURING_REMARKS.txt",
+      "sha256": "96dfc555d0c7ed24d2565749f6604c28fa75bef63d2161ef2e34fe6f4ebc3b56",
+      "bytes": 2886,
+      "role": "factory_review_input"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_FACTORY_APPROVAL/POLARITY_ORIENTATION_REVIEW.md",
+      "sha256": "c7f8295e98406a401e85217e33ee5b12cb2759065168ce4210b05e747c042a71",
+      "bytes": 2614,
+      "role": "factory_review_input"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_FACTORY_APPROVAL/README.md",
+      "sha256": "8d708669f0428294df23f7a536f55de9061fd7ac8f0fc9a13f3ce1950816ac8d",
+      "bytes": 1817,
+      "role": "factory_review_input"
+    },
+    {
+      "path": "NOT_RELEASED_PENDING_FACTORY_APPROVAL/placement-review.csv",
+      "sha256": "98678bafd38ade87d6ceb192fd0b8f95fd4856d7e8fab0f98f2003e1365588cc",
+      "bytes": 12656,
+      "role": "factory_review_input"
+    }
+  ],
+  "closure_documents_sha256": {
+    "CLOSURE_REPORT.md": "b895510d0650d8fb187cbdfc1a71dfc2c7a3d1b4f9f9cc4d84f52241072fc216",
+    "JLCPCB_CONFIRMED_VS_PENDING.md": "33f63d1c02c1b922ab93c1a940a9312b853b8c8b8f3ab6677e1e706d37ad2648",
+    "JLCPCB_FOLLOWUP_EMAIL.md": "d6a9fee84d0b6e31530777a1068e6f7c386650d67a7ab61ac2f4dfb8b9e6fc4a",
+    "ORDER_READINESS_CHECKLIST.md": "e1fdb9f261467b124b76cf9af6fee69566ec0a50c14987e5b18bd234170d3f9c",
+    "BAT_POST_ASSESSMENT.md": "e0bf69282ed6f9553ed42d98113c0634254b8fc54c851f23d1e187e25511ea27",
+    "MANUAL_XIAO_ASSEMBLY.md": "f6b6ecaf45fc9841faa9f090cd0308725fe754333c0c6c877cd4d87e1327fec0",
+    "POLARITY_ORIENTATION_REVIEW.md": "99a3719364fbd88d861da77570859dcdbc438d4021c34788e96746af35169d2f",
+    "COMPONENT_REVIEW_REQUEST.csv": "3b220fdacc5d45bfb2c0206dd0e6f2009ed9e8a42222795008ac0eb87ad032c9"
+  },
+  "verification_files_sha256": {
+    "verification/bat-post-assessment.json": "fcd5b0a42eb2a6e478db646037475793b1ba24a191c1b22004994045052df041",
+    "verification/current-mask.json": "7680e9cd538a811ede73a8d07e2710e9bfbabe3c0cba65ca91da5e11e50c5d7d",
+    "verification/drc-first-iteration.json": "b39392cd65a9a7fc2e7514c95bfd59d014851d5e93c351dbd587107a88a038d0",
+    "verification/drc.json": "2fe2b52db9abcbf65ba02d9d314a2d8c89ac69c2fd7f41fb1f44c20a2357e7c5",
+    "verification/erc.json": "5401d1525d52fb4f4618e2c625d332b74239959704f369e4de157767b99fe827",
+    "verification/export-vs-preclosure.json": "fbcf1d2a9082b33a15d40bbe16d361b593ef7c16c0e1d2fa9c4ebeeb7b7740ac",
+    "verification/fresh-native-export-comparison.json": "818cf9d011da5188b8616da5b2009c2ce27d61562d21b2e621e2c1491e204dee",
+    "verification/gerber-source-check.json": "1b0a87cf3a6ea2efbc841402048178ec798115321141a7f6c6ecc4f77afb038d",
+    "verification/gerbers/ARTHUR_EMG_RevB-B_Cu.gbl": "696901db429cc567c75e7aff2d3d988203f3ba8cfcf21294952ee7f989fe3a5f",
+    "verification/gerbers/ARTHUR_EMG_RevB-B_Mask.gbs": "687459ef7a985a15269f67bbb9ec5c138056a73d9f021aaf28fc687122d16b86",
+    "verification/gerbers/ARTHUR_EMG_RevB-B_Silkscreen.gbo": "4e5ed9e339c8921e29f2a1e912a8924947c6d94a9841093266f2f5b30ef9e018",
+    "verification/gerbers/ARTHUR_EMG_RevB-Edge_Cuts.gm1": "8e7666088581fddd7ce7a53935ca980011a8cf46ef12ec9d7c5a95976d11bbae",
+    "verification/gerbers/ARTHUR_EMG_RevB-F_Cu.gtl": "4d09f70ea9dd9c6738349615a419b78c8acd5a843a9e5a9b77fe6ab71e902697",
+    "verification/gerbers/ARTHUR_EMG_RevB-F_Mask.gts": "7b062f874fdb1c5670ca4be1d88f1cac781efd45d41e8c81402f9558d58c0c82",
+    "verification/gerbers/ARTHUR_EMG_RevB-F_Paste.gtp": "281b8cb3faa3c9ae3694a7dbc127a538df2ccb80cdcb88a77b780e49ffd8bd5f",
+    "verification/gerbers/ARTHUR_EMG_RevB-F_Silkscreen.gto": "bc33006be14d2700bb82a1fba1affc65fb5fc0202d597f829cd37d35a29cbabd",
+    "verification/gerbers/ARTHUR_EMG_RevB-In1_Cu.g1": "09fb24b377b2e380d3e163ae15e5cb7fcae452a483939313266ea387516c4fb5",
+    "verification/gerbers/ARTHUR_EMG_RevB-In2_Cu.g2": "621d1886b3ba67c79cbc97b06b9019447f75ac46e5a560c8932e28900d6a6084",
+    "verification/gerbers/ARTHUR_EMG_RevB.drl": "507cff16a580a95373262880f8ecc70560cb92082699a994cccf94f5b60b1ca3",
+    "verification/metadata-diff.json": "3c79a1c1a7df45b73ed25226bee2707610c7d448013a6f466d6570202572171f",
+    "verification/netlist.xml": "1c718406542d13e9f4fe366e6e9d6cba1ad996982eda81aa0c330c96448f1051",
+    "verification/package-source-checks.json": "accd539df78e9d6c8c80f8c1fbf8bc5be1f0c1305cd111a8ba113dd335af7d34",
+    "verification/placement-review.csv": "98678bafd38ade87d6ceb192fd0b8f95fd4856d7e8fab0f98f2003e1365588cc",
+    "verification/plots/B_Cu.png": "9eb5d91ed57fdefddc3cda3a40070b1e46a677d856bb1ed6d5d7f49d3810554c",
+    "verification/plots/B_Cu.svg": "c998073783b3900d81dfe8f73551f3e179b5b15e0753788c8b8d0b4f565cb463",
+    "verification/plots/Edge_Cuts.png": "920cb9006749bf6a525754875d9973277e3b654a215f0683a03f7a2c86f992d1",
+    "verification/plots/Edge_Cuts.svg": "a7e77cefca74b7e17f1ec2e0e09a75b446adfd9389a9bfc913cf20260fba146b",
+    "verification/plots/F_Cu.png": "f111127e84d43166051b5678de60a0520844d5ec8a063ba1c729cd30b065a03f",
+    "verification/plots/F_Cu.svg": "96ab89216c7de5ff99fe7c203a9c178c23a61d84b77d99479226d6a508a23b57",
+    "verification/plots/F_Mask.png": "0b4194bc1e64b092dfa9b13b5ca1defb0eb8515558a6f3ebf3970d070ced22e3",
+    "verification/plots/F_Mask.svg": "6379d0e22715e9b29b804cd6799a0b3708da0dc58bb9b1abceed68da802f62e0",
+    "verification/plots/F_Paste.png": "a8326ea3bcc2c74c7814c644f1dc7012a39cd33dac3d70b19f3592f0650cbf95",
+    "verification/plots/F_Paste.svg": "27181a73402432f16e657f2fb0591111e82b880e4a010be6405b1819420bcc90",
+    "verification/plots/In1_Cu.png": "872d2ed1abb1e00ab26de11bcf0ed377c7ae6d84d0cb89ed3c8dcd7719ed221f",
+    "verification/plots/In1_Cu.svg": "1a51da18217ebde7bada54f2dd43c3104df0fe4a4ba181d8425ecac95993eacb",
+    "verification/plots/In2_Cu.png": "74e8f507797a905434dec4fd07cd4257a6aacf69f105a393910c94142569e5e2",
+    "verification/plots/In2_Cu.svg": "1e3f421394132261d7183e2dc954a5e20a879b685dd0ffbfb1aa05dfd4488ec2",
+    "verification/plots/closure-layers.png": "f38c5f42d3368592b7ed43bd022851961d91fbb3bc1f1b4b23131253a95424c0",
+    "verification/plots/native-bottom.png": "3795fe1ae4e23c49aaaf63286582852296bdc2e24c55ecd86e7c86ee1d1ac80b",
+    "verification/plots/native-bottom.svg": "1627c5d668af633e24561395f9054b072cb90961b80103ec2066015f24182618",
+    "verification/plots/native-top.png": "7be799c25779c84671ce76adf0a199477b1b58845f6204b06b1f93afef509645",
+    "verification/plots/native-top.svg": "9eb2347424d91c515de3bf2069a447e2af067c2ae12f47bef5842729ccd800e5",
+    "verification/preservation.json": "a6331acf0938510f141f2f65d96e221e936d9eca146673f9ebb46e0a12ea3137",
+    "verification/silk-global-source.json": "d5283b39f51113dfd3c63eb40ce1c34c4685b140f44a7cb51450d6441f7bdbf3",
+    "verification/source-invariants.json": "87ea2b632794211741245b3118dae525dda4d52dd9970e40d2a73484b4748322",
+    "verification/u1-comparison.json": "4e07149c1d6bdbc611c4578c3e9e7ee0d9c0b7c99b1000f1e8d261b51fdc4882"
+  },
+  "explicitly_excluded_packages": [
+    "hardware/emg/rev-b-xiao/manufacturing-release/R1b_PROTOTYPE_ORDER_2026-10-13/",
+    "hardware/emg/rev-b-xiao/european-quote/companion/",
+    "hardware/emg/rev-b-xiao/quote-package/",
+    "hardware/emg/rev-b-xiao/evidence/horizontal-jst/NOT_RELEASED_fabrication/",
+    "Any pre-ECO verticalB2B-PH/C160352manufacturingpackage",
+    "baseline/ is preservation evidence,notcurrentupload"
+  ],
+  "remaining_approvals": [
+    "Factorypanel/rails/fiducials/tooling/depaneldrawing",
+    "Fivefabricated/twoassembledquantityconfirmation",
+    "Exact28groupeligibility,stock,identity andX1controlledspec",
+    "Factoryreel/polarityplacementpreview",
+    "ActualCAM/finishedhole/mask/stackacceptance",
+    "Explicitownerproductionauthorization",
+    "Physicalmodule/post/jigandbenchqualification",
+    "Separatequalifiedbody-contactsafetyassessment"
+  ],
+  "hash_scope": "Manifest does not hash itself. Separate SHA256SUMS covers this manifest andselectedreviewfiles. Final bundle hashes are recorded separately to avoidcircularhashing."
+}

@@ -1,0 +1,305 @@
+{
+ "pad": {
+  "board": 16,
+  "lib": 16,
+  "only_board": [],
+  "only_lib": []
+ },
+ "line": {
+  "board": 12,
+  "lib": 12,
+  "only_board": [],
+  "only_lib": []
+ },
+ "rect": {
+  "board": 12,
+  "lib": 12,
+  "only_board": [],
+  "only_lib": []
+ },
+ "circle": {
+  "board": 8,
+  "lib": 8,
+  "only_board": [],
+  "only_lib": []
+ },
+ "arc": {
+  "board": 4,
+  "lib": 4,
+  "only_board": [],
+  "only_lib": []
+ },
+ "text": {
+  "board": 6,
+  "lib": 6,
+  "only_board": [],
+  "only_lib": []
+ },
+ "poly": {
+  "board": 0,
+  "lib": 0,
+  "only_board": [],
+  "only_lib": []
+ },
+ "properties": {
+  "board": {
+   "Reference": [
+    "U1",
+    "F.Fab",
+    false
+   ],
+   "Value": [
+    "XIAO_ESP32S3",
+    "F.Fab",
+    true
+   ],
+   "Datasheet": [
+    "https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/",
+    "F.Fab",
+    true
+   ],
+   "Description": [
+    "Seeed Studio XIAO ESP32S3 (plain, PN 202003751) - RB-00.6 hand-solder mount: pads 1-14 = castellations; pad 23 = bottom BAT+ pad reached ONLY via AWG24 solid post into a plated hole (not a castellation). Bottom pads 15-22, 24 (BAT-), 25 not soldered",
+    "F.Fab",
+    true
+   ],
+   "MPN": [
+    "Seeed PN 202003751 (XIAO ESP32S3 plain, v1.4, unsoldered-header version)",
+    "F.Fab",
+    true
+   ],
+   "Manufacturer": [
+    "Seeed Studio",
+    "F.Fab",
+    true
+   ],
+   "Spec": [
+    "ESP32-S3 module, 21.0 x 17.8 mm, castellated. Headers NOT fitted",
+    "F.Fab",
+    true
+   ],
+   "JLC_Class": [
+    "N/A - DNP at JLC (bought retail, hand-soldered)",
+    "F.Fab",
+    true
+   ],
+   "Role": [
+    "Brain: MCU, BLE, USB-C, charger, 3V3 buck",
+    "F.Fab",
+    true
+   ],
+   "Status": [
+    "Model frozen RB-00.5; mechanical residual R3/R9 open (incoming inspection before RB-02)",
+    "F.Fab",
+    true
+   ]
+  },
+  "lib": {
+   "Reference": [
+    "REF**",
+    "F.SilkS",
+    false
+   ],
+   "Value": [
+    "XIAO_ESP32S3_HANDSOLDER",
+    "F.Fab",
+    false
+   ]
+  }
+ },
+ "zones": {
+  "HIZ_ESC_U501_L": "board-level only (not part of U1)",
+  "HIZ_ESC_U501_R": "board-level only (not part of U1)",
+  "HIZ_ESC_U502_L": "board-level only (not part of U1)",
+  "HIZ_ESC_U502_R": "board-level only (not part of U1)",
+  "HIZ_ESC_U503_L": "board-level only (not part of U1)",
+  "HIZ_ESC_U503_R": "board-level only (not part of U1)",
+  "XIAO GND0 (BAT-) pad": {
+   "layers_equal": true,
+   "keepout_equal": true,
+   "polygon_max_corner_delta_mm": 0.0,
+   "lib_layers": [
+    "F.Cu"
+   ],
+   "keepout": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "not_allowed",
+    "footprints": "allowed"
+   }
+  },
+  "XIAO USB shell oval S1 (GND)": {
+   "layers_equal": true,
+   "keepout_equal": true,
+   "polygon_max_corner_delta_mm": 0.0,
+   "lib_layers": [
+    "F.Cu"
+   ],
+   "keepout": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   }
+  },
+  "XIAO USB shell oval S2 (GND)": {
+   "layers_equal": true,
+   "keepout_equal": true,
+   "polygon_max_corner_delta_mm": 0.0,
+   "lib_layers": [
+    "F.Cu"
+   ],
+   "keepout": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   }
+  },
+  "XIAO USB shell oval S3 (GND)": {
+   "layers_equal": true,
+   "keepout_equal": true,
+   "polygon_max_corner_delta_mm": 0.0,
+   "lib_layers": [
+    "F.Cu"
+   ],
+   "keepout": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   }
+  },
+  "XIAO USB shell oval S4 (GND)": {
+   "layers_equal": true,
+   "keepout_equal": true,
+   "polygon_max_corner_delta_mm": 0.0,
+   "lib_layers": [
+    "F.Cu"
+   ],
+   "keepout": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   }
+  },
+  "XIAO no vias (above via field)": {
+   "layers_equal": true,
+   "keepout_equal": true,
+   "polygon_max_corner_delta_mm": 0.0,
+   "lib_layers": [
+    "B.Cu",
+    "F.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ],
+   "keepout": {
+    "tracks": "allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   }
+  },
+  "XIAO no vias (below via field)": {
+   "layers_equal": true,
+   "keepout_equal": true,
+   "polygon_max_corner_delta_mm": 0.0,
+   "lib_layers": [
+    "B.Cu",
+    "F.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ],
+   "keepout": {
+    "tracks": "allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   }
+  },
+  "XIAO no vias (east of via field)": {
+   "layers_equal": true,
+   "keepout_equal": true,
+   "polygon_max_corner_delta_mm": 0.0,
+   "lib_layers": [
+    "B.Cu",
+    "F.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ],
+   "keepout": {
+    "tracks": "allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   }
+  },
+  "XIAO no vias (west of via field)": {
+   "layers_equal": true,
+   "keepout_equal": true,
+   "polygon_max_corner_delta_mm": 0.0,
+   "lib_layers": [
+    "B.Cu",
+    "F.Cu",
+    "In1.Cu",
+    "In2.Cu"
+   ],
+   "keepout": {
+    "tracks": "allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "allowed",
+    "footprints": "allowed"
+   }
+  },
+  "XIAO pad 25 GND window": {
+   "layers_equal": true,
+   "keepout_equal": true,
+   "polygon_max_corner_delta_mm": 0.0,
+   "lib_layers": [
+    "F.Cu"
+   ],
+   "keepout": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "not_allowed",
+    "footprints": "allowed"
+   }
+  },
+  "XIAO pads 15-22 underside": {
+   "layers_equal": true,
+   "keepout_equal": true,
+   "polygon_max_corner_delta_mm": 0.0,
+   "lib_layers": [
+    "F.Cu"
+   ],
+   "keepout": {
+    "tracks": "not_allowed",
+    "vias": "not_allowed",
+    "pads": "allowed",
+    "copperpour": "not_allowed",
+    "footprints": "allowed"
+   }
+  },
+  "ZONE_A": "board-level only (not part of U1)"
+ },
+ "footprint_instance": {
+  "at": [
+   40.19,
+   54.3825,
+   180.0
+  ],
+  "embedded_zones_in_board_instance": 0,
+  "embedded_zones_in_library": 11
+ }
+}

@@ -1,0 +1,1526 @@
+{
+ "via_in_smd_pad": {
+  "centre_inside_pad": 0,
+  "hole_touching_pad": 0,
+  "centre_inside": [],
+  "hole_touching": []
+ },
+ "tracks": 1374,
+ "vias": 200,
+ "track_length_by_layer_mm": {
+  "B.Cu": 349.7,
+  "F.Cu": 1202.9,
+  "In2.Cu": 123.5
+ },
+ "min_track_width_mm": 0.15,
+ "via_sizes": [
+  [
+   0.6,
+   0.3
+  ]
+ ],
+ "track_widths_mm": {
+  "0.2": 898,
+  "0.3": 330,
+  "0.15": 30,
+  "0.5": 38,
+  "0.25": 78
+ },
+ "nets": {
+  "/ADC/ADC_CLKIN": {
+   "class": "SPI_FAST",
+   "length_mm": 9.8,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/ADC/ADC_DOUT": {
+   "class": "SPI_FAST",
+   "length_mm": 2.3,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/ADC/ADC_DRDY_N": {
+   "class": "CTRL_SLOW",
+   "length_mm": 2.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/ADC/AFE_CAP": {
+   "class": "ADC_CAP",
+   "length_mm": 2.9,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/ADC/X1_OUT": {
+   "class": "SPI_FAST",
+   "length_mm": 4.7,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.15
+   ]
+  },
+  "/AFE_EN_REQ": {
+   "class": "CTRL_SLOW",
+   "length_mm": 44.5,
+   "vias": 4,
+   "layers": [
+    "B.Cu",
+    "F.Cu",
+    "In2.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Analog_Power_Interlock/AFE_EN": {
+   "class": "CTRL_SLOW",
+   "length_mm": 20.7,
+   "vias": 5,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Analog_Power_Interlock/VBAT_AFE": {
+   "class": "PWR_VBAT",
+   "length_mm": 21.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.5
+   ]
+  },
+  "/Analog_Power_Interlock/VBUS_GATE": {
+   "class": "CTRL_SLOW",
+   "length_mm": 16.0,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH1/ACN_N": {
+   "class": "EMG_BUF",
+   "length_mm": 6.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH1/ACN_P": {
+   "class": "EMG_BUF",
+   "length_mm": 6.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH1/BUF_N": {
+   "class": "EMG_BUF",
+   "length_mm": 14.2,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH1/BUF_P": {
+   "class": "EMG_BUF",
+   "length_mm": 10.2,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH1/ELEC_N": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH1/ELEC_P": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH1/HIZ_N": {
+   "class": "EMG_HIZ",
+   "length_mm": 15.7,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH1/HIZ_P": {
+   "class": "EMG_HIZ",
+   "length_mm": 18.3,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH1_N": {
+   "class": "EMG_BUF",
+   "length_mm": 55.5,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH1_P": {
+   "class": "EMG_BUF",
+   "length_mm": 56.5,
+   "vias": 5,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH2/ACN_N": {
+   "class": "EMG_BUF",
+   "length_mm": 6.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH2/ACN_P": {
+   "class": "EMG_BUF",
+   "length_mm": 6.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH2/BUF_N": {
+   "class": "EMG_BUF",
+   "length_mm": 7.1,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH2/BUF_P": {
+   "class": "EMG_BUF",
+   "length_mm": 9.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH2/ELEC_N": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH2/ELEC_P": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH2/HIZ_N": {
+   "class": "EMG_HIZ",
+   "length_mm": 19.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH2/HIZ_P": {
+   "class": "EMG_HIZ",
+   "length_mm": 15.7,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH2_N": {
+   "class": "EMG_BUF",
+   "length_mm": 42.8,
+   "vias": 3,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH2_P": {
+   "class": "EMG_BUF",
+   "length_mm": 53.4,
+   "vias": 7,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH3/ACN_N": {
+   "class": "EMG_BUF",
+   "length_mm": 6.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH3/ACN_P": {
+   "class": "EMG_BUF",
+   "length_mm": 6.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH3/BUF_N": {
+   "class": "EMG_BUF",
+   "length_mm": 10.2,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH3/BUF_P": {
+   "class": "EMG_BUF",
+   "length_mm": 10.2,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH3/ELEC_N": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH3/ELEC_P": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH3/HIZ_N": {
+   "class": "EMG_HIZ",
+   "length_mm": 16.5,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH3/HIZ_P": {
+   "class": "EMG_HIZ",
+   "length_mm": 18.5,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH3_N": {
+   "class": "EMG_BUF",
+   "length_mm": 51.4,
+   "vias": 6,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH3_P": {
+   "class": "EMG_BUF",
+   "length_mm": 53.7,
+   "vias": 5,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH4/ACN_N": {
+   "class": "EMG_BUF",
+   "length_mm": 6.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH4/ACN_P": {
+   "class": "EMG_BUF",
+   "length_mm": 6.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH4/BUF_N": {
+   "class": "EMG_BUF",
+   "length_mm": 7.1,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH4/BUF_P": {
+   "class": "EMG_BUF",
+   "length_mm": 9.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH4/ELEC_N": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH4/ELEC_P": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH4/HIZ_N": {
+   "class": "EMG_HIZ",
+   "length_mm": 19.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH4/HIZ_P": {
+   "class": "EMG_HIZ",
+   "length_mm": 15.6,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH4_N": {
+   "class": "EMG_BUF",
+   "length_mm": 55.0,
+   "vias": 4,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH4_P": {
+   "class": "EMG_BUF",
+   "length_mm": 52.0,
+   "vias": 6,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CS_N": {
+   "class": "CTRL_SLOW",
+   "length_mm": 24.5,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/DRDY_N": {
+   "class": "CTRL_SLOW",
+   "length_mm": 33.6,
+   "vias": 3,
+   "layers": [
+    "B.Cu",
+    "F.Cu",
+    "In2.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/MISO": {
+   "class": "SPI_FAST",
+   "length_mm": 9.0,
+   "vias": 2,
+   "layers": [
+    "F.Cu",
+    "In2.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/MOSI": {
+   "class": "SPI_FAST",
+   "length_mm": 11.9,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Reference_VCM/RLD_SAFE": {
+   "class": "ANALOG_REF",
+   "length_mm": 13.5,
+   "vias": 1,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Reference_VCM/U503B_OUT": {
+   "class": "ANALOG_REF",
+   "length_mm": 2.1,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Reference_VCM/U503C_OUT": {
+   "class": "ANALOG_REF",
+   "length_mm": 2.0,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Reference_VCM/U503D_OUT": {
+   "class": "ANALOG_REF",
+   "length_mm": 1.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Reference_VCM/VCM_BUF_IN": {
+   "class": "ANALOG_REF",
+   "length_mm": 9.6,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Reference_VCM/VCM_DIV": {
+   "class": "ANALOG_REF",
+   "length_mm": 7.3,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/SCLK": {
+   "class": "SPI_FAST",
+   "length_mm": 12.9,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/SYNC_RESET_N": {
+   "class": "CTRL_SLOW",
+   "length_mm": 35.1,
+   "vias": 3,
+   "layers": [
+    "B.Cu",
+    "F.Cu",
+    "In2.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/VCM": {
+   "class": "ANALOG_REF",
+   "length_mm": 76.0,
+   "vias": 14,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/XIAO_5V": {
+   "class": "VBUS_SENSE",
+   "length_mm": 40.3,
+   "vias": 4,
+   "layers": [
+    "B.Cu",
+    "F.Cu",
+    "In2.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/XIAO_Brain_Interface/MOSI_MCU": {
+   "class": "SPI_FAST",
+   "length_mm": 7.5,
+   "vias": 2,
+   "layers": [
+    "F.Cu",
+    "In2.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/XIAO_Brain_Interface/SCLK_MCU": {
+   "class": "SPI_FAST",
+   "length_mm": 12.1,
+   "vias": 2,
+   "layers": [
+    "F.Cu",
+    "In2.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/XIAO_Brain_Interface/USB_PRESENT": {
+   "class": "CTRL_SLOW",
+   "length_mm": 45.0,
+   "vias": 4,
+   "layers": [
+    "B.Cu",
+    "F.Cu",
+    "In2.Cu"
+   ],
+   "widths": [
+    0.15
+   ]
+  },
+  "/XIAO_Brain_Interface/VBAT_SENSE": {
+   "class": "CTRL_SLOW",
+   "length_mm": 40.1,
+   "vias": 2,
+   "layers": [
+    "F.Cu",
+    "In2.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/XIAO_Brain_Interface/XIAO_3V3": {
+   "class": "PWR_DVDD",
+   "length_mm": 7.1,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.3
+   ]
+  },
+  "AFE_3V0": {
+   "class": "PWR_AFE",
+   "length_mm": 145.8,
+   "vias": 22,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2,
+    0.3
+   ]
+  },
+  "DVDD_F": {
+   "class": "PWR_DVDD",
+   "length_mm": 42.1,
+   "vias": 6,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.3
+   ]
+  },
+  "GND": {
+   "class": "GND",
+   "length_mm": 128.0,
+   "vias": 63,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.15,
+    0.2,
+    0.3
+   ]
+  },
+  "VBAT": {
+   "class": "PWR_VBAT",
+   "length_mm": 35.2,
+   "vias": 3,
+   "layers": [
+    "B.Cu",
+    "F.Cu",
+    "In2.Cu"
+   ],
+   "widths": [
+    0.5
+   ]
+  },
+  "unconnected-(J1-PadMP)": {
+   "class": "NC",
+   "length_mm": 9.9,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "unconnected-(J101-PadMP)": {
+   "class": "NC",
+   "length_mm": 9.4,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "unconnected-(J201-PadMP)": {
+   "class": "NC",
+   "length_mm": 9.4,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "unconnected-(J301-PadMP)": {
+   "class": "NC",
+   "length_mm": 9.4,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "unconnected-(J401-PadMP)": {
+   "class": "NC",
+   "length_mm": 9.4,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "unconnected-(J5001-PadMP)": {
+   "class": "NC",
+   "length_mm": 9.2,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  }
+ },
+ "critical": {
+  "/ADC/AFE_CAP": {
+   "class": "ADC_CAP",
+   "length_mm": 2.9,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH1/ELEC_N": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH1/ELEC_P": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH1/HIZ_N": {
+   "class": "EMG_HIZ",
+   "length_mm": 15.7,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH1/HIZ_P": {
+   "class": "EMG_HIZ",
+   "length_mm": 18.3,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH2/ELEC_N": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH2/ELEC_P": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH2/HIZ_N": {
+   "class": "EMG_HIZ",
+   "length_mm": 19.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH2/HIZ_P": {
+   "class": "EMG_HIZ",
+   "length_mm": 15.7,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH3/ELEC_N": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH3/ELEC_P": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH3/HIZ_N": {
+   "class": "EMG_HIZ",
+   "length_mm": 16.5,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH3/HIZ_P": {
+   "class": "EMG_HIZ",
+   "length_mm": 18.5,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH4/ELEC_N": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH4/ELEC_P": {
+   "class": "EMG_ELECTRODE",
+   "length_mm": 7.4,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.25
+   ]
+  },
+  "/CH4/HIZ_N": {
+   "class": "EMG_HIZ",
+   "length_mm": 19.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/CH4/HIZ_P": {
+   "class": "EMG_HIZ",
+   "length_mm": 15.6,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Reference_VCM/RLD_SAFE": {
+   "class": "ANALOG_REF",
+   "length_mm": 13.5,
+   "vias": 1,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Reference_VCM/U503B_OUT": {
+   "class": "ANALOG_REF",
+   "length_mm": 2.1,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Reference_VCM/U503C_OUT": {
+   "class": "ANALOG_REF",
+   "length_mm": 2.0,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Reference_VCM/U503D_OUT": {
+   "class": "ANALOG_REF",
+   "length_mm": 1.8,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Reference_VCM/VCM_BUF_IN": {
+   "class": "ANALOG_REF",
+   "length_mm": 9.6,
+   "vias": 2,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/Reference_VCM/VCM_DIV": {
+   "class": "ANALOG_REF",
+   "length_mm": 7.3,
+   "vias": 0,
+   "layers": [
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  },
+  "/VCM": {
+   "class": "ANALOG_REF",
+   "length_mm": 76.0,
+   "vias": 14,
+   "layers": [
+    "B.Cu",
+    "F.Cu"
+   ],
+   "widths": [
+    0.2
+   ]
+  }
+ },
+ "symmetry": {
+  "CH1_HIZ": {
+   "P_mm": 18.3,
+   "N_mm": 15.7,
+   "diff_mm": 2.6
+  },
+  "CH1_ELEC": {
+   "P_mm": 7.4,
+   "N_mm": 7.4,
+   "diff_mm": 0.0
+  },
+  "CH1_BUF": {
+   "P_mm": 10.2,
+   "N_mm": 14.2,
+   "diff_mm": 4.0
+  },
+  "CH1_ACN": {
+   "P_mm": 6.8,
+   "N_mm": 6.8,
+   "diff_mm": 0.0
+  },
+  "CH1_ADCIN": {
+   "P_mm": 56.5,
+   "N_mm": 55.5,
+   "diff_mm": 1.0
+  },
+  "CH2_HIZ": {
+   "P_mm": 15.7,
+   "N_mm": 19.8,
+   "diff_mm": 4.1
+  },
+  "CH2_ELEC": {
+   "P_mm": 7.4,
+   "N_mm": 7.4,
+   "diff_mm": 0.0
+  },
+  "CH2_BUF": {
+   "P_mm": 9.4,
+   "N_mm": 7.1,
+   "diff_mm": 2.3
+  },
+  "CH2_ACN": {
+   "P_mm": 6.8,
+   "N_mm": 6.8,
+   "diff_mm": 0.0
+  },
+  "CH2_ADCIN": {
+   "P_mm": 53.4,
+   "N_mm": 42.8,
+   "diff_mm": 10.6
+  },
+  "CH3_HIZ": {
+   "P_mm": 18.5,
+   "N_mm": 16.5,
+   "diff_mm": 2.0
+  },
+  "CH3_ELEC": {
+   "P_mm": 7.4,
+   "N_mm": 7.4,
+   "diff_mm": 0.0
+  },
+  "CH3_BUF": {
+   "P_mm": 10.2,
+   "N_mm": 10.2,
+   "diff_mm": 0.0
+  },
+  "CH3_ACN": {
+   "P_mm": 6.8,
+   "N_mm": 6.8,
+   "diff_mm": 0.0
+  },
+  "CH3_ADCIN": {
+   "P_mm": 53.7,
+   "N_mm": 51.4,
+   "diff_mm": 2.3
+  },
+  "CH4_HIZ": {
+   "P_mm": 15.6,
+   "N_mm": 19.8,
+   "diff_mm": 4.2
+  },
+  "CH4_ELEC": {
+   "P_mm": 7.4,
+   "N_mm": 7.4,
+   "diff_mm": 0.0
+  },
+  "CH4_BUF": {
+   "P_mm": 9.4,
+   "N_mm": 7.1,
+   "diff_mm": 2.3
+  },
+  "CH4_ACN": {
+   "P_mm": 6.8,
+   "N_mm": 6.8,
+   "diff_mm": 0.0
+  },
+  "CH4_ADCIN": {
+   "P_mm": 52.0,
+   "N_mm": 55.0,
+   "diff_mm": 3.0
+  }
+ },
+ "clock_X1_OUT_mm": 4.7,
+ "board_area_mm2": 3331.9,
+ "in1_copper_fraction": 0.917,
+ "planes": {
+  "In1.Cu": {
+   "zone": "In1 GND plane",
+   "net": "GND",
+   "filled_outlines": 1,
+   "outline_areas_mm2": [
+    3057.0
+   ],
+   "holes": 0
+  },
+  "In2.Cu": {
+   "zone": "In2 GND zones A/B",
+   "net": "GND",
+   "filled_outlines": 1,
+   "outline_areas_mm2": [
+    2313.5
+   ],
+   "holes": 0
+  }
+ },
+ "return_path_coverage_In1": {
+  "EMG_HIZ": {
+   "samples": 438,
+   "over_In1_copper_pct": 100.0,
+   "uncovered_examples": []
+  },
+  "EMG_ELECTRODE": {
+   "samples": 168,
+   "over_In1_copper_pct": 100.0,
+   "uncovered_examples": []
+  },
+  "EMG_BUF": {
+   "samples": 1220,
+   "over_In1_copper_pct": 100.0,
+   "uncovered_examples": []
+  },
+  "ANALOG_REF": {
+   "samples": 236,
+   "over_In1_copper_pct": 100.0,
+   "uncovered_examples": []
+  },
+  "ADC_CAP": {
+   "samples": 14,
+   "over_In1_copper_pct": 100.0,
+   "uncovered_examples": []
+  },
+  "SPI_FAST": {
+   "samples": 139,
+   "over_In1_copper_pct": 100.0,
+   "uncovered_examples": []
+  },
+  "CTRL_SLOW": {
+   "samples": 520,
+   "over_In1_copper_pct": 100.0,
+   "uncovered_examples": []
+  },
+  "PWR_AFE": {
+   "samples": 249,
+   "over_In1_copper_pct": 100.0,
+   "uncovered_examples": []
+  },
+  "PWR_DVDD": {
+   "samples": 97,
+   "over_In1_copper_pct": 100.0,
+   "uncovered_examples": []
+  },
+  "PWR_VBAT": {
+   "samples": 125,
+   "over_In1_copper_pct": 96.0,
+   "uncovered_examples": [
+    [
+     44.6,
+     54.2,
+     "VBAT"
+    ],
+    [
+     43.9,
+     54.2,
+     "VBAT"
+    ],
+    [
+     43.9,
+     54.2,
+     "VBAT"
+    ],
+    [
+     44.6,
+     54.8,
+     "VBAT"
+    ],
+    [
+     44.6,
+     54.2,
+     "VBAT"
+    ]
+   ]
+  }
+ },
+ "power": {
+  "AFE_3V0": {
+   "source": "U4002.5",
+   "pads": 20,
+   "length_mm": 145.8,
+   "vias": 22,
+   "widths": [
+    0.2,
+    0.3
+   ],
+   "resistance_mohm": {
+    "D401.2": 114.3,
+    "D302.2": 104.8,
+    "C4006.1": 3.8,
+    "D202.2": 85.7,
+    "C501.1": 63.4,
+    "D301.2": 95.2,
+    "C503.1": 92.4,
+    "D101.2": 103.1,
+    "U501.4": 50.7,
+    "R5003.1": 97.4,
+    "D402.2": 123.9,
+    "U503.4": 94.6,
+    "U6001.1": 34.1,
+    "C6007.1": 31.6,
+    "D102.2": 93.6,
+    "U502.4": 142.0,
+    "D201.2": 84.0,
+    "U4002.5": 0.0,
+    "C502.1": 133.6,
+    "TP2.1": 12.6
+   },
+   "max_mohm": 142.0
+  },
+  "DVDD_F": {
+   "source": "FB1.2",
+   "pads": 11,
+   "length_mm": 42.1,
+   "vias": 6,
+   "widths": [
+    0.3
+   ],
+   "resistance_mohm": {
+    "FB1.2": 0.0,
+    "R7103.1": 13.0,
+    "C6010.1": 47.4,
+    "R7104.1": 12.8,
+    "C7101.1": 22.2,
+    "C7102.1": 22.0,
+    "C6008.1": 34.6,
+    "X1.1": 44.5,
+    "X1.4": 43.0,
+    "U6001.20": 33.1,
+    "TP3.1": 15.9
+   },
+   "max_mohm": 47.4
+  },
+  "/XIAO_Brain_Interface/XIAO_3V3": {
+   "source": "U1.12",
+   "pads": 2,
+   "length_mm": 7.1,
+   "vias": 0,
+   "widths": [
+    0.3
+   ],
+   "resistance_mohm": {
+    "FB1.1": 7.2,
+    "U1.12": 0.0
+   },
+   "max_mohm": 7.2
+  },
+  "VBAT": {
+   "source": "J1.1",
+   "pads": 6,
+   "length_mm": 35.2,
+   "vias": 3,
+   "widths": [
+    0.5
+   ],
+   "resistance_mohm": {
+    "R7107.1": 3.1,
+    "J1.1": 0.0,
+    "U1.23": 14.9,
+    "R4001.1": 14.4,
+    "TP1.1": 5.5
+   },
+   "max_mohm": 14.9
+  },
+  "/Analog_Power_Interlock/VBAT_AFE": {
+   "source": "C4007.1",
+   "pads": 4,
+   "length_mm": 21.8,
+   "vias": 0,
+   "widths": [
+    0.5
+   ],
+   "resistance_mohm": {
+    "C4007.1": 0.0,
+    "R4001.2": 2.9,
+    "C4005.1": 16.7,
+    "U4002.1": 14.0
+   },
+   "max_mohm": 16.7
+  },
+  "/XIAO_5V": {
+   "source": "U1.14",
+   "pads": 4,
+   "length_mm": 40.3,
+   "vias": 4,
+   "widths": [
+    0.25
+   ],
+   "resistance_mohm": {
+    "R3006.1": 56.6,
+    "U1.14": 0.0,
+    "R3009.1": 12.2,
+    "R7105.1": 26.9
+   },
+   "max_mohm": 56.6
+  }
+ }
+}

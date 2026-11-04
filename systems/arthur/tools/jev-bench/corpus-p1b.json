@@ -1,0 +1,7369 @@
+{
+ "corpus_version": "graph-p1b-1",
+ "note": "Labels, gold edges, acceptable alternatives and disputed flags fixed before any model output. previous_focus is for rationale only and is NOT sent to any configuration.",
+ "cases": [
+  {
+   "id": "G001",
+   "category": "CR_depends_on",
+   "lang": "en",
+   "project": "p-G001",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "7e7b66a6-b309-4290-8d96-a350410a0e9c",
+     "kind": "task",
+     "title": "Write the quarterly report",
+     "body": "Summarise Q3 results and send the report to finance.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "00bacaea-24d1-426d-8cd2-c5250ec4ac75",
+     "kind": "task",
+     "title": "Collect the sales data",
+     "body": "Export the Q3 sales numbers from the CRM.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "6f1cbf6f-99bf-413b-8349-eccc0cef3f42",
+     "kind": "note",
+     "title": "Finance prefers PDF reports",
+     "body": "Finance wants all reports as PDF files.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "C",
+     "id": "8f956b28-57b6-4bc0-8458-c1132ccf2e52",
+     "kind": "idea",
+     "title": "Redesign the report template",
+     "body": "A cleaner template for all reports.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "The report cannot be written without the data (forward).",
+   "split": "dev"
+  },
+  {
+   "id": "G002",
+   "category": "CR_depends_on",
+   "lang": "en",
+   "project": "p-G002",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "7309abc5-de07-41f0-8470-e41924a0a0d2",
+     "kind": "task",
+     "title": "Deploy the new API version",
+     "body": "Roll out API v2 to production.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "9b46dde4-928b-4e7f-8d99-62196caefc35",
+     "kind": "task",
+     "title": "Run the database migration",
+     "body": "Apply the schema changes needed by API v2.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "9008eef2-b2a6-43ca-8842-7538c7b842e2",
+     "kind": "task",
+     "title": "Update the API docs",
+     "body": "Document the v2 endpoints.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Deployment needs the migration first (forward).",
+   "split": "holdout"
+  },
+  {
+   "id": "G003",
+   "category": "CR_depends_on",
+   "lang": "bg",
+   "project": "p-G003",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "223631fc-adb4-48b6-862a-70cb5b781627",
+     "kind": "task",
+     "title": "Да изпратим поканите",
+     "body": "Изпращане на поканите за събитието.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "a16e8895-1f6e-41c6-865c-64ea7d473115",
+     "kind": "task",
+     "title": "Да финализираме списъка с гости",
+     "body": "Окончателен списък с имена и имейли.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "fb99af33-b8a7-4ef7-82cb-9c569729ee36",
+     "kind": "idea",
+     "title": "Да изберем цвят за поканите",
+     "body": "Цветова гама за поканите.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Поканите изискват готов списък (forward).",
+   "split": "holdout"
+  },
+  {
+   "id": "G004",
+   "category": "CR_depends_on",
+   "lang": "mixed",
+   "project": "p-G004",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "97f2471b-2522-441a-8368-64d947a0be38",
+     "kind": "task",
+     "title": "Release на мобилното приложение",
+     "body": "Публикуване в магазина.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "db8e87b1-b0d8-4683-8d8c-27263c32e018",
+     "kind": "task",
+     "title": "App Store акаунтът е одобрен",
+     "body": "Developer акаунтът е одобрен от Apple.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "1f5e400b-0e7f-4e5c-8664-54827fbfdb47",
+     "kind": "idea",
+     "title": "Нов onboarding tour",
+     "body": "Кратка разходка за новите потребители.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Release изисква одобрен акаунт (forward).",
+   "split": "dev"
+  },
+  {
+   "id": "G005",
+   "category": "CR_depends_on",
+   "lang": "en",
+   "project": "p-G005",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "45703187-4367-4c3d-8a89-3f02aafb97fc",
+     "kind": "task",
+     "title": "Get the signed contract",
+     "body": "The client's signature on the service contract.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "6a5c49de-1d0d-4997-8e77-897d3bc23e17",
+     "kind": "task",
+     "title": "Start onboarding the new client",
+     "body": "Kick-off call and account setup.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "2e21e6f1-db42-4ac7-8ec2-31361fcf5e4f",
+     "kind": "note",
+     "title": "Client prefers Tuesday calls",
+     "body": "The client likes calls on Tuesdays.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Onboarding depends on the contract (reverse: focus is the prerequisite).",
+   "split": "dev"
+  },
+  {
+   "id": "G006",
+   "category": "CR_depends_on",
+   "lang": "bg",
+   "project": "p-G006",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "b257a109-1320-40e3-827d-145bbacab67d",
+     "kind": "task",
+     "title": "Да купя боя",
+     "body": "Боя за оградата.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "452bcf77-0a51-4717-8c81-4b09a0c7e8d2",
+     "kind": "task",
+     "title": "Да боядисам оградата",
+     "body": "Боядисване на градинската ограда.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "1b24c2d1-e6fd-411b-80b8-759bc4c7ce2f",
+     "kind": "task",
+     "title": "Да окося тревата",
+     "body": "Косене на градината.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Боядисването изисква боя (reverse).",
+   "split": "dev"
+  },
+  {
+   "id": "G007",
+   "category": "CR_depends_on",
+   "lang": "en",
+   "project": "p-G007",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "434ae996-8871-4502-8e63-c39167a35f88",
+     "kind": "task",
+     "title": "Provision the staging database",
+     "body": "Create the staging database instance.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "0d8f31e4-2bfd-41c1-8b2f-a4b090d42a55",
+     "kind": "task",
+     "title": "Run the load tests",
+     "body": "Execute the load test suite against staging.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "f49e1b9e-3d72-4953-88c8-d289860a865f",
+     "kind": "task",
+     "title": "Write the load test report",
+     "body": "Summarise load test results.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Load tests need staging DB (reverse). The report is a different, later step.",
+   "split": "dev"
+  },
+  {
+   "id": "G008",
+   "category": "CR_depends_on",
+   "lang": "mixed",
+   "project": "p-G008",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "09e6f06b-8718-4bb3-8ac7-804cca56a11e",
+     "kind": "decision",
+     "title": "Одобрение на бюджета",
+     "body": "Бюджетът за годината е одобрен.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "f4c4bde3-b12a-4289-8139-3b982f3bd81b",
+     "kind": "task",
+     "title": "Наемане на нов developer",
+     "body": "Откриване на позиция и наемане.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "5f7bf9b7-6a14-4722-8e9a-71a17487320d",
+     "kind": "idea",
+     "title": "Нов офис",
+     "body": "Преместване в по-голям офис.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Наемането зависи от бюджета (reverse).",
+   "split": "holdout"
+  },
+  {
+   "id": "G009",
+   "category": "CR_depends_on",
+   "lang": "en",
+   "project": "p-G009",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "6fc7c8e4-9b59-4d14-86d3-7c4cc81708cc",
+     "kind": "task",
+     "title": "Publish the app to the store",
+     "body": "Submit and release the app.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "2863a44f-8484-4a58-8926-51a180dd6640",
+     "kind": "task",
+     "title": "Pass the security review",
+     "body": "Complete the external security review.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "b95d4f66-731c-46f8-8cb4-c0ea4d1fc401",
+     "kind": "idea",
+     "title": "Add a dark theme",
+     "body": "Theme option.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Publication requires passing review (forward).",
+   "split": "holdout"
+  },
+  {
+   "id": "G010",
+   "category": "CR_depends_on",
+   "lang": "bg",
+   "project": "p-G010",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "dd19f336-b363-4ed4-864a-1f59ff7ec874",
+     "kind": "task",
+     "title": "Тестване на плащанията",
+     "body": "Проверка на плащанията от край до край.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "da0f0c09-a55b-4018-82ec-86428ab9e750",
+     "kind": "task",
+     "title": "Свързване със Stripe sandbox",
+     "body": "Настройка на тестовата среда на Stripe.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "2388834d-0249-404c-8e69-e0f10d16e79a",
+     "kind": "task",
+     "title": "Дизайн на страницата за плащане",
+     "body": "UI на плащането.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Тестването изисква sandbox (forward).",
+   "split": "holdout"
+  },
+  {
+   "id": "G011",
+   "category": "CR_extends",
+   "lang": "en",
+   "project": "p-G011",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "5522cd0a-7767-471f-8d83-c5626a9a4035",
+     "kind": "idea",
+     "title": "Detailed API design for the orders endpoint",
+     "body": "Pagination, filters and error format for orders.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "530bbf04-acdd-48c1-8b16-9e10158f77bd",
+     "kind": "idea",
+     "title": "Build an API for orders",
+     "body": "An API to create and read orders.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "b2bccc3f-5a24-45da-8dcf-70ecc56112c0",
+     "kind": "idea",
+     "title": "Build an API for invoices",
+     "body": "An API to create and read invoices.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "F develops A (forward).",
+   "split": "holdout"
+  },
+  {
+   "id": "G012",
+   "category": "CR_extends",
+   "lang": "en",
+   "project": "p-G012",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "fae32797-7b00-47a6-8206-6703a8ee18b6",
+     "kind": "idea",
+     "title": "Workshop with a printed handout",
+     "body": "Same budgeting workshop plus a printed one-page handout.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "4d3889d7-c0f8-44df-8a20-3fea57be43e5",
+     "kind": "idea",
+     "title": "Run a workshop on budgeting",
+     "body": "A two-hour workshop about household budgeting.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "52c5ce44-942c-470f-8e63-6d7da64f9a2d",
+     "kind": "idea",
+     "title": "Run a workshop on saving",
+     "body": "A workshop about saving habits.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Adds a handout to the same workshop.",
+   "split": "holdout"
+  },
+  {
+   "id": "G013",
+   "category": "CR_extends",
+   "lang": "bg",
+   "project": "p-G013",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "66bc8acb-771c-483c-82af-af9e6ef2c1ba",
+     "kind": "idea",
+     "title": "Нощен режим с автоматично превключване",
+     "body": "Тъмна тема, която се включва по залез.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "85fad891-59e8-4c0f-8aca-a9ee84714e7a",
+     "kind": "idea",
+     "title": "Тъмна тема за приложението",
+     "body": "Добавяне на тъмна тема.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "4d326cff-2cdd-4bf3-805f-5b7958cf22f3",
+     "kind": "idea",
+     "title": "Нов шрифт",
+     "body": "Смяна на шрифта.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Разширява същата тема.",
+   "split": "dev"
+  },
+  {
+   "id": "G014",
+   "category": "CR_extends",
+   "lang": "mixed",
+   "project": "p-G014",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "3094268f-6838-4839-83db-1225c3adfdea",
+     "kind": "idea",
+     "title": "Dashboard с филтри по период и регион",
+     "body": "Допълва dashboard-а с филтри.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "635904b2-f5c5-446c-8973-8a57e4f361e8",
+     "kind": "idea",
+     "title": "Dashboard за продажбите",
+     "body": "Основен dashboard със сумите.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "976350bb-a4cd-4401-8238-3bef6df93368",
+     "kind": "idea",
+     "title": "Dashboard за поддръжката",
+     "body": "Метрики за support.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Разширява същия dashboard.",
+   "split": "holdout"
+  },
+  {
+   "id": "G015",
+   "category": "CR_extends",
+   "lang": "en",
+   "project": "p-G015",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "a499015b-f27a-41aa-8ba4-0d45b235dd6e",
+     "kind": "idea",
+     "title": "Build a search feature",
+     "body": "Full text search across notes.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "ed636c5f-b3d0-4fdb-8ed1-8a2682a5e26d",
+     "kind": "idea",
+     "title": "Search with filters by date and author and saved queries",
+     "body": "Search plus date and author filters and saved queries.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "cc078ded-d81c-4a98-8efc-895617fa36b7",
+     "kind": "idea",
+     "title": "Build an export feature",
+     "body": "Export notes.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "A is the richer one (reverse).",
+   "split": "dev"
+  },
+  {
+   "id": "G016",
+   "category": "CR_extends",
+   "lang": "bg",
+   "project": "p-G016",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "4b4d60ee-445e-4a32-81c3-85e7a275200c",
+     "kind": "idea",
+     "title": "Седмичен преглед на целите",
+     "body": "Всеки петък преглеждам целите.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "3e80f219-6026-4183-80b2-0ee2010187cb",
+     "kind": "idea",
+     "title": "Седмичен преглед на целите с оценка на настроението и график",
+     "body": "Прегледът включва настроение и графика за седмицата.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "71d32bdb-f4f3-403e-8a65-d2f634123cb9",
+     "kind": "idea",
+     "title": "Месечен преглед на разходите",
+     "body": "Преглед на разходите.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "A е по-богатата версия (reverse).",
+   "split": "dev"
+  },
+  {
+   "id": "G017",
+   "category": "CR_extends",
+   "lang": "en",
+   "project": "p-G017",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "cf18ebf1-5761-4405-8102-313254754328",
+     "kind": "idea",
+     "title": "Offline mode that syncs when the connection returns",
+     "body": "The app works offline and syncs later.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "94c5a350-58ba-4ee9-8175-c2e1e273592e",
+     "kind": "idea",
+     "title": "Support offline mode",
+     "body": "The app should work without a connection.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "acf4e849-38e3-4dc1-8c10-887deb42cca4",
+     "kind": "idea",
+     "title": "Support multiple accounts",
+     "body": "Switch between accounts.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Adds sync behaviour to offline mode.",
+   "split": "holdout"
+  },
+  {
+   "id": "G018",
+   "category": "CR_extends",
+   "lang": "mixed",
+   "project": "p-G018",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "59d3d819-30d4-4a70-8adc-ad03cad6635e",
+     "kind": "idea",
+     "title": "Експорт към PDF с водни знаци",
+     "body": "PDF export, като добавя watermark.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "40aef91e-2e1d-4ed1-841e-a5b56ad5e4bd",
+     "kind": "idea",
+     "title": "Експорт към PDF",
+     "body": "Експорт на документи във формат PDF.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "dd5ea9aa-371d-4a80-82fd-1f2d97dd09f4",
+     "kind": "idea",
+     "title": "Експорт към CSV",
+     "body": "Експорт на таблици.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Добавя водни знаци към същия експорт.",
+   "split": "dev"
+  },
+  {
+   "id": "G019",
+   "category": "CR_derived_from",
+   "lang": "en",
+   "project": "p-G019",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "4a1cab99-ada5-4dd6-848f-75db475af90b",
+     "kind": "idea",
+     "title": "Buy brighter lamps for the hall",
+     "body": "Replace the hall lamps with brighter ones.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "8b59e03d-1f82-488b-89d7-4eac2eb9bcd5",
+     "kind": "note",
+     "title": "Survey result: the hall is too dark",
+     "body": "Most respondents said the hall is too dark.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "20559f21-056d-4b79-8fd1-f6b198c939f0",
+     "kind": "note",
+     "title": "Survey result: the hall is too cold",
+     "body": "Several said the hall is cold.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "derived_from",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "The lamps idea is a conclusion from the survey.",
+   "split": "dev"
+  },
+  {
+   "id": "G020",
+   "category": "CR_derived_from",
+   "lang": "en",
+   "project": "p-G020",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "ca513304-d553-482a-80a3-f0e3f4d98dff",
+     "kind": "decision",
+     "title": "Drop the free tier",
+     "body": "We will remove the free plan.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "16a9fde3-e31f-4a28-8b07-1db12c97235d",
+     "kind": "note",
+     "title": "Analysis: free users cost more than they convert",
+     "body": "Support and hosting cost for free users exceeds conversion revenue.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "59f92560-5cda-4c2b-8009-d4d27da55fcf",
+     "kind": "idea",
+     "title": "Add an annual plan",
+     "body": "Offer yearly billing.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "derived_from",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "The decision follows from the analysis.",
+   "split": "dev"
+  },
+  {
+   "id": "G021",
+   "category": "CR_derived_from",
+   "lang": "bg",
+   "project": "p-G021",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "95374db4-703c-417c-817c-d8bc2d1b3415",
+     "kind": "decision",
+     "title": "Да наемем втори разработчик",
+     "body": "Решение за допълнителен човек в екипа.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "a5c1d257-8b1c-45ba-8bf4-01fb054ad397",
+     "kind": "note",
+     "title": "Анализ: срокът е нереалистичен с един човек",
+     "body": "Оценката показва, че един човек не успява навреме.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "af9adbad-bbc0-42e4-8495-96e0e191b40f",
+     "kind": "note",
+     "title": "Анализ: бюджетът е достатъчен",
+     "body": "Бюджетът покрива сегашните разходи.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "derived_from",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Решението следва от анализа.",
+   "split": "holdout"
+  },
+  {
+   "id": "G022",
+   "category": "CR_derived_from",
+   "lang": "mixed",
+   "project": "p-G022",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "a09018db-7695-405f-88d4-5dec092a2e36",
+     "kind": "idea",
+     "title": "Нов onboarding tour",
+     "body": "Кратка разходка за новите потребители.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "3541c8da-e1c3-4b2a-8b59-930fc5564396",
+     "kind": "note",
+     "title": "User research: потребителите се губят в първия екран",
+     "body": "Интервютата показват объркване в началото.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "64796474-394c-4347-877d-6feb8bfa4764",
+     "kind": "note",
+     "title": "User research: цветовете са приятни",
+     "body": "Потребителите харесват цветовете.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "derived_from",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Идеята е извод от проучването.",
+   "split": "dev"
+  },
+  {
+   "id": "G023",
+   "category": "CR_derived_from",
+   "lang": "en",
+   "project": "p-G023",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "c2d47450-2532-438a-8b5d-2012c0fc28c4",
+     "kind": "note",
+     "title": "Interview finding: customers abandon at checkout",
+     "body": "Five of eight interviewees quit at the payment step.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "c0393d8a-0561-463c-806d-62c122424bc2",
+     "kind": "idea",
+     "title": "Simplify the checkout",
+     "body": "Reduce checkout to a single page.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "2acaba11-dda0-44e9-8889-a7e7f21b420c",
+     "kind": "idea",
+     "title": "Add gift cards",
+     "body": "Sell gift cards.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "derived_from",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "The idea is derived from the finding (reverse).",
+   "split": "holdout"
+  },
+  {
+   "id": "G024",
+   "category": "CR_derived_from",
+   "lang": "bg",
+   "project": "p-G024",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "e51718ca-6f2b-4ef3-8484-d31e78baf172",
+     "kind": "note",
+     "title": "Резултат от теста: страницата зарежда 8 секунди",
+     "body": "Измерване на скоростта на началната страница.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "8365e144-33d7-4607-8ec8-a3d9f9dd3c8b",
+     "kind": "idea",
+     "title": "Да оптимизираме изображенията",
+     "body": "Компресия на снимките на сайта.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "5a6d14d4-9341-4684-832c-6a0a70122095",
+     "kind": "idea",
+     "title": "Нов лого",
+     "body": "Редизайн на логото.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "derived_from",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Идеята е извод от измерването (reverse).",
+   "split": "holdout"
+  },
+  {
+   "id": "G025",
+   "category": "CR_derived_from",
+   "lang": "en",
+   "project": "p-G025",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "35184f63-e3c3-4bdb-8539-11543e0989b2",
+     "kind": "decision",
+     "title": "Move support to email only",
+     "body": "Stop phone support.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "0300706a-1c20-43d2-841b-a0e02b740a84",
+     "kind": "note",
+     "title": "Phone support costs three times more per ticket",
+     "body": "Cost comparison across channels.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "4b841da5-1273-49c5-896d-0062cace404c",
+     "kind": "note",
+     "title": "Customers like the chat widget",
+     "body": "Chat feedback.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "derived_from",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "The decision is a consequence of the cost finding.",
+   "split": "dev"
+  },
+  {
+   "id": "G026",
+   "category": "CR_derived_from",
+   "lang": "mixed",
+   "project": "p-G026",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "bce9ced4-8b26-429f-82e6-119f607f83c0",
+     "kind": "decision",
+     "title": "Спираме Android версията",
+     "body": "Не поддържаме повече Android.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "83392eb5-e7fe-44f0-8e58-28cf1ce7494b",
+     "kind": "note",
+     "title": "Data: 3% от потребителите са на Android",
+     "body": "Анализ на платформите.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "2691c522-59ab-40b9-8d6b-befd66b7dab1",
+     "kind": "note",
+     "title": "Data: 60% от потребителите са на iOS",
+     "body": "Анализ на платформите.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "derived_from",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Решението следва от данните за Android.",
+   "split": "holdout"
+  },
+  {
+   "id": "G027",
+   "category": "CR_supersedes",
+   "lang": "en",
+   "project": "p-G027",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "f80ea0e8-d1d5-412c-897c-5ed13020cc28",
+     "kind": "decision",
+     "title": "Switch to the blue logo; the green one is retired",
+     "body": "The blue logo replaces the green one.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "8ebb9ae2-a05a-4cc6-84a6-8660137d09f6",
+     "kind": "decision",
+     "title": "Use the green logo",
+     "body": "The brand logo is green.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "8756dca7-795f-437c-8912-91ea2302aa40",
+     "kind": "idea",
+     "title": "Print new business cards",
+     "body": "Business cards.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Explicit replacement.",
+   "split": "holdout"
+  },
+  {
+   "id": "G028",
+   "category": "CR_supersedes",
+   "lang": "en",
+   "project": "p-G028",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "beb2c361-c957-472d-8efc-d633fe7e3929",
+     "kind": "decision",
+     "title": "New plan: ship on May 12",
+     "body": "Ship date moved to May 12.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "827e87de-74fc-41a7-86a0-ad48931fe998",
+     "kind": "decision",
+     "title": "Ship on April 28",
+     "body": "The planned ship date is April 28.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "d4666b6b-c8ed-490e-825f-dbf860e9d935",
+     "kind": "task",
+     "title": "Prepare the release notes",
+     "body": "Notes for the release.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "New date replaces the old one.",
+   "split": "dev"
+  },
+  {
+   "id": "G029",
+   "category": "CR_supersedes",
+   "lang": "bg",
+   "project": "p-G029",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "c19d5a98-bb05-4954-8aa7-563d8c6478bf",
+     "kind": "decision",
+     "title": "Вместо Mailchimp ползваме Brevo",
+     "body": "Преминаваме към Brevo.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "121bbbaa-4ce3-4716-835e-209384047615",
+     "kind": "decision",
+     "title": "Ползваме Mailchimp за имейлите",
+     "body": "Имейл кампаниите са в Mailchimp.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "27b2ade1-405a-4ef3-82d9-2c9e8b2237ba",
+     "kind": "idea",
+     "title": "Нов бюлетин",
+     "body": "Нов бюлетин за клиенти.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Изрична замяна.",
+   "split": "holdout"
+  },
+  {
+   "id": "G030",
+   "category": "CR_supersedes",
+   "lang": "mixed",
+   "project": "p-G030",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "33c55fc6-89f7-46db-82fb-a23bd7e19f5f",
+     "kind": "decision",
+     "title": "Pricing v2: 29 евро на месец",
+     "body": "Новата цена е 29 евро.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "37062867-fd9c-4570-8ca3-379646e0b1c6",
+     "kind": "decision",
+     "title": "Pricing v1: 19 евро на месец",
+     "body": "Старата цена е 19 евро.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "1b4ff2e1-d190-426a-86ec-5dd6dfcce74a",
+     "kind": "idea",
+     "title": "Годишна отстъпка",
+     "body": "Отстъпка при годишен план.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Новата цена заменя старата.",
+   "split": "dev"
+  },
+  {
+   "id": "G031",
+   "category": "CR_supersedes",
+   "lang": "en",
+   "project": "p-G031",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "d572e02e-4ced-4ba2-8c5c-fd3720bc4d7c",
+     "kind": "decision",
+     "title": "Use the green logo",
+     "body": "The brand logo is green.",
+     "writtenAt": "2026-09-10T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "d52c5634-3f8b-4489-8b5e-ebee11e12a8f",
+     "kind": "decision",
+     "title": "Switch to the blue logo; the green one is retired",
+     "body": "The blue logo replaces the green one.",
+     "writtenAt": "2026-10-07T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "35b87e2d-84c9-4c35-8a49-4a76a6f58905",
+     "kind": "idea",
+     "title": "Print new business cards",
+     "body": "Business cards.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Reverse: the other object is the newer replacement; F was just touched.",
+   "split": "holdout"
+  },
+  {
+   "id": "G032",
+   "category": "CR_supersedes",
+   "lang": "bg",
+   "project": "p-G032",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "e18d3614-6c25-45c6-8322-0614602a49dc",
+     "kind": "decision",
+     "title": "Срещата е в четвъртък",
+     "body": "Срещата с екипа е в четвъртък.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "78c81eca-e98d-43a0-851e-1c446d68f819",
+     "kind": "decision",
+     "title": "Срещата се мести за петък",
+     "body": "Срещата с екипа вече е в петък, а не в четвъртък.",
+     "writtenAt": "2026-10-07T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "ed0a670b-1759-433e-85b2-dbdc13de3277",
+     "kind": "task",
+     "title": "Резервирай зала",
+     "body": "Зала за срещата.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Обратна посока: A е по-новото решение.",
+   "split": "dev"
+  },
+  {
+   "id": "G033",
+   "category": "CR_supersedes",
+   "lang": "en",
+   "project": "p-G033",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "6190439d-b11e-484d-87c2-c21734a2cc27",
+     "kind": "decision",
+     "title": "The office is open on Saturdays from now on",
+     "body": "New policy: Saturday opening.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "2f69818b-4002-4f96-80c1-32afe0d8525b",
+     "kind": "decision",
+     "title": "The office is closed on weekends",
+     "body": "Policy: weekends closed.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "722d1c72-9730-4e4d-830c-7aa6cc0f6b82",
+     "kind": "idea",
+     "title": "Buy a coffee machine",
+     "body": "Coffee machine.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Replaces the policy for Saturday; a reader may call it a contradiction.",
+   "split": "holdout"
+  },
+  {
+   "id": "G034",
+   "category": "CR_supersedes",
+   "lang": "en",
+   "project": "p-G034",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "2733f7d4-1b8c-4ee6-8fb8-26a50ea87447",
+     "kind": "decision",
+     "title": "Retire the legacy importer; use the new import service",
+     "body": "The new service replaces the old importer.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "27d87987-b40e-4490-8872-57eeaf825bc4",
+     "kind": "decision",
+     "title": "Use the legacy importer for CSV files",
+     "body": "CSV files go through the legacy importer.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "76ee2d80-e1ec-4756-8de4-aa5a5c28a133",
+     "kind": "task",
+     "title": "Write import service docs",
+     "body": "Docs.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Explicit replacement.",
+   "split": "dev"
+  },
+  {
+   "id": "G035",
+   "category": "CR_contradicts",
+   "lang": "en",
+   "project": "p-G035",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "b2153554-62b4-487c-8809-11621846dac0",
+     "kind": "decision",
+     "title": "Keep the office open on Sundays",
+     "body": "The office stays open on Sundays.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "5d100e95-b9cf-48b6-8555-e7f8f578eebe",
+     "kind": "decision",
+     "title": "Close the office on Sundays",
+     "body": "The office is closed on Sundays.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "f933c785-7ba8-401d-8d8c-d282b6cd86fc",
+     "kind": "idea",
+     "title": "Hire a cleaner",
+     "body": "Cleaning service.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Incompatible decisions about the same thing.",
+   "split": "holdout"
+  },
+  {
+   "id": "G036",
+   "category": "CR_contradicts",
+   "lang": "en",
+   "project": "p-G036",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "7c6e282d-74c9-494d-8319-23660d94063d",
+     "kind": "decision",
+     "title": "The API must be public",
+     "body": "Third parties can use the API.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "416fe96b-bffc-4cea-8304-a85cdbcade35",
+     "kind": "decision",
+     "title": "The API must stay internal only",
+     "body": "No external access to the API.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "bd426628-d5d2-4935-836a-553d8d7489cd",
+     "kind": "task",
+     "title": "Write API docs",
+     "body": "Docs.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Both cannot hold.",
+   "split": "holdout"
+  },
+  {
+   "id": "G037",
+   "category": "CR_contradicts",
+   "lang": "bg",
+   "project": "p-G037",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "998ef775-f8b4-4e29-8761-009552dde282",
+     "kind": "decision",
+     "title": "Всички плащания минават през карта",
+     "body": "Приемаме само картови плащания.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "ba000454-8536-4aa6-809b-cd124f295101",
+     "kind": "decision",
+     "title": "Приемаме само плащане в брой",
+     "body": "Само плащане в брой.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "4c875250-7294-4fab-8eef-5c0d0150e78b",
+     "kind": "idea",
+     "title": "Нов POS терминал",
+     "body": "Терминал за плащане.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Несъвместими решения.",
+   "split": "dev"
+  },
+  {
+   "id": "G038",
+   "category": "CR_contradicts",
+   "lang": "mixed",
+   "project": "p-G038",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "e1c5732d-a6a9-42f7-8d9d-521bdd9433db",
+     "kind": "decision",
+     "title": "Release-ът е без tracking",
+     "body": "Не събираме данни за употреба.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "d920a0db-39ff-4c04-8508-21de21c3b949",
+     "kind": "decision",
+     "title": "Добавяме analytics tracking във всеки екран",
+     "body": "Следим всички екрани.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "1cb15002-a9b0-46c9-8cb6-39d960d2e1cd",
+     "kind": "idea",
+     "title": "Нов onboarding",
+     "body": "Onboarding.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Несъвместими решения.",
+   "split": "dev"
+  },
+  {
+   "id": "G039",
+   "category": "CR_contradicts",
+   "lang": "en",
+   "project": "p-G039",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "11d5954f-a69f-4d7b-8c75-760febc8dabc",
+     "kind": "decision",
+     "title": "Remote work is mandatory on Fridays",
+     "body": "Everyone works remotely on Fridays.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "627fd51f-699b-486a-8008-391d2210524d",
+     "kind": "decision",
+     "title": "Everyone must be in the office on Fridays",
+     "body": "Office presence required on Fridays.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "ca26664c-793c-4992-806e-c150478f1de5",
+     "kind": "idea",
+     "title": "Team lunch on Thursdays",
+     "body": "Lunch.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Both cannot hold.",
+   "split": "holdout"
+  },
+  {
+   "id": "G040",
+   "category": "CR_contradicts",
+   "lang": "en",
+   "project": "p-G040",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "c74c1e2c-f275-4e0c-8212-7fd495b4edfa",
+     "kind": "decision",
+     "title": "Do not store passwords at all",
+     "body": "Use passkeys only; no password storage.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "216224f1-5750-4198-84d3-49f16f393149",
+     "kind": "decision",
+     "title": "Store passwords encrypted in the database",
+     "body": "Encrypted password column.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "546f36ee-5c2d-4149-83cc-3c68497b6120",
+     "kind": "task",
+     "title": "Add passkey login",
+     "body": "Passkeys.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Incompatible.",
+   "split": "dev"
+  },
+  {
+   "id": "G041",
+   "category": "CR_contradicts",
+   "lang": "bg",
+   "project": "p-G041",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "bddc0b91-b122-4c5a-878b-edd9f3fabd46",
+     "kind": "decision",
+     "title": "Пилотът е само за вътрешни потребители",
+     "body": "Без външни потребители.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "4d5d24cc-60ae-4cbc-8f6a-200f2fd3c613",
+     "kind": "decision",
+     "title": "Пилотът е публичен",
+     "body": "Отворен за всички.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "e1baa6f3-6e97-419a-874c-96104ebd4e36",
+     "kind": "task",
+     "title": "Покани за пилота",
+     "body": "Покани.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Несъвместими.",
+   "split": "holdout"
+  },
+  {
+   "id": "G042",
+   "category": "CR_contradicts",
+   "lang": "mixed",
+   "project": "p-G042",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "25b44bcf-4420-480b-8939-d75b5d64488a",
+     "kind": "decision",
+     "title": "Support is 24/7",
+     "body": "Поддръжка денонощно.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "27f78091-c0f8-448a-8edd-f7e1b7ee0fda",
+     "kind": "decision",
+     "title": "Support is available on weekdays 9 to 5 only",
+     "body": "Поддръжка само в работни дни.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "24c6aecd-f8db-4de8-8709-7ed38396a050",
+     "kind": "task",
+     "title": "Hire support staff",
+     "body": "Hiring.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Несъвместими.",
+   "split": "dev"
+  },
+  {
+   "id": "G043",
+   "category": "CR_duplicates",
+   "lang": "en",
+   "project": "p-G043",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "1d448e8c-eef9-454f-8eb8-46348138c2ac",
+     "kind": "task",
+     "title": "Lock the door every night",
+     "body": "Lock the front door before bed.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "108d0950-dace-425e-82e2-12291573b8a0",
+     "kind": "task",
+     "title": "Заключвам вратата всяка вечер",
+     "body": "Заключвам входната врата преди лягане.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "1e344741-11d3-4baf-83cd-5fbef97b144f",
+     "kind": "task",
+     "title": "Check the windows",
+     "body": "Check windows.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "duplicates",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Same knowledge in two languages.",
+   "split": "dev"
+  },
+  {
+   "id": "G044",
+   "category": "CR_duplicates",
+   "lang": "en",
+   "project": "p-G044",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "5d0d4185-b8bd-4a4f-837e-653c17bad523",
+     "kind": "task",
+     "title": "Send a weekly summary to the team",
+     "body": "A summary email every week.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "b30a0388-8305-4d6e-8e3a-3a62273d4967",
+     "kind": "task",
+     "title": "Weekly team summary email",
+     "body": "Email a weekly summary to the team.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "6d4ec47b-2f9e-441d-80bc-84306903a3cb",
+     "kind": "task",
+     "title": "Send a monthly report",
+     "body": "Monthly report.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "duplicates",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Same.",
+   "split": "holdout"
+  },
+  {
+   "id": "G045",
+   "category": "CR_duplicates",
+   "lang": "bg",
+   "project": "p-G045",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "89ac0f70-f7c1-4a55-8c67-44085fdc38a2",
+     "kind": "task",
+     "title": "Да направим резервно копие всяка нощ",
+     "body": "Нощен backup.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "33813c96-0503-41a2-800f-ad9f8c40426b",
+     "kind": "task",
+     "title": "Всяка нощ да се прави backup",
+     "body": "Автоматичен нощен backup.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "eafb0102-1065-4a93-8113-0cc26af51bf2",
+     "kind": "task",
+     "title": "Да тестваме възстановяването",
+     "body": "Тест на restore.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "duplicates",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Едно и също.",
+   "split": "dev"
+  },
+  {
+   "id": "G046",
+   "category": "CR_duplicates",
+   "lang": "mixed",
+   "project": "p-G046",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "973ba183-db8a-4e19-878c-e2ffee696fb3",
+     "kind": "task",
+     "title": "Onboarding checklist за новите служители",
+     "body": "Чеклист за нови служители.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "e187e9e9-7877-47cf-8734-ce63f4b3ce28",
+     "kind": "task",
+     "title": "New employee onboarding checklist",
+     "body": "A checklist for new hires.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "a4537e90-a0ea-4ff1-805e-27cd28a96b93",
+     "kind": "task",
+     "title": "Offboarding checklist",
+     "body": "Checklist for leavers.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "duplicates",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Едно и също.",
+   "split": "holdout"
+  },
+  {
+   "id": "G047",
+   "category": "CR_duplicates",
+   "lang": "en",
+   "project": "p-G047",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "02356960-8f54-4c20-86d2-aceb83cf94b1",
+     "kind": "task",
+     "title": "Cancel the old Zapier workflows",
+     "body": "Turn off the old Zapier flows.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "74629625-ff24-4a31-8284-90a28fd0520f",
+     "kind": "task",
+     "title": "Remove the legacy Zapier automations",
+     "body": "Delete the legacy automations.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "0695778c-ad3b-42b1-8c97-85738a6feede",
+     "kind": "task",
+     "title": "Create new Zapier workflows",
+     "body": "New flows.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "duplicates",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Same.",
+   "split": "dev"
+  },
+  {
+   "id": "G048",
+   "category": "CR_duplicates",
+   "lang": "en",
+   "project": "p-G048",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "460abb68-e5e5-4165-89c5-ee666be6444c",
+     "kind": "task",
+     "title": "Buy milk",
+     "body": "Milk.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "cdf7e869-8a82-486f-8846-2bbc148fc3c4",
+     "kind": "task",
+     "title": "Pick up some milk on the way home",
+     "body": "Get milk after work.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "9e39e5c0-c125-444b-8591-97cf5d0d9c00",
+     "kind": "task",
+     "title": "Buy bread",
+     "body": "Bread.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "duplicates",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Same.",
+   "split": "holdout"
+  },
+  {
+   "id": "G049",
+   "category": "CR_duplicates",
+   "lang": "bg",
+   "project": "p-G049",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "e31c541d-e232-409a-88d3-2509f5e15a09",
+     "kind": "task",
+     "title": "Да се обадя на зъболекаря",
+     "body": "Обаждане за час.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "995f4096-dfeb-4d43-8807-20ea8cfa7805",
+     "kind": "task",
+     "title": "Обади се на дентиста",
+     "body": "Обади се за час при дентиста.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "060be1d8-1493-4975-8d5b-eb4a88c23403",
+     "kind": "task",
+     "title": "Да се обадя на лекаря",
+     "body": "Обаждане при лекаря.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "duplicates",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Едно и също.",
+   "split": "holdout"
+  },
+  {
+   "id": "G050",
+   "category": "CR_duplicates",
+   "lang": "mixed",
+   "project": "p-G050",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "b0d267a4-0509-4d28-8070-dda4d098236d",
+     "kind": "task",
+     "title": "Rate limit на login endpoint-а",
+     "body": "Ограничаване на опитите за вход.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "985e70e8-8b3b-4593-8c06-37ec137af0bf",
+     "kind": "task",
+     "title": "Limit the login attempts per minute",
+     "body": "Throttle login attempts.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "ca248148-784f-4f4c-84c9-dfbb2128f78d",
+     "kind": "task",
+     "title": "Rate limit на signup endpoint-а",
+     "body": "Throttle signup.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "duplicates",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Едно и също.",
+   "split": "dev"
+  },
+  {
+   "id": "G051",
+   "category": "CR_related_to",
+   "lang": "en",
+   "project": "p-G051",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "b9c2e1e2-cb96-457e-8676-3cf6edd39a98",
+     "kind": "idea",
+     "title": "Pair the meditation habit with morning coffee",
+     "body": "Meditate while the coffee brews.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "591689e3-67c0-4c05-89d7-aedf58d3d97b",
+     "kind": "idea",
+     "title": "Drink coffee every morning",
+     "body": "A daily coffee ritual.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "3f11aa57-91ea-4bef-8c99-3d734a074dcb",
+     "kind": "idea",
+     "title": "Run on Saturdays",
+     "body": "Running.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "related_to",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Specific link; no stronger kind.",
+   "split": "dev"
+  },
+  {
+   "id": "G052",
+   "category": "CR_related_to",
+   "lang": "en",
+   "project": "p-G052",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "c03ad5b0-f745-4eb2-8511-4c2a8d1a6ed8",
+     "kind": "note",
+     "title": "Talk topics for the Lisbon conference",
+     "body": "Draft talk titles for Lisbon.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "40f5b37c-ef8e-4ee8-8a90-e88ffb001336",
+     "kind": "task",
+     "title": "Book flights to Lisbon",
+     "body": "Flights for the conference.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "4c7f848c-8d78-4633-8ead-cc728ab3f183",
+     "kind": "task",
+     "title": "Renew the car insurance",
+     "body": "Insurance.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "related_to",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Same trip context; the link is real but weak.",
+   "split": "holdout"
+  },
+  {
+   "id": "G053",
+   "category": "CR_related_to",
+   "lang": "bg",
+   "project": "p-G053",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "9c10bfe6-ca8c-47c4-8a01-516af58bc7c8",
+     "kind": "note",
+     "title": "Ресторантът има вегетариански менюта",
+     "body": "Менюто включва вегетариански ястия.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "4b300139-d50b-45ac-8e0e-9176cdb4359c",
+     "kind": "task",
+     "title": "Да резервирам маса за вечерята",
+     "body": "Резервация за петък.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "5b7f7a9d-93c9-4797-8dcd-192155959d9b",
+     "kind": "task",
+     "title": "Да платя наема",
+     "body": "Наем.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "related_to",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Конкретна връзка, без по-силен вид.",
+   "split": "holdout"
+  },
+  {
+   "id": "G054",
+   "category": "CR_related_to",
+   "lang": "mixed",
+   "project": "p-G054",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "9caba315-6f10-4943-81c6-abab065f9a3b",
+     "kind": "note",
+     "title": "Competitor X launched a free tier",
+     "body": "Пазарна новина.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "d984fc69-13f3-4338-8187-cb2426147d88",
+     "kind": "idea",
+     "title": "Drop the free tier",
+     "body": "Remove our free plan.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "7424ff37-daf5-43dd-8d0f-56a3b7954654",
+     "kind": "idea",
+     "title": "Нов лого",
+     "body": "Logo.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "related_to",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [
+     {
+      "kind": "derived_from",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Свързани, но не е ясно дали A произлиза от F.",
+   "split": "dev"
+  },
+  {
+   "id": "G055",
+   "category": "CR_related_to",
+   "lang": "en",
+   "project": "p-G055",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "d46d8551-8919-4b17-891b-a6b12c96f074",
+     "kind": "note",
+     "title": "The venue has no projector",
+     "body": "The workshop room has no projector.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "5f564cf8-ee35-404d-8689-db262d8d85ec",
+     "kind": "idea",
+     "title": "Run a workshop on budgeting",
+     "body": "Workshop.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "7751619a-66ce-44b3-86f9-2349f458b6bb",
+     "kind": "task",
+     "title": "Print handouts",
+     "body": "Handouts.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "related_to",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Relevant constraint, not a requirement.",
+   "split": "dev"
+  },
+  {
+   "id": "G056",
+   "category": "CR_related_to",
+   "lang": "bg",
+   "project": "p-G056",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "9633647c-ac5e-4ab3-8ae2-64bde79adb16",
+     "kind": "note",
+     "title": "Колегата Иван е експерт по Postgres",
+     "body": "Иван познава Postgres добре.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "58c25df2-ba1b-434f-88cc-ee35c9f94039",
+     "kind": "task",
+     "title": "Миграция на базата данни",
+     "body": "Преместване на данните.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "a6b2705b-2432-4c55-8c0f-2b614ca17770",
+     "kind": "task",
+     "title": "Нов дизайн на сайта",
+     "body": "Дизайн.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "related_to",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Полезна връзка, без по-силен вид.",
+   "split": "holdout"
+  },
+  {
+   "id": "G057",
+   "category": "HN",
+   "lang": "en",
+   "project": "p-G057",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "7dab210c-dcc7-4340-85fd-a81c0904da62",
+     "kind": "task",
+     "title": "Buy paint for the fence",
+     "body": "Get exterior paint for the garden fence.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "fd8af381-1b07-4702-8008-630b2aeecc7c",
+     "kind": "task",
+     "title": "Buy bread for the week",
+     "body": "Weekly shopping.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "99e91019-3022-441a-8391-d83cd064e068",
+     "kind": "task",
+     "title": "Paint the garage door",
+     "body": "Repaint the garage door in white.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Shares only 'buy'/'paint'; two tasks. (Garage door and fence are separate.)",
+   "split": "dev"
+  },
+  {
+   "id": "G058",
+   "category": "HN",
+   "lang": "en",
+   "project": "p-G058",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "2b963af2-029c-4ff4-8e26-4f9e527eee47",
+     "kind": "idea",
+     "title": "Add dark mode to settings",
+     "body": "Dark theme option in settings.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "3955c90f-3530-4970-8397-6e6966d7ce2e",
+     "kind": "idea",
+     "title": "Add a language selector to settings",
+     "body": "Language option in settings.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Two settings, separate ideas.",
+   "split": "holdout"
+  },
+  {
+   "id": "G059",
+   "category": "HN",
+   "lang": "en",
+   "project": "p-G059",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "c389167d-effd-4042-8ede-1542c2850210",
+     "kind": "task",
+     "title": "Review the Q3 budget",
+     "body": "Check the Q3 budget lines.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "f1ad62da-a9cb-4251-8bfb-f87a1af5f60e",
+     "kind": "task",
+     "title": "Review the Q3 marketing plan",
+     "body": "Check the marketing plan.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "f87787c7-27e5-43ea-8796-c97a0905bcf4",
+     "kind": "note",
+     "title": "Q3 ends on 30 September",
+     "body": "Calendar note.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Same period, different reviews.",
+   "split": "holdout"
+  },
+  {
+   "id": "G060",
+   "category": "HN",
+   "lang": "en",
+   "project": "p-G060",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "6484a9bc-09e6-40e1-87d1-7accb4340d4f",
+     "kind": "task",
+     "title": "Write tests for the login endpoint",
+     "body": "Unit tests for login.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "50328a28-3ed9-4d59-82a8-f61aae7b7665",
+     "kind": "task",
+     "title": "Write docs for the login endpoint",
+     "body": "Docs for login.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "7aca5864-9ca8-402f-850a-e9a01c5326f9",
+     "kind": "task",
+     "title": "Write tests for the signup endpoint",
+     "body": "Unit tests for signup.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Same endpoint, different deliverables.",
+   "split": "dev"
+  },
+  {
+   "id": "G061",
+   "category": "HN",
+   "lang": "en",
+   "project": "p-G061",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "bcc3dc84-052b-484f-8da1-4edcb86e8331",
+     "kind": "idea",
+     "title": "Support CSV export",
+     "body": "Export tables as CSV.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "8198a625-ebab-4e18-8e13-ff2f4f46bac7",
+     "kind": "idea",
+     "title": "Support CSV import",
+     "body": "Import tables from CSV.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Export versus import.",
+   "split": "holdout"
+  },
+  {
+   "id": "G062",
+   "category": "HN",
+   "lang": "en",
+   "project": "p-G062",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "3852660b-b2bd-42ab-856e-1a3c944a3e07",
+     "kind": "task",
+     "title": "Hire a designer",
+     "body": "Open a design position.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "06763e01-0705-4a70-8b23-b7dd0abf6950",
+     "kind": "task",
+     "title": "Hire a developer",
+     "body": "Open an engineering position.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Different hires.",
+   "split": "dev"
+  },
+  {
+   "id": "G063",
+   "category": "HN",
+   "lang": "en",
+   "project": "p-G063",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "8b08bf2a-1a50-4667-833e-e30e5cf72331",
+     "kind": "idea",
+     "title": "Reduce server costs",
+     "body": "Cut cloud spend.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "785e9c4d-d56f-43eb-85db-c799486f9eeb",
+     "kind": "idea",
+     "title": "Reduce page load time",
+     "body": "Faster pages.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "39a9d01a-d0bd-43d5-8519-34c0bf9cddda",
+     "kind": "note",
+     "title": "Cloud spend rose 12 percent",
+     "body": "Monthly report.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Different goals; cost note is not a basis for either.",
+   "split": "dev"
+  },
+  {
+   "id": "G064",
+   "category": "HN",
+   "lang": "en",
+   "project": "p-G064",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "319a27f8-bdcb-4b84-8d30-5b3966c145ca",
+     "kind": "task",
+     "title": "Plan the team offsite in June",
+     "body": "Organise the June offsite.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "883d058d-df1a-432a-8e3f-a12380ae9593",
+     "kind": "task",
+     "title": "Plan the onboarding of the June cohort",
+     "body": "Prepare for new hires in June.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Same month, unrelated plans.",
+   "split": "holdout"
+  },
+  {
+   "id": "G065",
+   "category": "HN",
+   "lang": "bg",
+   "project": "p-G065",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "559e7ba0-f4a5-434a-8e16-53c8861a87be",
+     "kind": "task",
+     "title": "Да купя хляб",
+     "body": "Хляб за вкъщи.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "77fc8fe5-19b3-4995-8e21-8d9477efeb8e",
+     "kind": "task",
+     "title": "Да купя боя",
+     "body": "Боя за стената.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "a81e306f-3c5c-479f-8c16-b492a2a2c87f",
+     "kind": "task",
+     "title": "Да купя мляко",
+     "body": "Мляко.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Само 'да купя'.",
+   "split": "holdout"
+  },
+  {
+   "id": "G066",
+   "category": "HN",
+   "lang": "bg",
+   "project": "p-G066",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "874d5ede-6938-437f-891c-e10a4d67897a",
+     "kind": "task",
+     "title": "Да сменя гумите",
+     "body": "Зимни гуми.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "f6a45d02-0278-49f2-8b15-7069e56ff468",
+     "kind": "task",
+     "title": "Да сменя маслото",
+     "body": "Масло на колата.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Различна поддръжка.",
+   "split": "dev"
+  },
+  {
+   "id": "G067",
+   "category": "HN",
+   "lang": "bg",
+   "project": "p-G067",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "01d8d422-3278-4d93-8421-94b063d9edb5",
+     "kind": "idea",
+     "title": "Тъмна тема",
+     "body": "Тъмен режим.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "df58ad06-1481-46a7-8825-dc955acbda0f",
+     "kind": "idea",
+     "title": "Превключвател за език",
+     "body": "Избор на език.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Различни настройки.",
+   "split": "dev"
+  },
+  {
+   "id": "G068",
+   "category": "HN",
+   "lang": "bg",
+   "project": "p-G068",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "1ecb6da8-336e-4572-8906-e6a2d7f2fe27",
+     "kind": "task",
+     "title": "Да напиша бележки за версията",
+     "body": "Release notes.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "56d4e414-8be0-4277-82e4-2d0317a42363",
+     "kind": "task",
+     "title": "Да напиша блог пост за версията",
+     "body": "Блог пост.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "55a8e302-9f47-4892-8fd2-feab99d30b98",
+     "kind": "task",
+     "title": "Да напиша имейл до клиентите",
+     "body": "Имейл.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Различни текстове.",
+   "split": "holdout"
+  },
+  {
+   "id": "G069",
+   "category": "HN",
+   "lang": "bg",
+   "project": "p-G069",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "0d79fb0c-605f-41e9-8c19-21fd75aa4dd6",
+     "kind": "task",
+     "title": "Да планирам отпуската през август",
+     "body": "Почивка.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "7bb94d36-9e50-4cc7-821c-d805a51d5c49",
+     "kind": "task",
+     "title": "Да планирам бюджета за август",
+     "body": "Финанси.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Различни планове.",
+   "split": "dev"
+  },
+  {
+   "id": "G070",
+   "category": "HN",
+   "lang": "mixed",
+   "project": "p-G070",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "b9370f72-176d-4ba4-8dca-40bfba75fe74",
+     "kind": "idea",
+     "title": "Dashboard-ът да показва revenue",
+     "body": "Метрика revenue.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "ea10e015-fc38-4045-8d93-f945fd8798ac",
+     "kind": "idea",
+     "title": "Dashboard-ът да показва churn",
+     "body": "Метрика churn.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Две различни метрики.",
+   "split": "holdout"
+  },
+  {
+   "id": "G071",
+   "category": "HN",
+   "lang": "mixed",
+   "project": "p-G071",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "a3b2ebb9-2f03-4c46-8298-7fa4cb44a659",
+     "kind": "task",
+     "title": "Backup на базата",
+     "body": "Резервно копие на базата.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "b5f4ca99-979b-41a0-8fdb-1cbc8d06d1da",
+     "kind": "task",
+     "title": "Backup на снимките",
+     "body": "Резервно копие на снимките.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Различни данни.",
+   "split": "holdout"
+  },
+  {
+   "id": "G072",
+   "category": "HN",
+   "lang": "mixed",
+   "project": "p-G072",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "b78392e0-0940-483a-8a7c-4672e140fce6",
+     "kind": "task",
+     "title": "Onboarding email #1",
+     "body": "Първият имейл.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "fbf9bc4c-c092-45ae-809d-68a60e3eef23",
+     "kind": "task",
+     "title": "Onboarding email #2",
+     "body": "Вторият имейл.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "bf4854b9-ce61-4659-8266-c54f2f94223d",
+     "kind": "task",
+     "title": "Onboarding email #3",
+     "body": "Третият имейл.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Отделни имейли.",
+   "split": "dev"
+  },
+  {
+   "id": "G073",
+   "category": "HN",
+   "lang": "mixed",
+   "project": "p-G073",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "f8f1dd9a-ab18-4f28-8b41-471bab38cfa3",
+     "kind": "task",
+     "title": "API ключове да се ротират на 90 дни",
+     "body": "Политика за ротация.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "e699d1ac-32e0-4696-8f5b-eadf5094a41c",
+     "kind": "task",
+     "title": "API документация",
+     "body": "Документация на API-то.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Различни неща.",
+   "split": "holdout"
+  },
+  {
+   "id": "G074",
+   "category": "HN",
+   "lang": "en",
+   "project": "p-G074",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "9124ba2f-8258-4e5c-839e-c1e40f78ebf6",
+     "kind": "task",
+     "title": "Update the website footer",
+     "body": "New footer links.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "69e99a06-82b0-466f-8497-3c3b3f484b6f",
+     "kind": "task",
+     "title": "Update the website header",
+     "body": "New header menu.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Different parts.",
+   "split": "dev"
+  },
+  {
+   "id": "G075",
+   "category": "HN",
+   "lang": "en",
+   "project": "p-G075",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "4834ff3e-f5d9-4c20-8bcd-d64efdd60115",
+     "kind": "task",
+     "title": "Ship the Windows client",
+     "body": "Windows build.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "e2bd1fb4-69b2-42ed-8497-6f8791da067b",
+     "kind": "task",
+     "title": "Ship the macOS client",
+     "body": "macOS build.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Parallel builds, independent.",
+   "split": "holdout"
+  },
+  {
+   "id": "G076",
+   "category": "HN",
+   "lang": "en",
+   "project": "p-G076",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "4753bfd4-aefa-4b81-87cf-0e739dd106d7",
+     "kind": "task",
+     "title": "Prepare the investor deck",
+     "body": "Deck for investors.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "7585812a-f904-42d7-8ad8-a201d10a2e38",
+     "kind": "task",
+     "title": "Prepare the board deck",
+     "body": "Deck for the board.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Two decks.",
+   "split": "dev"
+  },
+  {
+   "id": "G077",
+   "category": "UN",
+   "lang": "en",
+   "project": "p-G077",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "974b50e9-9909-4c27-8483-36c33cf25c7e",
+     "kind": "idea",
+     "title": "Learn to bake sourdough",
+     "body": "Starter and basics.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "961bb111-a23c-4f52-8da0-376ee9c42942",
+     "kind": "task",
+     "title": "Rotate the API keys",
+     "body": "Security chore.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "e883627d-cccf-4224-8a21-1c5e4e9d85bb",
+     "kind": "task",
+     "title": "Book a dentist",
+     "body": "Dentist.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Unrelated.",
+   "split": "holdout"
+  },
+  {
+   "id": "G078",
+   "category": "UN",
+   "lang": "bg",
+   "project": "p-G078",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "27370e26-8a87-4026-86b5-a28a7ab873ed",
+     "kind": "idea",
+     "title": "Да науча италиански",
+     "body": "Курс по италиански.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "cc297b4a-b28d-49e6-8949-48797e56241a",
+     "kind": "task",
+     "title": "Да оправя течащия кран",
+     "body": "Кран в банята.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "4a9d61c7-ffec-4450-8152-32e8d507a995",
+     "kind": "idea",
+     "title": "Нов лого",
+     "body": "Logo.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Несвързани.",
+   "split": "dev"
+  },
+  {
+   "id": "G079",
+   "category": "UN",
+   "lang": "en",
+   "project": "p-G079",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "c1a86f10-d7d7-44f3-8d29-d5b36412b47c",
+     "kind": "idea",
+     "title": "Plan the garden",
+     "body": "Spring planting.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "a8a3b753-cb7f-499b-8e8f-7fed0b59d9d5",
+     "kind": "task",
+     "title": "Review the pull request",
+     "body": "Code review.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "b541754d-eed9-4554-8611-b05bec8312db",
+     "kind": "task",
+     "title": "Pay the electricity bill",
+     "body": "Bill.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Unrelated.",
+   "split": "dev"
+  },
+  {
+   "id": "G080",
+   "category": "UN",
+   "lang": "mixed",
+   "project": "p-G080",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "b9be9310-8610-44a6-8424-6e4fa26fa009",
+     "kind": "task",
+     "title": "Тренировка в четвъртък",
+     "body": "Gym session.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "5718ccbf-764c-4c5f-86fc-486b25dda36c",
+     "kind": "note",
+     "title": "Release notes за 2.0",
+     "body": "Notes.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "78289ad3-f64b-4812-8c1f-a0385dcab187",
+     "kind": "task",
+     "title": "Call the plumber",
+     "body": "Plumber.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Несвързани.",
+   "split": "dev"
+  },
+  {
+   "id": "G081",
+   "category": "UN",
+   "lang": "en",
+   "project": "p-G081",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "3b6a5ea1-152a-4007-8b70-e0e378245c15",
+     "kind": "task",
+     "title": "Order new office chairs",
+     "body": "Ergonomic chairs.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "7ca52f54-76e5-454f-85ee-3227776fe068",
+     "kind": "task",
+     "title": "Draft the privacy policy",
+     "body": "Legal text.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "9d442f5c-eb53-43b7-8ca4-87372b5f2f5d",
+     "kind": "idea",
+     "title": "Redesign the logo",
+     "body": "Logo.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Unrelated.",
+   "split": "holdout"
+  },
+  {
+   "id": "G082",
+   "category": "UN",
+   "lang": "bg",
+   "project": "p-G082",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "4482722a-21b2-4bfe-83a9-a1befc35902d",
+     "kind": "note",
+     "title": "Рождения ден на баба",
+     "body": "Подарък и торта.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "7dfa9d7d-5740-4cbe-891a-a31f48ef9e55",
+     "kind": "task",
+     "title": "Миграция на базата данни",
+     "body": "Техническа задача.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "69b9daa5-bb62-4380-8b24-9ee80cfa612f",
+     "kind": "task",
+     "title": "Да подновя картата за метрото",
+     "body": "Карта.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Несвързани.",
+   "split": "holdout"
+  },
+  {
+   "id": "G083",
+   "category": "UN",
+   "lang": "mixed",
+   "project": "p-G083",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "1b61c2dc-5081-4dd9-8b01-fc8c00551d9f",
+     "kind": "task",
+     "title": "Call the plumber",
+     "body": "Тръбар.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "cfbb261e-5abc-4f67-81f8-7c2c27bd01bf",
+     "kind": "idea",
+     "title": "Нов дизайн на логото",
+     "body": "Логото.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "aa88aad0-6cc3-4d7e-836e-6e327f148892",
+     "kind": "task",
+     "title": "Rotate the API keys",
+     "body": "Keys.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Несвързани.",
+   "split": "dev"
+  },
+  {
+   "id": "G084",
+   "category": "UN",
+   "lang": "en",
+   "project": "p-G084",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "a8ef5691-0cf9-464b-8b91-48238124a7ea",
+     "kind": "task",
+     "title": "Pay the electricity bill",
+     "body": "Monthly bill.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "ab59bd70-e7ea-466e-8ba0-c2418bea9c35",
+     "kind": "task",
+     "title": "Write the conference abstract",
+     "body": "Abstract.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "c3eb3755-2e1c-4740-8dc0-e3d5b3cdf99d",
+     "kind": "idea",
+     "title": "Learn to bake sourdough",
+     "body": "Baking.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Unrelated.",
+   "split": "holdout"
+  },
+  {
+   "id": "G085",
+   "category": "CF_sc",
+   "lang": "en",
+   "project": "p-G085",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "510acfe5-384b-4606-805e-550e6e2e33af",
+     "kind": "decision",
+     "title": "Update: the deadline is now June 30",
+     "body": "The deadline moved from June 15 to June 30.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "31e323e1-91d1-4d7b-8f31-73df035c89db",
+     "kind": "decision",
+     "title": "The deadline is June 15",
+     "body": "Project deadline June 15.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "ba140c12-8299-4f08-8533-b07e74a1929a",
+     "kind": "task",
+     "title": "Book the review meeting",
+     "body": "Review meeting.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Explicit update.",
+   "split": "dev"
+  },
+  {
+   "id": "G086",
+   "category": "CF_sc",
+   "lang": "en",
+   "project": "p-G086",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "c94b2fe3-8a8c-4bfe-8174-7eb76198c23a",
+     "kind": "decision",
+     "title": "We replaced the monthly plan with an annual-only plan",
+     "body": "Only annual billing from now on.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "fd068c53-4c1f-4b68-85c6-4e79fa035f3a",
+     "kind": "decision",
+     "title": "Offer a monthly plan",
+     "body": "Monthly billing is available.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "6f26a8b5-5871-4b55-8956-253b620986f0",
+     "kind": "idea",
+     "title": "Add a family plan",
+     "body": "Family plan.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Explicit replacement.",
+   "split": "dev"
+  },
+  {
+   "id": "G087",
+   "category": "CF_sc",
+   "lang": "bg",
+   "project": "p-G087",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "a20abe0b-0262-4038-8073-1c636c3073e7",
+     "kind": "decision",
+     "title": "Решихме: офисът ще е затворен в неделя; отменяме предишното решение",
+     "body": "Новото решение: неделя е почивен ден.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "4cf706fe-6701-4fed-85ca-61c5f4888184",
+     "kind": "decision",
+     "title": "Офисът е отворен в неделя",
+     "body": "Работим в неделя.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "1b9d342b-0a3b-47cf-85be-0ee42b3e17cd",
+     "kind": "task",
+     "title": "График за смените",
+     "body": "Смени.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Изрична отмяна на предишното решение.",
+   "split": "holdout"
+  },
+  {
+   "id": "G088",
+   "category": "CF_sc",
+   "lang": "mixed",
+   "project": "p-G088",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "c3a20cb3-873c-42c0-830e-d2c705601bd8",
+     "kind": "decision",
+     "title": "Revised: backup-ът е на всеки час",
+     "body": "Промяна: почасов backup.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "07e1920d-c545-486e-8410-c043dd3703bc",
+     "kind": "decision",
+     "title": "Backup-ът е веднъж дневно",
+     "body": "Дневен backup.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "a90c7758-c30b-4bea-8f45-309cad789b6d",
+     "kind": "task",
+     "title": "Тест на restore",
+     "body": "Restore.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Revised = заменя.",
+   "split": "holdout"
+  },
+  {
+   "id": "G089",
+   "category": "CF_sc",
+   "lang": "en",
+   "project": "p-G089",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "c0dfc04d-fa18-45db-89a7-bfda2eba2319",
+     "kind": "decision",
+     "title": "The data must never leave the EU",
+     "body": "Strict data residency.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "4b95775e-ce29-4662-85f4-02dab3efd95c",
+     "kind": "decision",
+     "title": "Store backups in a US region",
+     "body": "Backups in us-east.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "fc090de6-8f08-485b-8e2b-4716be6d2931",
+     "kind": "task",
+     "title": "Audit the backup job",
+     "body": "Audit.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Incompatible, neither replaces the other.",
+   "split": "dev"
+  },
+  {
+   "id": "G090",
+   "category": "CF_sc",
+   "lang": "en",
+   "project": "p-G090",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "b2ff4fff-89b1-4df0-875d-3761f2891c5e",
+     "kind": "decision",
+     "title": "Everyone gets the same salary band",
+     "body": "Single band.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "962abe29-8ba2-4624-8bd7-dd7f82586b97",
+     "kind": "decision",
+     "title": "Senior engineers get a higher band",
+     "body": "Seniority bands.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "ada56192-dd30-4864-8d9c-9339fb8e6712",
+     "kind": "task",
+     "title": "Review salary survey",
+     "body": "Survey.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Incompatible.",
+   "split": "holdout"
+  },
+  {
+   "id": "G091",
+   "category": "CF_sc",
+   "lang": "bg",
+   "project": "p-G091",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "d900ad70-099c-4171-8406-db30c6b556a3",
+     "kind": "decision",
+     "title": "Не искаме да събираме имейли",
+     "body": "Без имейли.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "2142d8c6-79e2-401b-84dc-245802b63fe7",
+     "kind": "decision",
+     "title": "Събираме имейл при регистрация",
+     "body": "Имейл в регистрацията.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "59a8726c-ff8c-48de-8581-f1b2f4ef5aba",
+     "kind": "task",
+     "title": "Политика за поверителност",
+     "body": "Политика.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Несъвместими.",
+   "split": "holdout"
+  },
+  {
+   "id": "G092",
+   "category": "CF_sc",
+   "lang": "mixed",
+   "project": "p-G092",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "8feae957-c0e2-4876-8ff7-768c7eb01b67",
+     "kind": "decision",
+     "title": "App-ът работи само онлайн",
+     "body": "Online-only.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "6514b152-8fbd-453b-8058-d35d39a56362",
+     "kind": "decision",
+     "title": "App-ът трябва да работи офлайн",
+     "body": "Offline-first.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "732cedec-dcbd-46ec-838b-511d4570b372",
+     "kind": "task",
+     "title": "Sync engine",
+     "body": "Sync.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Несъвместими.",
+   "split": "holdout"
+  },
+  {
+   "id": "G093",
+   "category": "CF_ed",
+   "lang": "en",
+   "project": "p-G093",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "b0949c48-4b40-440f-8ca8-29bd2d385bb5",
+     "kind": "task",
+     "title": "Daily standup at 9:30",
+     "body": "Team standup every day at 9:30.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "80b688f5-3d2e-4729-8bdc-e1c865666dc5",
+     "kind": "task",
+     "title": "Standup every day at 9:30",
+     "body": "Daily team standup at half past nine.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "3b87a040-15bc-406f-8ba3-e538d47e390e",
+     "kind": "task",
+     "title": "Weekly planning on Mondays",
+     "body": "Planning.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "duplicates",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Same.",
+   "split": "holdout"
+  },
+  {
+   "id": "G094",
+   "category": "CF_ed",
+   "lang": "bg",
+   "project": "p-G094",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "ced93aca-8a13-4bca-8250-42536191e858",
+     "kind": "task",
+     "title": "Да изпратя фактурата на клиента",
+     "body": "Изпращане на фактурата.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "48a11ce6-f841-4ba4-8f84-24b1599a1c52",
+     "kind": "task",
+     "title": "Изпрати фактурата до клиента",
+     "body": "Фактурата до клиента.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "f52cda21-55ee-4abb-81a6-767dacc52177",
+     "kind": "task",
+     "title": "Да платя фактурата на доставчика",
+     "body": "Плащане.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "duplicates",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Едно и също.",
+   "split": "dev"
+  },
+  {
+   "id": "G095",
+   "category": "CF_ed",
+   "lang": "mixed",
+   "project": "p-G095",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "98a80c0b-2c2b-44b9-865d-0749dff02704",
+     "kind": "task",
+     "title": "Weekly report за мениджмънта",
+     "body": "Седмичен отчет.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "db04d100-1b15-4d46-8a72-880eed3a06f0",
+     "kind": "task",
+     "title": "Седмичен report за ръководството",
+     "body": "Report за ръководството.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "11820692-7b16-4bfa-85ed-1610d3550042",
+     "kind": "task",
+     "title": "Monthly report за борда",
+     "body": "Месечен.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "duplicates",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Едно и също.",
+   "split": "holdout"
+  },
+  {
+   "id": "G096",
+   "category": "CF_ed",
+   "lang": "en",
+   "project": "p-G096",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "e0df54a1-b168-4ab4-8217-77f85582d42d",
+     "kind": "task",
+     "title": "Daily standup at 9:30 with a written async option",
+     "body": "Standup plus an async written update for remote people.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "eb0d5cb3-340b-419e-89c5-19edfb1d5b33",
+     "kind": "task",
+     "title": "Daily standup at 9:30",
+     "body": "Team standup every day at 9:30.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "08c383c4-e87d-43e9-8c75-08dd09451947",
+     "kind": "task",
+     "title": "Weekly planning on Mondays",
+     "body": "Planning.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Adds an option.",
+   "split": "holdout"
+  },
+  {
+   "id": "G097",
+   "category": "CF_ed",
+   "lang": "bg",
+   "project": "p-G097",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "12e1f721-1bcb-4614-8ec7-dc84acfa4742",
+     "kind": "task",
+     "title": "Фактура с автоматично напомняне след 7 дни",
+     "body": "Изпращане на фактурата и напомняне след седмица.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "33b4eb64-768c-44ac-8a99-2958678e5430",
+     "kind": "task",
+     "title": "Да изпратя фактурата на клиента",
+     "body": "Изпращане на фактурата.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "f8476fc3-8d80-4ea2-87d6-53b8bc1253b5",
+     "kind": "task",
+     "title": "Да платя наема",
+     "body": "Наем.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Добавя напомняне.",
+   "split": "dev"
+  },
+  {
+   "id": "G098",
+   "category": "CF_ed",
+   "lang": "mixed",
+   "project": "p-G098",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "c9fc7ec5-1647-4148-85ef-aa3fa338c474",
+     "kind": "task",
+     "title": "Weekly report с графики и коментари",
+     "body": "Report със графики.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "e2457253-c435-43b7-8709-22dccc72cf0c",
+     "kind": "task",
+     "title": "Weekly report за мениджмънта",
+     "body": "Основен report.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "77a11ae7-3dd3-4785-894b-c2700cc8f361",
+     "kind": "task",
+     "title": "Monthly report за борда",
+     "body": "Месечен.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Добавя графики.",
+   "split": "holdout"
+  },
+  {
+   "id": "G099",
+   "category": "CF_dd",
+   "lang": "en",
+   "project": "p-G099",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "167eec57-ecfa-433e-88a0-745c3f38fd39",
+     "kind": "task",
+     "title": "Launch the feature",
+     "body": "Release the new feature.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "ecd34c7f-cc15-4528-8642-b9518131bd0a",
+     "kind": "task",
+     "title": "Get legal approval",
+     "body": "Legal sign-off on the feature.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "85ba0ea3-6ef3-4c92-8009-9802a2363dad",
+     "kind": "idea",
+     "title": "Write a launch blog post",
+     "body": "Blog.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Requirement, not derivation.",
+   "split": "dev"
+  },
+  {
+   "id": "G100",
+   "category": "CF_dd",
+   "lang": "en",
+   "project": "p-G100",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "4b8fbd22-fd89-4b20-8418-378192f391ee",
+     "kind": "task",
+     "title": "Get legal approval for the launch",
+     "body": "Request legal review.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "ef37ba1e-6712-4991-8520-353d5380bd78",
+     "kind": "note",
+     "title": "Finding: the feature stores personal data",
+     "body": "Audit finding.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "974824a1-8848-409e-8388-05d5864a0b1a",
+     "kind": "idea",
+     "title": "Write a launch blog post",
+     "body": "Blog.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "derived_from",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [
+     {
+      "kind": "depends_on",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "The task follows from the finding; a reader could also see a requirement.",
+   "split": "dev"
+  },
+  {
+   "id": "G101",
+   "category": "CF_dd",
+   "lang": "bg",
+   "project": "p-G101",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "3fbe67e4-6109-4b2e-855b-b348955b38df",
+     "kind": "task",
+     "title": "Да пуснем кампанията",
+     "body": "Старт на кампанията.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "b62dbfe3-4eb9-4399-821c-8c8da67b79e8",
+     "kind": "task",
+     "title": "Да одобрим бюджета",
+     "body": "Одобрение на бюджета.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "6219710b-e4e7-458d-8e3f-a20bd85f636a",
+     "kind": "idea",
+     "title": "Нов слоган",
+     "body": "Слоган.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Изискване.",
+   "split": "holdout"
+  },
+  {
+   "id": "G102",
+   "category": "CF_dd",
+   "lang": "bg",
+   "project": "p-G102",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "adbc9f15-04ad-41c9-8d9a-d2087a1a0fca",
+     "kind": "decision",
+     "title": "Да спрем кампанията",
+     "body": "Прекратяване.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "492a4737-fc9a-4889-873d-0b3d8d055e7f",
+     "kind": "note",
+     "title": "Резултат: кампанията носи загуба",
+     "body": "Финансов анализ.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "895c0779-d349-4ddf-8d58-8ef734e7eae1",
+     "kind": "idea",
+     "title": "Нов слоган",
+     "body": "Слоган.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "derived_from",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Решението следва от резултата.",
+   "split": "dev"
+  },
+  {
+   "id": "G103",
+   "category": "CF_rn",
+   "lang": "en",
+   "project": "p-G103",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "be72e17e-25f4-41dd-8512-05b01b42c77d",
+     "kind": "idea",
+     "title": "Improve onboarding",
+     "body": "Better first-run experience.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "b0f6a5d9-ecfe-4fe4-81ea-2680bc492f5f",
+     "kind": "idea",
+     "title": "Improve offboarding",
+     "body": "Better leaving experience.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "f21c1bd4-0128-4462-8fc6-dc1e762bba76",
+     "kind": "idea",
+     "title": "Improve billing",
+     "body": "Billing.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Same verb, different things.",
+   "split": "holdout"
+  },
+  {
+   "id": "G104",
+   "category": "CF_rn",
+   "lang": "en",
+   "project": "p-G104",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "731e7b0d-a7b7-4e8e-8056-008ef8125c15",
+     "kind": "task",
+     "title": "Team lunch on Friday",
+     "body": "Lunch.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "9a250660-f809-45c7-84db-902f9608cea6",
+     "kind": "task",
+     "title": "Team retrospective on Friday",
+     "body": "Retro.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "22ce4785-14b9-487a-8989-cb29f5c9a504",
+     "kind": "task",
+     "title": "Team photo",
+     "body": "Photo.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Same day only.",
+   "split": "dev"
+  },
+  {
+   "id": "G105",
+   "category": "CF_rn",
+   "lang": "bg",
+   "project": "p-G105",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "cec2e2d2-58ae-43bb-84de-f78454bd12f9",
+     "kind": "task",
+     "title": "Среща с клиента в понеделник",
+     "body": "Среща.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "e1540c19-0406-41e5-89a6-145b8ba72602",
+     "kind": "task",
+     "title": "Среща с доставчика в понеделник",
+     "body": "Среща.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Само денят.",
+   "split": "dev"
+  },
+  {
+   "id": "G106",
+   "category": "CF_rn",
+   "lang": "mixed",
+   "project": "p-G106",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "fe6ee6b2-3876-4f23-8434-3ffc93a52c55",
+     "kind": "idea",
+     "title": "Q4 roadmap",
+     "body": "Планове за Q4.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "8b2177dd-e93e-4f7d-853c-b1d47cda20a5",
+     "kind": "idea",
+     "title": "Q4 hiring plan",
+     "body": "Наемане през Q4.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "38c89124-0e1c-4b2c-8672-c7b340617b10",
+     "kind": "idea",
+     "title": "Q4 budget",
+     "body": "Бюджет.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [
+     {
+      "kind": "related_to",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Roadmap and hiring plan are related; a link is defensible.",
+   "split": "dev"
+  },
+  {
+   "id": "G107",
+   "category": "RV_cancel",
+   "lang": "en",
+   "project": "p-G107",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "d84c2a0b-a35b-4f08-82a7-23bae882c729",
+     "kind": "task",
+     "title": "Hire the contractor",
+     "body": "Cancelled: we are no longer hiring a contractor.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "ca5f56a2-2b45-4664-80bd-2b4ca36d02b5",
+     "kind": "task",
+     "title": "Approve the contractor budget",
+     "body": "Budget approval for the contractor.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "92088d42-335f-4718-8de8-c0a03fbe761f",
+     "kind": "task",
+     "title": "Update the org chart",
+     "body": "Org chart.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Hire a contractor for the redesign.",
+   "rationale": "Dependent's own text cancels the plan.",
+   "split": "holdout"
+  },
+  {
+   "id": "G108",
+   "category": "RV_cancel",
+   "lang": "bg",
+   "project": "p-G108",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "849755c9-1dab-44e3-8f4e-4f6ce6d547b9",
+     "kind": "task",
+     "title": "Да организираме обучението",
+     "body": "Отказваме се от обучението окончателно.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "557291e9-3bad-4788-8f89-49a6e0b91087",
+     "kind": "task",
+     "title": "Да резервираме залата",
+     "body": "Зала за обучението.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "185ed0ae-e02a-498c-86c9-8fb2d5f11c2c",
+     "kind": "task",
+     "title": "Да поръчаме кафе",
+     "body": "Кафе.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Организиране на обучение за екипа.",
+   "rationale": "Зависимият е отказан.",
+   "split": "dev"
+  },
+  {
+   "id": "G109",
+   "category": "RV_cancel",
+   "lang": "mixed",
+   "project": "p-G109",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "bbe2ab6b-e7b0-404a-8b1b-b722aa9c569e",
+     "kind": "task",
+     "title": "Launch campaign",
+     "body": "Campaign-ът е отменен окончателно.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "6cf5ef3e-da55-4c0d-8ff0-c8b7757d2e97",
+     "kind": "decision",
+     "title": "Одобрение на бюджета",
+     "body": "Бюджетът е одобрен.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "a764d524-1fc6-4832-83eb-038ec59fc0c6",
+     "kind": "task",
+     "title": "Нов слоган",
+     "body": "Слоган.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Launch campaign през ноември.",
+   "rationale": "Dependent е отменен.",
+   "split": "dev"
+  },
+  {
+   "id": "G110",
+   "category": "RV_cancel",
+   "lang": "en",
+   "project": "p-G110",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "e062bae8-c7f1-4e01-80dd-af1beb01c4fa",
+     "kind": "task",
+     "title": "Migrate to the new CRM",
+     "body": "We abandoned the CRM migration.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "3da898e6-f965-4642-8071-1b0d5a5cffe4",
+     "kind": "task",
+     "title": "Sign the CRM vendor contract",
+     "body": "Contract with the vendor.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "8bc5a52c-f557-4e08-85a2-b1a4c061391d",
+     "kind": "task",
+     "title": "Train the sales team",
+     "body": "Training.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Migrate all contacts to the new CRM.",
+   "rationale": "Dependent abandoned.",
+   "split": "dev"
+  },
+  {
+   "id": "G111",
+   "category": "RV_cancel",
+   "lang": "bg",
+   "project": "p-G111",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "06a87ac0-ceb7-4a30-84c9-e33c5750de84",
+     "kind": "task",
+     "title": "Бета тестът за Android",
+     "body": "Махаме Android бета теста изцяло.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "46a52da9-ae9f-43d8-8b34-226538a7d6da",
+     "kind": "task",
+     "title": "Набавяне на тестови телефони",
+     "body": "Телефони за тестване.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "eef5caa7-ed6b-49b4-8b2e-d6f3de9bbe0e",
+     "kind": "task",
+     "title": "iOS бета",
+     "body": "iOS тест.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Бета тест за Android през октомври.",
+   "rationale": "Отказан.",
+   "split": "holdout"
+  },
+  {
+   "id": "G112",
+   "category": "RV_cancel",
+   "lang": "en",
+   "project": "p-G112",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "4a83565c-5a96-4019-8f4b-2b945b906f24",
+     "kind": "task",
+     "title": "Write the Q3 retro",
+     "body": "Dropped: we will not do a Q3 retro.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "084cd7af-a536-45de-8749-7a8b4e88a834",
+     "kind": "task",
+     "title": "Collect retro feedback",
+     "body": "Feedback form.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "b522e5b8-175a-461a-853f-d5011b638e65",
+     "kind": "task",
+     "title": "Plan Q4",
+     "body": "Plan.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Write a Q3 retrospective.",
+   "rationale": "Dropped.",
+   "split": "dev"
+  },
+  {
+   "id": "G113",
+   "category": "RV_req",
+   "lang": "en",
+   "project": "p-G113",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "9670628f-4a38-47ac-8dd5-be2e3d0c69be",
+     "kind": "task",
+     "title": "Deploy the report service",
+     "body": "Deploy the report service as a static export; no database is needed.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "a72d14cb-4ed0-4269-8279-ce49ceeabcfd",
+     "kind": "task",
+     "title": "Provision the reporting database",
+     "body": "Create the reporting DB.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "cab23aac-6821-4a11-877b-87fba3ebbbb7",
+     "kind": "task",
+     "title": "Write the runbook",
+     "body": "Runbook.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Deploy the report service backed by a reporting database.",
+   "rationale": "Requirement removed; plan itself still on.",
+   "split": "holdout"
+  },
+  {
+   "id": "G114",
+   "category": "RV_req",
+   "lang": "bg",
+   "project": "p-G114",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "d9b70532-5996-4d43-83bc-1f2c1a606bd7",
+     "kind": "task",
+     "title": "Да изпратим бюлетина",
+     "body": "Бюлетинът ще е обикновен текст, без нужда от шаблона.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "f8c05071-284a-4a44-8ee6-17cd82d19fbe",
+     "kind": "task",
+     "title": "Да дизайнираме имейл шаблон",
+     "body": "Шаблон за бюлетина.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "f574915f-1a9c-43fb-8d22-6d897f138f6f",
+     "kind": "task",
+     "title": "Списък с абонати",
+     "body": "Абонати.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Бюлетин с красив шаблон.",
+   "rationale": "Изискването отпада.",
+   "split": "holdout"
+  },
+  {
+   "id": "G115",
+   "category": "RV_req",
+   "lang": "mixed",
+   "project": "p-G115",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "e6a69232-11a1-48a3-8d68-f93413fd6f2f",
+     "kind": "task",
+     "title": "Onboarding call",
+     "body": "Onboarding е само self-serve; не ни трябва calendar integration.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "10532063-c261-42ea-86e8-6523217bfdef",
+     "kind": "task",
+     "title": "Calendar integration",
+     "body": "Интеграция с календар.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "e9c1cda0-769a-455b-8db9-3741707e2812",
+     "kind": "task",
+     "title": "Welcome email",
+     "body": "Имейл.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Onboarding call с календар.",
+   "rationale": "Изискването отпада.",
+   "split": "holdout"
+  },
+  {
+   "id": "G116",
+   "category": "RV_req",
+   "lang": "en",
+   "project": "p-G116",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "7a9d2571-d30e-4b00-8d6b-f9fbe2000d9a",
+     "kind": "task",
+     "title": "Ship the mobile build",
+     "body": "Ship the web build only; no signing certificate is required.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "3c3ed600-1711-4983-88c0-c22980a9bb5d",
+     "kind": "task",
+     "title": "Obtain the iOS signing certificate",
+     "body": "iOS cert.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "03a57070-3ae3-4a9e-85a6-750f3613c00e",
+     "kind": "task",
+     "title": "Write store listing",
+     "body": "Listing.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Ship the mobile build to the stores.",
+   "rationale": "Requirement removed.",
+   "split": "holdout"
+  },
+  {
+   "id": "G117",
+   "category": "RV_prereq",
+   "lang": "en",
+   "project": "p-G117",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "9825861c-d0f0-434f-84ed-1e860f85ad00",
+     "kind": "task",
+     "title": "Security review",
+     "body": "Blocked: the auditor is unavailable until November.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "f2126fc7-05f1-45f3-89a7-51437ff075d3",
+     "kind": "task",
+     "title": "Launch the beta",
+     "body": "Launch the beta to testers.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "C",
+     "id": "a29dc294-1d88-4cda-8722-77a8e505bb92",
+     "kind": "task",
+     "title": "Draft the beta email",
+     "body": "Email.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "B",
+     "target": "F",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Security review scheduled for October.",
+   "rationale": "An unavailable prerequisite is still a prerequisite.",
+   "split": "dev"
+  },
+  {
+   "id": "G118",
+   "category": "RV_prereq",
+   "lang": "bg",
+   "project": "p-G118",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "3eedc0d8-b28d-4fe1-8d63-11e937043b41",
+     "kind": "task",
+     "title": "Доставка на сървъра",
+     "body": "Доставчикът не може да достави сървъра до ноември.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "0a2e2266-d44f-4dcd-8d86-0a532ad13bfb",
+     "kind": "task",
+     "title": "Пускане на новата платформа",
+     "body": "Старт на платформата.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "C",
+     "id": "3022fa80-0aaa-4e38-86ee-f4b802ef29ec",
+     "kind": "task",
+     "title": "Документация",
+     "body": "Документи.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "B",
+     "target": "F",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Сървърът се доставя през октомври.",
+   "rationale": "Липсата не отменя изискването.",
+   "split": "dev"
+  },
+  {
+   "id": "G119",
+   "category": "RV_prereq",
+   "lang": "mixed",
+   "project": "p-G119",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "983d94f0-ab83-4fd0-80eb-af91f2e84958",
+     "kind": "task",
+     "title": "API ключ за Stripe",
+     "body": "API ключът е отказан, чакаме нов.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "48d9b296-4ee7-4e6c-872c-accd48ef1074",
+     "kind": "task",
+     "title": "Интеграция със Stripe",
+     "body": "Свързване със Stripe.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "C",
+     "id": "3a0f411d-1f1c-4daf-87a2-80f2f3f04894",
+     "kind": "task",
+     "title": "Test plan",
+     "body": "План.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "B",
+     "target": "F",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "API ключът за Stripe е получен.",
+   "rationale": "Чакаме предпоставка.",
+   "split": "dev"
+  },
+  {
+   "id": "G120",
+   "category": "RV_prereq",
+   "lang": "en",
+   "project": "p-G120",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "f772f103-252f-46b5-856d-fd6c639e9967",
+     "kind": "task",
+     "title": "Prototype test",
+     "body": "The prototype test failed and needs rework.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "f61bb2b7-3132-47c6-8db3-1e945eb00f69",
+     "kind": "task",
+     "title": "Go/no-go meeting",
+     "body": "Decide go or no-go.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "C",
+     "id": "e21b41dd-e7cf-4463-81c2-2735b1ccbe5d",
+     "kind": "task",
+     "title": "Order materials",
+     "body": "Materials.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "B",
+     "target": "F",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Prototype test next week.",
+   "rationale": "A failed prerequisite is still a prerequisite.",
+   "split": "holdout"
+  },
+  {
+   "id": "G121",
+   "category": "RV_prereq",
+   "lang": "en",
+   "project": "p-G121",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "cf6378f9-c037-42d4-8d5b-f6571a9d781a",
+     "kind": "task",
+     "title": "Design approval",
+     "body": "Rejected by the reviewer; must be resubmitted.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "24bc2e39-5590-4fb3-8bce-13550a8f11f2",
+     "kind": "task",
+     "title": "Start development",
+     "body": "Development kickoff.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "C",
+     "id": "6db68db6-4980-46f3-8e0c-36295e8f6ffc",
+     "kind": "task",
+     "title": "Hire QA",
+     "body": "QA hire.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "B",
+     "target": "F",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Design approval pending.",
+   "rationale": "Rejected prerequisite still required.",
+   "split": "holdout"
+  },
+  {
+   "id": "G122",
+   "category": "RV_prereq",
+   "lang": "bg",
+   "project": "p-G122",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "1e7b338c-d40e-438a-8c4b-cba8203d2753",
+     "kind": "decision",
+     "title": "Бюджетът",
+     "body": "Бюджетът още не е одобрен.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "de2db070-5f74-4a1f-81b2-654a138237eb",
+     "kind": "task",
+     "title": "Наемане на екипа",
+     "body": "Наемане.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "C",
+     "id": "42dda472-d782-4de7-89d1-f8c2bd29e0b7",
+     "kind": "task",
+     "title": "Офис",
+     "body": "Офис.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "B",
+     "target": "F",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Бюджетът се обсъжда.",
+   "rationale": "Неодобрен, но все още изискване.",
+   "split": "holdout"
+  },
+  {
+   "id": "G123",
+   "category": "RV_pause",
+   "lang": "en",
+   "project": "p-G123",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "74b88c60-eaa2-41a7-8595-974099e82117",
+     "kind": "task",
+     "title": "Launch the beta",
+     "body": "Postponed to next quarter.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "b54d4e4d-bdbb-48cd-8311-97e1f6b47e07",
+     "kind": "task",
+     "title": "Finish the security review",
+     "body": "Security review.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "d7cb293a-f29b-4d31-8d55-aa51a5a8f673",
+     "kind": "task",
+     "title": "Hire QA",
+     "body": "QA.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Launch the beta in November.",
+   "rationale": "Postponed is not cancelled.",
+   "split": "holdout"
+  },
+  {
+   "id": "G124",
+   "category": "RV_pause",
+   "lang": "bg",
+   "project": "p-G124",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "27beef0d-cd54-44da-8d0c-c906e225998f",
+     "kind": "task",
+     "title": "Кампанията",
+     "body": "Кампанията е отложена за след лятото.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "ee9b7129-ea35-4d82-8bd1-799bc81839f8",
+     "kind": "decision",
+     "title": "Одобрен бюджет",
+     "body": "Бюджет.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "29e3e8a7-2ddc-4e20-828c-86679af4a5f8",
+     "kind": "task",
+     "title": "Слоган",
+     "body": "Слоган.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Кампания през юни.",
+   "rationale": "Отложена, не отказана.",
+   "split": "dev"
+  },
+  {
+   "id": "G125",
+   "category": "RV_pause",
+   "lang": "mixed",
+   "project": "p-G125",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "4b26e6e0-8598-4341-8be0-96cd29e84b10",
+     "kind": "task",
+     "title": "Release-ът",
+     "body": "Release-ът е паузиран засега.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "2d2f8a51-be99-4f3b-8615-fe7f2144b2cc",
+     "kind": "task",
+     "title": "QA sign-off",
+     "body": "QA одобрение.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "73d4a672-c130-41ce-80e0-8045f1969a32",
+     "kind": "task",
+     "title": "Notes",
+     "body": "Notes.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Release през ноември.",
+   "rationale": "Паузиран.",
+   "split": "holdout"
+  },
+  {
+   "id": "G126",
+   "category": "RV_extgone",
+   "lang": "en",
+   "project": "p-G126",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "d6726993-7208-42ea-8ee5-86bc1064a30f",
+     "kind": "idea",
+     "title": "Workshop on knife skills",
+     "body": "A workshop about knife skills for home cooks.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "303e23ca-51a2-4420-81b6-52294bc52189",
+     "kind": "idea",
+     "title": "Run a workshop on budgeting",
+     "body": "Budgeting workshop.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "264c7c4b-7565-45ff-8d1d-b287316be2ef",
+     "kind": "idea",
+     "title": "Run a workshop on saving",
+     "body": "Saving.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "extends",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Workshop with a printed handout for the budgeting workshop.",
+   "rationale": "Topic changed; no longer extends.",
+   "split": "dev"
+  },
+  {
+   "id": "G127",
+   "category": "RV_extgone",
+   "lang": "bg",
+   "project": "p-G127",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "eca2908f-8422-4d40-8f2d-83b42d5714d4",
+     "kind": "idea",
+     "title": "Подробен план за маркетинг на конференцията",
+     "body": "План за маркетинг на конференцията.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "d1544fd5-c202-4b7e-81fc-3f531091a58f",
+     "kind": "idea",
+     "title": "Да изградим API за поръчки",
+     "body": "API за поръчки.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "ff5fb371-6de9-4c68-83e3-ba4b4eb0022d",
+     "kind": "idea",
+     "title": "Конференция",
+     "body": "Конференция.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "extends",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Подробен дизайн на API-то за поръчки.",
+   "rationale": "Темата е сменена.",
+   "split": "holdout"
+  },
+  {
+   "id": "G128",
+   "category": "RV_extgone",
+   "lang": "mixed",
+   "project": "p-G128",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "417a4295-e560-48dc-87cb-1338359ec00d",
+     "kind": "idea",
+     "title": "Покана за team building",
+     "body": "Организиране на team building.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "4b2ac70e-bba5-4c25-82c0-1592149e3cb7",
+     "kind": "idea",
+     "title": "Dashboard за продажбите",
+     "body": "Dashboard.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "898988b6-63c3-4c9d-8947-95be9fa33e1a",
+     "kind": "idea",
+     "title": "Team building",
+     "body": "Team building.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "extends",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [
+     0
+    ],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": "Dashboard с филтри.",
+   "rationale": "Различна тема.",
+   "split": "holdout"
+  },
+  {
+   "id": "G129",
+   "category": "RV_still",
+   "lang": "en",
+   "project": "p-G129",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "6750eda9-5916-4d69-8954-b101eb0db605",
+     "kind": "idea",
+     "title": "Detailed API design for orders, now with pagination",
+     "body": "API design: pagination, filters and errors for orders.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "fa335d25-7854-4455-8971-1aad8b1c3d63",
+     "kind": "idea",
+     "title": "Build an API for orders",
+     "body": "API for orders.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "f9de6bfe-6515-469e-8506-7ff736d2a6da",
+     "kind": "idea",
+     "title": "Build an API for invoices",
+     "body": "Invoices.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "extends",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Detailed API design for orders.",
+   "rationale": "Still extends.",
+   "split": "holdout"
+  },
+  {
+   "id": "G130",
+   "category": "RV_still",
+   "lang": "bg",
+   "project": "p-G130",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "a5b605c9-57c6-4e50-867d-898ede6e1090",
+     "kind": "idea",
+     "title": "Купуваме по-ярки LED лампи",
+     "body": "Подмяна на лампите със по-ярки LED.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "6c863e10-8c85-4810-8b86-18251ccb3170",
+     "kind": "note",
+     "title": "Анкета: залата е тъмна",
+     "body": "Резултат от анкета.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "b721e505-f3c8-42a9-8f5e-1e0e6e8853e9",
+     "kind": "note",
+     "title": "Анкета: залата е студена",
+     "body": "Анкета.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "derived_from",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Купуваме по-ярки лампи.",
+   "rationale": "Все още произлиза.",
+   "split": "dev"
+  },
+  {
+   "id": "G131",
+   "category": "RV_still",
+   "lang": "mixed",
+   "project": "p-G131",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "8fbf15b5-ca1f-4bcc-8650-a1647dc3f3a7",
+     "kind": "decision",
+     "title": "Pricing v2 е 29 евро на месец",
+     "body": "Новата цена е 29 евро; заменя старата.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "6429a817-a4fd-4c76-81b7-4fef493f42b6",
+     "kind": "decision",
+     "title": "Pricing v1: 19 евро на месец",
+     "body": "Старата цена.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "0ca9d039-af52-4e59-8177-d31e2f88b955",
+     "kind": "idea",
+     "title": "Годишна отстъпка",
+     "body": "Отстъпка.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "supersedes",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Pricing v2 е 29 евро.",
+   "rationale": "Все още заменя.",
+   "split": "holdout"
+  },
+  {
+   "id": "G132",
+   "category": "RV_still",
+   "lang": "en",
+   "project": "p-G132",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "3c32ac1f-7471-4697-888b-dd2977ec3914",
+     "kind": "task",
+     "title": "Weekly team summary email, sent Mondays",
+     "body": "A summary email every Monday.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "b2dc100a-d2da-4038-8746-638034b3b17e",
+     "kind": "task",
+     "title": "Send a weekly summary to the team",
+     "body": "A summary each week.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "af6949ac-8b29-4abe-83ef-9a23ef34d435",
+     "kind": "task",
+     "title": "Monthly report",
+     "body": "Monthly.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "duplicates",
+     "source": "F",
+     "target": "A",
+     "origin": "model"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Weekly team summary email.",
+   "rationale": "Still the same knowledge.",
+   "split": "dev"
+  },
+  {
+   "id": "G133",
+   "category": "RV_user",
+   "lang": "en",
+   "project": "p-G133",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "14f6b1f3-b661-4dc5-8f6b-4cfa5f338eff",
+     "kind": "idea",
+     "title": "Learn to bake sourdough",
+     "body": "Starter and basics.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "3a91c8c0-1898-4a83-8cc0-e07709955aec",
+     "kind": "task",
+     "title": "Rotate the API keys",
+     "body": "Security chore.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "16299d25-b899-4a82-8397-75dd851d0e1c",
+     "kind": "task",
+     "title": "Book a dentist",
+     "body": "Dentist.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "related_to",
+     "source": "F",
+     "target": "A",
+     "origin": "user"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Learn to bake bread.",
+   "rationale": "A user-made link is never removed, even if unjustified.",
+   "split": "dev"
+  },
+  {
+   "id": "G134",
+   "category": "RV_user",
+   "lang": "bg",
+   "project": "p-G134",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "7fa7827f-f21c-49f2-835a-db6b838fc3ef",
+     "kind": "task",
+     "title": "Кампанията",
+     "body": "Кампанията е отменена окончателно.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "811f7def-e8b2-41c7-8ade-4dd717f4e190",
+     "kind": "decision",
+     "title": "Одобрен бюджет",
+     "body": "Бюджет.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "63f08fa9-60c7-4a8b-843f-cc1effcdbf74",
+     "kind": "task",
+     "title": "Слоган",
+     "body": "Слоган.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "depends_on",
+     "source": "F",
+     "target": "A",
+     "origin": "user"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Кампания през юни.",
+   "rationale": "Потребителска връзка: не се пипа, дори зависимият да е отказан.",
+   "split": "dev"
+  },
+  {
+   "id": "G135",
+   "category": "RV_user",
+   "lang": "mixed",
+   "project": "p-G135",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "76a6841c-79cf-482d-8aa4-22e0490a4700",
+     "kind": "idea",
+     "title": "Dashboard с филтри",
+     "body": "Dashboard с филтри.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "9f34a1bd-9861-4b48-8688-bd772afbef08",
+     "kind": "idea",
+     "title": "Dashboard за продажбите",
+     "body": "Основен dashboard.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "bdc2677a-aa15-4f35-8a67-519d88574c91",
+     "kind": "idea",
+     "title": "Onboarding",
+     "body": "Onboarding.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "extends",
+     "source": "F",
+     "target": "A",
+     "origin": "user"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Dashboard с филтри по период.",
+   "rationale": "Потребителска връзка остава.",
+   "split": "dev"
+  },
+  {
+   "id": "G136",
+   "category": "RV_user",
+   "lang": "en",
+   "project": "p-G136",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "a5b651ff-1dd9-414f-83f8-26e4ae4fac03",
+     "kind": "decision",
+     "title": "Pricing v2 is 29 euro",
+     "body": "New price.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "b1217d06-6ac8-46a8-8865-569ab9b0ae6f",
+     "kind": "decision",
+     "title": "Pricing v1 is 19 euro",
+     "body": "Old price.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "09d16707-88ff-4def-81b2-79e56176e66b",
+     "kind": "idea",
+     "title": "Annual discount",
+     "body": "Discount.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [
+    {
+     "kind": "supersedes",
+     "source": "F",
+     "target": "A",
+     "origin": "user"
+    }
+   ],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": [
+     0
+    ]
+   },
+   "disputed": false,
+   "previous_focus": "Pricing v2 is 29 euro.",
+   "rationale": "User edge remains; no duplicate added.",
+   "split": "dev"
+  },
+  {
+   "id": "G137",
+   "category": "CD",
+   "lang": "en",
+   "project": "p-G137",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "44842a0e-3650-4cdd-8934-ed5bc99fa3da",
+     "kind": "task",
+     "title": "Berlin trip",
+     "body": "We cancelled the Berlin trip.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "a0f224fd-5865-49e8-8db5-b1595fb072c1",
+     "kind": "task",
+     "title": "Book the Berlin flights",
+     "body": "Flights to Berlin.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "e1bcfe86-2e67-41dd-8d48-f9aa95550240",
+     "kind": "task",
+     "title": "Renew passport",
+     "body": "Passport.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "The trip is cancelled; no new dependency.",
+   "split": "dev"
+  },
+  {
+   "id": "G138",
+   "category": "CD",
+   "lang": "bg",
+   "project": "p-G138",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "c062ee2f-1691-4695-83d0-5ad54d378771",
+     "kind": "task",
+     "title": "Обучението",
+     "body": "Отказваме обучението.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "7daf66fa-2f2f-4c0c-8763-2812907ee13e",
+     "kind": "task",
+     "title": "Резервирай залата за обучението",
+     "body": "Зала.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "ce4de8b4-a87f-4f8b-893b-7f4924926867",
+     "kind": "task",
+     "title": "Кафе",
+     "body": "Кафе.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Отказан зависим.",
+   "split": "dev"
+  },
+  {
+   "id": "G139",
+   "category": "CD",
+   "lang": "mixed",
+   "project": "p-G139",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "2d2acca2-73aa-4909-831d-abc0c0f9cd91",
+     "kind": "task",
+     "title": "Campaign-ът",
+     "body": "Campaign-ът е отменен.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "c6283ec5-87b1-47c7-8a9c-6ed0aa0934a6",
+     "kind": "decision",
+     "title": "Одобрение на budget-а за campaign-а",
+     "body": "Бюджет.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "a6283c1f-5b79-4e10-8c08-b596c7378b99",
+     "kind": "task",
+     "title": "Слоган",
+     "body": "Слоган.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Отменен dependent.",
+   "split": "holdout"
+  },
+  {
+   "id": "G140",
+   "category": "CD",
+   "lang": "en",
+   "project": "p-G140",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "3ca42491-52ba-4848-8282-617af6c1df07",
+     "kind": "task",
+     "title": "Mobile redesign",
+     "body": "Dropped: the mobile redesign is no longer happening.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "e36a91ee-7a2a-4c28-8060-d033bf24ba68",
+     "kind": "task",
+     "title": "Collect mobile usability data",
+     "body": "Usability data.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "b5331953-bbe9-455e-842b-df9759414582",
+     "kind": "task",
+     "title": "Update web copy",
+     "body": "Copy.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": false,
+   "previous_focus": null,
+   "rationale": "Dropped plan.",
+   "split": "holdout"
+  },
+  {
+   "id": "G141",
+   "category": "AMBG",
+   "lang": "en",
+   "project": "p-G141",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "fb935727-9df6-4ea2-84fa-7bb83c0839d6",
+     "kind": "task",
+     "title": "Fix the login bug",
+     "body": "Fix the bug where login fails on Safari.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "7a46b7c8-cc65-464b-8176-8c15cef75dbe",
+     "kind": "note",
+     "title": "Login fails on Safari",
+     "body": "Users report failing login on Safari.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "53691e69-e0fa-4668-8797-dd3ebb2003cd",
+     "kind": "task",
+     "title": "Update the login page text",
+     "body": "Copy.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "derived_from",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [
+     {
+      "kind": "depends_on",
+      "source": "F",
+      "target": "A"
+     },
+     {
+      "kind": "related_to",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Task follows from a report; multiple relations defensible.",
+   "split": "holdout"
+  },
+  {
+   "id": "G142",
+   "category": "AMBG",
+   "lang": "en",
+   "project": "p-G142",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "23234ea8-fd3f-48a3-8bc7-92cdc054e512",
+     "kind": "decision",
+     "title": "Switch to weekly releases",
+     "body": "Release every week.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "55e3455d-757e-4e7f-80b1-7d06fec7d9ff",
+     "kind": "decision",
+     "title": "Release monthly",
+     "body": "Monthly releases.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "49b898b9-f052-4fed-82d1-546bd347245f",
+     "kind": "task",
+     "title": "Update the release checklist",
+     "body": "Checklist.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Replacement or conflict.",
+   "split": "dev"
+  },
+  {
+   "id": "G143",
+   "category": "AMBG",
+   "lang": "en",
+   "project": "p-G143",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "4c4e73d0-d8f6-4efd-8163-119e799384a7",
+     "kind": "idea",
+     "title": "Improve search",
+     "body": "Better search.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "1336e5b4-bbac-4a49-8c32-9dba8118744a",
+     "kind": "idea",
+     "title": "Search with filters",
+     "body": "Search with filters.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "be9794ab-8b07-4401-85ad-a2e8b05085b5",
+     "kind": "idea",
+     "title": "Improve export",
+     "body": "Export.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [
+     {
+      "kind": "duplicates",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Direction/kind unclear.",
+   "split": "dev"
+  },
+  {
+   "id": "G144",
+   "category": "AMBG",
+   "lang": "bg",
+   "project": "p-G144",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "b8ed547f-80fb-4f85-8d71-22e1e92035f3",
+     "kind": "idea",
+     "title": "Нов дизайн на сайта",
+     "body": "Освежаване на сайта.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "02b8396c-f0d9-4eaa-8f0e-cb9db2ffebda",
+     "kind": "idea",
+     "title": "Нова навигация на сайта",
+     "body": "Ново меню.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "728d54ba-a849-4a2b-843b-eb32a7439cd5",
+     "kind": "idea",
+     "title": "Блог",
+     "body": "Блог.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [
+     {
+      "kind": "related_to",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Част от дизайна или отделна идея.",
+   "split": "holdout"
+  },
+  {
+   "id": "G145",
+   "category": "AMBG",
+   "lang": "bg",
+   "project": "p-G145",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "0f80f896-5d11-43ab-8780-58e28cc4c962",
+     "kind": "decision",
+     "title": "Работим от вкъщи в петък",
+     "body": "Петък е remote.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "3aa5df75-d82e-4179-85f2-de8d3dbb83c6",
+     "kind": "decision",
+     "title": "Екипът е в офиса всеки ден",
+     "body": "Офис всеки ден.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "a1ddaeaa-db03-4429-86fc-4deceaffcca6",
+     "kind": "task",
+     "title": "График",
+     "body": "График.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Конфликт или частична промяна.",
+   "split": "dev"
+  },
+  {
+   "id": "G146",
+   "category": "AMBG",
+   "lang": "mixed",
+   "project": "p-G146",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "d9591d9c-7846-4327-8413-c7db6e04f340",
+     "kind": "idea",
+     "title": "Mobile-first дизайн",
+     "body": "Започваме от мобилния екран.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "671063e7-626e-4106-844d-36d478a4f5b7",
+     "kind": "idea",
+     "title": "Responsive дизайн",
+     "body": "Адаптивен дизайн.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "e1ffab4a-1b36-4b2f-8fc2-ff79873ae7e2",
+     "kind": "idea",
+     "title": "Нов лого",
+     "body": "Logo.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "extends",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [
+     {
+      "kind": "related_to",
+      "source": "F",
+      "target": "A"
+     },
+     {
+      "kind": "duplicates",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Различна степен на припокриване.",
+   "split": "dev"
+  },
+  {
+   "id": "G147",
+   "category": "AMBG",
+   "lang": "en",
+   "project": "p-G147",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "f3d78ac6-a48a-4ae6-8241-2e8cc24421fa",
+     "kind": "task",
+     "title": "Write the launch plan",
+     "body": "Plan for launch.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "632d4e68-57e5-42e8-83cc-e8e20d912f9b",
+     "kind": "task",
+     "title": "Prepare the launch",
+     "body": "Everything for launch.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "aa1072e3-66e6-4d71-841d-9f5ca478faed",
+     "kind": "task",
+     "title": "Hire QA",
+     "body": "QA.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "depends_on",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [
+     {
+      "kind": "extends",
+      "source": "F",
+      "target": "A"
+     },
+     {
+      "kind": "related_to",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Part/whole ambiguity.",
+   "split": "holdout"
+  },
+  {
+   "id": "G148",
+   "category": "AMBG",
+   "lang": "en",
+   "project": "p-G148",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "32a9b6b0-1c71-4e4a-8fea-d4d1e948ef0d",
+     "kind": "note",
+     "title": "Competitor X cut prices",
+     "body": "Competitor lowered prices by 20%.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "7206f147-5e75-4978-8e42-0db67371e032",
+     "kind": "decision",
+     "title": "Cut our prices",
+     "body": "Lower our price.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "49d6489f-ed0c-4f22-87f2-7e5ee7c0819a",
+     "kind": "idea",
+     "title": "Raise quality",
+     "body": "Quality.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "derived_from",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "acceptable": [
+     {
+      "kind": "related_to",
+      "source": "A",
+      "target": "F"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Derived or merely related.",
+   "split": "holdout"
+  },
+  {
+   "id": "G149",
+   "category": "AMBG",
+   "lang": "bg",
+   "project": "p-G149",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "cd733c85-13eb-40e4-8e31-d623eee67cd1",
+     "kind": "task",
+     "title": "Да подготвя презентацията",
+     "body": "Слайдове.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "88660218-272d-4917-8c91-204833721e35",
+     "kind": "task",
+     "title": "Да подготвя доклада",
+     "body": "Доклад.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "87c74091-78c3-4125-87fc-bdb101b78a2f",
+     "kind": "task",
+     "title": "Среща",
+     "body": "Среща.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [],
+    "acceptable": [
+     {
+      "kind": "related_to",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Свързани подготовки; NONE или related_to.",
+   "split": "holdout"
+  },
+  {
+   "id": "G150",
+   "category": "AMBG",
+   "lang": "mixed",
+   "project": "p-G150",
+   "focus": "F",
+   "objects": [
+    {
+     "key": "F",
+     "id": "e5a94ccc-e656-4aed-8776-e65b61e01f91",
+     "kind": "decision",
+     "title": "Pricing е 29 евро от януари",
+     "body": "Нова цена от януари.",
+     "writtenAt": "2026-10-05T10:00:00Z"
+    },
+    {
+     "key": "A",
+     "id": "97147230-5c51-454a-8ef0-52eb9ce7ff6b",
+     "kind": "decision",
+     "title": "Pricing е 19 евро",
+     "body": "Цена 19 евро.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    },
+    {
+     "key": "B",
+     "id": "1f31f7e8-bf68-473e-808c-253df50304fb",
+     "kind": "idea",
+     "title": "Отстъпка",
+     "body": "Отстъпка.",
+     "writtenAt": "2026-09-25T10:00:00Z"
+    }
+   ],
+   "existing": [],
+   "gold": {
+    "add": [
+     {
+      "kind": "supersedes",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "acceptable": [
+     {
+      "kind": "contradicts",
+      "source": "F",
+      "target": "A"
+     }
+    ],
+    "remove": [],
+    "keep": []
+   },
+   "disputed": true,
+   "previous_focus": null,
+   "rationale": "Новата цена заменя ли старата, или са несъвместими твърдения?",
+   "split": "dev"
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+ "first_stage_filter_B_frozen_pair_level": {
+  "gold_pairs": 34,
+  "covered_argmax_not_none_or_pnone_lt_0_9": 34,
+  "covered_pnone_lt_0_5": 31,
+  "non_gold_pairs": 91,
+  "passed_non_gold": 41,
+  "passed_non_gold_pnone_lt_0_5": 18,
+  "total_pairs": 125,
+  "pass_rate": 0.6
+ },
+ "agreement_A_vs_D": {
+  "events": 66,
+  "identical_decisions": 52,
+  "edges_both": 20,
+  "both_correct": 20,
+  "A_only": 3,
+  "A_only_correct": 3,
+  "D_only": 5,
+  "D_only_correct": 3
+ }
+}

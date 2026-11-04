@@ -1,0 +1,710 @@
+ref,field,status,pcb,sch
+C101,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603B225K160NT
+C101,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C101,LCSC,missing_in_pcb,,C43922
+C101,BOM_Status,missing_in_pcb,,QUALIFIED
+C101,JLC_Class,differs,Basic (expected),Extended Parts
+C101,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C43922.pdf
+C102,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603B225K160NT
+C102,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C102,LCSC,missing_in_pcb,,C43922
+C102,BOM_Status,missing_in_pcb,,QUALIFIED
+C102,JLC_Class,differs,Basic (expected),Extended Parts
+C102,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C43922.pdf
+C103,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10C101JB8NNNC
+C103,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C103,LCSC,missing_in_pcb,,C14858
+C103,BOM_Status,missing_in_pcb,,QUALIFIED
+C103,JLC_Class,differs,Basic (expected),not stated on page
+C103,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14858.pdf
+C104,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10C101JB8NNNC
+C104,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C104,LCSC,missing_in_pcb,,C14858
+C104,BOM_Status,missing_in_pcb,,QUALIFIED
+C104,JLC_Class,differs,Basic (expected),not stated on page
+C104,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14858.pdf
+C105,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),C1608C0G1H103JT000N
+C105,Manufacturer,differs,Any (JLC Basic),TDK
+C105,LCSC,missing_in_pcb,,C76599
+C105,BOM_Status,missing_in_pcb,,QUALIFIED
+C105,JLC_Class,differs,Basic or Extended (10 nF C0G - confirm),Extended Parts
+C105,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C76599.pdf
+C106,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603CG102J500NT
+C106,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C106,LCSC,missing_in_pcb,,C1636
+C106,BOM_Status,missing_in_pcb,,QUALIFIED
+C106,JLC_Class,differs,Basic (expected),Extended Parts
+C106,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C1636.pdf
+C107,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603CG102J500NT
+C107,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C107,LCSC,missing_in_pcb,,C1636
+C107,BOM_Status,missing_in_pcb,,QUALIFIED
+C107,JLC_Class,differs,Basic (expected),Extended Parts
+C107,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C1636.pdf
+C201,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603B225K160NT
+C201,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C201,LCSC,missing_in_pcb,,C43922
+C201,BOM_Status,missing_in_pcb,,QUALIFIED
+C201,JLC_Class,differs,Basic (expected),Extended Parts
+C201,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C43922.pdf
+C202,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603B225K160NT
+C202,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C202,LCSC,missing_in_pcb,,C43922
+C202,BOM_Status,missing_in_pcb,,QUALIFIED
+C202,JLC_Class,differs,Basic (expected),Extended Parts
+C202,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C43922.pdf
+C203,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10C101JB8NNNC
+C203,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C203,LCSC,missing_in_pcb,,C14858
+C203,BOM_Status,missing_in_pcb,,QUALIFIED
+C203,JLC_Class,differs,Basic (expected),not stated on page
+C203,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14858.pdf
+C204,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10C101JB8NNNC
+C204,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C204,LCSC,missing_in_pcb,,C14858
+C204,BOM_Status,missing_in_pcb,,QUALIFIED
+C204,JLC_Class,differs,Basic (expected),not stated on page
+C204,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14858.pdf
+C205,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),C1608C0G1H103JT000N
+C205,Manufacturer,differs,Any (JLC Basic),TDK
+C205,LCSC,missing_in_pcb,,C76599
+C205,BOM_Status,missing_in_pcb,,QUALIFIED
+C205,JLC_Class,differs,Basic or Extended (10 nF C0G - confirm),Extended Parts
+C205,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C76599.pdf
+C206,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603CG102J500NT
+C206,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C206,LCSC,missing_in_pcb,,C1636
+C206,BOM_Status,missing_in_pcb,,QUALIFIED
+C206,JLC_Class,differs,Basic (expected),Extended Parts
+C206,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C1636.pdf
+C207,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603CG102J500NT
+C207,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C207,LCSC,missing_in_pcb,,C1636
+C207,BOM_Status,missing_in_pcb,,QUALIFIED
+C207,JLC_Class,differs,Basic (expected),Extended Parts
+C207,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C1636.pdf
+C301,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603B225K160NT
+C301,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C301,LCSC,missing_in_pcb,,C43922
+C301,BOM_Status,missing_in_pcb,,QUALIFIED
+C301,JLC_Class,differs,Basic (expected),Extended Parts
+C301,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C43922.pdf
+C302,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603B225K160NT
+C302,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C302,LCSC,missing_in_pcb,,C43922
+C302,BOM_Status,missing_in_pcb,,QUALIFIED
+C302,JLC_Class,differs,Basic (expected),Extended Parts
+C302,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C43922.pdf
+C303,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10C101JB8NNNC
+C303,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C303,LCSC,missing_in_pcb,,C14858
+C303,BOM_Status,missing_in_pcb,,QUALIFIED
+C303,JLC_Class,differs,Basic (expected),not stated on page
+C303,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14858.pdf
+C304,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10C101JB8NNNC
+C304,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C304,LCSC,missing_in_pcb,,C14858
+C304,BOM_Status,missing_in_pcb,,QUALIFIED
+C304,JLC_Class,differs,Basic (expected),not stated on page
+C304,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14858.pdf
+C305,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),C1608C0G1H103JT000N
+C305,Manufacturer,differs,Any (JLC Basic),TDK
+C305,LCSC,missing_in_pcb,,C76599
+C305,BOM_Status,missing_in_pcb,,QUALIFIED
+C305,JLC_Class,differs,Basic or Extended (10 nF C0G - confirm),Extended Parts
+C305,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C76599.pdf
+C306,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603CG102J500NT
+C306,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C306,LCSC,missing_in_pcb,,C1636
+C306,BOM_Status,missing_in_pcb,,QUALIFIED
+C306,JLC_Class,differs,Basic (expected),Extended Parts
+C306,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C1636.pdf
+C307,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603CG102J500NT
+C307,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C307,LCSC,missing_in_pcb,,C1636
+C307,BOM_Status,missing_in_pcb,,QUALIFIED
+C307,JLC_Class,differs,Basic (expected),Extended Parts
+C307,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C1636.pdf
+C401,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603B225K160NT
+C401,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C401,LCSC,missing_in_pcb,,C43922
+C401,BOM_Status,missing_in_pcb,,QUALIFIED
+C401,JLC_Class,differs,Basic (expected),Extended Parts
+C401,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C43922.pdf
+C402,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603B225K160NT
+C402,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C402,LCSC,missing_in_pcb,,C43922
+C402,BOM_Status,missing_in_pcb,,QUALIFIED
+C402,JLC_Class,differs,Basic (expected),Extended Parts
+C402,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C43922.pdf
+C403,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10C101JB8NNNC
+C403,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C403,LCSC,missing_in_pcb,,C14858
+C403,BOM_Status,missing_in_pcb,,QUALIFIED
+C403,JLC_Class,differs,Basic (expected),not stated on page
+C403,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14858.pdf
+C404,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10C101JB8NNNC
+C404,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C404,LCSC,missing_in_pcb,,C14858
+C404,BOM_Status,missing_in_pcb,,QUALIFIED
+C404,JLC_Class,differs,Basic (expected),not stated on page
+C404,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14858.pdf
+C405,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),C1608C0G1H103JT000N
+C405,Manufacturer,differs,Any (JLC Basic),TDK
+C405,LCSC,missing_in_pcb,,C76599
+C405,BOM_Status,missing_in_pcb,,QUALIFIED
+C405,JLC_Class,differs,Basic or Extended (10 nF C0G - confirm),Extended Parts
+C405,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C76599.pdf
+C406,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603CG102J500NT
+C406,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C406,LCSC,missing_in_pcb,,C1636
+C406,BOM_Status,missing_in_pcb,,QUALIFIED
+C406,JLC_Class,differs,Basic (expected),Extended Parts
+C406,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C1636.pdf
+C407,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603CG102J500NT
+C407,Manufacturer,differs,Any (JLC Basic),FH (Guangdong Fenghua)
+C407,LCSC,missing_in_pcb,,C1636
+C407,BOM_Status,missing_in_pcb,,QUALIFIED
+C407,JLC_Class,differs,Basic (expected),Extended Parts
+C407,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C1636.pdf
+C501,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CC0603KRX7R9BB104
+C501,Manufacturer,differs,Any (JLC Basic),YAGEO
+C501,LCSC,missing_in_pcb,,C14663
+C501,BOM_Status,missing_in_pcb,,QUALIFIED
+C501,JLC_Class,differs,Basic (expected),Basic (page)
+C501,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14663.pdf
+C502,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CC0603KRX7R9BB104
+C502,Manufacturer,differs,Any (JLC Basic),YAGEO
+C502,LCSC,missing_in_pcb,,C14663
+C502,BOM_Status,missing_in_pcb,,QUALIFIED
+C502,JLC_Class,differs,Basic (expected),Basic (page)
+C502,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14663.pdf
+C503,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CC0603KRX7R9BB104
+C503,Manufacturer,differs,Any (JLC Basic),YAGEO
+C503,LCSC,missing_in_pcb,,C14663
+C503,BOM_Status,missing_in_pcb,,QUALIFIED
+C503,JLC_Class,differs,Basic (expected),Basic (page)
+C503,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14663.pdf
+C4005,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10B105KO8NNNC
+C4005,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C4005,LCSC,missing_in_pcb,,C59782
+C4005,BOM_Status,missing_in_pcb,,QUALIFIED
+C4005,JLC_Class,differs,Basic (expected),Extended Parts
+C4005,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C59782.pdf
+C4006,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10B105KO8NNNC
+C4006,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C4006,LCSC,missing_in_pcb,,C59782
+C4006,BOM_Status,missing_in_pcb,,QUALIFIED
+C4006,JLC_Class,differs,Basic (expected),Extended Parts
+C4006,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C59782.pdf
+C4007,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL21A226MAQNNNE
+C4007,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C4007,LCSC,missing_in_pcb,,C45783
+C4007,BOM_Status,missing_in_pcb,,QUALIFIED
+C4007,JLC_Class,differs,Basic (expected),not stated on page
+C4007,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C45783.pdf
+C5001,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10B105KO8NNNC
+C5001,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C5001,LCSC,missing_in_pcb,,C59782
+C5001,BOM_Status,missing_in_pcb,,QUALIFIED
+C5001,JLC_Class,differs,Basic (expected),Extended Parts
+C5001,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C59782.pdf
+C5002,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CC0603KRX7R9BB104
+C5002,Manufacturer,differs,Any (JLC Basic),YAGEO
+C5002,LCSC,missing_in_pcb,,C14663
+C5002,BOM_Status,missing_in_pcb,,QUALIFIED
+C5002,JLC_Class,differs,Basic (expected),Basic (page)
+C5002,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14663.pdf
+C6007,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10B105KO8NNNC
+C6007,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C6007,LCSC,missing_in_pcb,,C59782
+C6007,BOM_Status,missing_in_pcb,,QUALIFIED
+C6007,JLC_Class,differs,Basic (expected),Extended Parts
+C6007,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C59782.pdf
+C6008,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10B105KO8NNNC
+C6008,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C6008,LCSC,missing_in_pcb,,C59782
+C6008,BOM_Status,missing_in_pcb,,QUALIFIED
+C6008,JLC_Class,differs,Basic (expected),Extended Parts
+C6008,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C59782.pdf
+C6009,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10B224KO8NNNC
+C6009,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C6009,LCSC,missing_in_pcb,,C160828
+C6009,BOM_Status,missing_in_pcb,,QUALIFIED
+C6009,JLC_Class,differs,Basic (expected),not stated on page
+C6009,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C160828.pdf
+C6010,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CC0603KRX7R9BB104
+C6010,Manufacturer,differs,Any (JLC Basic),YAGEO
+C6010,LCSC,missing_in_pcb,,C14663
+C6010,BOM_Status,missing_in_pcb,,QUALIFIED
+C6010,JLC_Class,differs,Basic (expected),Basic (page)
+C6010,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14663.pdf
+C7101,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CL10A106KP8NNNC
+C7101,Manufacturer,differs,Any (JLC Basic),Samsung Electro-Mechanics
+C7101,LCSC,missing_in_pcb,,C19702
+C7101,BOM_Status,missing_in_pcb,,QUALIFIED
+C7101,JLC_Class,differs,Basic (expected),not stated on page
+C7101,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C19702.pdf
+C7102,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CC0603KRX7R9BB104
+C7102,Manufacturer,differs,Any (JLC Basic),YAGEO
+C7102,LCSC,missing_in_pcb,,C14663
+C7102,BOM_Status,missing_in_pcb,,QUALIFIED
+C7102,JLC_Class,differs,Basic (expected),Basic (page)
+C7102,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14663.pdf
+C7103,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),CC0603KRX7R9BB104
+C7103,Manufacturer,differs,Any (JLC Basic),YAGEO
+C7103,LCSC,missing_in_pcb,,C14663
+C7103,BOM_Status,missing_in_pcb,,QUALIFIED
+C7103,JLC_Class,differs,Basic (expected),Basic (page)
+C7103,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C14663.pdf
+D101,MPN,differs,BAV199,"BAV199,215"
+D101,LCSC,missing_in_pcb,,C40919
+D101,BOM_Status,missing_in_pcb,,QUALIFIED
+D101,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D101,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D102,MPN,differs,BAV199,"BAV199,215"
+D102,LCSC,missing_in_pcb,,C40919
+D102,BOM_Status,missing_in_pcb,,QUALIFIED
+D102,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D102,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D103,MPN,differs,BAV199,"BAV199,215"
+D103,LCSC,missing_in_pcb,,C40919
+D103,BOM_Status,missing_in_pcb,,QUALIFIED
+D103,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D103,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D104,MPN,differs,BAV199,"BAV199,215"
+D104,LCSC,missing_in_pcb,,C40919
+D104,BOM_Status,missing_in_pcb,,QUALIFIED
+D104,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D104,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D201,MPN,differs,BAV199,"BAV199,215"
+D201,LCSC,missing_in_pcb,,C40919
+D201,BOM_Status,missing_in_pcb,,QUALIFIED
+D201,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D201,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D202,MPN,differs,BAV199,"BAV199,215"
+D202,LCSC,missing_in_pcb,,C40919
+D202,BOM_Status,missing_in_pcb,,QUALIFIED
+D202,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D202,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D203,MPN,differs,BAV199,"BAV199,215"
+D203,LCSC,missing_in_pcb,,C40919
+D203,BOM_Status,missing_in_pcb,,QUALIFIED
+D203,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D203,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D204,MPN,differs,BAV199,"BAV199,215"
+D204,LCSC,missing_in_pcb,,C40919
+D204,BOM_Status,missing_in_pcb,,QUALIFIED
+D204,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D204,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D301,MPN,differs,BAV199,"BAV199,215"
+D301,LCSC,missing_in_pcb,,C40919
+D301,BOM_Status,missing_in_pcb,,QUALIFIED
+D301,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D301,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D302,MPN,differs,BAV199,"BAV199,215"
+D302,LCSC,missing_in_pcb,,C40919
+D302,BOM_Status,missing_in_pcb,,QUALIFIED
+D302,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D302,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D303,MPN,differs,BAV199,"BAV199,215"
+D303,LCSC,missing_in_pcb,,C40919
+D303,BOM_Status,missing_in_pcb,,QUALIFIED
+D303,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D303,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D304,MPN,differs,BAV199,"BAV199,215"
+D304,LCSC,missing_in_pcb,,C40919
+D304,BOM_Status,missing_in_pcb,,QUALIFIED
+D304,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D304,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D401,MPN,differs,BAV199,"BAV199,215"
+D401,LCSC,missing_in_pcb,,C40919
+D401,BOM_Status,missing_in_pcb,,QUALIFIED
+D401,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D401,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D402,MPN,differs,BAV199,"BAV199,215"
+D402,LCSC,missing_in_pcb,,C40919
+D402,BOM_Status,missing_in_pcb,,QUALIFIED
+D402,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D402,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D403,MPN,differs,BAV199,"BAV199,215"
+D403,LCSC,missing_in_pcb,,C40919
+D403,BOM_Status,missing_in_pcb,,QUALIFIED
+D403,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D403,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+D404,MPN,differs,BAV199,"BAV199,215"
+D404,LCSC,missing_in_pcb,,C40919
+D404,BOM_Status,missing_in_pcb,,QUALIFIED
+D404,JLC_Class,differs,"Extended (expected), 1 line for all 16",Extended Parts
+D404,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/BAV199.pdf,https://www.lcsc.com/datasheet/C40919.pdf
+FB1,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),BLM18AG601SN1D
+FB1,Manufacturer,differs,Any (JLC Basic),Murata
+FB1,LCSC,missing_in_pcb,,C19330
+FB1,BOM_Status,missing_in_pcb,,QUALIFIED
+FB1,JLC_Class,differs,Basic (expected),Extended
+FB1,Datasheet,differs,N/A - generic; JLC Basic part selected at RB-03,https://www.lcsc.com/datasheet/C19330.pdf
+J1,BOM_Status,missing_in_pcb,,QUALIFIED
+J1,JLC_Class,differs,Extended (JLC library type expand); Economic + Standard PCBA; MSL 1,"Extended (per project field, page lists Economic+Standard)"
+J1,Datasheet,differs,https://www.jst-mfg.com/product/pdf/eng/ePH.pdf,https://www.lcsc.com/datasheet/C295747.pdf
+J101,BOM_Status,missing_in_pcb,,QUALIFIED
+J101,JLC_Class,differs,Extended (expected),"Extended (per project field, page lists Economic+Standard)"
+J101,Datasheet,differs,https://www.jst-mfg.com/product/pdf/eng/ePH.pdf,https://www.lcsc.com/datasheet/C160352.pdf
+J201,BOM_Status,missing_in_pcb,,QUALIFIED
+J201,JLC_Class,differs,Extended (expected),"Extended (per project field, page lists Economic+Standard)"
+J201,Datasheet,differs,https://www.jst-mfg.com/product/pdf/eng/ePH.pdf,https://www.lcsc.com/datasheet/C160352.pdf
+J301,BOM_Status,missing_in_pcb,,QUALIFIED
+J301,JLC_Class,differs,Extended (expected),"Extended (per project field, page lists Economic+Standard)"
+J301,Datasheet,differs,https://www.jst-mfg.com/product/pdf/eng/ePH.pdf,https://www.lcsc.com/datasheet/C160352.pdf
+J401,BOM_Status,missing_in_pcb,,QUALIFIED
+J401,JLC_Class,differs,Extended (expected),"Extended (per project field, page lists Economic+Standard)"
+J401,Datasheet,differs,https://www.jst-mfg.com/product/pdf/eng/ePH.pdf,https://www.lcsc.com/datasheet/C160352.pdf
+J5001,BOM_Status,missing_in_pcb,,QUALIFIED
+J5001,JLC_Class,differs,Extended (expected),"Extended (per project field, page lists Economic+Standard)"
+J5001,Datasheet,differs,https://www.jst-mfg.com/product/pdf/eng/ePH.pdf,https://www.lcsc.com/datasheet/C160352.pdf
+Q3001,Manufacturer,differs,"Any (JLC Basic, e.g. Nexperia/CJ)",JSCJ (Jiangsu Changjing)
+Q3001,LCSC,missing_in_pcb,,C8545
+Q3001,BOM_Status,missing_in_pcb,,QUALIFIED
+Q3001,JLC_Class,differs,Basic (expected),not stated on page
+Q3001,Datasheet,differs,https://assets.nexperia.com/documents/data-sheet/2N7002.pdf,https://www.lcsc.com/datasheet/C8545.pdf
+R101,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710KL
+R101,Manufacturer,differs,Any (JLC Basic),YAGEO
+R101,LCSC,missing_in_pcb,,C98220
+R101,BOM_Status,missing_in_pcb,,QUALIFIED
+R101,JLC_Class,differs,Basic (expected),Extended Parts
+R101,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C98220.pdf
+R102,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710KL
+R102,Manufacturer,differs,Any (JLC Basic),YAGEO
+R102,LCSC,missing_in_pcb,,C98220
+R102,BOM_Status,missing_in_pcb,,QUALIFIED
+R102,JLC_Class,differs,Basic (expected),Extended Parts
+R102,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C98220.pdf
+R103,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R103,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R103,LCSC,missing_in_pcb,,C25803
+R103,BOM_Status,missing_in_pcb,,QUALIFIED
+R103,JLC_Class,differs,Basic (expected),not stated on page
+R103,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R104,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R104,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R104,LCSC,missing_in_pcb,,C25803
+R104,BOM_Status,missing_in_pcb,,QUALIFIED
+R104,JLC_Class,differs,Basic (expected),not stated on page
+R104,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R105,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710ML
+R105,Manufacturer,differs,Any (JLC Basic),YAGEO
+R105,LCSC,missing_in_pcb,,C114606
+R105,BOM_Status,missing_in_pcb,,QUALIFIED
+R105,JLC_Class,differs,Basic (expected),not stated on page
+R105,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C114606.pdf
+R106,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710ML
+R106,Manufacturer,differs,Any (JLC Basic),YAGEO
+R106,LCSC,missing_in_pcb,,C114606
+R106,BOM_Status,missing_in_pcb,,QUALIFIED
+R106,JLC_Class,differs,Basic (expected),not stated on page
+R106,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C114606.pdf
+R107,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1001T5E
+R107,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R107,LCSC,missing_in_pcb,,C21190
+R107,BOM_Status,missing_in_pcb,,QUALIFIED
+R107,JLC_Class,differs,Basic (expected),not stated on page
+R107,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C21190.pdf
+R108,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1001T5E
+R108,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R108,LCSC,missing_in_pcb,,C21190
+R108,BOM_Status,missing_in_pcb,,QUALIFIED
+R108,JLC_Class,differs,Basic (expected),not stated on page
+R108,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C21190.pdf
+R201,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710KL
+R201,Manufacturer,differs,Any (JLC Basic),YAGEO
+R201,LCSC,missing_in_pcb,,C98220
+R201,BOM_Status,missing_in_pcb,,QUALIFIED
+R201,JLC_Class,differs,Basic (expected),Extended Parts
+R201,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C98220.pdf
+R202,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710KL
+R202,Manufacturer,differs,Any (JLC Basic),YAGEO
+R202,LCSC,missing_in_pcb,,C98220
+R202,BOM_Status,missing_in_pcb,,QUALIFIED
+R202,JLC_Class,differs,Basic (expected),Extended Parts
+R202,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C98220.pdf
+R203,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R203,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R203,LCSC,missing_in_pcb,,C25803
+R203,BOM_Status,missing_in_pcb,,QUALIFIED
+R203,JLC_Class,differs,Basic (expected),not stated on page
+R203,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R204,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R204,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R204,LCSC,missing_in_pcb,,C25803
+R204,BOM_Status,missing_in_pcb,,QUALIFIED
+R204,JLC_Class,differs,Basic (expected),not stated on page
+R204,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R205,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710ML
+R205,Manufacturer,differs,Any (JLC Basic),YAGEO
+R205,LCSC,missing_in_pcb,,C114606
+R205,BOM_Status,missing_in_pcb,,QUALIFIED
+R205,JLC_Class,differs,Basic (expected),not stated on page
+R205,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C114606.pdf
+R206,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710ML
+R206,Manufacturer,differs,Any (JLC Basic),YAGEO
+R206,LCSC,missing_in_pcb,,C114606
+R206,BOM_Status,missing_in_pcb,,QUALIFIED
+R206,JLC_Class,differs,Basic (expected),not stated on page
+R206,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C114606.pdf
+R207,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1001T5E
+R207,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R207,LCSC,missing_in_pcb,,C21190
+R207,BOM_Status,missing_in_pcb,,QUALIFIED
+R207,JLC_Class,differs,Basic (expected),not stated on page
+R207,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C21190.pdf
+R208,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1001T5E
+R208,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R208,LCSC,missing_in_pcb,,C21190
+R208,BOM_Status,missing_in_pcb,,QUALIFIED
+R208,JLC_Class,differs,Basic (expected),not stated on page
+R208,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C21190.pdf
+R301,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710KL
+R301,Manufacturer,differs,Any (JLC Basic),YAGEO
+R301,LCSC,missing_in_pcb,,C98220
+R301,BOM_Status,missing_in_pcb,,QUALIFIED
+R301,JLC_Class,differs,Basic (expected),Extended Parts
+R301,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C98220.pdf
+R302,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710KL
+R302,Manufacturer,differs,Any (JLC Basic),YAGEO
+R302,LCSC,missing_in_pcb,,C98220
+R302,BOM_Status,missing_in_pcb,,QUALIFIED
+R302,JLC_Class,differs,Basic (expected),Extended Parts
+R302,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C98220.pdf
+R303,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R303,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R303,LCSC,missing_in_pcb,,C25803
+R303,BOM_Status,missing_in_pcb,,QUALIFIED
+R303,JLC_Class,differs,Basic (expected),not stated on page
+R303,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R304,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R304,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R304,LCSC,missing_in_pcb,,C25803
+R304,BOM_Status,missing_in_pcb,,QUALIFIED
+R304,JLC_Class,differs,Basic (expected),not stated on page
+R304,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R305,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710ML
+R305,Manufacturer,differs,Any (JLC Basic),YAGEO
+R305,LCSC,missing_in_pcb,,C114606
+R305,BOM_Status,missing_in_pcb,,QUALIFIED
+R305,JLC_Class,differs,Basic (expected),not stated on page
+R305,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C114606.pdf
+R306,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710ML
+R306,Manufacturer,differs,Any (JLC Basic),YAGEO
+R306,LCSC,missing_in_pcb,,C114606
+R306,BOM_Status,missing_in_pcb,,QUALIFIED
+R306,JLC_Class,differs,Basic (expected),not stated on page
+R306,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C114606.pdf
+R307,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1001T5E
+R307,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R307,LCSC,missing_in_pcb,,C21190
+R307,BOM_Status,missing_in_pcb,,QUALIFIED
+R307,JLC_Class,differs,Basic (expected),not stated on page
+R307,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C21190.pdf
+R308,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1001T5E
+R308,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R308,LCSC,missing_in_pcb,,C21190
+R308,BOM_Status,missing_in_pcb,,QUALIFIED
+R308,JLC_Class,differs,Basic (expected),not stated on page
+R308,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C21190.pdf
+R401,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710KL
+R401,Manufacturer,differs,Any (JLC Basic),YAGEO
+R401,LCSC,missing_in_pcb,,C98220
+R401,BOM_Status,missing_in_pcb,,QUALIFIED
+R401,JLC_Class,differs,Basic (expected),Extended Parts
+R401,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C98220.pdf
+R402,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710KL
+R402,Manufacturer,differs,Any (JLC Basic),YAGEO
+R402,LCSC,missing_in_pcb,,C98220
+R402,BOM_Status,missing_in_pcb,,QUALIFIED
+R402,JLC_Class,differs,Basic (expected),Extended Parts
+R402,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C98220.pdf
+R403,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R403,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R403,LCSC,missing_in_pcb,,C25803
+R403,BOM_Status,missing_in_pcb,,QUALIFIED
+R403,JLC_Class,differs,Basic (expected),not stated on page
+R403,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R404,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R404,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R404,LCSC,missing_in_pcb,,C25803
+R404,BOM_Status,missing_in_pcb,,QUALIFIED
+R404,JLC_Class,differs,Basic (expected),not stated on page
+R404,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R405,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710ML
+R405,Manufacturer,differs,Any (JLC Basic),YAGEO
+R405,LCSC,missing_in_pcb,,C114606
+R405,BOM_Status,missing_in_pcb,,QUALIFIED
+R405,JLC_Class,differs,Basic (expected),not stated on page
+R405,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C114606.pdf
+R406,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710ML
+R406,Manufacturer,differs,Any (JLC Basic),YAGEO
+R406,LCSC,missing_in_pcb,,C114606
+R406,BOM_Status,missing_in_pcb,,QUALIFIED
+R406,JLC_Class,differs,Basic (expected),not stated on page
+R406,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C114606.pdf
+R407,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1001T5E
+R407,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R407,LCSC,missing_in_pcb,,C21190
+R407,BOM_Status,missing_in_pcb,,QUALIFIED
+R407,JLC_Class,differs,Basic (expected),not stated on page
+R407,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C21190.pdf
+R408,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1001T5E
+R408,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R408,LCSC,missing_in_pcb,,C21190
+R408,BOM_Status,missing_in_pcb,,QUALIFIED
+R408,JLC_Class,differs,Basic (expected),not stated on page
+R408,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C21190.pdf
+R3004,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R3004,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R3004,LCSC,missing_in_pcb,,C25803
+R3004,BOM_Status,missing_in_pcb,,QUALIFIED
+R3004,JLC_Class,differs,Basic (expected),not stated on page
+R3004,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R3006,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710KL
+R3006,Manufacturer,differs,Any (JLC Basic),YAGEO
+R3006,LCSC,missing_in_pcb,,C98220
+R3006,BOM_Status,missing_in_pcb,,QUALIFIED
+R3006,JLC_Class,differs,Basic (expected),Extended Parts
+R3006,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C98220.pdf
+R3007,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710KL
+R3007,Manufacturer,differs,Any (JLC Basic),YAGEO
+R3007,LCSC,missing_in_pcb,,C98220
+R3007,BOM_Status,missing_in_pcb,,QUALIFIED
+R3007,JLC_Class,differs,Basic (expected),Extended Parts
+R3007,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C98220.pdf
+R3008,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R3008,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R3008,LCSC,missing_in_pcb,,C25803
+R3008,BOM_Status,missing_in_pcb,,QUALIFIED
+R3008,JLC_Class,differs,Basic (expected),not stated on page
+R3008,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R3009,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF4701T5E
+R3009,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R3009,LCSC,missing_in_pcb,,C23162
+R3009,BOM_Status,missing_in_pcb,,QUALIFIED
+R3009,JLC_Class,differs,Basic (expected),not stated on page
+R3009,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C23162.pdf
+R4001,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-074R7L
+R4001,Manufacturer,differs,Any (JLC Basic),YAGEO
+R4001,LCSC,missing_in_pcb,,C137705
+R4001,BOM_Status,missing_in_pcb,,QUALIFIED
+R4001,JLC_Class,differs,Basic (expected),not stated on page
+R4001,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C137705.pdf
+R5002,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0805W8F1003T5E
+R5002,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R5002,LCSC,missing_in_pcb,,C149504
+R5002,BOM_Status,missing_in_pcb,,QUALIFIED
+R5002,JLC_Class,differs,Basic (expected),not stated on page
+R5002,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C149504.pdf
+R5003,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R5003,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R5003,LCSC,missing_in_pcb,,C25803
+R5003,BOM_Status,missing_in_pcb,,QUALIFIED
+R5003,JLC_Class,differs,Basic (expected),not stated on page
+R5003,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R5004,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R5004,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R5004,LCSC,missing_in_pcb,,C25803
+R5004,BOM_Status,missing_in_pcb,,QUALIFIED
+R5004,JLC_Class,differs,Basic (expected),not stated on page
+R5004,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R5005,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710KL
+R5005,Manufacturer,differs,Any (JLC Basic),YAGEO
+R5005,LCSC,missing_in_pcb,,C98220
+R5005,BOM_Status,missing_in_pcb,,QUALIFIED
+R5005,JLC_Class,differs,Basic (expected),Extended Parts
+R5005,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C98220.pdf
+R6001,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF330JT5E
+R6001,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R6001,LCSC,missing_in_pcb,,C23140
+R6001,BOM_Status,missing_in_pcb,,QUALIFIED
+R6001,JLC_Class,differs,Basic (expected),not stated on page
+R6001,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C23140.pdf
+R6002,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF330JT5E
+R6002,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R6002,LCSC,missing_in_pcb,,C23140
+R6002,BOM_Status,missing_in_pcb,,QUALIFIED
+R6002,JLC_Class,differs,Basic (expected),not stated on page
+R6002,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C23140.pdf
+R6003,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1000T5E
+R6003,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R6003,LCSC,missing_in_pcb,,C22775
+R6003,BOM_Status,missing_in_pcb,,QUALIFIED
+R6003,JLC_Class,differs,Basic (expected),not stated on page
+R6003,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C22775.pdf
+R7101,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF330JT5E
+R7101,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R7101,LCSC,missing_in_pcb,,C23140
+R7101,BOM_Status,missing_in_pcb,,QUALIFIED
+R7101,JLC_Class,differs,Basic (expected),not stated on page
+R7101,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C23140.pdf
+R7102,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF330JT5E
+R7102,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R7102,LCSC,missing_in_pcb,,C23140
+R7102,BOM_Status,missing_in_pcb,,QUALIFIED
+R7102,JLC_Class,differs,Basic (expected),not stated on page
+R7102,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C23140.pdf
+R7103,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R7103,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R7103,LCSC,missing_in_pcb,,C25803
+R7103,BOM_Status,missing_in_pcb,,QUALIFIED
+R7103,JLC_Class,differs,Basic (expected),not stated on page
+R7103,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R7104,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),RC0603FR-0710KL
+R7104,Manufacturer,differs,Any (JLC Basic),YAGEO
+R7104,LCSC,missing_in_pcb,,C98220
+R7104,BOM_Status,missing_in_pcb,,QUALIFIED
+R7104,JLC_Class,differs,Basic (expected),Extended Parts
+R7104,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C98220.pdf
+R7105,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1003T5E
+R7105,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R7105,LCSC,missing_in_pcb,,C25803
+R7105,BOM_Status,missing_in_pcb,,QUALIFIED
+R7105,JLC_Class,differs,Basic (expected),not stated on page
+R7105,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C25803.pdf
+R7106,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1503T5E
+R7106,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R7106,LCSC,missing_in_pcb,,C22807
+R7106,BOM_Status,missing_in_pcb,,QUALIFIED
+R7106,JLC_Class,differs,Basic (expected),not stated on page
+R7106,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C22807.pdf
+R7107,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1004T5E
+R7107,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R7107,LCSC,missing_in_pcb,,C22935
+R7107,BOM_Status,missing_in_pcb,,QUALIFIED
+R7107,JLC_Class,differs,Basic (expected),not stated on page
+R7107,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C22935.pdf
+R7108,MPN,differs,GENERIC (spec-defined; JLC Basic part selected at RB-03),0603WAF1004T5E
+R7108,Manufacturer,differs,Any (JLC Basic),UNI-ROYAL
+R7108,LCSC,missing_in_pcb,,C22935
+R7108,BOM_Status,missing_in_pcb,,QUALIFIED
+R7108,JLC_Class,differs,Basic (expected),not stated on page
+R7108,Datasheet,differs,N/A - generic passive; datasheet of the JLC Basic part selected at RB-03 BOM freeze,https://www.lcsc.com/datasheet/C22935.pdf
+U501,LCSC,missing_in_pcb,,C779410
+U501,BOM_Status,missing_in_pcb,,QUALIFIED
+U501,JLC_Class,differs,Extended (expected),Extended
+U501,Datasheet,differs,https://www.ti.com/lit/ds/symlink/tlv9064.pdf,https://www.lcsc.com/datasheet/C779410.pdf
+U502,LCSC,missing_in_pcb,,C779410
+U502,BOM_Status,missing_in_pcb,,QUALIFIED
+U502,JLC_Class,differs,Extended (expected),Extended
+U502,Datasheet,differs,https://www.ti.com/lit/ds/symlink/tlv9064.pdf,https://www.lcsc.com/datasheet/C779410.pdf
+U503,LCSC,missing_in_pcb,,C779410
+U503,BOM_Status,missing_in_pcb,,QUALIFIED
+U503,JLC_Class,differs,Extended (expected),Extended
+U503,Datasheet,differs,https://www.ti.com/lit/ds/symlink/tlv9064.pdf,https://www.lcsc.com/datasheet/C779410.pdf
+U4002,LCSC,missing_in_pcb,,C963429
+U4002,BOM_Status,missing_in_pcb,,QUALIFIED
+U4002,JLC_Class,differs,Extended (expected),not stated on page (page: Economic and Standard)
+U4002,Datasheet,differs,https://www.ti.com/lit/ds/symlink/tps7a20.pdf,https://www.lcsc.com/datasheet/C963429.pdf
+U6001,LCSC,missing_in_pcb,,C2862562
+U6001,BOM_Status,missing_in_pcb,,QUALIFIED
+U6001,JLC_Class,differs,Extended (expected),Extended
+U6001,Datasheet,differs,https://www.ti.com/lit/ds/symlink/ads131m04.pdf,https://www.lcsc.com/datasheet/C2862562.pdf
+X1,Manufacturer,differs,SCTF (Shenzhen SCTF Elec),SCTF (Asian Brands)
+X1,BOM_Status,missing_in_pcb,,QUALIFIED
+X1,JLC_Class,differs,Extended (JLC library type expand); Economic + Standard PCBA; MSL 1,Extended (per project field)
+X1,Datasheet,differs,https://wmsc.lcsc.com/wmsc/upload/file/pdf/v2/lcsc/2110091030_Shenzhen-SCTF-Elec-SX3M8-192M20F30TNN_C2901557.pdf,https://www.lcsc.com/datasheet/C2901557.pdf

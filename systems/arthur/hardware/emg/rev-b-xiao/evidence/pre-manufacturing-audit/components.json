@@ -1,0 +1,2146 @@
+{
+  "C101": {
+    "value": "2.2uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603B225K160NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "2.2uF 16V X7R 0603 MLCC",
+      "Role": "AC coupling follower IN+ -> ADC",
+      "LCSC": "C43922",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C43922.pdf",
+      "Description": "Capacitor 2.2uF 16V X7R 0603 - AC coupling follower IN+ -> ADC"
+    }
+  },
+  "C102": {
+    "value": "2.2uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603B225K160NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "2.2uF 16V X7R 0603 MLCC",
+      "Role": "AC coupling follower IN- -> ADC",
+      "LCSC": "C43922",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C43922.pdf",
+      "Description": "Capacitor 2.2uF 16V X7R 0603 - AC coupling follower IN- -> ADC"
+    }
+  },
+  "C103": {
+    "value": "100pF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10C101JB8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "100pF 50V C0G 0603 MLCC",
+      "Role": "RFI shunt at hi-Z node IN+",
+      "LCSC": "C14858",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14858.pdf",
+      "Description": "Capacitor 100pF 50V C0G 0603 - RFI shunt at hi-Z node IN+"
+    }
+  },
+  "C104": {
+    "value": "100pF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10C101JB8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "100pF 50V C0G 0603 MLCC",
+      "Role": "RFI shunt at hi-Z node IN-",
+      "LCSC": "C14858",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14858.pdf",
+      "Description": "Capacitor 100pF 50V C0G 0603 - RFI shunt at hi-Z node IN-"
+    }
+  },
+  "C105": {
+    "value": "10nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "C1608C0G1H103JT000N",
+      "Manufacturer": "TDK",
+      "Spec": "10nF 50V C0G 0603 MLCC",
+      "Role": "Differential AAF",
+      "LCSC": "C76599",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C76599.pdf",
+      "Description": "Capacitor 10nF 50V C0G 0603 - Differential AAF"
+    }
+  },
+  "C106": {
+    "value": "1.0nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603CG102J500NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "1.0nF 50V C0G 0603 MLCC",
+      "Role": "Common-mode AAF IN+",
+      "LCSC": "C1636",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C1636.pdf",
+      "Description": "Capacitor 1.0nF 50V C0G 0603 - Common-mode AAF IN+"
+    }
+  },
+  "C107": {
+    "value": "1.0nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603CG102J500NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "1.0nF 50V C0G 0603 MLCC",
+      "Role": "Common-mode AAF IN-",
+      "LCSC": "C1636",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C1636.pdf",
+      "Description": "Capacitor 1.0nF 50V C0G 0603 - Common-mode AAF IN-"
+    }
+  },
+  "D101": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "Hi-Z input clamp IN+ to GND / AFE_3V0",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "Electrode-protection clamp, hi-Z node IN+"
+    }
+  },
+  "D102": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "Hi-Z input clamp IN- to GND / AFE_3V0",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "Electrode-protection clamp, hi-Z node IN-"
+    }
+  },
+  "D103": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "RB-00.5 ADC-input negative clamp IN+ (pin1 GND, pin3 AIN, pin2 NC), after 1 k",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "ADC shutdown-transient negative clamp, AIN P"
+    }
+  },
+  "D104": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "RB-00.5 ADC-input negative clamp IN- (pin1 GND, pin3 AIN, pin2 NC), after 1 k",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "ADC shutdown-transient negative clamp, AIN N"
+    }
+  },
+  "J101": {
+    "value": "S2B-PH-SM4-TB",
+    "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+    "fields": {
+      "MPN": "S2B-PH-SM4-TB(LF)(SN)",
+      "LCSC": "C295747",
+      "Manufacturer": "JST",
+      "Spec": "JST PH 2.0 mm 2-pin horizontal side-entry SMT, PHR-2 housing + SPH-002T-P0.5S contacts; two isolated retention pads",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended (per project field, page lists Economic+Standard)",
+      "Role": "Bipolar EMG electrode connector (pin 1 = IN+, pin 2 = IN-)",
+      "Footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "Datasheet": "https://www.jst.com/wp-content/uploads/2025/06/ePH.pdf",
+      "Description": "Bipolar EMG electrode connector, JST PH 2p horizontal side-entry SMD"
+    }
+  },
+  "R101": {
+    "value": "10k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710KL",
+      "Manufacturer": "YAGEO",
+      "Spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "Input series limiter IN+ (clamp current / RFI pole)",
+      "LCSC": "C98220",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C98220.pdf",
+      "Description": "Resistor 10k 1% 0603 - Input series limiter IN+ (clamp current / RFI pole)"
+    }
+  },
+  "R102": {
+    "value": "10k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710KL",
+      "Manufacturer": "YAGEO",
+      "Spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "Input series limiter IN-",
+      "LCSC": "C98220",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C98220.pdf",
+      "Description": "Resistor 10k 1% 0603 - Input series limiter IN-"
+    }
+  },
+  "R103": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AC-coupling DC return to GND (IN+), GND-referenced per RB-00.5",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - AC-coupling DC return to GND (IN+), GND-referenced per RB-00.5"
+    }
+  },
+  "R104": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AC-coupling DC return to GND (IN-), GND-referenced per RB-00.5",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - AC-coupling DC return to GND (IN-), GND-referenced per RB-00.5"
+    }
+  },
+  "R105": {
+    "value": "10M",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710ML",
+      "Manufacturer": "YAGEO",
+      "Spec": "10M \u00b15% 0603 thick film, >=1/10 W",
+      "Role": "Follower input DC bias IN+ to VCM",
+      "LCSC": "C114606",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C114606.pdf",
+      "Description": "Resistor 10M 5% 0603 - Follower input DC bias IN+ to VCM"
+    }
+  },
+  "R106": {
+    "value": "10M",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710ML",
+      "Manufacturer": "YAGEO",
+      "Spec": "10M \u00b15% 0603 thick film, >=1/10 W",
+      "Role": "Follower input DC bias IN- to VCM",
+      "LCSC": "C114606",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C114606.pdf",
+      "Description": "Resistor 10M 5% 0603 - Follower input DC bias IN- to VCM"
+    }
+  },
+  "R107": {
+    "value": "1.0k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1001T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "1.0k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AAF series R, ADC IN+",
+      "LCSC": "C21190",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C21190.pdf",
+      "Description": "Resistor 1.0k 1% 0603 - AAF series R, ADC IN+"
+    }
+  },
+  "R108": {
+    "value": "1.0k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1001T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "1.0k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AAF series R, ADC IN-",
+      "LCSC": "C21190",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C21190.pdf",
+      "Description": "Resistor 1.0k 1% 0603 - AAF series R, ADC IN-"
+    }
+  },
+  "U501": {
+    "value": "TLV9064IPWR",
+    "footprint": "Package_SO:TSSOP-14_4.4x5mm_P0.65mm",
+    "fields": {
+      "MPN": "TLV9064IPWR",
+      "Manufacturer": "Texas Instruments",
+      "Spec": "Quad RRIO op-amp TSSOP-14",
+      "LCSC": "C779410",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended",
+      "Role": "Unity-gain input follower, leg P",
+      "Footprint": "Package_SO:TSSOP-14_4.4x5mm_P0.65mm",
+      "Datasheet": "https://www.lcsc.com/datasheet/C779410.pdf",
+      "Description": "Input follower (TLV9064 section)"
+    }
+  },
+  "C201": {
+    "value": "2.2uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603B225K160NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "2.2uF 16V X7R 0603 MLCC",
+      "Role": "AC coupling follower IN+ -> ADC",
+      "LCSC": "C43922",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C43922.pdf",
+      "Description": "Capacitor 2.2uF 16V X7R 0603 - AC coupling follower IN+ -> ADC"
+    }
+  },
+  "C202": {
+    "value": "2.2uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603B225K160NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "2.2uF 16V X7R 0603 MLCC",
+      "Role": "AC coupling follower IN- -> ADC",
+      "LCSC": "C43922",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C43922.pdf",
+      "Description": "Capacitor 2.2uF 16V X7R 0603 - AC coupling follower IN- -> ADC"
+    }
+  },
+  "C203": {
+    "value": "100pF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10C101JB8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "100pF 50V C0G 0603 MLCC",
+      "Role": "RFI shunt at hi-Z node IN+",
+      "LCSC": "C14858",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14858.pdf",
+      "Description": "Capacitor 100pF 50V C0G 0603 - RFI shunt at hi-Z node IN+"
+    }
+  },
+  "C204": {
+    "value": "100pF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10C101JB8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "100pF 50V C0G 0603 MLCC",
+      "Role": "RFI shunt at hi-Z node IN-",
+      "LCSC": "C14858",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14858.pdf",
+      "Description": "Capacitor 100pF 50V C0G 0603 - RFI shunt at hi-Z node IN-"
+    }
+  },
+  "C205": {
+    "value": "10nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "C1608C0G1H103JT000N",
+      "Manufacturer": "TDK",
+      "Spec": "10nF 50V C0G 0603 MLCC",
+      "Role": "Differential AAF",
+      "LCSC": "C76599",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C76599.pdf",
+      "Description": "Capacitor 10nF 50V C0G 0603 - Differential AAF"
+    }
+  },
+  "C206": {
+    "value": "1.0nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603CG102J500NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "1.0nF 50V C0G 0603 MLCC",
+      "Role": "Common-mode AAF IN+",
+      "LCSC": "C1636",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C1636.pdf",
+      "Description": "Capacitor 1.0nF 50V C0G 0603 - Common-mode AAF IN+"
+    }
+  },
+  "C207": {
+    "value": "1.0nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603CG102J500NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "1.0nF 50V C0G 0603 MLCC",
+      "Role": "Common-mode AAF IN-",
+      "LCSC": "C1636",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C1636.pdf",
+      "Description": "Capacitor 1.0nF 50V C0G 0603 - Common-mode AAF IN-"
+    }
+  },
+  "D201": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "Hi-Z input clamp IN+ to GND / AFE_3V0",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "Electrode-protection clamp, hi-Z node IN+"
+    }
+  },
+  "D202": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "Hi-Z input clamp IN- to GND / AFE_3V0",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "Electrode-protection clamp, hi-Z node IN-"
+    }
+  },
+  "D203": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "RB-00.5 ADC-input negative clamp IN+ (pin1 GND, pin3 AIN, pin2 NC), after 1 k",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "ADC shutdown-transient negative clamp, AIN P"
+    }
+  },
+  "D204": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "RB-00.5 ADC-input negative clamp IN- (pin1 GND, pin3 AIN, pin2 NC), after 1 k",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "ADC shutdown-transient negative clamp, AIN N"
+    }
+  },
+  "J201": {
+    "value": "S2B-PH-SM4-TB",
+    "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+    "fields": {
+      "MPN": "S2B-PH-SM4-TB(LF)(SN)",
+      "LCSC": "C295747",
+      "Manufacturer": "JST",
+      "Spec": "JST PH 2.0 mm 2-pin horizontal side-entry SMT, PHR-2 housing + SPH-002T-P0.5S contacts; two isolated retention pads",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended (per project field, page lists Economic+Standard)",
+      "Role": "Bipolar EMG electrode connector (pin 1 = IN+, pin 2 = IN-)",
+      "Footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "Datasheet": "https://www.jst.com/wp-content/uploads/2025/06/ePH.pdf",
+      "Description": "Bipolar EMG electrode connector, JST PH 2p horizontal side-entry SMD"
+    }
+  },
+  "R201": {
+    "value": "10k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710KL",
+      "Manufacturer": "YAGEO",
+      "Spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "Input series limiter IN+ (clamp current / RFI pole)",
+      "LCSC": "C98220",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C98220.pdf",
+      "Description": "Resistor 10k 1% 0603 - Input series limiter IN+ (clamp current / RFI pole)"
+    }
+  },
+  "R202": {
+    "value": "10k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710KL",
+      "Manufacturer": "YAGEO",
+      "Spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "Input series limiter IN-",
+      "LCSC": "C98220",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C98220.pdf",
+      "Description": "Resistor 10k 1% 0603 - Input series limiter IN-"
+    }
+  },
+  "R203": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AC-coupling DC return to GND (IN+), GND-referenced per RB-00.5",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - AC-coupling DC return to GND (IN+), GND-referenced per RB-00.5"
+    }
+  },
+  "R204": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AC-coupling DC return to GND (IN-), GND-referenced per RB-00.5",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - AC-coupling DC return to GND (IN-), GND-referenced per RB-00.5"
+    }
+  },
+  "R205": {
+    "value": "10M",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710ML",
+      "Manufacturer": "YAGEO",
+      "Spec": "10M \u00b15% 0603 thick film, >=1/10 W",
+      "Role": "Follower input DC bias IN+ to VCM",
+      "LCSC": "C114606",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C114606.pdf",
+      "Description": "Resistor 10M 5% 0603 - Follower input DC bias IN+ to VCM"
+    }
+  },
+  "R206": {
+    "value": "10M",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710ML",
+      "Manufacturer": "YAGEO",
+      "Spec": "10M \u00b15% 0603 thick film, >=1/10 W",
+      "Role": "Follower input DC bias IN- to VCM",
+      "LCSC": "C114606",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C114606.pdf",
+      "Description": "Resistor 10M 5% 0603 - Follower input DC bias IN- to VCM"
+    }
+  },
+  "R207": {
+    "value": "1.0k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1001T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "1.0k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AAF series R, ADC IN+",
+      "LCSC": "C21190",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C21190.pdf",
+      "Description": "Resistor 1.0k 1% 0603 - AAF series R, ADC IN+"
+    }
+  },
+  "R208": {
+    "value": "1.0k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1001T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "1.0k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AAF series R, ADC IN-",
+      "LCSC": "C21190",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C21190.pdf",
+      "Description": "Resistor 1.0k 1% 0603 - AAF series R, ADC IN-"
+    }
+  },
+  "C301": {
+    "value": "2.2uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603B225K160NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "2.2uF 16V X7R 0603 MLCC",
+      "Role": "AC coupling follower IN+ -> ADC",
+      "LCSC": "C43922",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C43922.pdf",
+      "Description": "Capacitor 2.2uF 16V X7R 0603 - AC coupling follower IN+ -> ADC"
+    }
+  },
+  "C302": {
+    "value": "2.2uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603B225K160NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "2.2uF 16V X7R 0603 MLCC",
+      "Role": "AC coupling follower IN- -> ADC",
+      "LCSC": "C43922",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C43922.pdf",
+      "Description": "Capacitor 2.2uF 16V X7R 0603 - AC coupling follower IN- -> ADC"
+    }
+  },
+  "C303": {
+    "value": "100pF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10C101JB8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "100pF 50V C0G 0603 MLCC",
+      "Role": "RFI shunt at hi-Z node IN+",
+      "LCSC": "C14858",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14858.pdf",
+      "Description": "Capacitor 100pF 50V C0G 0603 - RFI shunt at hi-Z node IN+"
+    }
+  },
+  "C304": {
+    "value": "100pF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10C101JB8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "100pF 50V C0G 0603 MLCC",
+      "Role": "RFI shunt at hi-Z node IN-",
+      "LCSC": "C14858",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14858.pdf",
+      "Description": "Capacitor 100pF 50V C0G 0603 - RFI shunt at hi-Z node IN-"
+    }
+  },
+  "C305": {
+    "value": "10nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "C1608C0G1H103JT000N",
+      "Manufacturer": "TDK",
+      "Spec": "10nF 50V C0G 0603 MLCC",
+      "Role": "Differential AAF",
+      "LCSC": "C76599",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C76599.pdf",
+      "Description": "Capacitor 10nF 50V C0G 0603 - Differential AAF"
+    }
+  },
+  "C306": {
+    "value": "1.0nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603CG102J500NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "1.0nF 50V C0G 0603 MLCC",
+      "Role": "Common-mode AAF IN+",
+      "LCSC": "C1636",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C1636.pdf",
+      "Description": "Capacitor 1.0nF 50V C0G 0603 - Common-mode AAF IN+"
+    }
+  },
+  "C307": {
+    "value": "1.0nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603CG102J500NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "1.0nF 50V C0G 0603 MLCC",
+      "Role": "Common-mode AAF IN-",
+      "LCSC": "C1636",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C1636.pdf",
+      "Description": "Capacitor 1.0nF 50V C0G 0603 - Common-mode AAF IN-"
+    }
+  },
+  "D301": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "Hi-Z input clamp IN+ to GND / AFE_3V0",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "Electrode-protection clamp, hi-Z node IN+"
+    }
+  },
+  "D302": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "Hi-Z input clamp IN- to GND / AFE_3V0",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "Electrode-protection clamp, hi-Z node IN-"
+    }
+  },
+  "D303": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "RB-00.5 ADC-input negative clamp IN+ (pin1 GND, pin3 AIN, pin2 NC), after 1 k",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "ADC shutdown-transient negative clamp, AIN P"
+    }
+  },
+  "D304": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "RB-00.5 ADC-input negative clamp IN- (pin1 GND, pin3 AIN, pin2 NC), after 1 k",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "ADC shutdown-transient negative clamp, AIN N"
+    }
+  },
+  "J301": {
+    "value": "S2B-PH-SM4-TB",
+    "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+    "fields": {
+      "MPN": "S2B-PH-SM4-TB(LF)(SN)",
+      "LCSC": "C295747",
+      "Manufacturer": "JST",
+      "Spec": "JST PH 2.0 mm 2-pin horizontal side-entry SMT, PHR-2 housing + SPH-002T-P0.5S contacts; two isolated retention pads",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended (per project field, page lists Economic+Standard)",
+      "Role": "Bipolar EMG electrode connector (pin 1 = IN+, pin 2 = IN-)",
+      "Footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "Datasheet": "https://www.jst.com/wp-content/uploads/2025/06/ePH.pdf",
+      "Description": "Bipolar EMG electrode connector, JST PH 2p horizontal side-entry SMD"
+    }
+  },
+  "R301": {
+    "value": "10k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710KL",
+      "Manufacturer": "YAGEO",
+      "Spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "Input series limiter IN+ (clamp current / RFI pole)",
+      "LCSC": "C98220",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C98220.pdf",
+      "Description": "Resistor 10k 1% 0603 - Input series limiter IN+ (clamp current / RFI pole)"
+    }
+  },
+  "R302": {
+    "value": "10k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710KL",
+      "Manufacturer": "YAGEO",
+      "Spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "Input series limiter IN-",
+      "LCSC": "C98220",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C98220.pdf",
+      "Description": "Resistor 10k 1% 0603 - Input series limiter IN-"
+    }
+  },
+  "R303": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AC-coupling DC return to GND (IN+), GND-referenced per RB-00.5",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - AC-coupling DC return to GND (IN+), GND-referenced per RB-00.5"
+    }
+  },
+  "R304": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AC-coupling DC return to GND (IN-), GND-referenced per RB-00.5",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - AC-coupling DC return to GND (IN-), GND-referenced per RB-00.5"
+    }
+  },
+  "R305": {
+    "value": "10M",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710ML",
+      "Manufacturer": "YAGEO",
+      "Spec": "10M \u00b15% 0603 thick film, >=1/10 W",
+      "Role": "Follower input DC bias IN+ to VCM",
+      "LCSC": "C114606",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C114606.pdf",
+      "Description": "Resistor 10M 5% 0603 - Follower input DC bias IN+ to VCM"
+    }
+  },
+  "R306": {
+    "value": "10M",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710ML",
+      "Manufacturer": "YAGEO",
+      "Spec": "10M \u00b15% 0603 thick film, >=1/10 W",
+      "Role": "Follower input DC bias IN- to VCM",
+      "LCSC": "C114606",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C114606.pdf",
+      "Description": "Resistor 10M 5% 0603 - Follower input DC bias IN- to VCM"
+    }
+  },
+  "R307": {
+    "value": "1.0k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1001T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "1.0k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AAF series R, ADC IN+",
+      "LCSC": "C21190",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C21190.pdf",
+      "Description": "Resistor 1.0k 1% 0603 - AAF series R, ADC IN+"
+    }
+  },
+  "R308": {
+    "value": "1.0k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1001T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "1.0k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AAF series R, ADC IN-",
+      "LCSC": "C21190",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C21190.pdf",
+      "Description": "Resistor 1.0k 1% 0603 - AAF series R, ADC IN-"
+    }
+  },
+  "U502": {
+    "value": "TLV9064IPWR",
+    "footprint": "Package_SO:TSSOP-14_4.4x5mm_P0.65mm",
+    "fields": {
+      "MPN": "TLV9064IPWR",
+      "Manufacturer": "Texas Instruments",
+      "Spec": "Quad RRIO op-amp TSSOP-14",
+      "LCSC": "C779410",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended",
+      "Role": "Unity-gain input follower, leg P",
+      "Footprint": "Package_SO:TSSOP-14_4.4x5mm_P0.65mm",
+      "Datasheet": "https://www.lcsc.com/datasheet/C779410.pdf",
+      "Description": "Input follower (TLV9064 section)"
+    }
+  },
+  "C401": {
+    "value": "2.2uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603B225K160NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "2.2uF 16V X7R 0603 MLCC",
+      "Role": "AC coupling follower IN+ -> ADC",
+      "LCSC": "C43922",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C43922.pdf",
+      "Description": "Capacitor 2.2uF 16V X7R 0603 - AC coupling follower IN+ -> ADC"
+    }
+  },
+  "C402": {
+    "value": "2.2uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603B225K160NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "2.2uF 16V X7R 0603 MLCC",
+      "Role": "AC coupling follower IN- -> ADC",
+      "LCSC": "C43922",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C43922.pdf",
+      "Description": "Capacitor 2.2uF 16V X7R 0603 - AC coupling follower IN- -> ADC"
+    }
+  },
+  "C403": {
+    "value": "100pF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10C101JB8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "100pF 50V C0G 0603 MLCC",
+      "Role": "RFI shunt at hi-Z node IN+",
+      "LCSC": "C14858",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14858.pdf",
+      "Description": "Capacitor 100pF 50V C0G 0603 - RFI shunt at hi-Z node IN+"
+    }
+  },
+  "C404": {
+    "value": "100pF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10C101JB8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "100pF 50V C0G 0603 MLCC",
+      "Role": "RFI shunt at hi-Z node IN-",
+      "LCSC": "C14858",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14858.pdf",
+      "Description": "Capacitor 100pF 50V C0G 0603 - RFI shunt at hi-Z node IN-"
+    }
+  },
+  "C405": {
+    "value": "10nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "C1608C0G1H103JT000N",
+      "Manufacturer": "TDK",
+      "Spec": "10nF 50V C0G 0603 MLCC",
+      "Role": "Differential AAF",
+      "LCSC": "C76599",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C76599.pdf",
+      "Description": "Capacitor 10nF 50V C0G 0603 - Differential AAF"
+    }
+  },
+  "C406": {
+    "value": "1.0nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603CG102J500NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "1.0nF 50V C0G 0603 MLCC",
+      "Role": "Common-mode AAF IN+",
+      "LCSC": "C1636",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C1636.pdf",
+      "Description": "Capacitor 1.0nF 50V C0G 0603 - Common-mode AAF IN+"
+    }
+  },
+  "C407": {
+    "value": "1.0nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "0603CG102J500NT",
+      "Manufacturer": "FH (Guangdong Fenghua)",
+      "Spec": "1.0nF 50V C0G 0603 MLCC",
+      "Role": "Common-mode AAF IN-",
+      "LCSC": "C1636",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C1636.pdf",
+      "Description": "Capacitor 1.0nF 50V C0G 0603 - Common-mode AAF IN-"
+    }
+  },
+  "D401": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "Hi-Z input clamp IN+ to GND / AFE_3V0",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "Electrode-protection clamp, hi-Z node IN+"
+    }
+  },
+  "D402": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "Hi-Z input clamp IN- to GND / AFE_3V0",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "Electrode-protection clamp, hi-Z node IN-"
+    }
+  },
+  "D403": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "RB-00.5 ADC-input negative clamp IN+ (pin1 GND, pin3 AIN, pin2 NC), after 1 k",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "ADC shutdown-transient negative clamp, AIN P"
+    }
+  },
+  "D404": {
+    "value": "BAV199",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "BAV199,215",
+      "Manufacturer": "Nexperia",
+      "Spec": "Dual series low-leakage diode, IR <= 5 nA @ 75 V, SOT-23",
+      "LCSC": "C40919",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Role": "RB-00.5 ADC-input negative clamp IN- (pin1 GND, pin3 AIN, pin2 NC), after 1 k",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C40919.pdf",
+      "Description": "ADC shutdown-transient negative clamp, AIN N"
+    }
+  },
+  "J401": {
+    "value": "S2B-PH-SM4-TB",
+    "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+    "fields": {
+      "MPN": "S2B-PH-SM4-TB(LF)(SN)",
+      "LCSC": "C295747",
+      "Manufacturer": "JST",
+      "Spec": "JST PH 2.0 mm 2-pin horizontal side-entry SMT, PHR-2 housing + SPH-002T-P0.5S contacts; two isolated retention pads",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended (per project field, page lists Economic+Standard)",
+      "Role": "Bipolar EMG electrode connector (pin 1 = IN+, pin 2 = IN-)",
+      "Footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "Datasheet": "https://www.jst.com/wp-content/uploads/2025/06/ePH.pdf",
+      "Description": "Bipolar EMG electrode connector, JST PH 2p horizontal side-entry SMD"
+    }
+  },
+  "R401": {
+    "value": "10k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710KL",
+      "Manufacturer": "YAGEO",
+      "Spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "Input series limiter IN+ (clamp current / RFI pole)",
+      "LCSC": "C98220",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C98220.pdf",
+      "Description": "Resistor 10k 1% 0603 - Input series limiter IN+ (clamp current / RFI pole)"
+    }
+  },
+  "R402": {
+    "value": "10k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710KL",
+      "Manufacturer": "YAGEO",
+      "Spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "Input series limiter IN-",
+      "LCSC": "C98220",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C98220.pdf",
+      "Description": "Resistor 10k 1% 0603 - Input series limiter IN-"
+    }
+  },
+  "R403": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AC-coupling DC return to GND (IN+), GND-referenced per RB-00.5",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - AC-coupling DC return to GND (IN+), GND-referenced per RB-00.5"
+    }
+  },
+  "R404": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AC-coupling DC return to GND (IN-), GND-referenced per RB-00.5",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - AC-coupling DC return to GND (IN-), GND-referenced per RB-00.5"
+    }
+  },
+  "R405": {
+    "value": "10M",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710ML",
+      "Manufacturer": "YAGEO",
+      "Spec": "10M \u00b15% 0603 thick film, >=1/10 W",
+      "Role": "Follower input DC bias IN+ to VCM",
+      "LCSC": "C114606",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C114606.pdf",
+      "Description": "Resistor 10M 5% 0603 - Follower input DC bias IN+ to VCM"
+    }
+  },
+  "R406": {
+    "value": "10M",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710ML",
+      "Manufacturer": "YAGEO",
+      "Spec": "10M \u00b15% 0603 thick film, >=1/10 W",
+      "Role": "Follower input DC bias IN- to VCM",
+      "LCSC": "C114606",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C114606.pdf",
+      "Description": "Resistor 10M 5% 0603 - Follower input DC bias IN- to VCM"
+    }
+  },
+  "R407": {
+    "value": "1.0k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1001T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "1.0k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AAF series R, ADC IN+",
+      "LCSC": "C21190",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C21190.pdf",
+      "Description": "Resistor 1.0k 1% 0603 - AAF series R, ADC IN+"
+    }
+  },
+  "R408": {
+    "value": "1.0k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1001T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "1.0k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "AAF series R, ADC IN-",
+      "LCSC": "C21190",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C21190.pdf",
+      "Description": "Resistor 1.0k 1% 0603 - AAF series R, ADC IN-"
+    }
+  },
+  "C501": {
+    "value": "100nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CC0603KRX7R9BB104",
+      "Manufacturer": "YAGEO",
+      "Spec": "100nF 16V X7R 0603 MLCC",
+      "Role": "U501 V+ decoupling",
+      "LCSC": "C14663",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Basic (page)",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14663.pdf",
+      "Description": "Capacitor 100nF 16V X7R 0603 - U501 V+ decoupling"
+    }
+  },
+  "C502": {
+    "value": "100nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CC0603KRX7R9BB104",
+      "Manufacturer": "YAGEO",
+      "Spec": "100nF 16V X7R 0603 MLCC",
+      "Role": "U502 V+ decoupling",
+      "LCSC": "C14663",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Basic (page)",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14663.pdf",
+      "Description": "Capacitor 100nF 16V X7R 0603 - U502 V+ decoupling"
+    }
+  },
+  "C503": {
+    "value": "100nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CC0603KRX7R9BB104",
+      "Manufacturer": "YAGEO",
+      "Spec": "100nF 16V X7R 0603 MLCC",
+      "Role": "U503 V+ decoupling",
+      "LCSC": "C14663",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Basic (page)",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14663.pdf",
+      "Description": "Capacitor 100nF 16V X7R 0603 - U503 V+ decoupling"
+    }
+  },
+  "C5001": {
+    "value": "1uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10B105KO8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "1uF 16V X7R 0603 MLCC",
+      "Role": "VCM divider filter (stays at divider node)",
+      "LCSC": "C59782",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C59782.pdf",
+      "Description": "Capacitor 1uF 16V X7R 0603 - VCM divider filter (stays at divider node)"
+    }
+  },
+  "C5002": {
+    "value": "100nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CC0603KRX7R9BB104",
+      "Manufacturer": "YAGEO",
+      "Spec": "100nF 16V X7R 0603 MLCC",
+      "Role": "VCM divider HF filter (stays at divider node)",
+      "LCSC": "C14663",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Basic (page)",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14663.pdf",
+      "Description": "Capacitor 100nF 16V X7R 0603 - VCM divider HF filter (stays at divider node)"
+    }
+  },
+  "J5001": {
+    "value": "S2B-PH-SM4-TB",
+    "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+    "fields": {
+      "MPN": "S2B-PH-SM4-TB(LF)(SN)",
+      "LCSC": "C295747",
+      "Manufacturer": "JST",
+      "Spec": "JST PH 2.0 mm 2-pin horizontal side-entry SMT, PHR-2 housing + SPH-002T-P0.5S contacts; two isolated retention pads",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended (per project field, page lists Economic+Standard)",
+      "Role": "Patient reference electrode. Pin 1 = NC (cable pin 1 unpopulated), pin 2 = RLD_SAFE, MP = no net",
+      "Footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "Datasheet": "https://www.jst.com/wp-content/uploads/2025/06/ePH.pdf",
+      "Description": "Reference / bias electrode connector, JST PH 2p horizontal side-entry SMD"
+    }
+  },
+  "R5002": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0805_2012Metric",
+    "fields": {
+      "MPN": "0805W8F1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0805 thick film, >=1/10 W, 0805 for creepage",
+      "Role": "Patient safety resistor VCM -> RLD_SAFE (bounds DC single-fault current ~30 uA)",
+      "LCSC": "C149504",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0805_2012Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C149504.pdf",
+      "Description": "Resistor 100k 1% 0805 - Patient safety resistor VCM -> RLD_SAFE (bounds DC single-fault current ~30 uA)"
+    }
+  },
+  "R5003": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "VCM divider top",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - VCM divider top"
+    }
+  },
+  "R5004": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "VCM divider bottom",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - VCM divider bottom"
+    }
+  },
+  "R5005": {
+    "value": "10k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710KL",
+      "Manufacturer": "YAGEO",
+      "Spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_VCMIN: RB-00.5 R6b series R divider node -> U503A +IN (limits back-drive <= 0.16 mA)",
+      "LCSC": "C98220",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C98220.pdf",
+      "Description": "Resistor 10k 1% 0603 - R_VCMIN: RB-00.5 R6b series R divider node -> U503A +IN (limits back-drive <= 0.16 mA)"
+    }
+  },
+  "TP4": {
+    "value": "VCM",
+    "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+    "fields": {
+      "MPN": "N/A (bare copper pad)",
+      "Manufacturer": "N/A (PCB feature)",
+      "Spec": "Bare B.Cu pad, no via-in-pad, not assembled (size provisional, final at RB-02)",
+      "Role": "TP4 VCM bring-up pad",
+      "JLC_Class": "N/A (not assembled)",
+      "Footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+      "Datasheet": "N/A - bare copper PCB feature, no component",
+      "Description": "Bare copper bring-up test pad (no component, no via-in-pad, not assembled)"
+    }
+  },
+  "TP5": {
+    "value": "RLD_SAFE",
+    "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+    "fields": {
+      "MPN": "N/A (bare copper pad)",
+      "Manufacturer": "N/A (PCB feature)",
+      "Spec": "Bare B.Cu pad, no via-in-pad, not assembled (size provisional, final at RB-02)",
+      "Role": "TP5 RLD_SAFE bring-up pad",
+      "JLC_Class": "N/A (not assembled)",
+      "Footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+      "Datasheet": "N/A - bare copper PCB feature, no component",
+      "Description": "Bare copper bring-up test pad (no component, no via-in-pad, not assembled)"
+    }
+  },
+  "TP7": {
+    "value": "GND",
+    "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+    "fields": {
+      "MPN": "N/A (bare copper pad)",
+      "Manufacturer": "N/A (PCB feature)",
+      "Spec": "Bare B.Cu pad, no via-in-pad, not assembled (size provisional, final at RB-02)",
+      "Role": "TP7 GND (analog end) bring-up pad",
+      "JLC_Class": "N/A (not assembled)",
+      "Footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+      "Datasheet": "N/A - bare copper PCB feature, no component",
+      "Description": "Bare copper bring-up test pad (no component, no via-in-pad, not assembled)"
+    }
+  },
+  "U503": {
+    "value": "TLV9064IPWR",
+    "footprint": "Package_SO:TSSOP-14_4.4x5mm_P0.65mm",
+    "fields": {
+      "MPN": "TLV9064IPWR",
+      "Manufacturer": "Texas Instruments",
+      "Spec": "Quad RRIO op-amp TSSOP-14",
+      "LCSC": "C779410",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended",
+      "Role": "VCM buffer (section A)",
+      "Footprint": "Package_SO:TSSOP-14_4.4x5mm_P0.65mm",
+      "Datasheet": "https://www.lcsc.com/datasheet/C779410.pdf",
+      "Description": "VCM buffer"
+    }
+  },
+  "C6007": {
+    "value": "1uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10B105KO8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "1uF 16V X7R 0603 MLCC",
+      "Role": "AVDD decoupling (datasheet 1 uF AVDD-AGND), <= 1.5 mm from pin 1",
+      "LCSC": "C59782",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C59782.pdf",
+      "Description": "Capacitor 1uF 16V X7R 0603 - AVDD decoupling (datasheet 1 uF AVDD-AGND), <= 1.5 mm from pin 1"
+    }
+  },
+  "C6008": {
+    "value": "1uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10B105KO8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "1uF 16V X7R 0603 MLCC",
+      "Role": "DVDD decoupling (datasheet 1 uF DVDD-DGND), <= 1.5 mm from pin 20",
+      "LCSC": "C59782",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C59782.pdf",
+      "Description": "Capacitor 1uF 16V X7R 0603 - DVDD decoupling (datasheet 1 uF DVDD-DGND), <= 1.5 mm from pin 20"
+    }
+  },
+  "C6009": {
+    "value": "220nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10B224KO8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "220nF 16V X7R 0603 MLCC",
+      "Role": "CAP pin, internal digital LDO (220 nF, DVDD > 2.7 V mode), no via",
+      "LCSC": "C160828",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C160828.pdf",
+      "Description": "Capacitor 220nF 16V X7R 0603 - CAP pin, internal digital LDO (220 nF, DVDD > 2.7 V mode), no via"
+    }
+  },
+  "C6010": {
+    "value": "100nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CC0603KRX7R9BB104",
+      "Manufacturer": "YAGEO",
+      "Spec": "100nF 16V X7R 0603 MLCC",
+      "Role": "C_X1: X1 VDD decoupling at pin 4",
+      "LCSC": "C14663",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Basic (page)",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14663.pdf",
+      "Description": "Capacitor 100nF 16V X7R 0603 - C_X1: X1 VDD decoupling at pin 4"
+    }
+  },
+  "R6001": {
+    "value": "33",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF330JT5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "33 \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_CLK: CLKIN source-series termination at X1 pin 3",
+      "LCSC": "C23140",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C23140.pdf",
+      "Description": "Resistor 33 1% 0603 - R_CLK: CLKIN source-series termination at X1 pin 3"
+    }
+  },
+  "R6002": {
+    "value": "33",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF330JT5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "33 \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_MISO: DOUT source termination at the ADC end",
+      "LCSC": "C23140",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C23140.pdf",
+      "Description": "Resistor 33 1% 0603 - R_MISO: DOUT source termination at the ADC end"
+    }
+  },
+  "R6003": {
+    "value": "100",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1000T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100 \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_DRDY: series R at ADC DRDY (limits ESP32 GPIO2 60 us power-up glitch contention)",
+      "LCSC": "C22775",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C22775.pdf",
+      "Description": "Resistor 100 1% 0603 - R_DRDY: series R at ADC DRDY (limits ESP32 GPIO2 60 us power-up glitch contention)"
+    }
+  },
+  "U6001": {
+    "value": "ADS131M04IPWR",
+    "footprint": "Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm",
+    "fields": {
+      "MPN": "ADS131M04IPWR",
+      "Manufacturer": "Texas Instruments",
+      "Spec": "4-ch 24-bit simultaneous delta-sigma ADC, TSSOP-20",
+      "LCSC": "C2862562",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended",
+      "Role": "EMG ADC",
+      "Footprint": "Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm",
+      "Datasheet": "https://www.lcsc.com/datasheet/C2862562.pdf",
+      "Description": "4-channel simultaneous-sampling 24-bit delta-sigma ADC, PGA 1-128, TSSOP-20 (TI ADS131M04IPWR)"
+    }
+  },
+  "X1": {
+    "value": "SX3M8.192M20F30TNN",
+    "footprint": "ARTHUR:OSC_SCTF_SX3M_SMD3225-4P",
+    "fields": {
+      "MPN": "SX3M8.192M20F30TNN",
+      "Manufacturer": "SCTF (Asian Brands)",
+      "LCSC": "C2901557",
+      "Spec": "8.192 MHz CMOS XO, 1.62-3.63 V, +/-20 ppm @25C, +/-30 ppm -40..85C, 45-55 % duty, Icc <= 10 mA (15 pF), tstart <= 5 ms, SMD3225-4P",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended (per project field)",
+      "Role": "ADC master clock, <= 5 mm from U6001 pin 17",
+      "Status": "Frozen RB-01R (SCTF 3CM family datasheet rev 05/12/2026, exact code decoded). Residuals: no absolute-max table published; 8.192 MHz not in the datasheet standard-frequency list (catalogue line C2901557); verify marking/frequency on first reel; CPL rotation check",
+      "Footprint": "ARTHUR:OSC_SCTF_SX3M_SMD3225-4P",
+      "Datasheet": "https://www.lcsc.com/datasheet/C2901557.pdf",
+      "Description": "8.192 MHz CMOS clock oscillator 1.62-3.63 V, SMD3225-4P 3.2x2.5x0.95 (SCTF SX3M8.192M20F30TNN, LCSC C2901557). 1 = OE (high/float = enable), 2 = GND, 3 = OUT, 4 = VDD"
+    }
+  },
+  "C4005": {
+    "value": "1uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10B105KO8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "1uF 16V X7R 0603 MLCC",
+      "Role": "TPS7A20 IN capacitor at pin 1",
+      "LCSC": "C59782",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C59782.pdf",
+      "Description": "Capacitor 1uF 16V X7R 0603 - TPS7A20 IN capacitor at pin 1"
+    }
+  },
+  "C4006": {
+    "value": "1uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10B105KO8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "1uF 16V X7R 0603 MLCC",
+      "Role": "TPS7A20 OUT capacitor (datasheet minimum)",
+      "LCSC": "C59782",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C59782.pdf",
+      "Description": "Capacitor 1uF 16V X7R 0603 - TPS7A20 OUT capacitor (datasheet minimum)"
+    }
+  },
+  "C4007": {
+    "value": "22uF",
+    "footprint": "Capacitor_SMD:C_0805_2012Metric",
+    "fields": {
+      "MPN": "CL21A226MAQNNNE",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "22uF 10V X5R 0805 MLCC",
+      "Role": "C_PRE: LDO input RC bulk (~10 uF effective at 4 V)",
+      "LCSC": "C45783",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Capacitor_SMD:C_0805_2012Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C45783.pdf",
+      "Description": "Capacitor 22uF 10V X5R 0805 - C_PRE: LDO input RC bulk (~10 uF effective at 4 V)"
+    }
+  },
+  "J1": {
+    "value": "S2B-PH-SM4-TB",
+    "footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+    "fields": {
+      "MPN": "S2B-PH-SM4-TB(LF)(SN)",
+      "LCSC": "C295747",
+      "Manufacturer": "JST",
+      "Spec": "JST PH 2.0 mm 2-pin side-entry SMD, 2 A / 100 V AC/DC (AWG24), mates PHR-2 + SPH-002T-P0.5S. Pin 1 = BAT+, pin 2 = BAT- by this design; PH is not a polarity standard: verify cell lead polarity before first connection",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended (per project field, page lists Economic+Standard)",
+      "Role": "J_BAT: protected 1S LiPo (PCM mandatory)",
+      "Footprint": "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal",
+      "Datasheet": "https://www.lcsc.com/datasheet/C295747.pdf",
+      "Description": "Battery connector J_BAT, JST PH 2p SMD"
+    }
+  },
+  "Q3001": {
+    "value": "2N7002",
+    "footprint": "Package_TO_SOT_SMD:SOT-23",
+    "fields": {
+      "MPN": "2N7002",
+      "Manufacturer": "JSCJ (Jiangsu Changjing)",
+      "Spec": "60 V N-MOSFET SOT-23, VGS(th) >= 0.8 V",
+      "LCSC": "C8545",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Role": "Hardware USB inhibit: drain on AFE_EN, source GND, gate = VBUS_GATE",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23",
+      "Datasheet": "https://www.lcsc.com/datasheet/C8545.pdf",
+      "Description": "N-channel enhancement MOSFET 60 V 115 mA, SOT-23 (1 = G, 2 = S, 3 = D)"
+    }
+  },
+  "R3004": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "Q3001 gate pull-down (VBUS_GATE)",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - Q3001 gate pull-down (VBUS_GATE)"
+    }
+  },
+  "R3006": {
+    "value": "10k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710KL",
+      "Manufacturer": "YAGEO",
+      "Spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_VG_S: XIAO 5V (VBUS) -> Q3001 gate series",
+      "LCSC": "C98220",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C98220.pdf",
+      "Description": "Resistor 10k 1% 0603 - R_VG_S: XIAO 5V (VBUS) -> Q3001 gate series"
+    }
+  },
+  "R3007": {
+    "value": "10k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710KL",
+      "Manufacturer": "YAGEO",
+      "Spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_EN_S: D3 AFE_EN_REQ -> AFE_EN series (Q3001 can always overpower it)",
+      "LCSC": "C98220",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C98220.pdf",
+      "Description": "Resistor 10k 1% 0603 - R_EN_S: D3 AFE_EN_REQ -> AFE_EN series (Q3001 can always overpower it)"
+    }
+  },
+  "R3008": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_EN_PD: AFE_EN fail-safe pull-down (replaces Rev A R3003 pull-UP)",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - R_EN_PD: AFE_EN fail-safe pull-down (replaces Rev A R3003 pull-UP)"
+    }
+  },
+  "R3009": {
+    "value": "4.7k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF4701T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "4.7k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_VBUSLD: XIAO 5V load, swamps XIAO D2 reverse leakage (<= 0.42 V on battery)",
+      "LCSC": "C23162",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C23162.pdf",
+      "Description": "Resistor 4.7k 1% 0603 - R_VBUSLD: XIAO 5V load, swamps XIAO D2 reverse leakage (<= 0.42 V on battery)"
+    }
+  },
+  "R4001": {
+    "value": "4.7",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-074R7L",
+      "Manufacturer": "YAGEO",
+      "Spec": "4.7 \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_PRE: LDO input RC (56 mV drop @ 12 mA)",
+      "LCSC": "C137705",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C137705.pdf",
+      "Description": "Resistor 4.7 1% 0603 - R_PRE: LDO input RC (56 mV drop @ 12 mA)"
+    }
+  },
+  "TP1": {
+    "value": "VBAT",
+    "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+    "fields": {
+      "MPN": "N/A (bare copper pad)",
+      "Manufacturer": "N/A (PCB feature)",
+      "Spec": "Bare B.Cu pad, no via-in-pad, not assembled (size provisional, final at RB-02)",
+      "Role": "TP1 VBAT bring-up pad",
+      "JLC_Class": "N/A (not assembled)",
+      "Footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+      "Datasheet": "N/A - bare copper PCB feature, no component",
+      "Description": "Bare copper bring-up test pad (no component, no via-in-pad, not assembled)"
+    }
+  },
+  "TP2": {
+    "value": "AFE_3V0",
+    "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+    "fields": {
+      "MPN": "N/A (bare copper pad)",
+      "Manufacturer": "N/A (PCB feature)",
+      "Spec": "Bare B.Cu pad, no via-in-pad, not assembled (size provisional, final at RB-02)",
+      "Role": "TP2 AFE_3V0 bring-up pad",
+      "JLC_Class": "N/A (not assembled)",
+      "Footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+      "Datasheet": "N/A - bare copper PCB feature, no component",
+      "Description": "Bare copper bring-up test pad (no component, no via-in-pad, not assembled)"
+    }
+  },
+  "TP6": {
+    "value": "AFE_EN",
+    "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+    "fields": {
+      "MPN": "N/A (bare copper pad)",
+      "Manufacturer": "N/A (PCB feature)",
+      "Spec": "Bare B.Cu pad, no via-in-pad, not assembled (size provisional, final at RB-02)",
+      "Role": "TP6 AFE_EN bring-up pad",
+      "JLC_Class": "N/A (not assembled)",
+      "Footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+      "Datasheet": "N/A - bare copper PCB feature, no component",
+      "Description": "Bare copper bring-up test pad (no component, no via-in-pad, not assembled)"
+    }
+  },
+  "U4002": {
+    "value": "TPS7A2030PDBVR",
+    "footprint": "Package_TO_SOT_SMD:SOT-23-5",
+    "fields": {
+      "MPN": "TPS7A2030PDBVR",
+      "Manufacturer": "Texas Instruments",
+      "Spec": "3.0 V 300 mA LDO, active discharge, SOT-23-5",
+      "LCSC": "C963429",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page (page: Economic and Standard)",
+      "Role": "AFE_3V0 LDO fed from VBAT; EN = AFE_EN (internal 500 k smart pull-down)",
+      "Footprint": "Package_TO_SOT_SMD:SOT-23-5",
+      "Datasheet": "https://www.lcsc.com/datasheet/C963429.pdf",
+      "Description": "300 mA ultra-low-noise LDO, fixed 3.0 V, active output discharge (P), SOT-23-5 (TI TPS7A2030PDBVR)"
+    }
+  },
+  "C7101": {
+    "value": "10uF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CL10A106KP8NNNC",
+      "Manufacturer": "Samsung Electro-Mechanics",
+      "Spec": "10uF 10V X5R 0603 MLCC",
+      "Role": "C_DV1: DVDD_F bulk (0603, <= 0.9 mm tall)",
+      "LCSC": "C19702",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C19702.pdf",
+      "Description": "Capacitor 10uF 10V X5R 0603 - C_DV1: DVDD_F bulk (0603, <= 0.9 mm tall)"
+    }
+  },
+  "C7102": {
+    "value": "100nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CC0603KRX7R9BB104",
+      "Manufacturer": "YAGEO",
+      "Spec": "100nF 16V X7R 0603 MLCC",
+      "Role": "C_DV2: DVDD_F HF",
+      "LCSC": "C14663",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Basic (page)",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14663.pdf",
+      "Description": "Capacitor 100nF 16V X7R 0603 - C_DV2: DVDD_F HF"
+    }
+  },
+  "C7103": {
+    "value": "100nF",
+    "footprint": "Capacitor_SMD:C_0603_1608Metric",
+    "fields": {
+      "MPN": "CC0603KRX7R9BB104",
+      "Manufacturer": "YAGEO",
+      "Spec": "100nF 16V X7R 0603 MLCC",
+      "Role": "C_VB: VBAT sense filter",
+      "LCSC": "C14663",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Basic (page)",
+      "Footprint": "Capacitor_SMD:C_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C14663.pdf",
+      "Description": "Capacitor 100nF 16V X7R 0603 - C_VB: VBAT sense filter"
+    }
+  },
+  "FB1": {
+    "value": "600R@100MHz",
+    "footprint": "Inductor_SMD:L_0603_1608Metric",
+    "fields": {
+      "MPN": "BLM18AG601SN1D",
+      "Manufacturer": "Murata",
+      "Spec": "Ferrite bead 600 ohm @ 100 MHz, 0603, >= 200 mA, DCR <= 0.5 ohm",
+      "LCSC": "C19330",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended",
+      "Role": "FB1: DVDD filter at the XIAO 3V3 exit",
+      "Footprint": "Inductor_SMD:L_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C19330.pdf",
+      "Description": "Ferrite bead 600R@100MHz 0603"
+    }
+  },
+  "R7101": {
+    "value": "33",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF330JT5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "33 \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_SCLK: source termination at XIAO end (default SCLK 4 MHz)",
+      "LCSC": "C23140",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C23140.pdf",
+      "Description": "Resistor 33 1% 0603 - R_SCLK: source termination at XIAO end (default SCLK 4 MHz)"
+    }
+  },
+  "R7102": {
+    "value": "33",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF330JT5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "33 \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_MOSI: source termination at XIAO end",
+      "LCSC": "C23140",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C23140.pdf",
+      "Description": "Resistor 33 1% 0603 - R_MOSI: source termination at XIAO end"
+    }
+  },
+  "R7103": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_CS_PU: CS_N deterministic idle-high to DVDD_F",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - R_CS_PU: CS_N deterministic idle-high to DVDD_F"
+    }
+  },
+  "R7104": {
+    "value": "10k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "RC0603FR-0710KL",
+      "Manufacturer": "YAGEO",
+      "Spec": "10k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_SYNC_PU: SYNC/RESET_N idle-high to DVDD_F",
+      "LCSC": "C98220",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "Extended Parts",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C98220.pdf",
+      "Description": "Resistor 10k 1% 0603 - R_SYNC_PU: SYNC/RESET_N idle-high to DVDD_F"
+    }
+  },
+  "R7105": {
+    "value": "100k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1003T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "100k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_US1: XIAO 5V -> D6 USB_PRESENT divider top (sense only)",
+      "LCSC": "C25803",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C25803.pdf",
+      "Description": "Resistor 100k 1% 0603 - R_US1: XIAO 5V -> D6 USB_PRESENT divider top (sense only)"
+    }
+  },
+  "R7106": {
+    "value": "150k",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1503T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "150k \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_US2: USB_PRESENT divider bottom (3.0 V at 5.0 V)",
+      "LCSC": "C22807",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C22807.pdf",
+      "Description": "Resistor 150k 1% 0603 - R_US2: USB_PRESENT divider bottom (3.0 V at 5.0 V)"
+    }
+  },
+  "R7107": {
+    "value": "1M",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1004T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "1M \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_VB1: VBAT sense divider top (~2.1 uA)",
+      "LCSC": "C22935",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C22935.pdf",
+      "Description": "Resistor 1M 1% 0603 - R_VB1: VBAT sense divider top (~2.1 uA)"
+    }
+  },
+  "R7108": {
+    "value": "1M",
+    "footprint": "Resistor_SMD:R_0603_1608Metric",
+    "fields": {
+      "MPN": "0603WAF1004T5E",
+      "Manufacturer": "UNI-ROYAL",
+      "Spec": "1M \u00b11% 0603 thick film, >=1/10 W",
+      "Role": "R_VB2: VBAT sense divider bottom",
+      "LCSC": "C22935",
+      "BOM_Status": "QUALIFIED",
+      "JLC_Class": "not stated on page",
+      "Footprint": "Resistor_SMD:R_0603_1608Metric",
+      "Datasheet": "https://www.lcsc.com/datasheet/C22935.pdf",
+      "Description": "Resistor 1M 1% 0603 - R_VB2: VBAT sense divider bottom"
+    }
+  },
+  "TP3": {
+    "value": "DVDD_F",
+    "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+    "fields": {
+      "MPN": "N/A (bare copper pad)",
+      "Manufacturer": "N/A (PCB feature)",
+      "Spec": "Bare B.Cu pad, no via-in-pad, not assembled (size provisional, final at RB-02)",
+      "Role": "TP3 DVDD_F bring-up pad",
+      "JLC_Class": "N/A (not assembled)",
+      "Footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+      "Datasheet": "N/A - bare copper PCB feature, no component",
+      "Description": "Bare copper bring-up test pad (no component, no via-in-pad, not assembled)"
+    }
+  },
+  "TP8": {
+    "value": "GND",
+    "footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+    "fields": {
+      "MPN": "N/A (bare copper pad)",
+      "Manufacturer": "N/A (PCB feature)",
+      "Spec": "Bare B.Cu pad, no via-in-pad, not assembled (size provisional, final at RB-02)",
+      "Role": "TP8 GND (brain end) bring-up pad",
+      "JLC_Class": "N/A (not assembled)",
+      "Footprint": "TestPoint:TestPoint_Pad_D1.5mm",
+      "Datasheet": "N/A - bare copper PCB feature, no component",
+      "Description": "Bare copper bring-up test pad (no component, no via-in-pad, not assembled)"
+    }
+  },
+  "U1": {
+    "value": "XIAO_ESP32S3",
+    "footprint": "ARTHUR:XIAO_ESP32S3_HANDSOLDER",
+    "fields": {
+      "MPN": "Seeed PN 202003751 (XIAO ESP32S3 plain, v1.4, unsoldered-header version)",
+      "Manufacturer": "Seeed Studio",
+      "Spec": "ESP32-S3 module, 21.0 x 17.8 mm, castellated. Headers NOT fitted",
+      "JLC_Class": "N/A - DNP at JLC (bought retail, hand-soldered)",
+      "Role": "Brain: MCU, BLE, USB-C, charger, 3V3 buck",
+      "Status": "Model frozen RB-00.5; mechanical residual R3/R9 open (incoming inspection before RB-02)",
+      "Footprint": "ARTHUR:XIAO_ESP32S3_HANDSOLDER",
+      "Datasheet": "https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/",
+      "Description": "Seeed Studio XIAO ESP32S3 (plain, PN 202003751) - RB-00.6 hand-solder mount: pads 1-14 = castellations; pad 23 = bottom BAT+ pad reached ONLY via AWG24 solid post into a plated hole (not a castellation). Bottom pads 15-22, 24 (BAT-), 25 not soldered"
+    }
+  }
+}

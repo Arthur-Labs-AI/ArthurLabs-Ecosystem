@@ -1,0 +1,56 @@
+[package]
+name = "arthur"
+version = "0.1.0"
+description = "A.R.T.H.U.R. product application (Tauri v2 shell)"
+edition = "2021"
+rust-version = "1.89"
+
+[lib]
+# `_lib` suffix avoids a name clash between the lib and bin targets on Windows.
+# staticlib + cdylib are required for the Android/iOS builds.
+name = "arthur_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+uuid = { version = "1.27.0", features = ["v4"] }
+time = { version = "0.3.55", features = ["formatting", "parsing"] }
+serde_json = "1"
+serde_jcs = "=0.1.0"
+sha2 = "=0.10.9"
+getrandom = "=0.3.4"
+zeroize = "=1.9.0"
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std"] }
+ring = "=0.17.14"
+tokio = { version = "1", features = ["time", "sync"] }
+reqwest = { version = "0.12", default-features = false, features = ["multipart", "json", "rustls-tls-webpki-roots"] }
+unicode-normalization = "0.1"
+
+[target.'cfg(windows)'.dependencies]
+windows-core = "=0.62.2"
+windows = { version = "=0.62.2", features = ["Win32_Networking_NetworkListManager", "Win32_System_Com", "Win32_System_Ole"] }
+windows-sys = { version = "=0.61.2", features = ["Win32_NetworkManagement_IpHelper", "Win32_NetworkManagement_Ndis", "Win32_Networking_WinSock"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+libc = "0.2"
+jni = "=0.21.1"
+# Qualification only; optional dependency is absent from default Android builds.
+opaque-ke = { version = "=4.0.1", default-features = false, features = ["ristretto255", "argon2"], optional = true }
+rand = { version = "=0.8.6", optional = true }
+argon2 = { version = "=0.5.3", features = ["zeroize"], optional = true }
+
+[features]
+# Explicit debug instrumentation harness; rejected in release builds.
+android-identity-tests = ["dep:opaque-ke", "dep:rand", "dep:argon2", "tokio/net", "tokio/io-util", "tokio/rt"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["net", "io-util", "rt"] }
+tempfile = "3.27.0"
+opaque-ke = { version = "=4.0.1", default-features = false, features = ["ristretto255", "argon2"] }
+rand = "=0.8.6"
+argon2 = { version = "=0.5.3", features = ["zeroize"] }

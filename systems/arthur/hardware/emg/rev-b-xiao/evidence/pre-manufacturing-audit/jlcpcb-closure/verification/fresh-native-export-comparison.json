@@ -1,0 +1,13 @@
+{
+  "ARTHUR_EMG_RevB-B_Cu.gbl": true,
+  "ARTHUR_EMG_RevB-B_Mask.gbs": true,
+  "ARTHUR_EMG_RevB-B_Silkscreen.gbo": true,
+  "ARTHUR_EMG_RevB-Edge_Cuts.gm1": true,
+  "ARTHUR_EMG_RevB-F_Cu.gtl": true,
+  "ARTHUR_EMG_RevB-F_Mask.gts": true,
+  "ARTHUR_EMG_RevB-F_Paste.gtp": true,
+  "ARTHUR_EMG_RevB-F_Silkscreen.gto": true,
+  "ARTHUR_EMG_RevB-In1_Cu.g1": true,
+  "ARTHUR_EMG_RevB-In2_Cu.g2": true,
+  "ARTHUR_EMG_RevB.drl": true
+}

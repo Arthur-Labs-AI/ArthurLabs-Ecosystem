@@ -1,0 +1,41 @@
+{
+  "status": "FROZEN",
+  "ready_for_next_routing_phase": true,
+  "accepted_by": "user",
+  "date": "2026-09-26",
+  "authoritative_checkpoint": "ARTHUR_EMG_RevA_Cost_Phase3A_ThreeNetClean.kicad_pcb",
+  "frozen_nets": [
+    "AFE_CLKIN",
+    "MCU_SCLK",
+    "MCU_MOSI",
+    "AFE_MISO",
+    "MCU_CS_N",
+    "AFE_DRDY_N",
+    "MCU_RESET_N_AFE"
+  ],
+  "frozen_scope": [
+    "all 14 Phase 3A vias",
+    "all Phase 3A F.Cu/B.Cu routing",
+    "Phase 1 analog",
+    "Phase 2 power",
+    "placement",
+    "RF keepout",
+    "In1.Cu / In2.Cu GND structure"
+  ],
+  "exception": "Modify only if a later full-board verification proves a concrete electrical or manufacturing blocker. Preserve the evidence and record the blocker and necessary change.",
+  "accepted_drc": {
+    "recovered_baseline": 525,
+    "final": 548,
+    "latent_nonmirrored_back_layer_text_warnings": 23,
+    "new_routing_violations": 0
+  },
+  "sha256": {
+    "ARTHUR_EMG_RevA_Cost_Phase3A_ThreeNetClean.kicad_pcb": "7a7a70d78e1e191e13251e24b882b7eeb3df1153912a4168850515c8ac8201f9",
+    "ARTHUR_EMG_RevA_Cost_Phase3A_ThreeNetClean.kicad_pro": "8f25c8c0a50a25d26b736bb075f7155918cb5e04fc62650406048cdd9e55dbc4",
+    "ARTHUR_EMG_RevA_Cost_Phase3A_ThreeNetClean.kicad_dru": "aac090c4112db562262a69efe9d702f483a0c7f12dc07f88d2b53fa6ced41469",
+    "PHASE3A_THREE_NET_CLEAN_REPORT.md": "425986be19ec2103d1abc90a3f1012e5b8ab3801b3de4ab1470bc6a508406d34",
+    "phase3a_three_net_clean_drc.json": "b3ba75e0770e3b97427f9007ad7e151be06ddba51c89f57d11ba6f91b9b77421",
+    "phase3a_three_net_drc_delta.json": "463e39899b20e711429b014e116880d35447d71a097176a52df27dac8e1b3c97",
+    "phase3a_three_net_verification.json": "a56f32f52ccc72af6398e29e76e53d6bba64c7794a9506d90bf019719064363f"
+  }
+}

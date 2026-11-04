@@ -1,0 +1,15 @@
+OK  baseline (no mutation)                        exit 0
+OK  netclasses removed                            exit 1
+OK  netclass patterns removed                     exit 1
+OK  one pattern re-assigned to Default            exit 1
+OK  hiz_leakage rule deleted                      exit 1
+OK  no_via_in_smd_pad disabled                    exit 1
+OK  clearance severity set to ignore              exit 1
+OK  dru edited (extra rule)                       exit 1
+OK  dru missing                                   exit 1
+OK  solder_mask_bridge severity ignored           exit 1
+OK  courtyards_overlap lowered to warning         exit 1
+OK  min_via_annular_width lowered to 0.05         exit 1
+OK  min_hole_clearance lowered to 0.05            exit 1
+OK  front via tenting switched off in the board   exit 1
+OK  stack-up prepreg thickness changed            exit 1

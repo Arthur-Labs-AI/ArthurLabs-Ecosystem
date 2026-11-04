@@ -1,0 +1,35 @@
+{
+  "checks": {
+    "adc.kicad_sch": true,
+    "analog_power_interlock.kicad_sch": true,
+    "emg_channel.kicad_sch": true,
+    "fp-lib-table": true,
+    "reference_vcm.kicad_sch": true,
+    "xiao_brain_interface.kicad_sch": true,
+    "ARTHUR_EMG_RevB.kicad_pcb": true,
+    "fp-libs/ARTHUR.pretty/OSC_SCTF_SX3M_SMD3225-4P.kicad_mod": true,
+    "fp-libs/Capacitor_SMD.pretty/C_0603_1608Metric.kicad_mod": true,
+    "fp-libs/Capacitor_SMD.pretty/C_0805_2012Metric.kicad_mod": true,
+    "fp-libs/Inductor_SMD.pretty/L_0603_1608Metric.kicad_mod": true,
+    "fp-libs/Resistor_SMD.pretty/R_0603_1608Metric.kicad_mod": true,
+    "fp-libs/Resistor_SMD.pretty/R_0805_2012Metric.kicad_mod": true,
+    "fp-libs/TestPoint.pretty/TestPoint_Pad_D1.5mm.kicad_mod": true,
+    "DRC_rules_project_symbols_preserved": true
+  },
+  "changed_files": [
+    "adc.kicad_sch",
+    "analog_power_interlock.kicad_sch",
+    "emg_channel.kicad_sch",
+    "fp-lib-table",
+    "reference_vcm.kicad_sch",
+    "xiao_brain_interface.kicad_sch",
+    "ARTHUR_EMG_RevB.kicad_pcb",
+    "fp-libs/ARTHUR.pretty/OSC_SCTF_SX3M_SMD3225-4P.kicad_mod",
+    "fp-libs/Capacitor_SMD.pretty/C_0603_1608Metric.kicad_mod",
+    "fp-libs/Capacitor_SMD.pretty/C_0805_2012Metric.kicad_mod",
+    "fp-libs/Inductor_SMD.pretty/L_0603_1608Metric.kicad_mod",
+    "fp-libs/Resistor_SMD.pretty/R_0603_1608Metric.kicad_mod",
+    "fp-libs/Resistor_SMD.pretty/R_0805_2012Metric.kicad_mod",
+    "fp-libs/TestPoint.pretty/TestPoint_Pad_D1.5mm.kicad_mod"
+  ]
+}

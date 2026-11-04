@@ -1,0 +1,3 @@
+Executed: python3 -m unittest discover -s hardware/emg/rev-b-xiao/tools -p test_jlc_rotations.py
+Observed: Ran 4 tests; OK
+No test expectations or design files changed.
