@@ -54,8 +54,15 @@ impl SignedOriginal {
         Ok(value)
     }
     pub fn sign(network: Uuid, event: &Envelope, key: &dyn DeviceIdentityStore) -> Result<Self> {
-        ValidatedEvent::parse(event.clone()).map_err(|_| E::Invalid)?;
-        let body = OriginalBinding::new(network, key.public_identity()?, event);
+        let value = ValidatedEvent::parse(event.clone()).map_err(|_| E::Invalid)?;
+        Self::sign_validated(network, &value, key)
+    }
+    pub fn sign_validated(
+        network: Uuid,
+        event: &ValidatedEvent,
+        key: &dyn DeviceIdentityStore,
+    ) -> Result<Self> {
+        let body = OriginalBinding::new(network, key.public_identity()?, event.envelope());
         let signature = key.sign_domain_separated(Domain::OriginalEvent, &canonical(&body)?)?;
         Ok(Self { body, signature })
     }
@@ -65,6 +72,24 @@ impl SignedOriginal {
         event: &Envelope,
         registered_original: &PublicIdentity,
     ) -> Result<ValidatedEvent> {
+        self.verify_binding(network, event, registered_original)?;
+        ValidatedEvent::parse(event.clone()).map_err(|_| E::Invalid)
+    }
+    /// Reuse a sealed value, preserving every binding and signature check.
+    pub fn verify_validated(
+        &self,
+        network: Uuid,
+        event: &ValidatedEvent,
+        registered_original: &PublicIdentity,
+    ) -> Result<()> {
+        self.verify_binding(network, event.envelope(), registered_original)
+    }
+    fn verify_binding(
+        &self,
+        network: Uuid,
+        event: &Envelope,
+        registered_original: &PublicIdentity,
+    ) -> Result<()> {
         if self.body != OriginalBinding::new(network, registered_original.clone(), event) {
             return Err(E::Trust);
         }
@@ -74,7 +99,7 @@ impl SignedOriginal {
             &canonical(&self.body)?,
             &self.signature,
         )?;
-        ValidatedEvent::parse(event.clone()).map_err(|_| E::Invalid)
+        Ok(())
     }
 }
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]

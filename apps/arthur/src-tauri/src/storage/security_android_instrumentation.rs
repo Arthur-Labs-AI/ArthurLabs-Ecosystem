@@ -481,7 +481,7 @@ fn scenario(case: jint) -> Result<()> {
         47 => disposable(|owner| {
             crate::sync::security::native_io_lab::qualify_selected_network(owner)
         }),
-        43..=46 | 49 => super::journal::cross_device_qualification::run(case),
+        43..=46 | 49 | 50 => super::journal::cross_device_qualification::run(case),
         _ => Err(E::Invalid),
     }
 }

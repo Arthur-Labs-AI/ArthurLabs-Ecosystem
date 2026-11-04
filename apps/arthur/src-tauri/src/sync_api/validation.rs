@@ -16,6 +16,27 @@ impl ValidatedEvent {
             return Err(Error::Limit);
         }
         let core = codec::decode_core_strict(&e.bytes).map_err(|_| Error::Integrity)?;
+        Self::checked(e, core)
+    }
+    /// Decode a canonical core once, derive its envelope, then apply exactly
+    /// the same closed semantic validation as the supplied-envelope entry.
+    pub fn from_bytes(bytes: Vec<u8>) -> Result<Self> {
+        if bytes.is_empty() || bytes.len() > codec::MAX_CANONICAL_BYTES {
+            return Err(Error::Limit);
+        }
+        let core = codec::decode_core_strict(&bytes).map_err(|_| Error::Integrity)?;
+        let parse = |v: &str| Uuid::parse_str(v).map_err(|_| Error::Integrity);
+        let identity = Identity {
+            event: parse(&core.event_id)?,
+            bundle: parse(&core.bundle_id)?,
+            origin: parse(&core.origin_id)?,
+            incarnation: parse(&core.origin_incarnation)?,
+            seq: core.origin_seq.parse().map_err(|_| Error::Integrity)?,
+            hash: codec::journal_event_hash(&bytes),
+        };
+        Self::checked(Envelope { identity, bytes }, core)
+    }
+    fn checked(e: Envelope, core: JournalEvent) -> Result<Self> {
         let parse = |s: &str| Uuid::parse_str(s).map_err(|_| Error::Integrity);
         let actual = Identity {
             event: parse(&core.event_id)?,

@@ -252,6 +252,9 @@ fn prepare() {
         "failure.json",
         "registry.json",
         "signed-profile",
+        "signed-history",
+        "history-progress.json",
+        "history-wire.json",
     ] {
         match std::fs::remove_file(base.join(name)) {
             Ok(()) => (),
@@ -409,6 +412,20 @@ fn install_signed_registry() {
         &serde_json::json!({"pid":std::process::id(),"version":1}),
     );
 }
+fn install_signed_history() {
+    let base = root();
+    let mut fixture = Fixture::at(base.join("db"), true).unwrap();
+    fixture.preserve_for_restart();
+    let owner = fixture.owner();
+    super::g3::install_history(owner.store()).unwrap();
+    crate::storage::bootstrap_store::install(owner.store()).unwrap();
+    super::g3::install_d4(owner.store()).unwrap();
+    crate::storage::signed_bootstrap::install(owner.store()).unwrap();
+    write(
+        base.join("signed-history"),
+        &serde_json::json!({"version":1,"snapshot":Uuid::new_v4()}),
+    );
+}
 fn evidence(f: &Fixture) -> serde_json::Value {
     let owner = f.owner();
     let events = sync_store::test_events(owner.store());
@@ -447,7 +464,10 @@ fn evidence(f: &Fixture) -> serde_json::Value {
             .collect::<Vec<_>>();
         let mut value = serde_json::json!({"event":event.identity.event,"origin":event.identity.origin,"incarnation":event.identity.incarnation,"seq":event.identity.seq,"hash":event.identity.hash,"bytes":event.bytes,"rows":rows});
         if let Some(registry) = &registry {
-            let signed: Vec<u8> = c.query_row("SELECT envelope FROM e2_export_signatures WHERE event=?1 UNION ALL SELECT envelope FROM e2_originals WHERE event=?1", [event.identity.event.to_string()], |r|r.get(0)).unwrap();
+            let originals = crate::storage::signed_import::accepted_tables(&c)
+                .unwrap()
+                .1;
+            let signed: Vec<u8> = c.query_row(&format!("SELECT envelope FROM e2_export_signatures WHERE event=?1 UNION ALL SELECT envelope FROM {originals} WHERE event=?1"), [event.identity.event.to_string()], |r|r.get(0)).unwrap();
             let author =
                 &registry.members[&registry.origins[&event.identity.origin.to_string()]].key;
             SignedOriginal::decode(&signed)
@@ -499,22 +519,31 @@ fn evidence(f: &Fixture) -> serde_json::Value {
     assert_eq!(proofs.len(), if cfg!(windows) { 1 } else { 2 });
     assert_eq!(cursors.len(), 1);
     let mut result = serde_json::json!({"pid":std::process::id(),"key":f.public.sec1(),"events":values,"proofs":proofs,"cursors":cursors});
-    result["profile"] = serde_json::json!(if registry.is_some() {
+    result["profile"] = serde_json::json!(if root().join("signed-history").exists() {
+        SyncProfile::SignedHistory.name()
+    } else if registry.is_some() {
         SyncProfile::SignedOriginalCandidate.name()
     } else {
         SyncProfile::LedgerCandidate.name()
     });
     if registry.is_some() {
-        let seals=c.prepare("SELECT origin,incarnation,hex(author),seq,hex(hash),hex(signature) FROM e2_origin_seals ORDER BY origin").unwrap()
+        let tables = crate::storage::signed_import::accepted_tables(&c).unwrap();
+        let seals=c.prepare(&format!("SELECT origin,incarnation,hex(author),seq,hex(hash),hex(signature) FROM {} ORDER BY origin,incarnation",tables.0)).unwrap()
             .query_map([],|r|Ok(serde_json::json!({"origin":r.get::<_,String>(0)?,"incarnation":r.get::<_,String>(1)?,"author":r.get::<_,String>(2)?,"seq":r.get::<_,i64>(3)?,"hash":r.get::<_,String>(4)?,"signature":r.get::<_,String>(5)?}))).unwrap().collect::<rusqlite::Result<Vec<_>>>().unwrap();
         assert_eq!(seals.len(), 1);
         assert_eq!(
-            c.query_row("SELECT count(*) FROM e2_originals", [], |r| r
+            c.query_row(&format!("SELECT count(*) FROM {}", tables.1), [], |r| r
                 .get::<_, i64>(0))
                 .unwrap(),
             proofs.len() as i64
         );
         result["original_seals"] = serde_json::json!(seals);
+    }
+    if root().join("signed-history").exists() {
+        let mut q=c.prepare("SELECT u.id,hex(u.hash),u.bytes,u.chunks,hex(e.hash),e.bytes,e.chunks,u.direction,u.outcome FROM bootstrap_units u JOIN r9_bootstrap_evidence e ON e.id=u.id ORDER BY u.id").unwrap();
+        let snapshots=q.query_map([],|r|Ok(serde_json::json!({"id":r.get::<_,String>(0)?,"image_hash":r.get::<_,String>(1)?,"image_bytes":r.get::<_,i64>(2)?,"image_chunks":r.get::<_,i64>(3)?,"evidence_hash":r.get::<_,String>(4)?,"evidence_bytes":r.get::<_,i64>(5)?,"evidence_chunks":r.get::<_,i64>(6)?,"direction":r.get::<_,String>(7)?,"outcome":r.get::<_,String>(8)?}))).unwrap().collect::<rusqlite::Result<Vec<_>>>().unwrap();
+        assert_eq!(snapshots.len(), 1);
+        result["snapshots"] = serde_json::json!(snapshots);
     }
     result
 }
@@ -528,6 +557,7 @@ async fn exchange(phase: u32) {
     let pin = PublicIdentity::from_sec1(peer.key).unwrap();
     let owner = f.owner();
     let signed_profile = base.join("signed-profile").exists();
+    let signed_history = base.join("signed-history").exists();
     if !signed_profile {
         let c = owner.store().connection.lock().unwrap();
         c.execute(
@@ -567,7 +597,9 @@ async fn exchange(phase: u32) {
         })
     };
     let verified = trust.verify(&hello).unwrap();
-    let store: Box<dyn SyncStore> = if signed_profile {
+    let store: Box<dyn SyncStore> = if signed_history {
+        Box::new(SignedImportStore::synthetic_history(owner.store()))
+    } else if signed_profile {
         Box::new(SignedImportStore::synthetic(owner.store()))
     } else {
         Box::new(CandidateSyncStore::synthetic(owner.store()))
@@ -695,6 +727,12 @@ async fn exchange(phase: u32) {
     transport.lose_receipts = cfg!(windows) && phase == 1;
     let mut engine =
         SyncEngine::start(store.as_ref(), transport, trust.as_ref(), &Clock, &cancel).unwrap();
+    #[cfg(windows)]
+    if signed_history {
+        let selected: serde_json::Value = read(base.join("signed-history"));
+        let id = Uuid::parse_str(selected["snapshot"].as_str().unwrap()).unwrap();
+        engine.bootstrap(id).unwrap();
+    }
     #[cfg(target_os = "android")]
     let mut created = false;
     let mut messages = 0;
@@ -729,18 +767,65 @@ async fn exchange(phase: u32) {
             created = true;
             engine.refresh().unwrap();
         }
-        let acknowledged:bool=owner.store().connection.lock().unwrap().query_row("SELECT (SELECT count(*) FROM import_sent WHERE origin=?1 AND outcome='applied')=(SELECT count(*) FROM sync_bundles)",[local.origin.to_string()],|r|r.get(0)).unwrap();
+        let acknowledged: bool = if signed_history && cfg!(windows) {
+            count(
+                &f,
+                "bootstrap_units WHERE direction='out' AND outcome='applied'",
+            ) == 1
+        } else {
+            owner.store().connection.lock().unwrap().query_row("SELECT (SELECT count(*) FROM import_sent WHERE origin=?1 AND outcome='applied')=(SELECT count(*) FROM sync_bundles)",[local.origin.to_string()],|r|r.get(0)).unwrap()
+        };
         let pending = store.outstanding(&verified, &Clock, &cancel).unwrap();
-        if messages >= 2
+        if signed_history && !worked {
+            #[cfg(windows)]
+            write(
+                base.join("history-wire.json"),
+                &serde_json::json!({"pid":std::process::id(),"phase":phase,"counters":wire.progress()}),
+            );
+            // One overwritten, numeric-only diagnostic. No user bodies or keys.
+            write(
+                base.join("history-progress.json"),
+                &serde_json::json!({
+                    "pid":std::process::id(),"phase":phase,"messages":messages,
+                    "captures":count(&f,"captures"),"pending":pending.len(),"acknowledged":acknowledged,
+                    "status":format!("{:?}",engine.status),"attention":engine.needs_attention,
+                    "snapshots_applied":count(&f,"bootstrap_units WHERE outcome='applied'"),
+                    "snapshots_staged":count(&f,"bootstrap_units WHERE outcome='staged'")
+                }),
+            );
+        }
+        // The R9 receiving fixture expects Hello, Offer, image, evidence and
+        // Publish in this ordered one-image-chunk scenario. An already-applied
+        // cached unit alone must not terminate phase 2 immediately after Offer.
+        let minimum_messages = if signed_history && !cfg!(windows) {
+            5
+        } else {
+            2
+        };
+        if messages >= minimum_messages
             && count(&f, "captures") == 2
-            && publication_ready(
-                cfg!(windows) && phase == 1,
-                worked,
-                acknowledged,
-                pending.len(),
-                engine.status,
-                engine.needs_attention,
-            )
+            && if signed_history {
+                let lost = cfg!(windows) && phase == 1;
+                !worked
+                    && pending.is_empty()
+                    && !engine.needs_attention
+                    && acknowledged != lost
+                    && engine.status
+                        == if lost {
+                            SyncStatus::Syncing
+                        } else {
+                            SyncStatus::CleanlyApplied
+                        }
+            } else {
+                publication_ready(
+                    cfg!(windows) && phase == 1,
+                    worked,
+                    acknowledged,
+                    pending.len(),
+                    engine.status,
+                    engine.needs_attention,
+                )
+            }
         {
             checked_sync(&base, phase, "flush", wire.flush().await);
             break;
@@ -800,6 +885,7 @@ pub(crate) fn run(case: i32) -> security::Result<()> {
         45 => native_io_lab::execute(exchange(2)),
         46 => cleanup(),
         49 => install_signed_registry(),
+        50 => install_signed_history(),
         _ => panic!("cross-device case"),
     })
     .map_err(|_| security::SecurityError::State)

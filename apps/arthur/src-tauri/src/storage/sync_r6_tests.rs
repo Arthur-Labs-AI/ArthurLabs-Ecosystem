@@ -245,6 +245,25 @@ fn r6_tls_bootstrap_maximum_native_event_and_row_counts() {
 }
 
 #[test]
+fn r9_bootstrap_observer_scope_count_is_per_event_group_not_per_row() {
+    execute(async {
+        let ka = Fixture::new().unwrap();
+        let kb = Fixture::new().unwrap();
+        let a = history_device(ka.public.peer_id(), kb.public.peer_id());
+        let b = history_device(kb.public.peer_id(), ka.public.peer_id());
+        f::capture_batches(&a.store, 32, 32);
+        let before = f::observer_scopes();
+        clean_status(history_exchange(&a, &b, &ka, &kb, 9040, true).await);
+        assert_eq!(b.count("captures"), 32);
+        assert_eq!(
+            f::observer_scopes() - before,
+            1,
+            "one guarded INSERT observer per event/entity, with individual exact-row grants"
+        );
+    });
+}
+
+#[test]
 fn r6_bootstrap_source_event_row_and_byte_limits_refuse_without_publication() {
     let ka = Fixture::new().unwrap();
     let kb = Fixture::new().unwrap();

@@ -1,4 +1,5 @@
 pub(crate) mod bootstrap_store;
+mod bootstrap_trace;
 pub mod capture_store;
 #[cfg(windows)]
 pub(crate) mod device_identity_store;
@@ -40,6 +41,7 @@ mod security_android_instrumentation;
 pub(crate) mod security_pake_tests;
 #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
 pub(crate) mod security_tls_tests;
+pub(crate) mod signed_bootstrap;
 pub(crate) mod signed_import;
 #[cfg(test)]
 #[cfg(windows)]

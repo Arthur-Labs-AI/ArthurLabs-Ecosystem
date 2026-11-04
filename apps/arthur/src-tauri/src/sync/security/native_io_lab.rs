@@ -149,6 +149,16 @@ impl RawIo {
     pub(super) fn tls_record_complete(&mut self) {
         self.idle = self.timer.now();
     }
+    #[cfg(test)]
+    pub(super) fn tls_outbound_idle_fixture(&mut self) -> u64 {
+        let now = self.timer.now().max(self.idle.saturating_add(5));
+        self.timer = NativeTimer::from_origin(std::time::Instant::now() - Duration::from_secs(now));
+        self.idle
+    }
+    #[cfg(test)]
+    pub(super) fn tls_idle_for_test(&self) -> u64 {
+        self.idle
+    }
     #[cfg(any(test, all(target_os = "android", feature = "android-identity-tests")))]
     pub(super) fn tls_deadline_fixture(&mut self, total: bool) {
         self.timer = NativeTimer::from_origin(
@@ -250,6 +260,8 @@ impl RawIo {
             let (poll, registration) = self.timer.poll_until(cx, deadline);
             self.registration = Some(registration);
             if self.timer.now() >= deadline || poll.is_ready() {
+                #[cfg(test)]
+                eprintln!("native deadline expired: now={} idle_at={} admission={} deadline={} session={}",self.timer.now(),self.idle,p.started(),deadline,self.session);
                 return Err(Fault::Expired);
             }
             Ok(())

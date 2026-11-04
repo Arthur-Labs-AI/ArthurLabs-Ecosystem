@@ -9,6 +9,57 @@ pub(crate) const BOOTSTRAP_D4_PROFILE: &str = "m05-bootstrap-history-d4-v1";
 pub(crate) const BOOTSTRAP_BYTES: usize = 4 * 1024 * 1024;
 pub(crate) const BOOTSTRAP_EVENTS: usize = 64;
 pub(crate) const BOOTSTRAP_ROWS: usize = 2048;
+// Original 4 MiB image budget is untouched. Signature evidence is separately
+// staged and bounded: 64 originals * 16 KiB, plus 64 KiB manifest/prefix overhead.
+pub(crate) const SIGNED_EVIDENCE_BYTES: usize = BOOTSTRAP_EVENTS * MAX_SIGNED_METADATA + 64 * 1024;
+#[derive(Clone, PartialEq, Eq)]
+#[cfg_attr(
+    any(test, all(target_os = "android", feature = "android-identity-tests")),
+    derive(Serialize, Deserialize)
+)]
+#[cfg_attr(
+    any(test, all(target_os = "android", feature = "android-identity-tests")),
+    serde(deny_unknown_fields)
+)]
+pub(crate) struct SignedSnapshotOffer {
+    pub image: SnapshotOffer,
+    pub evidence: SnapshotOffer,
+}
+impl SignedSnapshotOffer {
+    pub fn validate(&self) -> Result<()> {
+        self.image.validate()?;
+        self.evidence.validate()?;
+        if self.image.id != self.evidence.id || self.evidence.bytes > SIGNED_EVIDENCE_BYTES {
+            return Err(Error::Limit);
+        }
+        Ok(())
+    }
+}
+pub(crate) struct SignedSnapshotExport {
+    pub image: SnapshotExport,
+    pub evidence: SnapshotExport,
+}
+impl SignedSnapshotExport {
+    pub fn offer(&self) -> SignedSnapshotOffer {
+        SignedSnapshotOffer {
+            image: self.image.offer.clone(),
+            evidence: self.evidence.offer.clone(),
+        }
+    }
+}
+#[derive(Clone)]
+#[cfg_attr(
+    any(test, all(target_os = "android", feature = "android-identity-tests")),
+    derive(Serialize, Deserialize)
+)]
+#[cfg_attr(
+    any(test, all(target_os = "android", feature = "android-identity-tests")),
+    serde(deny_unknown_fields)
+)]
+pub(crate) struct SignedSnapshotReceipt {
+    pub offer: SignedSnapshotOffer,
+    pub outcome: Outcome,
+}
 #[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(
     any(test, all(target_os = "android", feature = "android-identity-tests")),
@@ -163,20 +214,18 @@ pub(crate) fn unhex(s: &str) -> Result<Vec<u8>> {
         .collect()
 }
 pub(crate) fn envelope(bytes: Vec<u8>) -> Result<Envelope> {
-    let c = codec::decode_core_strict(&bytes).map_err(|_| Error::Integrity)?;
-    let uuid = |s: &str| Uuid::parse_str(s).map_err(|_| Error::Integrity);
-    let identity = Identity {
-        event: uuid(&c.event_id)?,
-        bundle: uuid(&c.bundle_id)?,
-        origin: uuid(&c.origin_id)?,
-        incarnation: uuid(&c.origin_incarnation)?,
-        seq: c.origin_seq.parse().map_err(|_| Error::Integrity)?,
-        hash: codec::journal_event_hash(&bytes),
-    };
-    let e = Envelope { identity, bytes };
-    ValidatedEvent::parse(e.clone())?;
-    Ok(e)
+    ValidatedEvent::from_bytes(bytes)
+        .map(ValidatedEvent::into_envelope)
+        // Preserve this established wrapper's malformed/oversize error contract.
+        .map_err(|e| {
+            if e == Error::Limit {
+                Error::Integrity
+            } else {
+                e
+            }
+        })
 }
+
 pub(crate) fn canonical(image: &SnapshotImage) -> Result<Vec<u8>> {
     let b = serde_jcs::to_vec(image).map_err(|_| Error::Integrity)?;
     if b.len() > BOOTSTRAP_BYTES {

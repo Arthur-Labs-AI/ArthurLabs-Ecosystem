@@ -18,6 +18,7 @@ type StoredSeal = (String, Vec<u8>, i64, Vec<u8>, Vec<u8>);
 
 pub(crate) struct SignedImportStore<'a> {
     db: CandidateSyncStore<'a>,
+    history: bool,
 }
 
 macro_rules! delegate_store {
@@ -29,8 +30,63 @@ macro_rules! delegate_store {
     };
 }
 impl SyncStore for SignedImportStore<'_> {
+    fn signed_snapshot_capture(
+        &self,
+        s: &VerifiedSession,
+        id: Uuid,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<SignedSnapshotExport> {
+        self.require_history(s)?;
+        super::signed_bootstrap::capture(&self.db, s, id, c, x)
+    }
+    fn signed_snapshot_offer(
+        &self,
+        s: &VerifiedSession,
+        o: &SignedSnapshotOffer,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<()> {
+        self.require_history(s)?;
+        super::signed_bootstrap::offer(&self.db, s, o, c, x)
+    }
+    fn signed_snapshot_chunk(
+        &self,
+        s: &VerifiedSession,
+        ch: &SnapshotChunk,
+        evidence: bool,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<()> {
+        self.require_history(s)?;
+        super::signed_bootstrap::chunk(&self.db, s, ch, evidence, c, x)
+    }
+    fn signed_snapshot_publish(
+        &self,
+        s: &VerifiedSession,
+        o: &SignedSnapshotOffer,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<SignedSnapshotReceipt> {
+        self.require_history(s)?;
+        super::signed_bootstrap::publish(&self.db, s, o, c, x)
+    }
+    fn signed_snapshot_receipt(
+        &self,
+        s: &VerifiedSession,
+        r: &SignedSnapshotReceipt,
+        c: &dyn SyncClock,
+        x: &Cancellation,
+    ) -> Result<()> {
+        self.require_history(s)?;
+        super::signed_bootstrap::receipt(&self.db, s, r, c, x)
+    }
     fn profile(&self) -> SyncProfile {
-        SyncProfile::SignedOriginalCandidate
+        if self.history {
+            SyncProfile::SignedHistory
+        } else {
+            SyncProfile::SignedOriginalCandidate
+        }
     }
     delegate_store! {
         authorize(s: &VerifiedSession, c: &dyn SyncClock, x: &Cancellation) -> Result<()>;
@@ -105,41 +161,7 @@ impl SyncStore for SignedImportStore<'_> {
         self.require_registry(s)?;
         // Disclosure checks run on the same core again under the write lock.
         let event = self.db.export(s, id, clock, x)?;
-        self.db.write(s, clock, x, |c| {
-            let current = sync_store::load(c, id.event)?.ok_or(Error::Integrity)?;
-            if current.identity != *id || current.bytes != event.bytes { return Err(Error::Integrity); }
-            let registry = trust(registry_verification::verified(c))?;
-            let owner = registry.origins.get(&id.origin.to_string()).ok_or(Error::Trust)?;
-            let author = &registry.members.get(owner).ok_or(Error::Trust)?.key;
-            let local: bool = c.query_row("SELECT EXISTS(SELECT 1 FROM sync_bundles WHERE event_id=?1)", [id.event.to_string()], |r|r.get(0)).map_err(sql)?;
-            let bytes: Vec<u8> = if local {
-                if *owner != s.binding().local.to_string() { return Err(Error::Trust); }
-                let cached: Option<Vec<u8>> = c.query_row("SELECT envelope FROM e2_export_signatures WHERE event=?1", [id.event.to_string()], |r|r.get(0)).optional().map_err(sql)?;
-                if let Some(bytes) = cached { bytes } else {
-                    let count: i64 = c.query_row("SELECT count(*) FROM e2_export_signatures", [], |r|r.get(0)).map_err(sql)?;
-                    if count >= MAX_EVENTS as i64 { return Err(Error::StorageLimited); }
-                    #[cfg(any(windows, target_os = "android"))]
-                    let signed = {
-                        let (key, public) = trust(super::device_identity_store::bound_key(c, s.binding().local))?;
-                        if &public != author { return Err(Error::Trust); }
-                        trust(SignedOriginal::sign(registry.root.network, &current, &key))?
-                    };
-                    #[cfg(not(any(windows, target_os = "android")))]
-                    let signed: SignedOriginal = return Err(Error::Trust);
-                    let bytes = trust(signed.bytes())?;
-                    trust(signed.verify(registry.root.network, &current, author))?;
-                    c.execute("INSERT INTO e2_export_signatures VALUES(?1,?2)", params![id.event.to_string(), bytes]).map_err(sql)?;
-                    bytes
-                }
-            } else {
-                let accepted = prefix(c, registry.root.network, s.binding().local, id.origin, author)?.ok_or(Error::Trust)?;
-                if accepted.incarnation != id.incarnation || accepted.seq < id.seq { return Err(Error::Trust); }
-                c.query_row("SELECT envelope FROM e2_originals WHERE event=?1 AND origin=?2 AND seq=?3 AND hash=?4", params![id.event.to_string(),id.origin.to_string(),id.seq,id.hash.as_slice()], |r|r.get(0)).map_err(sql)?
-            };
-            let signed = trust(SignedOriginal::decode(&bytes))?;
-            trust(signed.verify(registry.root.network, &current, author))?;
-            Ok(SignedExport { metadata: SignedMetadata { identity: id.clone(), bytes }, event: current })
-        })
+        self.db.write(s, clock, x, |c| export_in(c, s, id, &event))
     }
     fn retain_signed(
         &self,
@@ -319,7 +341,11 @@ fn trust<T>(r: crate::sync_api::security::Result<T>) -> Result<T> {
 impl<'a> SignedImportStore<'a> {
     #[cfg(test)]
     pub(crate) fn admitted_for_test(db: CandidateSyncStore<'a>) -> Self {
-        Self { db }
+        Self { db, history: false }
+    }
+    #[cfg(test)]
+    pub(crate) fn admitted_history_for_test(db: CandidateSyncStore<'a>) -> Self {
+        Self { db, history: true }
     }
     pub fn production(_: &'a CaptureStore) -> Result<Self> {
         Err(Error::ActivationPending)
@@ -335,6 +361,21 @@ impl<'a> SignedImportStore<'a> {
     pub fn synthetic(owner: &'a CaptureStore) -> Self {
         Self {
             db: CandidateSyncStore::synthetic(owner),
+            history: false,
+        }
+    }
+    #[cfg(any(
+        test,
+        all(
+            target_os = "android",
+            feature = "android-identity-tests",
+            debug_assertions
+        )
+    ))]
+    pub(crate) fn synthetic_history(owner: &'a CaptureStore) -> Self {
+        Self {
+            db: CandidateSyncStore::synthetic(owner),
+            history: true,
         }
     }
     fn require_registry(&self, session: &VerifiedSession) -> Result<()> {
@@ -343,6 +384,13 @@ impl<'a> SignedImportStore<'a> {
         } else {
             Ok(())
         }
+    }
+    fn require_history(&self, session: &VerifiedSession) -> Result<()> {
+        self.require_registry(session)?;
+        if !self.history {
+            return Err(Error::Protocol);
+        }
+        Ok(())
     }
     #[cfg(any(
         test,
@@ -391,7 +439,7 @@ impl<'a> SignedImportStore<'a> {
         })
     }
 }
-fn seal_bytes(
+pub(super) fn seal_bytes(
     network: Uuid,
     origin: Uuid,
     incarnation: Uuid,
@@ -409,7 +457,7 @@ fn seal_bytes(
         hash,
     )))
 }
-fn local_sign(c: &Connection, local: Uuid, bytes: &[u8]) -> Result<Vec<u8>> {
+pub(super) fn local_sign(c: &Connection, local: Uuid, bytes: &[u8]) -> Result<Vec<u8>> {
     #[cfg(any(windows, target_os = "android"))]
     {
         let (key, public) = trust(super::device_identity_store::bound_key(c, local))?;
@@ -423,6 +471,7 @@ fn local_sign(c: &Connection, local: Uuid, bytes: &[u8]) -> Result<Vec<u8>> {
         Err(Error::Trust)
     }
 }
+#[derive(Clone, Copy)]
 struct Prefix {
     incarnation: Uuid,
     seq: i64,
@@ -435,9 +484,23 @@ fn prefix(
     origin: Uuid,
     author: &PublicIdentity,
 ) -> Result<Option<Prefix>> {
+    let tables = accepted_tables(c)?;
+    let count: i64 = c
+        .query_row(
+            &format!("SELECT count(*) FROM {} WHERE origin=?1", tables.0),
+            [origin.to_string()],
+            |r| r.get(0),
+        )
+        .map_err(sql)?;
+    if count > 1 {
+        return Err(Error::Trust);
+    }
     let seal: Option<StoredSeal> = c
         .query_row(
-            "SELECT incarnation,author,seq,hash,signature FROM e2_origin_seals WHERE origin=?1",
+            &format!(
+                "SELECT incarnation,author,seq,hash,signature FROM {} WHERE origin=?1",
+                accepted_tables(c)?.0
+            ),
             [origin.to_string()],
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
         )
@@ -461,7 +524,12 @@ fn prefix(
         let _ = (local, bytes, signature);
         return Err(Error::Trust);
     }
-    let mut q = c.prepare("SELECT event,seq,hash,envelope FROM e2_originals WHERE origin=?1 ORDER BY seq LIMIT 257").map_err(sql)?;
+    let mut q = c
+        .prepare(&format!(
+            "SELECT event,seq,hash,envelope FROM {} WHERE origin=?1 ORDER BY seq LIMIT 257",
+            accepted_tables(c)?.1
+        ))
+        .map_err(sql)?;
     let rows = q
         .query_map([origin.to_string()], |r| {
             Ok((
@@ -547,7 +615,7 @@ fn unsupported(c: &Connection, signed: &SignedOriginal, event: &Envelope) -> Res
         outcome: Outcome::UnsupportedImportPolicy,
     })
 }
-fn retain_in(
+pub(super) fn retain_in(
     c: &Connection,
     session: &VerifiedSession,
     signed: &SignedOriginal,
@@ -555,141 +623,588 @@ fn retain_in(
     clock: &dyn SyncClock,
     cancel: &Cancellation,
 ) -> Result<Receipt> {
-    if session.registry_binding().is_none() {
-        return Err(Error::Trust);
+    Admission::new(c, session)?.retain(signed, event, clock, cancel)
+}
+pub(super) fn export_in(
+    c: &Connection,
+    s: &VerifiedSession,
+    id: &Identity,
+    event: &Envelope,
+) -> Result<SignedExport> {
+    Admission::new(c, s)?.export(id, event)
+}
+pub(super) struct Admission<'a> {
+    c: &'a Connection,
+    session: &'a VerifiedSession,
+    registry: registry_verification::Registry,
+    prefixes: std::collections::BTreeMap<Uuid, Option<Prefix>>,
+}
+impl<'a> Admission<'a> {
+    pub fn new(c: &'a Connection, session: &'a VerifiedSession) -> Result<Self> {
+        if c.is_autocommit() || session.registry_binding().is_none() {
+            return Err(Error::Trust);
+        }
+        Ok(Self {
+            c,
+            session,
+            registry: trust(registry_verification::verified(c))?,
+            prefixes: Default::default(),
+        })
     }
-    let registry = trust(registry_verification::verified(c))?;
-    let id = &event.identity;
-    let owner = registry
-        .origins
-        .get(&id.origin.to_string())
-        .ok_or(Error::Trust)?;
-    let member = registry.members.get(owner).ok_or(Error::Trust)?;
-    let value = trust(signed.verify(registry.root.network, &event, &member.key))?;
-    sync_store::authorize_event_scope(session, &value)?;
-    if let Some(prior) = sync_store::load(c, id.event)? {
-        if prior.identity != *id || prior.bytes != event.bytes {
+    pub fn accepted(&mut self, event: &Envelope, original: &SignedOriginal) -> Result<()> {
+        let c = self.c;
+        let s = self.session;
+        let id = &event.identity;
+        let owner = self
+            .registry
+            .origins
+            .get(&id.origin.to_string())
+            .ok_or(Error::Trust)?;
+        let author = &self.registry.members.get(owner).ok_or(Error::Trust)?.key;
+        let prefix = cached_prefix(
+            &mut self.prefixes,
+            c,
+            self.registry.root.network,
+            s.binding().local,
+            id.origin,
+            author,
+        )?
+        .ok_or(Error::Integrity)?;
+        if prefix.incarnation != id.incarnation || prefix.seq < id.seq {
             return Err(Error::Integrity);
         }
-    }
-    let prefix = prefix(
-        c,
-        registry.root.network,
-        session.binding().local,
-        id.origin,
-        &member.key,
-    )?;
-    if let Some(prefix) = &prefix {
-        if prefix.incarnation != id.incarnation {
-            return unsupported(c, signed, &event);
-        }
-        if id.seq <= prefix.seq {
-            let known: bool = c.query_row("SELECT EXISTS(SELECT 1 FROM e2_originals WHERE event=?1 AND origin=?2 AND seq=?3 AND hash=?4)", params![id.event.to_string(),id.origin.to_string(),id.seq,id.hash.as_slice()], |r| r.get(0)).map_err(sql)?;
-            if !known {
-                return unsupported(c, signed, &event);
-            }
-            return sync_store::retain_signed_core_in(c, session, &value, clock, cancel);
-        }
-    }
-    let now = i64::try_from(clock.now()).map_err(|_| Error::Trust)?;
-    let previous = prefix.as_ref().map_or([0; 32], |p| p.hash);
-    let sequence = prefix.as_ref().map_or(1, |p| p.seq + 1);
-    let reused: bool = c
-        .query_row(
-            "SELECT EXISTS(SELECT 1 FROM e2_origin_seals WHERE incarnation=?1 AND origin<>?2)",
-            params![id.incarnation.to_string(), id.origin.to_string()],
-            |r| r.get(0),
-        )
-        .map_err(sql)?;
-    if !member.enabled
-        || member.expires <= now
-        || member.capabilities != 3
-        || id.seq != sequence
-        || id.seq > MAX_EVENTS as i64
-        || reused
-        || value.core().previous_event_hash != codec::hash_hex(&previous)
-    {
-        return unsupported(c, signed, &event);
-    }
-    let receipt = sync_store::retain_signed_core_in(c, session, &value, clock, cancel)?;
-    let profile: bool = c
-        .query_row(
-            "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name='e2_pending_signatures')",
-            [],
-            |r| r.get(0),
-        )
-        .map_err(sql)?;
-    if profile
-        && matches!(
-            receipt.outcome,
-            Outcome::DeferredDependency | Outcome::UnsupportedImportPolicy
-        )
-    {
-        let count: i64 = c
-            .query_row("SELECT count(*) FROM e2_pending_signatures", [], |r| {
-                r.get(0)
-            })
-            .map_err(sql)?;
-        let exists: bool = c
+        let bytes: Option<Vec<u8>> = c
             .query_row(
-                "SELECT EXISTS(SELECT 1 FROM e2_pending_signatures WHERE event=?1)",
-                [id.event.to_string()],
+                &format!(
+                    "SELECT envelope FROM {} WHERE event=?1 AND origin=?2 AND seq=?3 AND hash=?4",
+                    accepted_tables(c)?.1
+                ),
+                params![
+                    id.event.to_string(),
+                    id.origin.to_string(),
+                    id.seq,
+                    id.hash.as_slice()
+                ],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(sql)?;
+        if bytes.as_deref() != Some(trust(original.bytes())?.as_slice()) {
+            return Err(Error::Integrity);
+        }
+        Ok(())
+    }
+    pub fn retain(
+        &mut self,
+        signed: &SignedOriginal,
+        event: Envelope,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
+    ) -> Result<Receipt> {
+        let value = ValidatedEvent::parse(event).map_err(|_| Error::Trust)?;
+        self.retain_validated(signed, &value, clock, cancel)
+    }
+    pub fn retain_validated(
+        &mut self,
+        signed: &SignedOriginal,
+        value: &ValidatedEvent,
+        clock: &dyn SyncClock,
+        cancel: &Cancellation,
+    ) -> Result<Receipt> {
+        let event = value.envelope();
+        let c = self.c;
+        let session = self.session;
+        if session.registry_binding().is_none() {
+            return Err(Error::Trust);
+        }
+        let registry = &self.registry;
+        let id = &event.identity;
+        let owner = registry
+            .origins
+            .get(&id.origin.to_string())
+            .ok_or(Error::Trust)?;
+        let member = registry.members.get(owner).ok_or(Error::Trust)?;
+        trust(signed.verify_validated(registry.root.network, value, &member.key))?;
+        sync_store::authorize_event_scope(session, value)?;
+        if let Some(prior) = sync_store::load(c, id.event)? {
+            if prior.identity != *id || prior.bytes != event.bytes {
+                return Err(Error::Integrity);
+            }
+        }
+        let prefix = cached_prefix(
+            &mut self.prefixes,
+            c,
+            registry.root.network,
+            session.binding().local,
+            id.origin,
+            &member.key,
+        )?;
+        if let Some(prefix) = &prefix {
+            if prefix.incarnation != id.incarnation {
+                return unsupported(c, signed, event);
+            }
+            if id.seq <= prefix.seq {
+                let known: bool = c.query_row(&format!("SELECT EXISTS(SELECT 1 FROM {} WHERE event=?1 AND origin=?2 AND seq=?3 AND hash=?4)", accepted_tables(c)?.1), params![id.event.to_string(),id.origin.to_string(),id.seq,id.hash.as_slice()], |r| r.get(0)).map_err(sql)?;
+                if !known {
+                    return unsupported(c, signed, event);
+                }
+                return sync_store::retain_signed_core_in(c, session, value, clock, cancel);
+            }
+        }
+        let now = i64::try_from(clock.now()).map_err(|_| Error::Trust)?;
+        let previous = prefix.as_ref().map_or([0; 32], |p| p.hash);
+        let sequence = prefix.as_ref().map_or(1, |p| p.seq + 1);
+        let reused: bool = c
+            .query_row(
+                &format!(
+                    "SELECT EXISTS(SELECT 1 FROM {} WHERE incarnation=?1 AND origin<>?2)",
+                    accepted_tables(c)?.0
+                ),
+                params![id.incarnation.to_string(), id.origin.to_string()],
                 |r| r.get(0),
             )
             .map_err(sql)?;
-        if count >= MAX_EVENTS as i64 && !exists {
-            return Err(Error::StorageLimited);
+        if !member.enabled
+            || member.expires <= now
+            || member.capabilities != 3
+            || id.seq != sequence
+            || id.seq > MAX_EVENTS as i64
+            || reused
+            || value.core().previous_event_hash != codec::hash_hex(&previous)
+        {
+            return unsupported(c, signed, event);
         }
-        c.execute(
-            "INSERT OR IGNORE INTO e2_pending_signatures VALUES(?1,?2)",
-            params![id.event.to_string(), trust(signed.bytes())?],
-        )
-        .map_err(sql)?;
-    }
-    if receipt.outcome.is_ack() {
-        // A receipt for an already-local canonical core is not proof of a
-        // foreign import. Seal only an exact chain-verified main-ledger entry.
-        let committed: bool = c.query_row(
+        let receipt = sync_store::retain_signed_core_in(c, session, value, clock, cancel)?;
+        let profile: bool = c
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name='e2_pending_signatures')",
+                [],
+                |r| r.get(0),
+            )
+            .map_err(sql)?;
+        if profile
+            && matches!(
+                receipt.outcome,
+                Outcome::DeferredDependency | Outcome::UnsupportedImportPolicy
+            )
+        {
+            let count: i64 = c
+                .query_row("SELECT count(*) FROM e2_pending_signatures", [], |r| {
+                    r.get(0)
+                })
+                .map_err(sql)?;
+            let exists: bool = c
+                .query_row(
+                    "SELECT EXISTS(SELECT 1 FROM e2_pending_signatures WHERE event=?1)",
+                    [id.event.to_string()],
+                    |r| r.get(0),
+                )
+                .map_err(sql)?;
+            if count >= MAX_EVENTS as i64 && !exists {
+                return Err(Error::StorageLimited);
+            }
+            c.execute(
+                "INSERT OR IGNORE INTO e2_pending_signatures VALUES(?1,?2)",
+                params![id.event.to_string(), trust(signed.bytes())?],
+            )
+            .map_err(sql)?;
+        }
+        if receipt.outcome.is_ack() {
+            // A receipt for an already-local canonical core is not proof of a
+            // foreign import. Seal only an exact chain-verified main-ledger entry.
+            let committed: bool = c.query_row(
             "SELECT EXISTS(SELECT 1 FROM import_events WHERE event=?1 AND origin=?2 AND incarnation=?3 AND seq=?4 AND hash=?5 AND bytes=?6 AND chain_ok=1 AND outcome IN('applied','conflict'))",
             params![id.event.to_string(),id.origin.to_string(),id.incarnation.to_string(),id.seq,id.hash.as_slice(),event.bytes],
             |r| r.get(0),
         ).map_err(sql)?;
-        if !committed {
-            return unsupported(c, signed, &event);
-        }
-        let bytes = seal_bytes(
-            registry.root.network,
-            id.origin,
-            id.incarnation,
-            &member.key,
-            id.seq,
-            &id.hash,
-        )?;
-        let signature = local_sign(c, session.binding().local, &bytes)?;
-        c.execute("INSERT INTO e2_origin_seals VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT(origin) DO UPDATE SET seq=excluded.seq,hash=excluded.hash,signature=excluded.signature", params![id.origin.to_string(),id.incarnation.to_string(),member.key.sec1(),id.seq,id.hash.as_slice(),signature]).map_err(sql)?;
-        c.execute(
-            "INSERT INTO e2_originals VALUES(?1,?2,?3,?4,?5)",
-            params![
-                id.event.to_string(),
-                id.origin.to_string(),
+            if !committed {
+                return unsupported(c, signed, event);
+            }
+            let bytes = seal_bytes(
+                registry.root.network,
+                id.origin,
+                id.incarnation,
+                &member.key,
                 id.seq,
-                id.hash.as_slice(),
-                trust(signed.bytes())?
-            ],
-        )
-        .map_err(sql)?;
-        if profile {
+                &id.hash,
+            )?;
+            let signature = local_sign(c, session.binding().local, &bytes)?;
+            let tables = accepted_tables(c)?;
+            let conflict = if tables.0 == "r9_origin_seals" {
+                "origin,incarnation"
+            } else {
+                "origin"
+            };
+            c.execute(&format!("INSERT INTO {} VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT({conflict}) DO UPDATE SET seq=excluded.seq,hash=excluded.hash,signature=excluded.signature", tables.0), params![id.origin.to_string(),id.incarnation.to_string(),member.key.sec1(),id.seq,id.hash.as_slice(),signature]).map_err(sql)?;
+            if tables.1 == "r9_originals" {
+                c.execute(
+                    "INSERT INTO r9_originals VALUES(?1,?2,?3,?4,?5,?6)",
+                    params![
+                        id.event.to_string(),
+                        id.origin.to_string(),
+                        id.incarnation.to_string(),
+                        id.seq,
+                        id.hash.as_slice(),
+                        trust(signed.bytes())?
+                    ],
+                )
+                .map_err(sql)?;
+            } else {
+                c.execute(
+                    "INSERT INTO e2_originals VALUES(?1,?2,?3,?4,?5)",
+                    params![
+                        id.event.to_string(),
+                        id.origin.to_string(),
+                        id.seq,
+                        id.hash.as_slice(),
+                        trust(signed.bytes())?
+                    ],
+                )
+                .map_err(sql)?;
+            }
+            if profile {
+                c.execute(
+                    "DELETE FROM e2_pending_signatures WHERE event=?1",
+                    [id.event.to_string()],
+                )
+                .map_err(sql)?;
+            }
             c.execute(
-                "DELETE FROM e2_pending_signatures WHERE event=?1",
+                "DELETE FROM e2_quarantine WHERE event=?1",
                 [id.event.to_string()],
             )
             .map_err(sql)?;
         }
-        c.execute(
-            "DELETE FROM e2_quarantine WHERE event=?1",
-            [id.event.to_string()],
+        if receipt.outcome.is_ack() {
+            self.prefixes.insert(
+                id.origin,
+                Some(Prefix {
+                    incarnation: id.incarnation,
+                    seq: id.seq,
+                    hash: id.hash,
+                }),
+            );
+        }
+        Ok(receipt)
+    }
+    pub fn export(&mut self, id: &Identity, event: &Envelope) -> Result<SignedExport> {
+        let validated = ValidatedEvent::parse(event.clone())?;
+        self.export_validated(id, &validated)
+    }
+    pub fn export_validated(
+        &mut self,
+        id: &Identity,
+        validated: &ValidatedEvent,
+    ) -> Result<SignedExport> {
+        let c = self.c;
+        let s = self.session;
+        let event = validated.envelope();
+        sync_store::authorize_event_scope(s, validated)?;
+        super::journal::g3::disclosure_event(validated)?;
+        if validated.envelope().identity != *id {
+            return Err(Error::Integrity);
+        }
+        // The sealed core has already passed full validation. Re-read exact
+        // bytes/hash under this same owner transaction, rather than decoding
+        // that immutable core several more times merely to compare it.
+        let stored:Option<(Vec<u8>,Vec<u8>)>=c.query_row("SELECT canonical_bytes,canonical_hash FROM sync_bundles WHERE event_id=?1 UNION ALL SELECT bytes,hash FROM import_events WHERE event=?1",[id.event.to_string()],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(sql)?;
+        let (bytes, hash) = stored.ok_or(Error::Integrity)?;
+        if bytes != event.bytes {
+            return Err(Error::Integrity);
+        }
+        if hash.as_slice() != id.hash {
+            return Err(Error::Storage);
+        }
+        let current = event.clone();
+        let registry = &self.registry;
+        let owner = registry
+            .origins
+            .get(&id.origin.to_string())
+            .ok_or(Error::Trust)?;
+        let author = &registry.members.get(owner).ok_or(Error::Trust)?.key;
+        let local: bool = c
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM sync_bundles WHERE event_id=?1)",
+                [id.event.to_string()],
+                |r| r.get(0),
+            )
+            .map_err(sql)?;
+        let bytes: Vec<u8> = if local {
+            if *owner != s.binding().local.to_string() {
+                return Err(Error::Trust);
+            }
+            let cached: Option<Vec<u8>> = c
+                .query_row(
+                    "SELECT envelope FROM e2_export_signatures WHERE event=?1",
+                    [id.event.to_string()],
+                    |r| r.get(0),
+                )
+                .optional()
+                .map_err(sql)?;
+            if let Some(bytes) = cached {
+                bytes
+            } else {
+                let count: i64 = c
+                    .query_row("SELECT count(*) FROM e2_export_signatures", [], |r| {
+                        r.get(0)
+                    })
+                    .map_err(sql)?;
+                if count >= MAX_EVENTS as i64 {
+                    return Err(Error::StorageLimited);
+                }
+                #[cfg(any(windows, target_os = "android"))]
+                let signed = {
+                    let (key, public) = trust(super::device_identity_store::bound_key(
+                        c,
+                        s.binding().local,
+                    ))?;
+                    if &public != author {
+                        return Err(Error::Trust);
+                    }
+                    trust(SignedOriginal::sign_validated(
+                        registry.root.network,
+                        validated,
+                        &key,
+                    ))?
+                };
+                #[cfg(not(any(windows, target_os = "android")))]
+                let signed: SignedOriginal = return Err(Error::Trust);
+                let bytes = trust(signed.bytes())?;
+                c.execute(
+                    "INSERT INTO e2_export_signatures VALUES(?1,?2)",
+                    params![id.event.to_string(), bytes],
+                )
+                .map_err(sql)?;
+                bytes
+            }
+        } else {
+            let accepted = cached_prefix(
+                &mut self.prefixes,
+                c,
+                registry.root.network,
+                s.binding().local,
+                id.origin,
+                author,
+            )?
+            .ok_or(Error::Trust)?;
+            if accepted.incarnation != id.incarnation || accepted.seq < id.seq {
+                return Err(Error::Trust);
+            }
+            c.query_row(
+                &format!(
+                    "SELECT envelope FROM {} WHERE event=?1 AND origin=?2 AND seq=?3 AND hash=?4",
+                    accepted_tables(c)?.1
+                ),
+                params![
+                    id.event.to_string(),
+                    id.origin.to_string(),
+                    id.seq,
+                    id.hash.as_slice()
+                ],
+                |r| r.get(0),
+            )
+            .map_err(sql)?
+        };
+        let signed = trust(SignedOriginal::decode(&bytes))?;
+        trust(signed.verify_validated(registry.root.network, validated, author))?;
+        Ok(SignedExport {
+            metadata: SignedMetadata {
+                identity: id.clone(),
+                bytes,
+            },
+            event: current,
+        })
+    }
+}
+fn cached_prefix(
+    cache: &mut std::collections::BTreeMap<Uuid, Option<Prefix>>,
+    c: &Connection,
+    network: Uuid,
+    local: Uuid,
+    origin: Uuid,
+    author: &PublicIdentity,
+) -> Result<Option<Prefix>> {
+    if let Some(value) = cache.get(&origin) {
+        return Ok(*value);
+    }
+    if cache.len() >= MAX_EVENTS {
+        return Err(Error::Limit);
+    }
+    let value = prefix(c, network, local, origin, author)?;
+    cache.insert(origin, value);
+    Ok(value)
+}
+
+pub(super) fn accepted_tables(c: &Connection) -> Result<(&'static str, &'static str)> {
+    let exists: bool = c
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name='r9_signed_profile')",
+            [],
+            |r| r.get(0),
         )
         .map_err(sql)?;
+    if exists {
+        let version: Option<i64> = c
+            .query_row(
+                "SELECT version FROM r9_signed_profile WHERE singleton=1",
+                [],
+                |r| r.get(0),
+            )
+            .optional()
+            .map_err(sql)?;
+        if version == Some(1) {
+            return Ok(("r9_origin_seals", "r9_originals"));
+        }
     }
-    Ok(receipt)
+    Ok(("e2_origin_seals", "e2_originals"))
+}
+#[cfg(any(
+    test,
+    all(
+        target_os = "android",
+        feature = "android-identity-tests",
+        debug_assertions
+    )
+))]
+pub(super) fn upgrade_history_in(c: &Connection, local: Uuid) -> Result<()> {
+    let registry = trust(registry_verification::verified(c))?;
+    let mut q = c
+        .prepare("SELECT origin FROM e2_origin_seals ORDER BY origin LIMIT 257")
+        .map_err(sql)?;
+    let ids = q
+        .query_map([], |r| r.get::<_, String>(0))
+        .map_err(sql)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(sql)?;
+    if ids.len() > MAX_EVENTS {
+        return Err(Error::Limit);
+    }
+    for id in ids {
+        let author = &registry
+            .members
+            .get(registry.origins.get(&id).ok_or(Error::Trust)?)
+            .ok_or(Error::Trust)?
+            .key;
+        prefix(
+            c,
+            registry.root.network,
+            local,
+            Uuid::parse_str(&id).map_err(|_| Error::Integrity)?,
+            author,
+        )?
+        .ok_or(Error::Integrity)?;
+    }
+    c.execute(
+        "INSERT INTO r9_origin_seals SELECT * FROM e2_origin_seals",
+        [],
+    )
+    .map_err(sql)?;
+    c.execute("INSERT INTO r9_originals SELECT e.event,e.origin,s.incarnation,e.seq,e.hash,e.envelope FROM e2_originals e JOIN e2_origin_seals s ON s.origin=e.origin", []).map_err(sql)?;
+    c.execute("INSERT INTO r9_signed_profile VALUES(1,1)", [])
+        .map_err(sql)?;
+    check_history_compatibility(c, local)?;
+    Ok(())
+}
+
+#[cfg(any(
+    test,
+    all(
+        target_os = "android",
+        feature = "android-identity-tests",
+        debug_assertions
+    )
+))]
+pub(super) fn check_history_compatibility(c: &Connection, local: Uuid) -> Result<()> {
+    if accepted_tables(c)?.0 != "r9_origin_seals" {
+        return Err(Error::Integrity);
+    }
+    let registry = trust(registry_verification::verified(c))?;
+    #[cfg(any(windows, target_os = "android"))]
+    {
+        let (_, public) = trust(super::device_identity_store::bound_key(c, local))?;
+        if registry.local_key != public
+            || registry
+                .members
+                .get(&local.to_string())
+                .ok_or(Error::Trust)?
+                .key
+                != public
+        {
+            return Err(Error::Trust);
+        }
+    }
+    #[cfg(not(any(windows, target_os = "android")))]
+    return Err(Error::Trust);
+    let mut q = c
+        .prepare("SELECT DISTINCT origin FROM r9_origin_seals ORDER BY origin LIMIT 257")
+        .map_err(sql)?;
+    let origins = q
+        .query_map([], |r| r.get::<_, String>(0))
+        .map_err(sql)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(sql)?;
+    if origins.len() > MAX_EVENTS {
+        return Err(Error::Limit);
+    }
+    for origin in origins {
+        let author = &registry
+            .members
+            .get(registry.origins.get(&origin).ok_or(Error::Trust)?)
+            .ok_or(Error::Trust)?
+            .key;
+        prefix(
+            c,
+            registry.root.network,
+            local,
+            Uuid::parse_str(&origin).map_err(|_| Error::Integrity)?,
+            author,
+        )?
+        .ok_or(Error::Integrity)?;
+    }
+    let mismatch:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM e2_originals e JOIN e2_origin_seals s ON s.origin=e.origin LEFT JOIN r9_originals n ON n.event=e.event WHERE n.event IS NULL OR n.origin IS NOT e.origin OR n.incarnation IS NOT s.incarnation OR n.seq IS NOT e.seq OR n.hash IS NOT e.hash OR n.envelope IS NOT e.envelope)",[],|r|r.get(0)).map_err(sql)?;
+    if mismatch {
+        return Err(Error::Integrity);
+    }
+    let mut q=c.prepare("SELECT origin,incarnation,author,seq,hash,signature FROM e2_origin_seals ORDER BY origin LIMIT 257").map_err(sql)?;
+    let mut rows = q.query([]).map_err(sql)?;
+    let mut count = 0;
+    while let Some(row) = rows.next().map_err(sql)? {
+        count += 1;
+        if count > MAX_EVENTS {
+            return Err(Error::Limit);
+        }
+        let origin: String = row.get(0).map_err(sql)?;
+        let inc: String = row.get(1).map_err(sql)?;
+        let author: Vec<u8> = row.get(2).map_err(sql)?;
+        let seq: i64 = row.get(3).map_err(sql)?;
+        let hash: Vec<u8> = row.get(4).map_err(sql)?;
+        let signature: Vec<u8> = row.get(5).map_err(sql)?;
+        let registered = &registry
+            .members
+            .get(registry.origins.get(&origin).ok_or(Error::Trust)?)
+            .ok_or(Error::Trust)?
+            .key;
+        if registered.sec1() != author {
+            return Err(Error::Trust);
+        }
+        let preimage = seal_bytes(
+            registry.root.network,
+            Uuid::parse_str(&origin).map_err(|_| Error::Integrity)?,
+            Uuid::parse_str(&inc).map_err(|_| Error::Integrity)?,
+            registered,
+            seq,
+            &hash,
+        )?;
+        trust(verify(
+            &registry.local_key,
+            Domain::OriginalEvent,
+            &preimage,
+            &signature,
+        ))?;
+        let exact:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM r9_originals WHERE origin=?1 AND incarnation=?2 AND seq=?3 AND hash=?4)",params![origin,inc,seq,hash],|r|r.get(0)).map_err(sql)?;
+        if !exact {
+            return Err(Error::Integrity);
+        }
+    }
+    Ok(())
 }

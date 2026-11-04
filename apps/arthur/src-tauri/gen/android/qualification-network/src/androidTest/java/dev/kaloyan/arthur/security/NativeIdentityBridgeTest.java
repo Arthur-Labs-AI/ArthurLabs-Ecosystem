@@ -52,6 +52,7 @@ public final class NativeIdentityBridgeTest {
     @Test public void resume() { explicitLanRunner(); assertTrue(runScenario(45)); }
     @Test public void cleanup() { explicitLanRunner(); assertTrue(runScenario(46)); }
     @Test public void registry() { explicitLanRunner(); assertTrue(runScenario(49)); }
+    @Test public void history() { explicitLanRunner(); assertTrue(runScenario(50)); }
     private static native boolean runScenario(int scenario);
     @Test public void n7c_actual_read_only_snapshot_no_source_or_lan_approval() throws Exception {
         android.content.Context app=InstrumentationRegistry.getInstrumentation().getTargetContext();

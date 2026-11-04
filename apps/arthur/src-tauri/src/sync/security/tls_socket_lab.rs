@@ -58,6 +58,7 @@ struct Socket {
     input: VecDeque<Vec<u8>>,
     ciphertext: Vec<u8>,
     written: usize,
+    outbound_record: bool,
     plain: Vec<u8>,
     assembling: Vec<u8>,
     bound: bool,
@@ -86,6 +87,7 @@ impl Socket {
             input: VecDeque::new(),
             ciphertext: Vec::new(),
             written: 0,
+            outbound_record: false,
             plain: Vec::new(),
             assembling: Vec::new(),
             bound: false,
@@ -104,6 +106,7 @@ impl Socket {
         self.plain.clear();
         self.assembling.clear();
         self.ciphertext.clear();
+        self.outbound_record = false;
     }
     fn queue(&mut self, bytes: Vec<u8>) -> Result<()> {
         if let Some(e) = self.failed {
@@ -142,6 +145,7 @@ impl Socket {
                         .writer()
                         .write_all(&frame)
                         .map_err(|_| Error::Limit)?;
+                    self.outbound_record = true;
                 }
             }
             if self.tls.wants_write() {
@@ -166,6 +170,13 @@ impl Socket {
                     if self.written == self.ciphertext.len() {
                         self.ciphertext.clear();
                         self.written = 0;
+                        // Match Framed::send: only the complete AE01 record,
+                        // never a partial OS/TLS write, refreshes idle. The
+                        // absolute admission+60s budget remains unchanged.
+                        if self.outbound_record && !self.tls.wants_write() {
+                            self.raw.tls_record_complete();
+                            self.outbound_record = false;
+                        }
                     }
                     cx.waker().wake_by_ref();
                 }
@@ -283,6 +294,9 @@ impl AuthenticatedTransport for TlsTransport {
         let oversized = match &message.payload {
             Payload::Hello { profile, .. } => profile.len() > 64,
             Payload::Chunk(c) => c.bytes.len() > CHUNK,
+            Payload::SignedSnapshotImage(c) | Payload::SignedSnapshotEvidence(c) => {
+                c.bytes.len() > CHUNK
+            }
             Payload::SignedMetadata(m) => m.bytes.is_empty() || m.bytes.len() > MAX_SIGNED_METADATA,
             Payload::Summary(s) => s.known.len() > SUMMARY_PAGE || s.progress.len() > MAX_EVENTS,
             Payload::Request(ids) => ids.len() > 32,
@@ -326,7 +340,14 @@ impl AuthenticatedTransport for TlsTransport {
                 socket.abort(Error::Trust);
                 return Err(Error::Trust);
             }
-            if self.lose_receipts && matches!(message.payload, Payload::Receipt(_)) {
+            if self.lose_receipts
+                && matches!(
+                    message.payload,
+                    Payload::Receipt(_)
+                        | Payload::SnapshotReceipt(_)
+                        | Payload::SignedSnapshotReceipt(_)
+                )
+            {
                 continue;
             }
             return Ok(Some(message));
@@ -622,6 +643,14 @@ pub(crate) struct Endpoint {
     socket: Shared,
 }
 impl Endpoint {
+    #[cfg(all(test, windows))]
+    pub(crate) fn progress(&self) -> serde_json::Value {
+        let s = self.socket.borrow();
+        serde_json::json!({"queued_messages":s.output.len(),"queued_bytes":s.output.iter().map(Vec::len).sum::<usize>(),
+            "cipher_bytes":s.ciphertext.len(),"cipher_written":s.written,"plain_bytes":s.plain.len(),
+            "assembling_bytes":s.assembling.len(),"input_messages":s.input.len(),"tls_pending_write":s.tls.wants_write(),
+            "wire_sent_bytes":s.wire_bytes,"received_messages":s.received})
+    }
     pub(crate) fn endpoints(&self) -> Result<(std::net::SocketAddr, std::net::SocketAddr)> {
         let evidence = self
             .socket
@@ -744,15 +773,24 @@ impl Endpoint {
         .await
     }
     pub(crate) async fn step_after_work(&self, worked: bool) -> Result<()> {
-        if worked {
-            // Poll the same bounded socket once, then let the engine drain its
-            // next local batch. An idle peer must not stall productive work.
+        let pending_output = {
+            let s = self.socket.borrow();
+            !s.output.is_empty() || !s.ciphertext.is_empty() || s.tls.wants_write()
+        };
+        if pending_output {
+            // Backpressure for the already bounded queue. Drive 4-KiB OS I/O
+            // here, without another engine authorization/summary per OS write
+            // or allowing the engine to enqueue the next large image chunk.
+            self.flush().await
+        } else if worked {
+            // Productive local work without output still gets another turn;
+            // it must not wait for an idle peer to invent a message.
             self.until(|| true).await
         } else {
-            // With no local work, wait for actual IO rather than busy-spinning.
             self.step().await
         }
     }
+
     pub(crate) async fn flush(&self) -> Result<()> {
         self.until(|| {
             let s = self.socket.borrow();
@@ -1002,5 +1040,150 @@ fn r4_single_endpoint_stale_completion_after_tls_before_publication() {
             assert_eq!(ap.active_for_test(), 0);
             assert_eq!(bp.active_for_test(), 0);
         }
+    });
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn r9_endpoint_drains_bounded_output_before_another_engine_turn() {
+    use super::tls::CertificateRole;
+    use crate::storage::security_tls_tests::Fixture;
+    use std::future::Future;
+    native_io_lab::execute(async {
+        let a = Fixture::new().unwrap();
+        let b = Fixture::new().unwrap();
+        let ah = PeerHello {
+            network: uuid::Uuid::new_v4(),
+            session: uuid::Uuid::new_v4(),
+            local: a.public.peer_id(),
+            peer: b.public.peer_id(),
+            epoch: 1,
+        };
+        let bh = PeerHello {
+            local: ah.peer,
+            peer: ah.local,
+            ..ah.clone()
+        };
+        let (pair, _, _) = Pair::connect(
+            a.key(CertificateRole::Server).unwrap(),
+            b.key(CertificateRole::Client).unwrap(),
+            [ah, bh],
+            [&a.public, &b.public],
+        )
+        .await
+        .unwrap();
+        pair.drive_until(|| {
+            pair.sockets.iter().all(|s| {
+                let s = s.borrow();
+                s.output.is_empty() && s.ciphertext.is_empty() && !s.tls.wants_write()
+            })
+        })
+        .await
+        .unwrap();
+        let source = Endpoint {
+            socket: pair.sockets[0].clone(),
+        };
+        let target = Endpoint {
+            socket: pair.sockets[1].clone(),
+        };
+        // A valid bounded JSON value spanning multiple unchanged AE01 records.
+        // Typed Message decoding is separate; this pins the driver's wake boundary.
+        source
+            .socket
+            .borrow_mut()
+            .queue(serde_json::to_vec(&vec![0u8; MAX_RECORD]).unwrap())
+            .unwrap();
+        let mut writer = Box::pin(source.step_after_work(true));
+        let mut reader = Box::pin(target.step_after_work(false));
+        let mut received = false;
+        poll_fn(|cx| {
+            if !received {
+                received = reader.as_mut().poll(cx).is_ready();
+            }
+            writer.as_mut().poll(cx)
+        })
+        .await
+        .unwrap();
+        let pending = {
+            let s = source.socket.borrow();
+            s.output.len()
+                + usize::from(!s.ciphertext.is_empty())
+                + usize::from(s.tls.wants_write())
+        };
+        assert_eq!(
+            pending, 0,
+            "bounded queued output needs transport backpressure before the next engine/store turn"
+        );
+        drop(reader);
+        drop(writer);
+        pair.transfer().await.unwrap();
+        assert_eq!(target.socket.borrow().input.len(), 1);
+        pair.abort(Error::Disconnected);
+        pair.assert_closed();
+    });
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn r9_only_complete_outbound_ae01_frames_refresh_the_existing_idle_budget() {
+    use super::tls::CertificateRole;
+    use crate::storage::security_tls_tests::Fixture;
+    native_io_lab::execute(async {
+        let a = Fixture::new().unwrap();
+        let b = Fixture::new().unwrap();
+        let ah = PeerHello {
+            network: uuid::Uuid::new_v4(),
+            session: uuid::Uuid::new_v4(),
+            local: a.public.peer_id(),
+            peer: b.public.peer_id(),
+            epoch: 1,
+        };
+        let bh = PeerHello {
+            local: ah.peer,
+            peer: ah.local,
+            ..ah.clone()
+        };
+        let (pair, _, _) = Pair::connect(
+            a.key(CertificateRole::Server).unwrap(),
+            b.key(CertificateRole::Client).unwrap(),
+            [ah, bh],
+            [&a.public, &b.public],
+        )
+        .await
+        .unwrap();
+        pair.drive_until(|| {
+            pair.sockets.iter().all(|s| {
+                let s = s.borrow();
+                s.output.is_empty() && s.ciphertext.is_empty() && !s.tls.wants_write()
+            })
+        })
+        .await
+        .unwrap();
+        let source = Endpoint {
+            socket: pair.sockets[0].clone(),
+        };
+        let original = source.socket.borrow_mut().raw.tls_outbound_idle_fixture();
+        source
+            .socket
+            .borrow_mut()
+            .queue(serde_json::to_vec(&vec![0u8; MAX_RECORD]).unwrap())
+            .unwrap();
+        source.until(|| true).await.unwrap();
+        {
+            let s = source.socket.borrow();
+            assert!(s.written > 0 && s.written < s.ciphertext.len());
+            assert_eq!(
+                s.raw.tls_idle_for_test(),
+                original,
+                "partial OS writes must not reset idle"
+            );
+        }
+        pair.transfer().await.unwrap();
+        assert!(
+            source.socket.borrow().raw.tls_idle_for_test() > original,
+            "a complete sent AE01 frame must refresh idle, as Framed::send already does"
+        );
+        pair.abort(Error::Disconnected);
+        pair.assert_closed();
     });
 }

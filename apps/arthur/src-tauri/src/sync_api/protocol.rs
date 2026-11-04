@@ -16,25 +16,32 @@ pub(crate) const MAX_SIGNED_METADATA: usize = 16 * 1024;
 pub(crate) enum SyncProfile {
     LedgerCandidate,
     SignedOriginalCandidate,
+    SignedHistory,
 }
 impl SyncProfile {
     pub fn name(self) -> &'static str {
         match self {
             Self::LedgerCandidate => "m05-ledger-candidate",
             Self::SignedOriginalCandidate => "m05-signed-original-candidate-v1",
+            Self::SignedHistory => "m05-signed-history-candidate-v1",
         }
     }
     pub fn version(self) -> u32 {
         match self {
             Self::LedgerCandidate => 1,
             Self::SignedOriginalCandidate => 2,
+            Self::SignedHistory => 3,
         }
     }
     pub fn features(self) -> u32 {
         match self {
             Self::LedgerCandidate => FEATURES,
             Self::SignedOriginalCandidate => (FEATURES & !16) | 32,
+            Self::SignedHistory => FEATURES | 32 | 64,
         }
+    }
+    pub fn signed(self) -> bool {
+        self != Self::LedgerCandidate
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -253,6 +260,11 @@ pub(crate) enum Payload {
     SnapshotReceipt(super::bootstrap::SnapshotReceipt),
     Chunk(Chunk),
     SignedMetadata(SignedMetadata),
+    SignedSnapshotOffer(super::bootstrap::SignedSnapshotOffer),
+    SignedSnapshotEvidence(super::bootstrap::SnapshotChunk),
+    SignedSnapshotImage(super::bootstrap::SnapshotChunk),
+    SignedSnapshotPublish(super::bootstrap::SignedSnapshotOffer),
+    SignedSnapshotReceipt(super::bootstrap::SignedSnapshotReceipt),
     Receipt(Receipt),
     Request(Vec<Uuid>),
 }

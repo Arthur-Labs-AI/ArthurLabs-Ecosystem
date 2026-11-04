@@ -1,7 +1,9 @@
 param([Parameter(Mandatory=$true)][string]$Serial,
     [string]$LanAddress,[string]$AndroidAddress,[ValidateRange(1024,65535)][int]$AndroidSourcePort=37432,
-    [switch]$Physical,[switch]$SignedOriginal)
+    [switch]$Physical,[switch]$SignedOriginal,[switch]$SignedHistory)
 $ErrorActionPreference='Stop'
+if ($SignedOriginal -and $SignedHistory) {throw 'Select exactly one signed profile'}
+$signed=$SignedOriginal -or $SignedHistory
 . (Join-Path $PSScriptRoot 'qualification-common.ps1')
 # Supplying both addresses explicitly authorizes the narrow disposable LAN test.
 # ADB is control/public-results only in this mode: no reverse data connection.
@@ -16,7 +18,8 @@ $adb=Join-Path $env:ANDROID_HOME 'platform-tools/adb.exe'
 $selected=Get-QualificationTarget $(if($Physical){'aarch64'}else{'x86_64'})
 $device=Get-QualificationDevice $adb $Serial $selected -Physical:$Physical
 "Selected device: ABI $($device.Abi), API $($device.Api), emulator=$($device.Emulator)"
-if ($SignedOriginal) { 'Scope: R8 SignedOriginal candidate profile, real OS author signatures, explicit signed registry fixtures, pinned mutual TLS' }
+if ($SignedHistory) { 'Scope: R9 signed historical bootstrap and reverse post-H originals, OS author signatures, pinned mutual TLS; incarnation rotation remains unsupported' }
+elseif ($SignedOriginal) { 'Scope: R8 SignedOriginal candidate profile, real OS author signatures, explicit signed registry fixtures, pinned mutual TLS' }
 else { 'Scope: canonical Envelope events over pinned mutual TLS; per-original SignedOriginal envelopes are not exercised by this existing lab' }
 if ($lanMode) {
     $interfaces=@(Get-NetIPAddress -AddressFamily IPv4 -IPAddress $LanAddress -ErrorAction Stop)
@@ -87,13 +90,17 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Public manifest push failed' }
     & $adb -s $Serial shell run-as $app cp '/data/local/tmp/arthur-r3-public.json' "$deviceRoot/peer.json"
     if ($LASTEXITCODE -ne 0) { throw 'Public manifest install failed' }
-    if ($SignedOriginal) {
+    if ($signed) {
         $process=Windows 49 'registry'; Finished $process
         & $adb -s $Serial push (Join-Path $base 'registry.json') '/data/local/tmp/arthur-r8-registry.json' | Out-Null
         if ($LASTEXITCODE -ne 0) { throw 'Public signed registry push failed' }
         & $adb -s $Serial shell run-as $app cp '/data/local/tmp/arthur-r8-registry.json' "$deviceRoot/registry.json"
         if ($LASTEXITCODE -ne 0) { throw 'Public signed registry install failed' }
         Android registry
+        if ($SignedHistory) {
+            $process=Windows 50 'history'; Finished $process
+            Android history
+        }
     }
     $pids=@()
     foreach ($phase in @(1,2)) {
@@ -151,22 +158,31 @@ try {
         $w=Get-Content -LiteralPath $windowsResult -Raw | ConvertFrom-Json
         $a=Get-Content -LiteralPath $androidResult -Raw | ConvertFrom-Json
         if ($w.pid -ne $process.Id -or $w.events.Count -ne 3 -or $a.events.Count -ne 3) {throw 'Endpoint/evidence count mismatch'}
-        $expectedProfile=if($SignedOriginal){'m05-signed-original-candidate-v1'}else{'m05-ledger-candidate'}
+        $expectedProfile=if($SignedHistory){'m05-signed-history-candidate-v1'}elseif($SignedOriginal){'m05-signed-original-candidate-v1'}else{'m05-ledger-candidate'}
         if ($w.profile -ne $expectedProfile -or $a.profile -ne $expectedProfile) {throw 'Native profile differs from explicit controller selection'}
-        if ($SignedOriginal) {
+        if ($signed) {
             foreach ($event in @($w.events)+@($a.events)) {
                 if ($event.signed_original.Count -lt 1 -or $event.signed_original.Count -gt 16384 -or $event.author.Count -ne 65) {throw 'Missing native-verified original author/signature evidence'}
             }
             if ($w.original_seals.Count -ne 1 -or $a.original_seals.Count -ne 1) {throw 'Missing signed origin seal'}
         }
         if (($w.events | ConvertTo-Json -Depth 100 -Compress) -cne ($a.events | ConvertTo-Json -Depth 100 -Compress)) {throw 'Canonical event/row evidence differs'}
-        $expectedPending=if($phase -eq 1){2}else{0}
+        $expectedPending=if($phase -eq 1 -and -not $SignedHistory){2}else{0}
         if ($w.outstanding.Count -ne $expectedPending -or $a.outstanding.Count -ne 0) {throw 'Incorrect durable receipt/retry state'}
         $expectedStatus=if($phase -eq 1){'Syncing'}else{'CleanlyApplied'}
         if ($w.status -ne $expectedStatus -or $a.status -ne 'CleanlyApplied' -or $w.needs_attention -ne $false -or $a.needs_attention -ne $false) {throw 'Incorrect native status/attention boundary'}
+        if ($SignedHistory) {
+            if ($w.snapshots.Count -ne 1 -or $a.snapshots.Count -ne 1) {throw 'Missing signed snapshot evidence'}
+            $expectedOutcome=if($phase -eq 1){'staged'}else{'applied'}
+            if ($w.snapshots[0].outcome -ne $expectedOutcome -or $a.snapshots[0].outcome -ne 'applied' -or $w.snapshots[0].direction -ne 'out' -or $a.snapshots[0].direction -ne 'in') {throw 'Incorrect durable signed snapshot receipt state'}
+            foreach ($field in @('id','image_hash','image_bytes','image_chunks','evidence_hash','evidence_bytes','evidence_chunks')) {
+                if ($w.snapshots[0].$field -cne $a.snapshots[0].$field) {throw "Signed snapshot descriptor mismatch: $field"}
+            }
+        }
         $pids+=@{windows=$w.pid;android=$a.pid}
-        "PASS phase $phase CNG/Keystore TLS13 exact bidirectional originals/rows; pending lost receipts $expectedPending; Windows PID $($w.pid), Android PID $($a.pid)"
-        if ($expectedPending -ne 0) { 'Delivery pending: phase 1 is NOT up-to-date; phase 2 must obtain the missing durable receipts' }
+        "PASS phase $phase CNG/Keystore TLS13 exact bidirectional originals/rows; pending original receipts $expectedPending; Windows PID $($w.pid), Android PID $($a.pid)"
+        if ($SignedHistory) { "Signed snapshot source receipt state: $expectedOutcome" }
+        if ($phase -eq 1) { 'Delivery pending: phase 1 is NOT up-to-date; phase 2 must obtain the missing durable receipts' }
         "Endpoints Windows $($w.endpoints -join ' -> '); Android $($a.endpoints -join ' -> ')"
     }
     if ($pids[0].windows -eq $pids[1].windows -or $pids[0].android -eq $pids[1].android) {throw 'Both endpoint processes must restart'}
@@ -177,12 +193,18 @@ try {
         $first=Get-Content (Join-Path $base "$endpoint-1.json") -Raw | ConvertFrom-Json
         $second=Get-Content (Join-Path $base "$endpoint-2.json") -Raw | ConvertFrom-Json
         $stableFields=@('proofs','cursors')
-        if ($SignedOriginal) { $stableFields+=@('original_seals') }
+        if ($signed) { $stableFields+=@('original_seals') }
+        if ($SignedHistory) {
+            foreach ($field in @('id','image_hash','image_bytes','image_chunks','evidence_hash','evidence_bytes','evidence_chunks','direction')) {
+                if ($first.snapshots[0].$field -cne $second.snapshots[0].$field) {throw "Restart altered immutable signed snapshot $field"}
+            }
+        }
         foreach ($field in $stableFields) {
             if (($first.$field | ConvertTo-Json -Depth 100 -Compress) -cne ($second.$field | ConvertTo-Json -Depth 100 -Compress)) {throw "Restart altered $endpoint $field"}
         }
     }
-    if ($SignedOriginal) { 'PASS R8 signed profile: exact original-author signatures and accepted seals survived both process restarts; full signature verification ran inside the native store' }
+    if ($SignedHistory) { 'PASS R9 signed snapshot: exact cached image and proof, lost ACK, reverse post-H original, both process restarts; rotation was not authorized or exercised' }
+    elseif ($SignedOriginal) { 'PASS R8 signed profile: exact original-author signatures and accepted seals survived both process restarts; full signature verification ran inside the native store' }
     if ($Physical) {'PASS — EXECUTED ON PHYSICAL DEVICE: direct native TCP, both process restarts, exact persisted OS public keys, no duplicates; no ADB reverse data path'}
     elseif ($lanMode) {'PASS direct native TCP; device provenance reported above; no ADB reverse data path'}
     else {'PASS both process restarts, exact persisted OS public keys, no duplicate application; ADB-mediated loopback only'}

@@ -2,6 +2,7 @@
 pub(crate) mod bootstrap;
 pub mod codec;
 pub(crate) mod protocol;
+pub(crate) mod signed_bootstrap;
 pub(crate) use protocol::*;
 pub mod reducer;
 pub(crate) mod validation;

@@ -22,6 +22,8 @@ use std::collections::BTreeSet;
 use uuid::Uuid;
 #[path = "signed_profile_fault_tests.rs"]
 mod faults;
+#[path = "signed_history_tests.rs"]
+mod history;
 
 struct Clock;
 impl SyncClock for Clock {
@@ -140,6 +142,12 @@ impl Lab {
         Self::with_review_history(false)
     }
     fn with_review_history(review: bool) -> Self {
+        Self::configured(review, None)
+    }
+    fn configured(
+        review: bool,
+        seed: Option<fn(&crate::storage::capture_store::CaptureStore)>,
+    ) -> Self {
         let a = Fixture::new().unwrap();
         let b = Fixture::new().unwrap();
         let admin = Admin::new();
@@ -147,7 +155,9 @@ impl Lab {
         let bo = b.owner();
         f::upgrade(ao.store());
         f::upgrade(bo.store());
-        if review {
+        if let Some(seed) = seed {
+            seed(ao.store());
+        } else if review {
             f::review_history(ao.store());
         } else {
             f::project_and_capture(
@@ -340,7 +350,8 @@ fn count(f: &Fixture, sql: &str) -> i64 {
 fn signatures(f: &Fixture) -> Vec<(String, Vec<u8>)> {
     let owner = f.owner();
     let c = owner.store().connection.lock().unwrap();
-    let mut q=c.prepare("SELECT event,envelope FROM e2_export_signatures UNION ALL SELECT event,envelope FROM e2_originals ORDER BY event").unwrap();
+    let table = super::signed_import::accepted_tables(&c).unwrap().1;
+    let mut q=c.prepare(&format!("SELECT event,envelope FROM e2_export_signatures UNION ALL SELECT event,envelope FROM {table} ORDER BY event")).unwrap();
     q.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
         .unwrap()
         .collect::<rusqlite::Result<_>>()

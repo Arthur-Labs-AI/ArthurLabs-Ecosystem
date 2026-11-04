@@ -25,6 +25,8 @@ Refuses { Assert-QualificationApk 'unused' 'dev.kaloyan.arthur' $null $null } 'O
 Refuses { & (Join-Path $PSScriptRoot 'verify-cross-device.ps1') -Serial 'usb-phone' -Physical } 'no ADB reverse fallback'
 Refuses { & (Join-Path $PSScriptRoot 'verify-cross-device.ps1') -Serial 'usb-phone' -Physical -LanAddress '8.8.8.8' -AndroidAddress '192.168.1.3' } 'private LAN'
 
+Refuses { & (Join-Path $PSScriptRoot 'verify-cross-device.ps1') -Serial 'unused' -SignedOriginal -SignedHistory } 'Select exactly one signed profile'
+
 function Fake-Adb {
     $global:LASTEXITCODE = 0
     switch ($args[-1]) {

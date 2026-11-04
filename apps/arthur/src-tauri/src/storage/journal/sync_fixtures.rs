@@ -2,6 +2,33 @@
 use super::{storage::JournalKernel, storage_tests};
 use crate::storage::capture_store::{CaptureStore, CreateCaptureInput};
 pub(crate) const PROJECT: &str = "aaaaaaaa-1111-4111-8111-111111111111";
+#[cfg(test)]
+pub(crate) fn observer_scopes() -> usize {
+    super::g3::observer_scopes()
+}
+#[cfg(test)]
+pub(crate) struct CaptureSeries<'a> {
+    kernel: JournalKernel<'a>,
+}
+#[cfg(test)]
+impl<'a> CaptureSeries<'a> {
+    pub fn new(store: &'a CaptureStore) -> Self {
+        Self {
+            kernel: JournalKernel::activate(store).unwrap(),
+        }
+    }
+    pub fn append(&self, content: &str) {
+        self.kernel
+            .write(|w| {
+                w.create_capture(CreateCaptureInput {
+                    source: "text".into(),
+                    content: content.into(),
+                    project_id: None,
+                })
+            })
+            .unwrap();
+    }
+}
 pub(crate) fn upgrade(s: &CaptureStore) {
     storage_tests::upgrade(s)
 }

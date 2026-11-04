@@ -34,6 +34,7 @@ pub(crate) struct SyncEngine<'a, S: SyncStore + ?Sized, T: AuthenticatedTranspor
     // One already bounded/captured manifest and its next existing message.
     // Never assemble a second full chunk vector or enqueue the entire image.
     bootstrap: Option<(SnapshotExport, usize)>,
+    bootstrap_evidence: Option<SnapshotExport>,
     snapshot_pending: Option<Uuid>,
     snapshot_done: Option<Uuid>,
     // Session-only receipt/request accounting. Canonical bytes, dependencies,
@@ -75,6 +76,7 @@ impl<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> SyncEng
             status: summary.status,
             blocked: None,
             bootstrap: None,
+            bootstrap_evidence: None,
             snapshot_pending: None,
             snapshot_done: None,
             deferred: BTreeSet::new(),
@@ -103,10 +105,18 @@ impl<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> SyncEng
         if self.bootstrap.is_some() || self.snapshot_pending.is_some() {
             return Err(Error::Limit);
         }
-        let snapshot = match self
-            .store
-            .snapshot_capture(&self.session, id, self.clock, self.cancel)
-        {
+        let captured = if self.profile == SyncProfile::SignedHistory {
+            self.store
+                .signed_snapshot_capture(&self.session, id, self.clock, self.cancel)
+                .map(|s| {
+                    self.bootstrap_evidence = Some(s.evidence);
+                    s.image
+                })
+        } else {
+            self.store
+                .snapshot_capture(&self.session, id, self.clock, self.cancel)
+        };
+        let snapshot = match captured {
             Ok(snapshot) => snapshot,
             Err(e) => {
                 if matches!(
@@ -133,9 +143,31 @@ impl<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> SyncEng
         let Some((snapshot, next)) = self.bootstrap.as_ref() else {
             return Ok(());
         };
-        let done = *next == snapshot.offer.chunks + 1;
+        let evidence_chunks = self
+            .bootstrap_evidence
+            .as_ref()
+            .map_or(0, |e| e.offer.chunks);
+        let done = *next == snapshot.offer.chunks + evidence_chunks + 1;
         let id = snapshot.offer.id;
-        let payload = if *next == 0 {
+        let payload = if let Some(evidence) = self.bootstrap_evidence.as_ref() {
+            let offer = SignedSnapshotOffer {
+                image: snapshot.offer.clone(),
+                evidence: evidence.offer.clone(),
+            };
+            if *next == 0 {
+                Payload::SignedSnapshotOffer(offer)
+            } else if done {
+                Payload::SignedSnapshotPublish(offer)
+            } else if *next <= snapshot.offer.chunks {
+                Payload::SignedSnapshotImage(snapshot.chunk(*next - 1).ok_or(Error::Integrity)?)
+            } else {
+                Payload::SignedSnapshotEvidence(
+                    evidence
+                        .chunk(*next - snapshot.offer.chunks - 1)
+                        .ok_or(Error::Integrity)?,
+                )
+            }
+        } else if *next == 0 {
             Payload::SnapshotOffer(snapshot.offer.clone())
         } else if done {
             Payload::SnapshotPublish(snapshot.offer.clone())
@@ -145,6 +177,7 @@ impl<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> SyncEng
         self.send(payload)?;
         if done {
             self.bootstrap = None;
+            self.bootstrap_evidence = None;
             self.snapshot_pending = Some(id);
             self.retry()?;
             self.advertise()?;
@@ -217,7 +250,7 @@ impl<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> SyncEng
         if self.in_flight.len() >= MAX_BATCH {
             return Err(Error::Limit);
         }
-        let (e, metadata) = if self.profile == SyncProfile::SignedOriginalCandidate {
+        let (e, metadata) = if self.profile.signed() {
             let signed = self
                 .store
                 .export_signed(&self.session, id, self.clock, self.cancel)?;
@@ -310,6 +343,7 @@ impl<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> SyncEng
             self.assemblies.clear();
             self.signed_metadata.clear();
             self.bootstrap = None;
+            self.bootstrap_evidence = None;
             self.snapshot_pending = None;
             self.status = SyncStatus::Syncing;
             self.needs_attention = true;
@@ -360,6 +394,7 @@ impl<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> SyncEng
             self.assemblies.clear();
             self.signed_metadata.clear();
             self.bootstrap = None;
+            self.bootstrap_evidence = None;
             self.snapshot_pending = None;
         }
         result
@@ -416,7 +451,7 @@ impl<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> SyncEng
         if !self.negotiated {
             return Err(Error::Protocol);
         }
-        if self.profile == SyncProfile::SignedOriginalCandidate
+        if self.profile.signed()
             && matches!(
                 &message.payload,
                 Payload::SnapshotOffer(_)
@@ -427,9 +462,73 @@ impl<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> SyncEng
         {
             return Err(Error::Protocol);
         }
+        let signed_evidence = matches!(&message.payload, Payload::SignedSnapshotEvidence(_));
         match message.payload {
+            Payload::SignedSnapshotOffer(o) => {
+                if self.profile != SyncProfile::SignedHistory {
+                    return Err(Error::Protocol);
+                }
+                self.store
+                    .signed_snapshot_offer(&self.session, &o, self.clock, self.cancel)?;
+                self.status = SyncStatus::Syncing;
+            }
+            Payload::SignedSnapshotImage(ch) | Payload::SignedSnapshotEvidence(ch) => {
+                if self.profile != SyncProfile::SignedHistory {
+                    return Err(Error::Protocol);
+                }
+                // The bound descriptors determine which separately staged stream this is.
+                let evidence = signed_evidence;
+                self.store.signed_snapshot_chunk(
+                    &self.session,
+                    &ch,
+                    evidence,
+                    self.clock,
+                    self.cancel,
+                )?;
+                self.status = SyncStatus::Syncing;
+            }
+            Payload::SignedSnapshotPublish(o) => {
+                if self.profile != SyncProfile::SignedHistory {
+                    return Err(Error::Protocol);
+                }
+                let r = self.store.signed_snapshot_publish(
+                    &self.session,
+                    &o,
+                    self.clock,
+                    self.cancel,
+                )?;
+                self.status = r.outcome.into();
+                self.needs_attention = self
+                    .store
+                    .summary(&self.session, self.clock, self.cancel)?
+                    .needs_attention
+                    || r.outcome != Outcome::CleanlyApplied;
+                self.send(Payload::SignedSnapshotReceipt(r))?;
+            }
+            Payload::SignedSnapshotReceipt(r) => {
+                if self.profile != SyncProfile::SignedHistory {
+                    return Err(Error::Protocol);
+                }
+                if self.snapshot_pending != Some(r.offer.image.id)
+                    && self.snapshot_done != Some(r.offer.image.id)
+                {
+                    return Err(Error::Integrity);
+                }
+                self.store
+                    .signed_snapshot_receipt(&self.session, &r, self.clock, self.cancel)?;
+                if self.snapshot_pending == Some(r.offer.image.id) {
+                    self.snapshot_pending = None;
+                    self.snapshot_done = Some(r.offer.image.id);
+                }
+                self.status = r.outcome.into();
+                self.needs_attention = self
+                    .store
+                    .summary(&self.session, self.clock, self.cancel)?
+                    .needs_attention
+                    || r.outcome != Outcome::CleanlyApplied;
+            }
             Payload::SignedMetadata(metadata) => {
-                if self.profile != SyncProfile::SignedOriginalCandidate {
+                if !self.profile.signed() {
                     return Err(Error::Protocol);
                 }
                 if metadata.bytes.is_empty() || metadata.bytes.len() > MAX_SIGNED_METADATA {
@@ -544,7 +643,7 @@ impl<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> SyncEng
             Payload::Chunk(chunk) => {
                 self.status = SyncStatus::Syncing;
                 let id = chunk.identity.event;
-                if self.profile == SyncProfile::SignedOriginalCandidate {
+                if self.profile.signed() {
                     let metadata = self.signed_metadata.get(&id).ok_or(Error::Protocol)?;
                     if metadata.identity != chunk.identity {
                         return Err(Error::Integrity);
@@ -563,7 +662,7 @@ impl<'a, S: SyncStore + ?Sized, T: AuthenticatedTransport, C: SyncClock> SyncEng
                     if !self.session.permits(validated.envelope().identity.origin) {
                         return Err(Error::Trust);
                     }
-                    let receipt = if self.profile == SyncProfile::SignedOriginalCandidate {
+                    let receipt = if self.profile.signed() {
                         let metadata = self.signed_metadata.remove(&id).ok_or(Error::Protocol)?;
                         self.store.retain_signed(
                             &self.session,

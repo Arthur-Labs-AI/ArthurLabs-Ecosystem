@@ -26,7 +26,12 @@ pub(super) fn installed(c: &Connection) -> Result<bool> {
     )
     .map_err(sql)
 }
-fn unit(c: &Connection, s: &VerifiedSession, o: &SnapshotOffer, direction: &str) -> Result<String> {
+pub(super) fn unit(
+    c: &Connection,
+    s: &VerifiedSession,
+    o: &SnapshotOffer,
+    direction: &str,
+) -> Result<String> {
     o.validate()?;
     let row:Option<StoredUnit>=c.query_row("SELECT peer,network,epoch,hash,bytes,chunks,direction,outcome FROM bootstrap_units WHERE id=?1",[o.id.to_string()],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?,r.get(6)?,r.get(7)?))).optional().map_err(sql)?;
     let Some((peer, network, epoch, hash, bytes, chunks, dir, outcome)) = row else {
@@ -141,7 +146,10 @@ fn row(r: &SnapshotRow) -> Result<(EntityKind, RowImage)> {
     }
     Ok((e, out))
 }
-fn graph(events: &[Envelope]) -> Result<(Vec<usize>, Vec<HighWater>)> {
+fn graph_checked(
+    events: &[Envelope],
+    validated: &[ValidatedEvent],
+) -> Result<(Vec<usize>, Vec<HighWater>)> {
     let mut refs = BTreeMap::new();
     let mut streams: BTreeMap<(Uuid, Uuid), BTreeMap<i64, usize>> = BTreeMap::new();
     let mut bundle = BTreeSet::new();
@@ -162,7 +170,7 @@ fn graph(events: &[Envelope]) -> Result<(Vec<usize>, Vec<HighWater>)> {
     for ((origin, inc), entries) in streams {
         let (mut seq, mut hash) = (0, [0; 32]);
         for (n, i) in entries {
-            let v = ValidatedEvent::parse(events[i].clone())?;
+            let v = &validated[i];
             if n != seq + 1 || v.core().previous_event_hash != codec::hash_hex(&hash) {
                 return Err(Error::Integrity);
             }
@@ -187,8 +195,8 @@ fn graph(events: &[Envelope]) -> Result<(Vec<usize>, Vec<HighWater>)> {
             hash: codec::hash_hex(&hash),
         });
     }
-    for (i, e) in events.iter().enumerate() {
-        let v = ValidatedEvent::parse(e.clone())?;
+    for (i, _e) in events.iter().enumerate() {
+        let v = &validated[i];
         let mut references = v
             .core()
             .dependencies
@@ -241,9 +249,39 @@ pub(super) fn capture(
     clock: &dyn SyncClock,
     x: &Cancellation,
 ) -> Result<SnapshotExport> {
-    store.write(s, clock, x, |c| capture_in(c, s, id))
+    store.write(s, clock, x, |c| {
+        if signed_unit(c, id)? {
+            return Err(Error::Protocol);
+        }
+        capture_in(c, s, id)
+    })
 }
-fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotExport> {
+pub(super) fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotExport> {
+    capture_validated_in(c, s, id).map(|captured| captured.export)
+}
+// Only this capture path constructs the context, under the caller's transaction.
+// Signed history reuses its fully checked cores instead of decoding them again.
+pub(super) struct Captured {
+    pub export: SnapshotExport,
+    pub image: SnapshotImage,
+    pub events: Vec<ValidatedEvent>,
+}
+pub(super) fn capture_validated_in(
+    c: &Connection,
+    s: &VerifiedSession,
+    id: Uuid,
+) -> Result<Captured> {
+    let mut trace = super::bootstrap_trace::Capture::new();
+    let result = capture_traced(c, s, id, &mut trace);
+    trace.report.failure = result.as_ref().err().copied();
+    result
+}
+fn capture_traced(
+    c: &Connection,
+    s: &VerifiedSession,
+    id: Uuid,
+    trace: &mut super::bootstrap_trace::Capture,
+) -> Result<Captured> {
     if !installed(c)? {
         return Err(Error::ActivationPending);
     }
@@ -273,15 +311,24 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
         };
         unit(c, s, &offer, "out")?;
         let image = decode(&payload)?;
-        authorize_image(s, &image)?;
+        let events = image
+            .cores
+            .iter()
+            .map(|core| ValidatedEvent::from_bytes(unhex(&core.bytes)?))
+            .collect::<Result<Vec<_>>>()?;
+        authorize_checked(s, &image, &events)?;
         c.execute(
             "UPDATE bootstrap_units SET session=?2 WHERE id=?1",
             params![id.to_string(), s.binding().session.to_string()],
         )
         .map_err(sql)?;
-        return Ok(SnapshotExport {
-            offer,
-            bytes: payload,
+        return Ok(Captured {
+            export: SnapshotExport {
+                offer,
+                bytes: payload,
+            },
+            image,
+            events,
         });
     }
     for (query, cap) in [
@@ -293,7 +340,7 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
         let n: i64 = c.query_row(query, [], |r| r.get(0)).map_err(sql)?;
         if n > cap { return Err(Error::SnapshotTooLarge); }
     }
-    let start = Instant::now();
+    trace.phase("cores")?;
     let mut image = SnapshotImage {
         profile: if super::journal::g3::d4_installed(c)? {
             BOOTSTRAP_D4_PROFILE
@@ -315,6 +362,7 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
     let mut q = c.prepare("SELECT canonical_bytes,'applied',1 FROM sync_bundles UNION ALL SELECT e.bytes,e.outcome,EXISTS(SELECT 1 FROM import_g3_commits g WHERE g.event=e.event) FROM import_events e LIMIT 65").map_err(sql)?;
     let mut rs = q.query([]).map_err(sql)?;
     let mut events = Vec::new();
+    let mut checked = Vec::new();
     let mut raw = 0;
     while let Some(r) = rs.next().map_err(sql)? {
         if events.len() >= BOOTSTRAP_EVENTS {
@@ -322,10 +370,13 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
         }
         let bytes: Vec<u8> = r.get(0).map_err(sql)?;
         raw += bytes.len();
+        trace.report.raw_bytes = raw;
+        trace.report.events = events.len() + 1;
         if raw > BOOTSTRAP_BYTES / 2 {
             return Err(Error::SnapshotTooLarge);
         }
-        let e = envelope(bytes)?;
+        let validated = ValidatedEvent::from_bytes(bytes)?;
+        let e = validated.envelope().clone();
         if !s.permits(e.identity.origin) {
             return Err(Error::Trust);
         }
@@ -335,11 +386,13 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
             materialized: r.get(2).map_err(sql)?,
         });
         events.push(e);
+        checked.push(validated);
     }
-    image.high_water = graph(&events)?.1;
+    trace.phase("graph")?;
+    image.high_water = graph_checked(&events, &checked)?.1;
     let mut creations = BTreeSet::new();
-    for event in &events {
-        let validated = ValidatedEvent::parse(event.clone())?;
+    for (index, event) in events.iter().enumerate() {
+        let validated = &checked[index];
         if image.profile == BOOTSTRAP_D4_PROFILE
             && validated
                 .core()
@@ -355,6 +408,7 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
             }
         }
     }
+    trace.phase("catalog")?;
     for (entity, key, record) in import_view::catalog(c, BOOTSTRAP_ROWS)? {
         super::journal::g3::disclosure_row(entity, &record)?;
         let provenance = if creations.contains(&(entity, key.clone())) {
@@ -376,10 +430,10 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
             key,
             image: image_json(&record),
         });
-        if start.elapsed() > Duration::from_secs(5) {
-            return Err(Error::SnapshotTooLarge);
-        }
+        trace.report.rows = image.rows.len();
+        trace.check()?;
     }
+    trace.phase("metadata_capture")?;
     let mut q = c.prepare("SELECT origin_id,incarnation,last_seq,last_hash,status,opened_at,sealed_at FROM sync_origins ORDER BY origin_id,incarnation LIMIT 65").map_err(sql)?;
     let mut rs = q.query([]).map_err(sql)?;
     while let Some(r) = rs.next().map_err(sql)? {
@@ -448,8 +502,10 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
     }
     image.row_count = image.rows.len();
     image.core_count = image.cores.len();
-    authorize_image(s, &image)?;
-    metadata(&image, &events)?;
+    trace.phase("authorize")?;
+    authorize_checked(s, &image, &checked)?;
+    trace.phase("metadata_verify")?;
+    metadata(&image, &events, &checked)?;
     for alternative in &image.conflicts {
         if alternative.get("kind").and_then(|v| v.as_str()) == Some("collision") {
             let e = envelope(unhex(
@@ -460,11 +516,15 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
             }
         }
     }
-    if start.elapsed() > Duration::from_secs(5) {
+    trace.phase("canonical")?;
+    let bytes = serde_jcs::to_vec(&image).map_err(|_| Error::Integrity)?;
+    trace.report.image_bytes = bytes.len();
+    if bytes.len() > BOOTSTRAP_BYTES {
         return Err(Error::SnapshotTooLarge);
     }
-    let bytes = canonical(&image)?;
+    trace.phase("decode")?;
     decode(&bytes)?;
+    trace.phase("stage")?;
     let offer = SnapshotOffer {
         id,
         hash: codec::journal_event_hash(&bytes),
@@ -472,7 +532,12 @@ fn capture_in(c: &Connection, s: &VerifiedSession, id: Uuid) -> Result<SnapshotE
         chunks: bytes.len().div_ceil(CHUNK),
     };
     save_unit(c, s, &offer, "out", Some(&bytes))?;
-    Ok(SnapshotExport { offer, bytes })
+    trace.check()?;
+    Ok(Captured {
+        export: SnapshotExport { offer, bytes },
+        image,
+        events: checked,
+    })
 }
 pub(super) fn stage_offer(
     store: &CandidateSyncStore<'_>,
@@ -481,27 +546,36 @@ pub(super) fn stage_offer(
     clock: &dyn SyncClock,
     x: &Cancellation,
 ) -> Result<()> {
-    store.write(s, clock, x, |c| {
-        if !installed(c)? {
-            return Err(Error::ActivationPending);
+    store.write(s, clock, x, |c| stage_offer_in(c, s, o, false))
+}
+pub(super) fn stage_offer_in(
+    c: &Connection,
+    s: &VerifiedSession,
+    o: &SnapshotOffer,
+    signed: bool,
+) -> Result<()> {
+    if !signed && signed_unit(c, o.id)? {
+        return Err(Error::Protocol);
+    }
+    if !installed(c)? {
+        return Err(Error::ActivationPending);
+    }
+    let exists: bool = c
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM bootstrap_units WHERE id=?1)",
+            [o.id.to_string()],
+            |r| r.get(0),
+        )
+        .map_err(sql)?;
+    if exists {
+        unit(c, s, o, "in")?;
+        if super::journal::g3::d4_installed(c)? {
+            c.execute("UPDATE bootstrap_lifecycle SET state='receiving' WHERE id=?1 AND state IN('interrupted','expired')",[o.id.to_string()]).map_err(sql)?;
         }
-        let exists: bool = c
-            .query_row(
-                "SELECT EXISTS(SELECT 1 FROM bootstrap_units WHERE id=?1)",
-                [o.id.to_string()],
-                |r| r.get(0),
-            )
-            .map_err(sql)?;
-        if exists {
-            unit(c, s, o, "in")?;
-            if super::journal::g3::d4_installed(c)? {
-                c.execute("UPDATE bootstrap_lifecycle SET state='receiving' WHERE id=?1 AND state IN('interrupted','expired')",[o.id.to_string()]).map_err(sql)?;
-            }
-            Ok(())
-        } else {
-            save_unit(c, s, o, "in", None)
-        }
-    })
+        Ok(())
+    } else {
+        save_unit(c, s, o, "in", None)
+    }
 }
 pub(super) fn stage_chunk(
     store: &CandidateSyncStore<'_>,
@@ -510,6 +584,17 @@ pub(super) fn stage_chunk(
     clock: &dyn SyncClock,
     x: &Cancellation,
 ) -> Result<()> {
+    store.write(s, clock, x, |c| stage_chunk_in(c, s, ch, false))
+}
+pub(super) fn stage_chunk_in(
+    c: &Connection,
+    s: &VerifiedSession,
+    ch: &SnapshotChunk,
+    signed: bool,
+) -> Result<()> {
+    if !signed && signed_unit(c, ch.offer.id)? {
+        return Err(Error::Protocol);
+    }
     ch.offer.validate()?;
     if ch.index >= ch.offer.chunks
         || ch.bytes.len() != (ch.offer.bytes - ch.index * CHUNK).min(CHUNK)
@@ -517,34 +602,32 @@ pub(super) fn stage_chunk(
     {
         return Err(Error::Integrity);
     }
-    store.write(s, clock, x, |c| {
-        unit(c, s, &ch.offer, "in")?;
-        let prior: Option<(Vec<u8>, Vec<u8>)> = c
-            .query_row(
-                "SELECT hash,bytes FROM bootstrap_chunks WHERE id=?1 AND ordinal=?2",
-                params![ch.offer.id.to_string(), ch.index as i64],
-                |r| Ok((r.get(0)?, r.get(1)?)),
-            )
-            .optional()
-            .map_err(sql)?;
-        if let Some((hash, bytes)) = prior {
-            if hash != ch.hash || bytes != ch.bytes {
-                return Err(Error::Integrity);
-            }
-        } else {
-            c.execute(
-                "INSERT INTO bootstrap_chunks VALUES(?1,?2,?3,?4)",
-                params![
-                    ch.offer.id.to_string(),
-                    ch.index as i64,
-                    ch.hash.as_slice(),
-                    ch.bytes
-                ],
-            )
-            .map_err(sql)?;
+    unit(c, s, &ch.offer, "in")?;
+    let prior: Option<(Vec<u8>, Vec<u8>)> = c
+        .query_row(
+            "SELECT hash,bytes FROM bootstrap_chunks WHERE id=?1 AND ordinal=?2",
+            params![ch.offer.id.to_string(), ch.index as i64],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()
+        .map_err(sql)?;
+    if let Some((hash, bytes)) = prior {
+        if hash != ch.hash || bytes != ch.bytes {
+            return Err(Error::Integrity);
         }
-        bounds(c)
-    })
+    } else {
+        c.execute(
+            "INSERT INTO bootstrap_chunks VALUES(?1,?2,?3,?4)",
+            params![
+                ch.offer.id.to_string(),
+                ch.index as i64,
+                ch.hash.as_slice(),
+                ch.bytes
+            ],
+        )
+        .map_err(sql)?;
+    }
+    bounds(c)
 }
 fn permit(s: &VerifiedSession, origin: &str) -> Result<()> {
     let origin = Uuid::parse_str(origin).map_err(|_| Error::Integrity)?;
@@ -556,6 +639,18 @@ fn permit(s: &VerifiedSession, origin: &str) -> Result<()> {
 /// Scope follows original provenance, never the forwarding transport peer.
 /// Apply to new exports, cached exports and received manifests alike.
 fn authorize_image(s: &VerifiedSession, image: &SnapshotImage) -> Result<()> {
+    let checked = image
+        .cores
+        .iter()
+        .map(|core| ValidatedEvent::parse(envelope(unhex(&core.bytes)?)?))
+        .collect::<Result<Vec<_>>>()?;
+    authorize_checked(s, image, &checked)
+}
+fn authorize_checked(
+    s: &VerifiedSession,
+    image: &SnapshotImage,
+    validated: &[ValidatedEvent],
+) -> Result<()> {
     for h in &image.high_water {
         permit(s, &h.origin)?;
     }
@@ -594,9 +689,8 @@ fn authorize_image(s: &VerifiedSession, image: &SnapshotImage) -> Result<()> {
             return Err(Error::Trust);
         }
     }
-    for core in &image.cores {
-        let v = ValidatedEvent::parse(envelope(unhex(&core.bytes)?)?)?;
-        super::journal::g3::disclosure_event(&v)?;
+    for v in validated {
+        super::journal::g3::disclosure_event(v)?;
         permit(s, &v.core().origin_id)?;
         for d in &v.core().dependencies {
             if let Some(r) = &d.event_ref {
@@ -630,13 +724,12 @@ fn authorize_image(s: &VerifiedSession, image: &SnapshotImage) -> Result<()> {
     }
     Ok(())
 }
-fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
+fn metadata(
+    image: &SnapshotImage,
+    events: &[Envelope],
+    validated: &[ValidatedEvent],
+) -> Result<()> {
     let start = Instant::now();
-    let validated = events
-        .iter()
-        .cloned()
-        .map(ValidatedEvent::parse)
-        .collect::<Result<Vec<_>>>()?;
     // Bounded borrowed indexes, not another history/projection. Avoid repeated
     // full-image scans and UUID formatting for every facet of 2,048 rows.
     // All original field/hash/provenance checks below remain in force.
@@ -847,7 +940,7 @@ fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
         }
     }
     if image.profile == BOOTSTRAP_D4_PROFILE {
-        for v in &validated {
+        for v in validated {
             if v.core()
                 .operations
                 .iter()
@@ -917,11 +1010,30 @@ fn metadata(image: &SnapshotImage, events: &[Envelope]) -> Result<()> {
     }
     Ok(())
 }
-fn verify(
+pub(super) struct VerifiedImage {
+    image: SnapshotImage,
+    events: Vec<ValidatedEvent>,
+    order: Vec<usize>,
+    offer: SnapshotOffer,
+    signed: bool,
+}
+impl VerifiedImage {
+    pub(super) fn with_signed_provenance(mut self) -> Self {
+        self.signed = true;
+        self
+    }
+    pub fn image(&self) -> &SnapshotImage {
+        &self.image
+    }
+    pub fn events(&self) -> &[ValidatedEvent] {
+        &self.events
+    }
+}
+pub(super) fn verify(
     c: &Connection,
     s: &VerifiedSession,
     o: &SnapshotOffer,
-) -> Result<(SnapshotImage, Vec<Envelope>, Vec<usize>)> {
+) -> Result<VerifiedImage> {
     unit(c, s, o, "in")?;
     let mut bytes = Vec::with_capacity(o.bytes);
     let mut q = c
@@ -955,17 +1067,20 @@ fn verify(
     if image.id != o.id.to_string() || image.network != s.binding().network.to_string() {
         return Err(Error::Trust);
     }
-    authorize_image(s, &image)?;
     let mut events = Vec::new();
+    let mut checked = Vec::new();
     for core in &image.cores {
         Outcome::parse(&core.outcome)?;
-        let e = envelope(unhex(&core.bytes)?)?;
+        let value = ValidatedEvent::from_bytes(unhex(&core.bytes)?)?;
+        let e = value.envelope().clone();
         if !s.permits(e.identity.origin) {
             return Err(Error::Trust);
         }
         events.push(e);
+        checked.push(value);
     }
-    metadata(&image, &events)?;
+    authorize_checked(s, &image, &checked)?;
+    metadata(&image, &events, &checked)?;
     for m in &image.conflicts {
         if m.get("kind").and_then(|v| v.as_str()) == Some("collision") {
             let e = envelope(unhex(m["bytes"].as_str().ok_or(Error::Integrity)?)?)?;
@@ -974,13 +1089,13 @@ fn verify(
             }
         }
     }
-    let (order, high) = graph(&events)?;
+    let (order, high) = graph_checked(&events, &checked)?;
     if high != image.high_water {
         return Err(Error::Integrity);
     }
     let mut creations = BTreeSet::new();
-    for event in &events {
-        for op in &ValidatedEvent::parse(event.clone())?.core().operations {
+    for value in &checked {
+        for op in &value.core().operations {
             if let Operation::RecordCreate(create) = op {
                 creations.insert((create.entity, create.key.clone()));
             }
@@ -996,7 +1111,13 @@ fn verify(
             return Err(Error::Integrity);
         }
     }
-    Ok((image, events, order))
+    Ok(VerifiedImage {
+        image,
+        events: checked,
+        order,
+        offer: o.clone(),
+        signed: false,
+    })
 }
 pub(super) fn publish(
     store: &CandidateSyncStore<'_>,
@@ -1006,8 +1127,66 @@ pub(super) fn publish(
     x: &Cancellation,
 ) -> Result<SnapshotReceipt> {
     store.write(s, clock, x, |c| {
+        publish_in(c, s, o, clock, x, false, |c, e| {
+            sync_store::retain_in(c, s, e, clock, x)
+        })
+    })
+}
+pub(super) fn publish_in(
+    c: &Connection,
+    s: &VerifiedSession,
+    o: &SnapshotOffer,
+    clock: &dyn SyncClock,
+    x: &Cancellation,
+    signed: bool,
+    retain: impl FnMut(&Connection, &ValidatedEvent) -> Result<Receipt>,
+) -> Result<SnapshotReceipt> {
+    let verified = verify(c, s, o)?;
+    publish_verified(
+        c,
+        s,
+        o,
+        clock,
+        x,
+        if signed {
+            verified.with_signed_provenance()
+        } else {
+            verified
+        },
+        retain,
+    )
+}
+pub(super) fn publish_verified(
+    c: &Connection,
+    s: &VerifiedSession,
+    o: &SnapshotOffer,
+    clock: &dyn SyncClock,
+    x: &Cancellation,
+    verified: VerifiedImage,
+    mut retain: impl FnMut(&Connection, &ValidatedEvent) -> Result<Receipt>,
+) -> Result<SnapshotReceipt> {
+    if verified.offer != *o {
+        return Err(Error::Integrity);
+    }
+    let signed = verified.signed;
+    let VerifiedImage {
+        image,
+        events,
+        order,
+        ..
+    } = verified;
+    let mut trace = super::bootstrap_trace::Capture::new();
+    if !signed && signed_unit(c, o.id)? {
+        return Err(Error::Protocol);
+    }
+    trace.report.phase = "publish_verify";
+    trace.report.image_bytes = o.bytes;
+    let result = (|| {
         let previous = unit(c, s, o, "in")?;
-        let (image, events, order) = verify(c, s, o)?;
+        trace.report.events = events.len();
+        trace.report.rows = image.rows.len();
+        trace.restart_budget();
+        trace.phase("publish_apply")?;
         if !["staged", "unsupported", "deferred"].contains(&previous.as_str()) {
             return Ok(SnapshotReceipt {
                 offer: o.clone(),
@@ -1040,16 +1219,12 @@ pub(super) fn publish(
         if outcome == Outcome::CleanlyApplied {
             c.execute_batch("SAVEPOINT bootstrap_publish")
                 .map_err(sql)?;
-            let start = Instant::now();
             for i in order {
+                // Five-second budget per retained event; the event count is
+                // capped, so total work stays bounded.
+                trace.restart_budget();
                 sync_store::authorize(c, s, clock, x)?;
-                let r = sync_store::retain_in(
-                    c,
-                    s,
-                    &ValidatedEvent::parse(events[i].clone())?,
-                    clock,
-                    x,
-                )?;
+                let r = retain(c, &events[i])?;
                 if r.outcome == Outcome::RejectedIntegrity {
                     return Err(Error::Integrity);
                 }
@@ -1058,10 +1233,10 @@ pub(super) fn publish(
                 } else if r.outcome == Outcome::ConflictRetained {
                     outcome = Outcome::ConflictRetained
                 }
-                if start.elapsed() > Duration::from_secs(5) {
-                    return Err(Error::SnapshotTooLarge);
-                }
+                trace.check()?;
             }
+            trace.restart_budget();
+            trace.phase("publish_projection")?;
             if outcome == Outcome::CleanlyApplied {
                 for r in &image.rows {
                     let (e, expected) = row(r)?;
@@ -1085,7 +1260,9 @@ pub(super) fn publish(
             offer: o.clone(),
             outcome,
         })
-    })
+    })();
+    trace.report.failure = result.as_ref().err().copied();
+    result
 }
 pub(super) fn receipt(
     store: &CandidateSyncStore<'_>,
@@ -1094,28 +1271,37 @@ pub(super) fn receipt(
     clock: &dyn SyncClock,
     x: &Cancellation,
 ) -> Result<()> {
-    store.write(s, clock, x, |c| {
-        let prior = unit(c, s, &r.offer, "out")?;
-        let session: String = c
-            .query_row(
-                "SELECT session FROM bootstrap_units WHERE id=?1",
-                [r.offer.id.to_string()],
-                |r| r.get(0),
-            )
-            .map_err(sql)?;
-        if session != s.binding().session.to_string() {
-            return Err(Error::Integrity);
-        }
-        if Outcome::parse(&prior).is_ok_and(|o| o.is_ack()) && prior != r.outcome.code() {
-            return Err(Error::Integrity);
-        }
-        c.execute(
-            "UPDATE bootstrap_units SET outcome=?2 WHERE id=?1",
-            params![r.offer.id.to_string(), r.outcome.code()],
+    store.write(s, clock, x, |c| receipt_in(c, s, r, false))
+}
+pub(super) fn receipt_in(
+    c: &Connection,
+    s: &VerifiedSession,
+    r: &SnapshotReceipt,
+    signed: bool,
+) -> Result<()> {
+    if !signed && signed_unit(c, r.offer.id)? {
+        return Err(Error::Protocol);
+    }
+    let prior = unit(c, s, &r.offer, "out")?;
+    let session: String = c
+        .query_row(
+            "SELECT session FROM bootstrap_units WHERE id=?1",
+            [r.offer.id.to_string()],
+            |r| r.get(0),
         )
         .map_err(sql)?;
-        Ok(())
-    })
+    if session != s.binding().session.to_string() {
+        return Err(Error::Integrity);
+    }
+    if Outcome::parse(&prior).is_ok_and(|o| o.is_ack()) && prior != r.outcome.code() {
+        return Err(Error::Integrity);
+    }
+    c.execute(
+        "UPDATE bootstrap_units SET outcome=?2 WHERE id=?1",
+        params![r.offer.id.to_string(), r.outcome.code()],
+    )
+    .map_err(sql)?;
+    Ok(())
 }
 #[cfg(any(
     test,
@@ -1131,4 +1317,23 @@ pub(crate) fn install(store: &super::capture_store::CaptureStore) -> Result<()> 
     tx.execute_batch(include_str!("import_bootstrap.sql"))
         .map_err(sql)?;
     tx.commit().map_err(sql)
+}
+
+pub(super) fn signed_unit(c: &Connection, id: Uuid) -> Result<bool> {
+    let exists: bool = c
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name='r9_bootstrap_evidence')",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(sql)?;
+    if !exists {
+        return Ok(false);
+    }
+    c.query_row(
+        "SELECT EXISTS(SELECT 1 FROM r9_bootstrap_evidence WHERE id=?1)",
+        [id.to_string()],
+        |r| r.get(0),
+    )
+    .map_err(sql)
 }

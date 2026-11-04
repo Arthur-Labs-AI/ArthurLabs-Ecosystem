@@ -2,6 +2,52 @@ use super::{bootstrap::*, protocol::*, trust::VerifiedSession, validation::Valid
 use uuid::Uuid;
 
 pub(crate) trait SyncStore {
+    fn signed_snapshot_capture(
+        &self,
+        _s: &VerifiedSession,
+        _id: Uuid,
+        _c: &dyn SyncClock,
+        _x: &Cancellation,
+    ) -> Result<SignedSnapshotExport> {
+        Err(Error::Protocol)
+    }
+    fn signed_snapshot_offer(
+        &self,
+        _s: &VerifiedSession,
+        _o: &SignedSnapshotOffer,
+        _c: &dyn SyncClock,
+        _x: &Cancellation,
+    ) -> Result<()> {
+        Err(Error::Protocol)
+    }
+    fn signed_snapshot_chunk(
+        &self,
+        _s: &VerifiedSession,
+        _ch: &SnapshotChunk,
+        _evidence: bool,
+        _c: &dyn SyncClock,
+        _x: &Cancellation,
+    ) -> Result<()> {
+        Err(Error::Protocol)
+    }
+    fn signed_snapshot_publish(
+        &self,
+        _s: &VerifiedSession,
+        _o: &SignedSnapshotOffer,
+        _c: &dyn SyncClock,
+        _x: &Cancellation,
+    ) -> Result<SignedSnapshotReceipt> {
+        Err(Error::Protocol)
+    }
+    fn signed_snapshot_receipt(
+        &self,
+        _s: &VerifiedSession,
+        _r: &SignedSnapshotReceipt,
+        _c: &dyn SyncClock,
+        _x: &Cancellation,
+    ) -> Result<()> {
+        Err(Error::Protocol)
+    }
     fn profile(&self) -> SyncProfile {
         SyncProfile::LedgerCandidate
     }

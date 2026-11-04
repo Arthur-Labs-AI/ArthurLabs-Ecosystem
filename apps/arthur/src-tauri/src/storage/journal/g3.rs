@@ -434,6 +434,8 @@ fn scoped_effect(
         active,
     };
     let drop_sql = format!("DROP TRIGGER sync_observe_{}_{};", e.as_str(), verb);
+    #[cfg(test)]
+    OBSERVER_SCOPES.with(|n| n.set(n.get() + 1));
     c.execute_batch(&drop_sql)
         .and_then(|_| c.execute_batch(&guarded))
         .map_err(|_| Error::Storage)?;
@@ -460,6 +462,109 @@ fn scoped_effect(
         return Err(Error::Integrity);
     }
     Ok(())
+}
+#[cfg(test)]
+thread_local! { static OBSERVER_SCOPES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+#[cfg(test)]
+pub(in crate::storage) fn observer_scopes() -> usize {
+    OBSERVER_SCOPES.with(|n| n.get())
+}
+
+// Reuse the guarded observer for a bounded capture group in one event. Each
+// INSERT still gets a separate exact-row, one-use Grant; no batch capability.
+// Avoid thousands of schema invalidations while publishing a 2,048-row image.
+struct CaptureObserver<'a> {
+    c: &'a Connection,
+    original: String,
+    armed: bool,
+}
+impl CaptureObserver<'_> {
+    fn restore(&self) -> Result<()> {
+        self.c
+            .execute_batch("DROP TRIGGER sync_observe_captures_insert;")
+            .and_then(|_| self.c.execute_batch(&self.original))
+            .map_err(|_| Error::Storage)?;
+        let actual: String = self.c.query_row("SELECT sql FROM sqlite_master WHERE name='sync_observe_captures_insert' AND type='trigger'", [], |r| r.get(0)).map_err(|_| Error::Storage)?;
+        if actual.trim_end_matches(';') != self.original.trim_end_matches(';') {
+            return Err(Error::Storage);
+        }
+        Ok(())
+    }
+    fn finish(mut self) -> Result<()> {
+        self.restore()?;
+        self.armed = false;
+        Ok(())
+    }
+}
+impl Drop for CaptureObserver<'_> {
+    fn drop(&mut self) {
+        if self.armed {
+            let _ = self.restore();
+        }
+    }
+}
+fn scoped_capture_group(c: &Connection, rows: &[&codec::RecordCreate]) -> Result<()> {
+    if rows.is_empty() {
+        return Ok(());
+    }
+    if c.is_autocommit() {
+        return Err(Error::Storage);
+    }
+    let e = EntityKind::Captures;
+    let original = observer(e, "insert")?;
+    let actual: String = c.query_row("SELECT sql FROM sqlite_master WHERE name='sync_observe_captures_insert' AND type='trigger'", [], |r| r.get(0)).map_err(|_| Error::Storage)?;
+    if actual.trim_end_matches(';') != original.trim_end_matches(';') {
+        return Err(Error::Storage);
+    }
+    let json = format!(
+        "json_object({})",
+        e.all_fields()
+            .iter()
+            .map(|f| format!("'{f}',NEW.{f}"))
+            .collect::<Vec<_>>()
+            .join(",")
+    );
+    let guarded = original.replacen(
+        "\nBEGIN",
+        &format!("\nWHEN arthur_g3_row('captures',{json},NULL )=0\nBEGIN"),
+        1,
+    );
+    let scope = CaptureObserver {
+        c,
+        original,
+        armed: true,
+    };
+    c.execute_batch("DROP TRIGGER sync_observe_captures_insert;")
+        .and_then(|_| c.execute_batch(&guarded))
+        .map_err(|_| Error::Storage)?;
+    #[cfg(test)]
+    OBSERVER_SCOPES.with(|n| n.set(n.get() + 1));
+    for row in rows {
+        if row.entity != e {
+            return Err(Error::Integrity);
+        }
+        let active = Arc::new(AtomicBool::new(true));
+        register(
+            c,
+            Some(Grant {
+                active: active.clone(),
+                entity: e.as_str().into(),
+                row: image(&row.after)?,
+                before: None,
+                deleting: false,
+            }),
+        )?;
+        let grant = ScopedGrant {
+            connection: c,
+            active,
+        };
+        let result = insert_row(c, e, &row.after);
+        grant.revoke()?;
+        if result? != 1 {
+            return Err(Error::Integrity);
+        }
+    }
+    scope.finish()
 }
 pub(in crate::storage) fn materialize(c: &Connection, v: &ValidatedEvent) -> Result<bool> {
     let d4 = d4_installed(c)?;
@@ -642,6 +747,17 @@ pub(in crate::storage) fn materialize(c: &Connection, v: &ValidatedEvent) -> Res
         EntityKind::KnowledgeObjects,
         EntityKind::ObjectSources,
     ] {
+        if e == EntityKind::Captures {
+            scoped_capture_group(
+                c,
+                &rows
+                    .iter()
+                    .filter(|r| r.entity == e)
+                    .copied()
+                    .collect::<Vec<_>>(),
+            )?;
+            continue;
+        }
         for row in rows.iter().filter(|r| r.entity == e) {
             let mut image = row.after.clone();
             if e == EntityKind::KnowledgeObjects {
