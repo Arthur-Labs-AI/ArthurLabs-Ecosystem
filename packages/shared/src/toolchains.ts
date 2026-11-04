@@ -97,6 +97,10 @@ export function toolchainEnvironment(
           DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: '1',
           // A project pinned to a runtime that is not installed still runs on a newer one.
           DOTNET_ROLL_FORWARD: 'Major',
+          // Build servers (MSBuild nodes, the Roslyn compiler server) would outlive the command and
+          // keep its output pipe open, so the shell tool waits until its timeout and records no exit code.
+          MSBUILDDISABLENODEREUSE: '1',
+          UseSharedCompilation: 'false',
         },
       };
     case 'rust':

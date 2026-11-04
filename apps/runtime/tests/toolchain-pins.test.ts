@@ -76,6 +76,9 @@ describe('toolchain hints', () => {
     const pinned = await manager.environment(workspace);
     expect(pinned.env['DOTNET_ROOT']).toContain(join('dotnet', '8.0'));
     expect(pinned.env['DOTNET_ROLL_FORWARD']).toBe('Major');
+    // No lingering build servers: they hold the shell's output pipe open until the tool timeout.
+    expect(pinned.env['MSBUILDDISABLENODEREUSE']).toBe('1');
+    expect(pinned.env['UseSharedCompilation']).toBe('false');
     const unpinned = await manager.environment(await temp());
     expect(unpinned.env['DOTNET_ROOT']).toContain(join('dotnet', '9.0'));
   });
