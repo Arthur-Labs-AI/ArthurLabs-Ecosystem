@@ -1,13 +1,17 @@
 name: Nexus release
 
-# Builds the Linux x86_64 .deb and the macOS arm64 .dmg and attaches both to a DRAFT GitHub release.
-# Nothing is published automatically: review the draft and publish it by hand.
+# Builds the Linux x86_64 .deb and the macOS arm64 .dmg (with the embedded Linux engine VM) and attaches both to a
+# DRAFT GitHub release. Nothing is published automatically: review the draft and publish it by hand.
 on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to create/attach to (e.g. nexus-v0.1.0)"
+        description: "Release tag to create/attach to (e.g. nexus-v0.1.0-beta)"
         required: true
+      create_release:
+        description: "Create the draft release (turn off to only build and keep the artifacts)"
+        type: boolean
+        default: true
   push:
     tags:
       - "nexus-v*"
@@ -54,8 +58,47 @@ jobs:
             ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/deb/Nexus_*_amd64.deb
             ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/deb/SHA256SUMS-linux.txt
 
+  # The guest image for the macOS engine VM: Fedora ARM64 userland + kernel, built rootless with podman on an
+  # ARM64 Linux runner (see systems/nexus/apps/nexus-desktop/engine-image/README.md).
+  engine-image:
+    name: Engine guest image (ARM64)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: System packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev patchelf \
+            libssl-dev build-essential pkg-config podman uidmap e2fsprogs zstd
+      - name: Build native workspace
+        working-directory: systems/nexus/native
+        run: cargo build --release --workspace
+      # The in-guest bridge. The resource list is cleared because the engine image does not bundle the desktop resources.
+      - name: Build nexus-bridge
+        working-directory: ${{ env.DESKTOP_DIR }}/src-tauri
+        env:
+          TAURI_CONFIG: '{"bundle":{"active":false,"resources":[]}}'
+        run: cargo build --release --no-default-features --features engine-bridge --bin nexus-bridge
+      - name: Build guest image
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: sh engine-image/build.sh
+      - name: Compress image
+        working-directory: ${{ env.DESKTOP_DIR }}/engine-image/out
+        run: |
+          zstd -T0 -10 -f rootfs.img -o rootfs.img.zst
+          ls -la
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexus-engine-image
+          path: |
+            ${{ env.DESKTOP_DIR }}/engine-image/out/rootfs.img.zst
+            ${{ env.DESKTOP_DIR }}/engine-image/out/vmlinuz
+          compression-level: 0
+
   macos:
-    name: macOS arm64 (.dmg)
+    name: macOS arm64 (.dmg, with engine VM)
+    needs: engine-image
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -65,29 +108,56 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ env.DESKTOP_DIR }}/package-lock.json
       - uses: dtolnay/rust-toolchain@stable
+      - name: Tools
+        run: brew install zstd
       - name: Install frontend dependencies
         working-directory: ${{ env.DESKTOP_DIR }}
         run: npm ci
-      # Shell-only build (no sandboxed engine): see systems/nexus/M1-MACOS-DESKTOP-REPORT.md.
-      # Ad-hoc signed, not notarized.
-      - name: Build app and dmg
+      - uses: actions/download-artifact@v4
+        with:
+          name: nexus-engine-image
+          path: engine-in
+      - name: Prepare guest image and kernel
         working-directory: ${{ env.DESKTOP_DIR }}
-        run: npm run tauri -- build --bundles app,dmg
-      - name: Verify and checksum
-        working-directory: ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/dmg
         run: |
-          hdiutil verify Nexus_*_aarch64.dmg
-          shasum -a 256 Nexus_*_aarch64.dmg > SHA256SUMS-macos.txt
+          mkdir -p engine-image/out
+          zstd -d -T0 "$GITHUB_WORKSPACE/engine-in/rootfs.img.zst" -o engine-image/out/rootfs.img
+          python3 engine-image/extract-kernel.py "$GITHUB_WORKSPACE/engine-in/vmlinuz" engine-image/out/Image
+      # package-app.sh: builds and signs the Swift VM runner (Virtualization.framework entitlement), builds the app,
+      # embeds the runner, the kernel and the compressed guest image. Ad-hoc signed, not notarized.
+      - name: Build app with embedded engine
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: sh engine-vm/package-app.sh
+      - name: Package dmg
+        working-directory: ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle
+        run: |
+          set -eu
+          app=macos/Nexus.app
+          test -x "$app/Contents/MacOS/nexus-vm"
+          test -f "$app/Contents/Resources/engine/rootfs.img.zst"
+          test -f "$app/Contents/Resources/engine/Image"
+          codesign --verify --deep --strict "$app"
+          codesign -d --entitlements - "$app/Contents/MacOS/nexus-vm" 2>&1 | grep -q com.apple.security.virtualization
+          version=$(node -p "require('$GITHUB_WORKSPACE/$DESKTOP_DIR/src-tauri/tauri.conf.json').version")
+          mkdir -p dmg-stage out
+          cp -R "$app" dmg-stage/
+          ln -s /Applications dmg-stage/Applications
+          hdiutil create -volname Nexus -srcfolder dmg-stage -ov -format UDZO "out/Nexus_${version}_aarch64.dmg"
+          hdiutil verify out/Nexus_*_aarch64.dmg
+          (cd out && shasum -a 256 Nexus_*_aarch64.dmg > SHA256SUMS-macos.txt)
+          ls -la out
       - uses: actions/upload-artifact@v4
         with:
           name: nexus-macos
           path: |
-            ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/dmg/Nexus_*_aarch64.dmg
-            ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/dmg/SHA256SUMS-macos.txt
+            ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/out/Nexus_*_aarch64.dmg
+            ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/out/SHA256SUMS-macos.txt
+          compression-level: 0
 
   draft-release:
     name: Draft GitHub release
     needs: [linux, macos]
+    if: github.event_name == 'push' || github.event.inputs.create_release == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -95,12 +165,21 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: nexus-linux
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: nexus-macos
           merge-multiple: true
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "$TAG" dist/* --draft --title "Nexus $TAG" \
-            --notes "Linux x86_64 (.deb) and macOS arm64 (.dmg). The macOS build is ad-hoc signed, not notarized, and shell-only (no sandboxed engine)." \
+          title="Nexus ${TAG#nexus-}"
+          flags=""
+          case "$TAG" in nexus-v*-*) flags="--prerelease" ;; esac
+          gh release create "$TAG" dist/* --draft $flags --title "$title" \
+            --notes "Linux x86_64 (.deb) and macOS arm64 (.dmg), both with the sandboxed engine (on macOS it runs in an embedded Linux microVM). The macOS app is ad-hoc signed and not notarized: right-click, then Open on first launch." \
             --target "$GITHUB_SHA"
