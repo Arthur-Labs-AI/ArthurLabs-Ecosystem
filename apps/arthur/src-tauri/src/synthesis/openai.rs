@@ -20,9 +20,15 @@ use tokio::sync::Semaphore;
 
 use super::authorization::ProviderAuthorization;
 use super::prompt::{response_schema, user_message, SYSTEM_PROMPT};
-use super::{Assertion, ChangeClass, ModelIdentity, RevisionSynthesizer, SynthesisDraft, SynthesisFailure, SynthesisRequest};
+use super::{
+    Assertion, ChangeClass, ModelIdentity, RevisionSynthesizer, SynthesisDraft, SynthesisFailure,
+    SynthesisRequest,
+};
 use crate::async_util::BoxFuture;
-use crate::providers::chat::{complete_json_detailed, model_matches, ChatFailure, ChatRequest, Sampling, DEFAULT_ENDPOINT, LUNA_MODEL, LUNA_PRICE_IN, LUNA_PRICE_OUT};
+use crate::providers::chat::{
+    complete_json_detailed, model_matches, ChatFailure, ChatRequest, Sampling, DEFAULT_ENDPOINT,
+    LUNA_MODEL, LUNA_PRICE_IN, LUNA_PRICE_OUT,
+};
 use crate::providers::credentials::CredentialSource;
 
 pub const MODEL: &str = LUNA_MODEL;
@@ -68,7 +74,11 @@ impl std::fmt::Debug for OpenAiRevisionSynthesizer {
 }
 
 impl OpenAiRevisionSynthesizer {
-    pub fn new(credential: Arc<dyn CredentialSource>, authorization: Arc<ProviderAuthorization>, timeout: Duration) -> Result<Self, reqwest::Error> {
+    pub fn new(
+        credential: Arc<dyn CredentialSource>,
+        authorization: Arc<ProviderAuthorization>,
+        timeout: Duration,
+    ) -> Result<Self, reqwest::Error> {
         Ok(Self {
             client: crate::providers::http::client(timeout)?,
             endpoint: DEFAULT_ENDPOINT.to_string(),
@@ -84,7 +94,12 @@ impl OpenAiRevisionSynthesizer {
 
     /// Tests only: a localhost endpoint and no waiting between attempts.
     #[cfg(test)]
-    pub fn for_test(credential: Arc<dyn CredentialSource>, authorization: Arc<ProviderAuthorization>, endpoint: String, timeout: Duration) -> Self {
+    pub fn for_test(
+        credential: Arc<dyn CredentialSource>,
+        authorization: Arc<ProviderAuthorization>,
+        endpoint: String,
+        timeout: Duration,
+    ) -> Self {
         let mut me = Self::new(credential, authorization, timeout).expect("client");
         me.endpoint = endpoint;
         me.backoff = Duration::ZERO;
@@ -107,7 +122,13 @@ impl OpenAiRevisionSynthesizer {
     }
 
     fn fail(&self, code: &'static str) {
-        *self.usage.lock().unwrap_or_else(|p| p.into_inner()).failures.entry(code).or_insert(0) += 1;
+        *self
+            .usage
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .failures
+            .entry(code)
+            .or_insert(0) += 1;
     }
 }
 
@@ -119,7 +140,18 @@ fn parse_assertions(value: &Value) -> Result<Vec<Assertion>, SynthesisFailure> {
         .iter()
         .map(|item| {
             let object = item.as_object().filter(|o| o.len() == 2).ok_or(bad)?;
-            Ok(Assertion { text: object.get("text").and_then(Value::as_str).ok_or(bad)?.to_string(), source: object.get("source").and_then(Value::as_str).ok_or(bad)?.to_string() })
+            Ok(Assertion {
+                text: object
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .ok_or(bad)?
+                    .to_string(),
+                source: object
+                    .get("source")
+                    .and_then(Value::as_str)
+                    .ok_or(bad)?
+                    .to_string(),
+            })
         })
         .collect()
 }
@@ -129,17 +161,34 @@ pub fn parse_draft(text: &str, model: String) -> Result<SynthesisDraft, Synthesi
     if text.chars().count() > MAX_OUTPUT_CHARS {
         return Err(SynthesisFailure::Unreadable("too long"));
     }
-    let value: Value = serde_json::from_str(text).map_err(|_| SynthesisFailure::Unreadable("not json"))?;
-    let object = value.as_object().ok_or(SynthesisFailure::Unreadable("not an object"))?;
-    let keys = ["kind", "revised_body", "change", "retained", "added", "withdrawn"];
+    let value: Value =
+        serde_json::from_str(text).map_err(|_| SynthesisFailure::Unreadable("not json"))?;
+    let object = value
+        .as_object()
+        .ok_or(SynthesisFailure::Unreadable("not an object"))?;
+    let keys = [
+        "kind",
+        "revised_body",
+        "change",
+        "retained",
+        "added",
+        "withdrawn",
+    ];
     if object.len() != keys.len() || !keys.iter().all(|k| object.contains_key(*k)) {
         return Err(SynthesisFailure::Unreadable("keys"));
     }
-    let string = |key: &str| object.get(key).and_then(Value::as_str).map(str::to_string).ok_or(SynthesisFailure::Unreadable("types"));
+    let string = |key: &str| {
+        object
+            .get(key)
+            .and_then(Value::as_str)
+            .map(str::to_string)
+            .ok_or(SynthesisFailure::Unreadable("types"))
+    };
     Ok(SynthesisDraft {
         kind: string("kind")?,
         revised_body: string("revised_body")?,
-        change: ChangeClass::parse(&string("change")?).ok_or(SynthesisFailure::Unreadable("change"))?,
+        change: ChangeClass::parse(&string("change")?)
+            .ok_or(SynthesisFailure::Unreadable("change"))?,
         retained: parse_assertions(&object["retained"])?,
         added: parse_assertions(&object["added"])?,
         withdrawn: parse_assertions(&object["withdrawn"])?,
@@ -149,10 +198,17 @@ pub fn parse_draft(text: &str, model: String) -> Result<SynthesisDraft, Synthesi
 
 impl RevisionSynthesizer for OpenAiRevisionSynthesizer {
     fn identity(&self) -> ModelIdentity {
-        ModelIdentity { provider: "openai", family: FAMILY, model: MODEL.to_string() }
+        ModelIdentity {
+            provider: "openai",
+            family: FAMILY,
+            model: MODEL.to_string(),
+        }
     }
 
-    fn synthesize<'a>(&'a self, request: &'a SynthesisRequest) -> BoxFuture<'a, Result<SynthesisDraft, SynthesisFailure>> {
+    fn synthesize<'a>(
+        &'a self,
+        request: &'a SynthesisRequest,
+    ) -> BoxFuture<'a, Result<SynthesisDraft, SynthesisFailure>> {
         Box::pin(async move {
             if self.cancel.load(Ordering::SeqCst) {
                 return Err(SynthesisFailure::Cancelled);
@@ -179,11 +235,24 @@ impl RevisionSynthesizer for OpenAiRevisionSynthesizer {
                     }
                 }
                 let outcome = {
-                    let _permit = self.permits.acquire().await.map_err(|_| SynthesisFailure::Cancelled)?;
+                    let _permit = self
+                        .permits
+                        .acquire()
+                        .await
+                        .map_err(|_| SynthesisFailure::Cancelled)?;
                     complete_json_detailed(
                         &self.client,
                         self.credential.as_ref(),
-                        ChatRequest { endpoint: &self.endpoint, model: MODEL, system: SYSTEM_PROMPT, user: &user, schema_name: "revision_draft", schema: response_schema(), sampling: Sampling::Reasoning(REASONING_EFFORT), max_output_tokens: Some(MAX_OUTPUT_TOKENS) },
+                        ChatRequest {
+                            endpoint: &self.endpoint,
+                            model: MODEL,
+                            system: SYSTEM_PROMPT,
+                            user: &user,
+                            schema_name: "revision_draft",
+                            schema: response_schema(),
+                            sampling: Sampling::Reasoning(REASONING_EFFORT),
+                            max_output_tokens: Some(MAX_OUTPUT_TOKENS),
+                        },
                     )
                     .await
                 };
@@ -195,20 +264,27 @@ impl RevisionSynthesizer for OpenAiRevisionSynthesizer {
                             usage.completion_tokens += completion.completion_tokens.unwrap_or(0);
                             usage.reasoning_tokens += completion.reasoning_tokens.unwrap_or(0);
                             // reasoning tokens are inside completion_tokens and billed as output
-                            usage.estimated_cost_usd = usage.prompt_tokens as f64 * LUNA_PRICE_IN + usage.completion_tokens as f64 * LUNA_PRICE_OUT;
+                            usage.estimated_cost_usd = usage.prompt_tokens as f64 * LUNA_PRICE_IN
+                                + usage.completion_tokens as f64 * LUNA_PRICE_OUT;
                         }
-                        let Some(model) = completion.model.filter(|m| model_matches(m, MODEL)) else {
+                        let Some(model) = completion.model.filter(|m| model_matches(m, MODEL))
+                        else {
                             self.fail("model_mismatch");
                             return Err(SynthesisFailure::ModelMismatch);
                         };
-                        return parse_draft(&completion.text, model).inspect_err(|_| self.fail("unreadable"));
+                        return parse_draft(&completion.text, model)
+                            .inspect_err(|_| self.fail("unreadable"));
                     }
                     Err(ChatFailure::NotConfigured) => (SynthesisFailure::Unavailable, false),
                     Err(ChatFailure::Auth(_)) => (SynthesisFailure::Auth, false),
                     Err(ChatFailure::Refused) => (SynthesisFailure::Refused, false),
-                    Err(ChatFailure::Unreadable(_)) => (SynthesisFailure::Unreadable("provider"), false),
+                    Err(ChatFailure::Unreadable(_)) => {
+                        (SynthesisFailure::Unreadable("provider"), false)
+                    }
                     Err(ChatFailure::Network) => (SynthesisFailure::Network, true),
-                    Err(ChatFailure::Provider(status)) => (SynthesisFailure::Network, status == 429 || status >= 500),
+                    Err(ChatFailure::Provider(status)) => {
+                        (SynthesisFailure::Network, status == 429 || status >= 500)
+                    }
                 };
                 self.fail(match failure {
                     SynthesisFailure::Unavailable => "unavailable",

@@ -69,7 +69,9 @@
   fill: var(--ink);
 }
 .lineage .l-tag {
-  font: 500 12.5px var(--sans);
+  font: 500 11px var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   fill: var(--ink-3);
 }
 .lineage .l-node.current .l-tag {
@@ -80,7 +82,7 @@
   fill: var(--ink-2);
 }
 .lineage .l-when {
-  font: 400 12px var(--sans);
+  font: 400 11px var(--mono);
   fill: var(--ink-3);
 }
 .lineage-sketch {

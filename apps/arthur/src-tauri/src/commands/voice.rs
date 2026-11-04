@@ -3,7 +3,8 @@ use tauri::State;
 use crate::audio::error::VoiceError;
 use crate::audio::recorder::MicrophonePermission;
 use crate::audio::voice_capture::VoiceCaptureService;
-use crate::storage::capture_store::{Capture, CaptureStore};
+use crate::runtime::RuntimeHandle;
+use crate::storage::capture_store::Capture;
 
 #[tauri::command]
 pub async fn start_voice_capture(voice: State<'_, VoiceCaptureService>) -> Result<(), VoiceError> {
@@ -14,7 +15,7 @@ pub async fn start_voice_capture(voice: State<'_, VoiceCaptureService>) -> Resul
 #[tauri::command]
 pub async fn finish_voice_capture(
     voice: State<'_, VoiceCaptureService>,
-    store: State<'_, CaptureStore>,
+    store: State<'_, RuntimeHandle>,
     project_id: Option<String>,
 ) -> Result<Capture, VoiceError> {
     voice.stop_in(&store, project_id.as_deref()).await
@@ -30,7 +31,7 @@ pub async fn cancel_voice_capture(voice: State<'_, VoiceCaptureService>) -> Resu
 #[tauri::command]
 pub async fn retry_voice_transcription(
     voice: State<'_, VoiceCaptureService>,
-    store: State<'_, CaptureStore>,
+    store: State<'_, RuntimeHandle>,
     project_id: Option<String>,
 ) -> Result<Capture, VoiceError> {
     voice.retry_in(&store, project_id.as_deref()).await
@@ -45,7 +46,9 @@ pub fn discard_voice_recording(voice: State<'_, VoiceCaptureService>) -> Result<
 
 /// The microphone permission, read without asking.
 #[tauri::command]
-pub async fn get_microphone_permission(voice: State<'_, VoiceCaptureService>) -> Result<MicrophonePermission, VoiceError> {
+pub async fn get_microphone_permission(
+    voice: State<'_, VoiceCaptureService>,
+) -> Result<MicrophonePermission, VoiceError> {
     voice.microphone_permission().await
 }
 

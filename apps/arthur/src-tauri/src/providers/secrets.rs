@@ -72,7 +72,9 @@ impl SecretStore for FileSecretStore {
     }
 
     fn get(&self, provider: ProviderId) -> Option<ApiKey> {
-        fs::read_to_string(self.path(provider)).ok().and_then(|raw| ApiKey::parse(&raw))
+        fs::read_to_string(self.path(provider))
+            .ok()
+            .and_then(|raw| ApiKey::parse(&raw))
     }
 }
 
@@ -80,7 +82,12 @@ impl SecretStore for FileSecretStore {
 fn write_private(path: &Path, value: &str) -> io::Result<()> {
     use std::io::Write;
     use std::os::unix::fs::OpenOptionsExt;
-    let mut file = fs::OpenOptions::new().write(true).create(true).truncate(true).mode(0o600).open(path)?;
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(path)?;
     file.write_all(value.as_bytes())
 }
 
@@ -113,13 +120,17 @@ pub struct UnavailableSecretStore;
 
 impl SecretStore for UnavailableSecretStore {
     fn set(&self, _: ProviderId, _: &ApiKey) -> Result<(), SecretError> {
-        Err(SecretError("secure credential storage is not available on this device".into()))
+        Err(SecretError(
+            "secure credential storage is not available on this device".into(),
+        ))
     }
     fn has(&self, _: ProviderId) -> bool {
         false
     }
     fn delete(&self, _: ProviderId) -> Result<(), SecretError> {
-        Err(SecretError("secure credential storage is not available on this device".into()))
+        Err(SecretError(
+            "secure credential storage is not available on this device".into(),
+        ))
     }
     fn get(&self, _: ProviderId) -> Option<ApiKey> {
         None
@@ -129,9 +140,15 @@ impl SecretStore for UnavailableSecretStore {
 /// The ONLY place a store is chosen. On Android the Keystore store is used, or the refusing store when it is unavailable: there is
 /// no path from Android to `FileSecretStore`, so a credential is never written to a plaintext file as a fallback. Everywhere else
 /// the owner-only file store is used.
-pub fn select_store(platform: StoragePlatform, keystore: Option<std::sync::Arc<dyn SecretStore>>, file_dir: PathBuf) -> std::sync::Arc<dyn SecretStore> {
+pub fn select_store(
+    platform: StoragePlatform,
+    keystore: Option<std::sync::Arc<dyn SecretStore>>,
+    file_dir: PathBuf,
+) -> std::sync::Arc<dyn SecretStore> {
     match platform {
-        StoragePlatform::Android => keystore.unwrap_or_else(|| std::sync::Arc::new(UnavailableSecretStore)),
+        StoragePlatform::Android => {
+            keystore.unwrap_or_else(|| std::sync::Arc::new(UnavailableSecretStore))
+        }
         StoragePlatform::Other => std::sync::Arc::new(FileSecretStore::new(file_dir)),
     }
 }
@@ -141,10 +158,14 @@ pub fn select_store(platform: StoragePlatform, keystore: Option<std::sync::Arc<d
 /// The file is overwritten and removed only once the store holds the key (or already held one), so a failed import loses nothing.
 /// Returns true when a legacy credential was imported.
 pub fn migrate_legacy_file(legacy: &Path, provider: ProviderId, store: &dyn SecretStore) -> bool {
-    let Ok(raw) = fs::read_to_string(legacy) else { return false };
+    let Ok(raw) = fs::read_to_string(legacy) else {
+        return false;
+    };
     let key = ApiKey::parse(&raw);
     let imported = match &key {
-        Some(key) if !store.has(provider) => store.set(provider, key).is_ok() && store.has(provider),
+        Some(key) if !store.has(provider) => {
+            store.set(provider, key).is_ok() && store.has(provider)
+        }
         _ => false,
     };
     // An unusable legacy file is simply cleaned up; a usable one is only removed once it is safely in the store.
@@ -167,7 +188,10 @@ pub mod tests {
 
     impl SecretStore for MemorySecretStore {
         fn set(&self, provider: ProviderId, key: &ApiKey) -> Result<(), SecretError> {
-            self.0.lock().unwrap().insert(provider.as_str(), key.expose().to_string());
+            self.0
+                .lock()
+                .unwrap()
+                .insert(provider.as_str(), key.expose().to_string());
             Ok(())
         }
         fn has(&self, provider: ProviderId) -> bool {
@@ -178,7 +202,11 @@ pub mod tests {
             Ok(())
         }
         fn get(&self, provider: ProviderId) -> Option<ApiKey> {
-            self.0.lock().unwrap().get(provider.as_str()).and_then(|raw| ApiKey::parse(raw))
+            self.0
+                .lock()
+                .unwrap()
+                .get(provider.as_str())
+                .and_then(|raw| ApiKey::parse(raw))
         }
     }
 
@@ -207,7 +235,10 @@ pub mod tests {
         let dir = tempfile::tempdir().unwrap();
         let store = FileSecretStore::new(dir.path().to_path_buf());
         store.set(ProviderId::OpenAi, &key("sk-private")).unwrap();
-        let mode = fs::metadata(dir.path().join("openai_api_key")).unwrap().permissions().mode();
+        let mode = fs::metadata(dir.path().join("openai_api_key"))
+            .unwrap()
+            .permissions()
+            .mode();
         assert_eq!(mode & 0o777, 0o600);
     }
 
@@ -220,7 +251,10 @@ pub mod tests {
         assert!(migrate_legacy_file(&legacy, ProviderId::OpenAi, &store));
         assert_eq!(store.get(ProviderId::OpenAi).unwrap().expose(), "sk-legacy");
         assert!(!legacy.exists());
-        assert!(!migrate_legacy_file(&legacy, ProviderId::OpenAi, &store), "nothing left to migrate");
+        assert!(
+            !migrate_legacy_file(&legacy, ProviderId::OpenAi, &store),
+            "nothing left to migrate"
+        );
     }
 
     #[test]
@@ -245,11 +279,20 @@ pub mod tests {
         assert!(android.set(ProviderId::OpenAi, &k).is_err());
         assert!(android.delete(ProviderId::OpenAi).is_err());
         assert!(!android.has(ProviderId::OpenAi) && android.get(ProviderId::OpenAi).is_none());
-        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0, "no plaintext file was written");
+        assert_eq!(
+            fs::read_dir(dir.path()).unwrap().count(),
+            0,
+            "no plaintext file was written"
+        );
 
         // Android with the Keystore: that store is the one used, and the directory is still never written.
-        let keystore: std::sync::Arc<dyn SecretStore> = std::sync::Arc::new(MemorySecretStore::default());
-        let android = select_store(StoragePlatform::Android, Some(keystore), dir.path().to_path_buf());
+        let keystore: std::sync::Arc<dyn SecretStore> =
+            std::sync::Arc::new(MemorySecretStore::default());
+        let android = select_store(
+            StoragePlatform::Android,
+            Some(keystore),
+            dir.path().to_path_buf(),
+        );
         android.set(ProviderId::OpenAi, &k).unwrap();
         assert!(android.has(ProviderId::OpenAi));
         assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);

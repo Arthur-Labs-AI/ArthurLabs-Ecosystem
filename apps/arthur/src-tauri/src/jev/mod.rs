@@ -138,15 +138,29 @@ impl JevError {
 
     /// Transport-level conditions worth another attempt. A disagreeing or malformed answer is NEVER retried.
     pub fn retryable(&self) -> bool {
-        matches!(self, JevError::Timeout | JevError::Network | JevError::RateLimited | JevError::Overloaded | JevError::Server)
+        matches!(
+            self,
+            JevError::Timeout
+                | JevError::Network
+                | JevError::RateLimited
+                | JevError::Overloaded
+                | JevError::Server
+        )
     }
 
     /// The coarse reason the identity pipeline records (`classifier_failed`). The precise code stays in `Diagnostics`.
-    pub fn to_classifier_failure(&self) -> ClassifierFailure {
+    pub fn to_classifier_failure(self) -> ClassifierFailure {
         match self {
             JevError::Timeout | JevError::RetriesExhausted("timeout") => ClassifierFailure::Timeout,
-            JevError::Network | JevError::RateLimited | JevError::Overloaded | JevError::Server | JevError::RetriesExhausted(_) => ClassifierFailure::Network,
-            JevError::UnexpectedModel | JevError::Malformed(_) | JevError::ResponseTooLarge | JevError::UnexpectedStatus => ClassifierFailure::Unreadable,
+            JevError::Network
+            | JevError::RateLimited
+            | JevError::Overloaded
+            | JevError::Server
+            | JevError::RetriesExhausted(_) => ClassifierFailure::Network,
+            JevError::UnexpectedModel
+            | JevError::Malformed(_)
+            | JevError::ResponseTooLarge
+            | JevError::UnexpectedStatus => ClassifierFailure::Unreadable,
             _ => ClassifierFailure::Unavailable,
         }
     }

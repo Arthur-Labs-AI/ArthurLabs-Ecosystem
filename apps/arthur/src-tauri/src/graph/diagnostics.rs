@@ -190,7 +190,10 @@ struct Scratch {
 }
 
 fn now() -> u64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 pub fn short(id: &str) -> String {
@@ -207,12 +210,20 @@ pub struct IntegrationDiagnostics {
 
 impl Default for IntegrationDiagnostics {
     fn default() -> Self {
-        Self { worker_started: AtomicBool::new(false), totals: Mutex::new(Totals::default()), runs: Mutex::new(VecDeque::new()), scratch: Mutex::new(Scratch::default()), manual: Mutex::new(None) }
+        Self {
+            worker_started: AtomicBool::new(false),
+            totals: Mutex::new(Totals::default()),
+            runs: Mutex::new(VecDeque::new()),
+            scratch: Mutex::new(Scratch::default()),
+            manual: Mutex::new(None),
+        }
     }
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 impl IntegrationDiagnostics {
@@ -249,14 +260,24 @@ impl IntegrationDiagnostics {
     }
 
     pub fn ui_update(&self, delivered: bool) {
-        self.update(|t| if delivered { t.ui_updates_delivered += 1 } else { t.ui_updates_failed += 1 });
+        self.update(|t| {
+            if delivered {
+                t.ui_updates_delivered += 1
+            } else {
+                t.ui_updates_failed += 1
+            }
+        });
     }
 
     // ---- one run -------------------------------------------------------------------------------------------------------------
 
     pub fn begin_run(&self, object_id: &str, reason: &'static str) {
         self.update(|t| t.runs_started += 1);
-        *lock(&self.scratch) = Scratch { object: short(object_id), reason, ..Scratch::default() };
+        *lock(&self.scratch) = Scratch {
+            object: short(object_id),
+            reason,
+            ..Scratch::default()
+        };
     }
 
     pub fn discovered(&self, project_objects: usize, candidates: usize) {
@@ -443,7 +464,11 @@ impl IntegrationDiagnostics {
 
     /// A manual run that failed before producing a report.
     pub fn manual_failed(&self, contract: bool, persistence: bool) {
-        let outcome = if persistence { Outcome::PersistenceFailed } else { Outcome::ProviderFailed };
+        let outcome = if persistence {
+            Outcome::PersistenceFailed
+        } else {
+            Outcome::ProviderFailed
+        };
         self.update(|t| {
             if persistence {
                 t.persist_failed += 1;
@@ -453,7 +478,17 @@ impl IntegrationDiagnostics {
                 t.contract_errors += u64::from(contract);
             }
         });
-        *lock(&self.manual) = Some(ManualRecord { outcome, considered: 0, proposed: 0, already_connected: 0, verified: 0, rejected: 0, added: 0, provider_requests: 0, at: now() });
+        *lock(&self.manual) = Some(ManualRecord {
+            outcome,
+            considered: 0,
+            proposed: 0,
+            already_connected: 0,
+            verified: 0,
+            rejected: 0,
+            added: 0,
+            provider_requests: 0,
+            at: now(),
+        });
     }
 
     // ---- reading -------------------------------------------------------------------------------------------------------------
@@ -464,30 +499,66 @@ impl IntegrationDiagnostics {
         let last_manual = lock(&self.manual).clone();
         let worker_active = self.worker_started();
         let diagnosis = diagnose(worker_active, enabled, &totals, recent_runs.first());
-        Snapshot { worker_active, enabled, diagnosis, totals, recent_runs, last_manual }
+        Snapshot {
+            worker_active,
+            enabled,
+            diagnosis,
+            totals,
+            recent_runs,
+            last_manual,
+        }
     }
 }
 
 /// The first failing point, in path order.
-pub fn diagnose(worker_active: bool, enabled: bool, totals: &Totals, latest: Option<&RunRecord>) -> Diagnosis {
+pub fn diagnose(
+    worker_active: bool,
+    enabled: bool,
+    totals: &Totals,
+    latest: Option<&RunRecord>,
+) -> Diagnosis {
     if !worker_active {
         return Diagnosis { code: "WORKER_NOT_STARTED", explanation: "The background worker was never started in this session, so nothing can be connected automatically." };
     }
     if !enabled {
-        return Diagnosis { code: "DISABLED", explanation: "Automatic Connections is off, so new ideas are not sent for connecting." };
+        return Diagnosis {
+            code: "DISABLED",
+            explanation: "Automatic Connections is off, so new ideas are not sent for connecting.",
+        };
     }
     if totals.events_emitted > 0 && totals.events_received == 0 {
-        return Diagnosis { code: "EVENT_NOT_DELIVERED", explanation: "New ideas were announced but none reached the integration worker." };
+        return Diagnosis {
+            code: "EVENT_NOT_DELIVERED",
+            explanation: "New ideas were announced but none reached the integration worker.",
+        };
     }
     let Some(run) = latest else {
-        return Diagnosis { code: "NO_EVENTS_YET", explanation: "No new or changed idea has been announced since Arthur started." };
+        return Diagnosis {
+            code: "NO_EVENTS_YET",
+            explanation: "No new or changed idea has been announced since Arthur started.",
+        };
     };
     let (code, explanation) = match run.outcome {
-        Outcome::NoCandidates => ("NO_CANDIDATES", "The latest idea had nothing in its project to be compared with."),
-        Outcome::AllRejected => ("ALL_REJECTED", "Arthur proposed connections for the latest idea and the checks rejected all of them."),
-        Outcome::ProviderFailed => ("PROVIDER_FAILED", "The AI provider could not be used for the latest idea (see the error code)."),
-        Outcome::PersistenceFailed => ("PERSISTENCE_FAILED", "Connections were accepted but could not be saved."),
-        Outcome::SuccessNoNewEdges => ("SUCCESS_NO_NEW_EDGES", "The latest idea was fully processed and Arthur found nothing new to connect it to."),
+        Outcome::NoCandidates => (
+            "NO_CANDIDATES",
+            "The latest idea had nothing in its project to be compared with.",
+        ),
+        Outcome::AllRejected => (
+            "ALL_REJECTED",
+            "Arthur proposed connections for the latest idea and the checks rejected all of them.",
+        ),
+        Outcome::ProviderFailed => (
+            "PROVIDER_FAILED",
+            "The AI provider could not be used for the latest idea (see the error code).",
+        ),
+        Outcome::PersistenceFailed => (
+            "PERSISTENCE_FAILED",
+            "Connections were accepted but could not be saved.",
+        ),
+        Outcome::SuccessNoNewEdges => (
+            "SUCCESS_NO_NEW_EDGES",
+            "The latest idea was fully processed and Arthur found nothing new to connect it to.",
+        ),
         Outcome::Success => ("SUCCESS", "The latest idea was connected."),
         Outcome::Skipped => ("SKIPPED", "The latest event was skipped (see the reason)."),
     };
@@ -501,12 +572,25 @@ mod tests {
     #[test]
     fn the_diagnosis_names_the_first_point_of_failure_in_path_order() {
         let totals = Totals::default();
-        assert_eq!(diagnose(false, true, &totals, None).code, "WORKER_NOT_STARTED");
+        assert_eq!(
+            diagnose(false, true, &totals, None).code,
+            "WORKER_NOT_STARTED"
+        );
         assert_eq!(diagnose(true, false, &totals, None).code, "DISABLED");
-        let announced = Totals { events_emitted: 3, ..Totals::default() };
-        assert_eq!(diagnose(true, true, &announced, None).code, "EVENT_NOT_DELIVERED");
+        let announced = Totals {
+            events_emitted: 3,
+            ..Totals::default()
+        };
+        assert_eq!(
+            diagnose(true, true, &announced, None).code,
+            "EVENT_NOT_DELIVERED"
+        );
         assert_eq!(diagnose(true, true, &totals, None).code, "NO_EVENTS_YET");
-        let received = Totals { events_emitted: 3, events_received: 3, ..Totals::default() };
+        let received = Totals {
+            events_emitted: 3,
+            events_received: 3,
+            ..Totals::default()
+        };
         assert_eq!(diagnose(true, true, &received, None).code, "NO_EVENTS_YET");
     }
 
@@ -514,14 +598,26 @@ mod tests {
     fn every_outcome_has_its_own_code_and_none_of_them_is_the_generic_empty_message() {
         let d = IntegrationDiagnostics::default();
         d.mark_worker_started();
-        let all = [Outcome::NoCandidates, Outcome::AllRejected, Outcome::ProviderFailed, Outcome::PersistenceFailed, Outcome::SuccessNoNewEdges, Outcome::Success, Outcome::Skipped];
+        let all = [
+            Outcome::NoCandidates,
+            Outcome::AllRejected,
+            Outcome::ProviderFailed,
+            Outcome::PersistenceFailed,
+            Outcome::SuccessNoNewEdges,
+            Outcome::Success,
+            Outcome::Skipped,
+        ];
         let mut codes = std::collections::BTreeSet::new();
         for outcome in all {
             d.begin_run("0123456789abcdef", "created");
             d.finish_run(outcome, None);
             let snapshot = d.snapshot(true);
             assert_eq!(snapshot.diagnosis.code, outcome.code());
-            assert!(!snapshot.diagnosis.explanation.to_lowercase().contains("no new connections found"));
+            assert!(!snapshot
+                .diagnosis
+                .explanation
+                .to_lowercase()
+                .contains("no new connections found"));
             codes.insert(snapshot.diagnosis.code);
         }
         assert_eq!(codes.len(), all.len());
@@ -547,17 +643,43 @@ mod tests {
         }
         let snapshot = d.snapshot(true);
         assert_eq!(snapshot.recent_runs.len(), MAX_RUNS);
-        assert_eq!(snapshot.recent_runs[0].object, format!("{:08}", MAX_RUNS + 4));
+        assert_eq!(
+            snapshot.recent_runs[0].object,
+            format!("{:08}", MAX_RUNS + 4)
+        );
     }
 
     #[test]
     fn a_manual_run_is_classified_by_what_actually_happened() {
         let d = IntegrationDiagnostics::default();
-        let report = |proposed, skipped_existing, verified, rejected, added| InferenceReport { proposed, skipped_existing, verified, rejected, added, provider_requests: 3, ..InferenceReport::default() };
-        assert_eq!(d.record_manual(1, &report(0, 0, 0, 0, 0)).outcome, Outcome::NoCandidates);
-        assert_eq!(d.record_manual(4, &report(0, 0, 0, 0, 0)).outcome, Outcome::SuccessNoNewEdges);
-        assert_eq!(d.record_manual(4, &report(2, 2, 0, 0, 0)).outcome, Outcome::SuccessNoNewEdges);
-        assert_eq!(d.record_manual(4, &report(2, 0, 2, 2, 0)).outcome, Outcome::AllRejected);
-        assert_eq!(d.record_manual(4, &report(2, 0, 2, 1, 1)).outcome, Outcome::Success);
+        let report = |proposed, skipped_existing, verified, rejected, added| InferenceReport {
+            proposed,
+            skipped_existing,
+            verified,
+            rejected,
+            added,
+            provider_requests: 3,
+            ..InferenceReport::default()
+        };
+        assert_eq!(
+            d.record_manual(1, &report(0, 0, 0, 0, 0)).outcome,
+            Outcome::NoCandidates
+        );
+        assert_eq!(
+            d.record_manual(4, &report(0, 0, 0, 0, 0)).outcome,
+            Outcome::SuccessNoNewEdges
+        );
+        assert_eq!(
+            d.record_manual(4, &report(2, 2, 0, 0, 0)).outcome,
+            Outcome::SuccessNoNewEdges
+        );
+        assert_eq!(
+            d.record_manual(4, &report(2, 0, 2, 2, 0)).outcome,
+            Outcome::AllRejected
+        );
+        assert_eq!(
+            d.record_manual(4, &report(2, 0, 2, 1, 1)).outcome,
+            Outcome::Success
+        );
     }
 }

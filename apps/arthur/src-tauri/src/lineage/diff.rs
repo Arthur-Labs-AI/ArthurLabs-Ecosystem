@@ -93,14 +93,27 @@ fn tokenize(text: &str) -> Vec<&str> {
 fn push(segments: &mut Vec<Segment>, op: Op, text: &str) {
     match segments.last_mut() {
         Some(last) if last.op == op => last.text.push_str(text),
-        _ => segments.push(Segment { op, text: text.to_string() }),
+        _ => segments.push(Segment {
+            op,
+            text: text.to_string(),
+        }),
     }
 }
 
 pub fn diff_text(old_text: &str, new_text: &str) -> TextDiff {
     if old_text == new_text {
-        let segments = if old_text.is_empty() { vec![] } else { vec![Segment { op: Op::Equal, text: old_text.to_string() }] };
-        return TextDiff { changed: false, segments };
+        let segments = if old_text.is_empty() {
+            vec![]
+        } else {
+            vec![Segment {
+                op: Op::Equal,
+                text: old_text.to_string(),
+            }]
+        };
+        return TextDiff {
+            changed: false,
+            segments,
+        };
     }
     let a = tokenize(old_text);
     let b = tokenize(new_text);
@@ -121,7 +134,11 @@ pub fn diff_text(old_text: &str, new_text: &str) -> TextDiff {
     let mut lcs = vec![0u16; (n + 1) * width];
     for i in (0..n).rev() {
         for j in (0..m).rev() {
-            lcs[i * width + j] = if middle_a[i] == middle_b[j] { lcs[(i + 1) * width + j + 1] + 1 } else { lcs[(i + 1) * width + j].max(lcs[i * width + j + 1]) };
+            lcs[i * width + j] = if middle_a[i] == middle_b[j] {
+                lcs[(i + 1) * width + j + 1] + 1
+            } else {
+                lcs[(i + 1) * width + j].max(lcs[i * width + j + 1])
+            };
         }
     }
 
@@ -146,7 +163,10 @@ pub fn diff_text(old_text: &str, new_text: &str) -> TextDiff {
     if end_a < a.len() {
         push(&mut segments, Op::Equal, &a[end_a..].concat());
     }
-    TextDiff { changed: true, segments }
+    TextDiff {
+        changed: true,
+        segments,
+    }
 }
 
 pub struct Content<'a> {
@@ -160,7 +180,11 @@ pub fn diff_revisions(old: &Content, new: &Content) -> RevisionDiff {
     RevisionDiff {
         old_revision_id: old.id.to_string(),
         new_revision_id: new.id.to_string(),
-        kind: KindDiff { changed: old.kind != new.kind, from: old.kind.to_string(), to: new.kind.to_string() },
+        kind: KindDiff {
+            changed: old.kind != new.kind,
+            from: old.kind.to_string(),
+            to: new.kind.to_string(),
+        },
         title: diff_text(old.title, new.title),
         body: diff_text(old.body, new.body),
     }
@@ -201,11 +225,20 @@ mod tests {
         for (old, new) in pairs {
             let diff = diff_text(&old, &new);
             assert_eq!(diff_text(&old, &new), diff, "repeatable");
-            let rebuild = |skip: Op| diff.segments.iter().filter(|s| s.op != skip).map(|s| s.text.as_str()).collect::<String>();
+            let rebuild = |skip: Op| {
+                diff.segments
+                    .iter()
+                    .filter(|s| s.op != skip)
+                    .map(|s| s.text.as_str())
+                    .collect::<String>()
+            };
             assert_eq!(rebuild(Op::Insert), old);
             assert_eq!(rebuild(Op::Delete), new);
             for pair in diff.segments.windows(2) {
-                assert_ne!(pair[0].op, pair[1].op, "consecutive segments with one op are merged");
+                assert_ne!(
+                    pair[0].op, pair[1].op,
+                    "consecutive segments with one op are merged"
+                );
             }
             assert!(diff.segments.iter().all(|s| !s.text.is_empty()));
             assert_eq!(diff.changed, old != new);
@@ -214,26 +247,60 @@ mod tests {
 
     #[test]
     fn tokens_group_words_and_white_space_but_split_everything_else() {
-        assert_eq!(tokenize("Hello,  мир! 😀😀 a1_b"), ["Hello", ",", "  ", "мир", "!", " ", "😀", "😀", " ", "a1", "_", "b"]);
+        assert_eq!(
+            tokenize("Hello,  мир! 😀😀 a1_b"),
+            ["Hello", ",", "  ", "мир", "!", " ", "😀", "😀", " ", "a1", "_", "b"]
+        );
         assert_eq!(tokenize(""), Vec::<&str>::new());
     }
 
     #[test]
     fn a_revision_diff_reports_kind_title_and_body_independently() {
-        let old = Content { id: "r1", kind: "idea", title: "Same", body: "Old body" };
-        let new = Content { id: "r2", kind: "decision", title: "Same", body: "New body" };
+        let old = Content {
+            id: "r1",
+            kind: "idea",
+            title: "Same",
+            body: "Old body",
+        };
+        let new = Content {
+            id: "r2",
+            kind: "decision",
+            title: "Same",
+            body: "New body",
+        };
         let diff = diff_revisions(&old, &new);
-        assert_eq!(diff.kind, KindDiff { changed: true, from: "idea".into(), to: "decision".into() });
+        assert_eq!(
+            diff.kind,
+            KindDiff {
+                changed: true,
+                from: "idea".into(),
+                to: "decision".into()
+            }
+        );
         assert!(!diff.title.changed && diff.body.changed);
-        let same = diff_revisions(&old, &Content { id: "r3", ..old_copy(&old) });
+        let same = diff_revisions(
+            &old,
+            &Content {
+                id: "r3",
+                ..old_copy(&old)
+            },
+        );
         assert!(!same.kind.changed && !same.title.changed && !same.body.changed);
         let value = serde_json::to_value(&diff).unwrap();
         let mut keys: Vec<&String> = value.as_object().unwrap().keys().collect();
         keys.sort();
-        assert_eq!(keys, ["body", "kind", "newRevisionId", "oldRevisionId", "title"]);
+        assert_eq!(
+            keys,
+            ["body", "kind", "newRevisionId", "oldRevisionId", "title"]
+        );
     }
 
     fn old_copy<'a>(c: &Content<'a>) -> Content<'a> {
-        Content { id: c.id, kind: c.kind, title: c.title, body: c.body }
+        Content {
+            id: c.id,
+            kind: c.kind,
+            title: c.title,
+            body: c.body,
+        }
     }
 }

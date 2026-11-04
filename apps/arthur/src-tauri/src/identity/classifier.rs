@@ -2,7 +2,7 @@
 //! behind it; tests use `fake`. Synchronous on purpose: the pure core never awaits. An async adapter runs the call first and hands the
 //! finished `ClassifierOutput` (or failure) to the core.
 
-use super::types::{CandidateSignal, Candidate, Claim};
+use super::types::{Candidate, CandidateSignal, Claim};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ClassifierFailure {
@@ -28,5 +28,8 @@ pub struct ClassifierOutput {
 }
 
 pub trait IdentityClassifier {
-    fn classify(&self, request: &ClassifyRequest<'_>) -> Result<ClassifierOutput, ClassifierFailure>;
+    fn classify(
+        &self,
+        request: &ClassifyRequest<'_>,
+    ) -> Result<ClassifierOutput, ClassifierFailure>;
 }

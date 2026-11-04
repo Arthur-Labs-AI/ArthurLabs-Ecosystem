@@ -34,24 +34,35 @@ pub struct JevConsent {
 }
 
 fn now() -> String {
-    time::OffsetDateTime::now_utc().format(&time::format_description::well_known::Rfc3339).unwrap_or_default()
+    time::OffsetDateTime::now_utc()
+        .format(&time::format_description::well_known::Rfc3339)
+        .unwrap_or_default()
 }
 
 impl JevConsent {
     pub fn new(path: PathBuf) -> Self {
         let granted = Self::read(&path).is_some_and(|state| state.granted);
-        Self { path: Some(path), granted: AtomicBool::new(granted) }
+        Self {
+            path: Some(path),
+            granted: AtomicBool::new(granted),
+        }
     }
 
     #[cfg(test)]
     pub fn in_memory(granted: bool) -> Self {
-        Self { path: None, granted: AtomicBool::new(granted) }
+        Self {
+            path: None,
+            granted: AtomicBool::new(granted),
+        }
     }
 
     /// The stored state if it is well formed, for THIS provider, and for the CURRENT disclosure; otherwise `None` (= not consented).
     fn read(path: &PathBuf) -> Option<ConsentState> {
         let state: ConsentState = serde_json::from_slice(&std::fs::read(path).ok()?).ok()?;
-        (state.version == FILE_VERSION && state.provider == PROVIDER && state.disclosure_version == DISCLOSURE_VERSION).then_some(state)
+        (state.version == FILE_VERSION
+            && state.provider == PROVIDER
+            && state.disclosure_version == DISCLOSURE_VERSION)
+            .then_some(state)
     }
 
     pub fn granted(&self) -> bool {
@@ -77,9 +88,18 @@ impl JevConsent {
             if let Some(parent) = path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
-            let state = ConsentState { version: FILE_VERSION, provider: PROVIDER.into(), granted, disclosure_version: DISCLOSURE_VERSION.into(), changed_at: now() };
+            let state = ConsentState {
+                version: FILE_VERSION,
+                provider: PROVIDER.into(),
+                granted,
+                disclosure_version: DISCLOSURE_VERSION.into(),
+                changed_at: now(),
+            };
             let temporary = path.with_extension("tmp");
-            std::fs::write(&temporary, serde_json::to_vec(&state).map_err(std::io::Error::other)?)?;
+            std::fs::write(
+                &temporary,
+                serde_json::to_vec(&state).map_err(std::io::Error::other)?,
+            )?;
             std::fs::rename(&temporary, path)?;
         }
         self.granted.store(granted, Ordering::SeqCst);

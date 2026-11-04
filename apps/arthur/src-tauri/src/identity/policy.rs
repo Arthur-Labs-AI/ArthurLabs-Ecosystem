@@ -57,12 +57,27 @@ pub fn is_user_owned(origin: &str) -> bool {
 }
 
 const SUPERSESSION_MARKERS: [&str; 14] = [
-    "instead of", "switch from", "switching from", "replace", "replacing", "no longer", "dropped", "rather than", "вместо", "сменям", "сменихме", "заменям", "заменяме", "вече не",
+    "instead of",
+    "switch from",
+    "switching from",
+    "replace",
+    "replacing",
+    "no longer",
+    "dropped",
+    "rather than",
+    "вместо",
+    "сменям",
+    "сменихме",
+    "заменям",
+    "заменяме",
+    "вече не",
 ];
 
 /// A deterministic second look at "the claim says it replaces the earlier choice": the claim's own words must contain a supersession marker.
 /// It can only veto; the provider's flag alone never suffices.
 pub fn has_supersession_wording(claim_text: &str) -> bool {
     let lower = claim_text.to_lowercase();
-    SUPERSESSION_MARKERS.iter().any(|marker| lower.contains(marker))
+    SUPERSESSION_MARKERS
+        .iter()
+        .any(|marker| lower.contains(marker))
 }

@@ -10,6 +10,7 @@
 
     <!-- Captures and provider credentials stay on this device: no backup and no device transfer (see the two rules files). -->
     <application
+        android:name=".security.SigningApplication"
         android:allowBackup="false"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules"

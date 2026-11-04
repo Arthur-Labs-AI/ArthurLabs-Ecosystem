@@ -121,7 +121,8 @@ pub fn intent_multiplier(kind: &str, dir: Dir, intent: &IntentWeights) -> f64 {
 
 /// Whether a 2nd hop along `kind` is allowed for this question.
 pub fn second_hop_allowed(kind: &str, intent: &IntentWeights) -> bool {
-    (kind == "depends_on" && intent.dependency >= INTENT_ON) || (kind == "supersedes" && intent.evolution >= INTENT_ON)
+    (kind == "depends_on" && intent.dependency >= INTENT_ON)
+        || (kind == "supersedes" && intent.evolution >= INTENT_ON)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -206,29 +207,73 @@ struct Candidate {
     score: f64,
 }
 
-fn edge(from: &str, to: &str, relation: &RelationRow, dir: Dir, distance: u8, external: bool) -> PathEdge {
-    PathEdge { from_object_id: from.to_string(), to_object_id: to.to_string(), relation_id: relation.id.clone(), relation_kind: relation.kind.clone(), direction: dir, distance, external_project: external }
+fn edge(
+    from: &str,
+    to: &str,
+    relation: &RelationRow,
+    dir: Dir,
+    distance: u8,
+    external: bool,
+) -> PathEdge {
+    PathEdge {
+        from_object_id: from.to_string(),
+        to_object_id: to.to_string(),
+        relation_id: relation.id.clone(),
+        relation_kind: relation.kind.clone(),
+        direction: dir,
+        distance,
+        external_project: external,
+    }
 }
 
 /// The first hop from the expanding seeds. `details` must cover the far ends of `relations`; ends missing from it are dangling and skipped.
-pub fn first_hop(ctx: &Context<'_>, seeds: &[Seed], relations: &[RelationRow], details: &HashMap<String, Far>, retrieved: &HashSet<String>) -> FirstHop {
+pub fn first_hop(
+    ctx: &Context<'_>,
+    seeds: &[Seed],
+    relations: &[RelationRow],
+    details: &HashMap<String, Far>,
+    retrieved: &HashSet<String>,
+) -> FirstHop {
     let mut out = FirstHop::default();
     let weakest = seeds.iter().map(|s| s.hybrid).fold(f64::MAX, f64::min);
-    let floor = if seeds.is_empty() { 0.0 } else { FLOOR_FRACTION * weakest };
+    let floor = if seeds.is_empty() {
+        0.0
+    } else {
+        FLOOR_FRACTION * weakest
+    };
 
     let mut candidates: Vec<Candidate> = Vec::new();
     for (seed_index, seed) in seeds.iter().enumerate() {
         for relation in relations {
-            if relation.source_object_id != seed.object_id && relation.target_object_id != seed.object_id {
+            if relation.source_object_id != seed.object_id
+                && relation.target_object_id != seed.object_id
+            {
                 continue;
             }
-            let far_id = if relation.source_object_id == seed.object_id { &relation.target_object_id } else { &relation.source_object_id };
+            let far_id = if relation.source_object_id == seed.object_id {
+                &relation.target_object_id
+            } else {
+                &relation.source_object_id
+            };
             let dir = direction_from(&seed.object_id, relation);
             // Relations between two retrieved objects are graph SUPPORT for both, not new evidence.
             if retrieved.contains(far_id) {
-                out.links.push((far_id.clone(), edge(&seed.object_id, far_id, relation, dir, 1, false)));
+                out.links.push((
+                    far_id.clone(),
+                    edge(&seed.object_id, far_id, relation, dir, 1, false),
+                ));
                 // ...and the seed end of the same relation, seen from the far (retrieved) end (deduplicated below).
-                out.links.push((seed.object_id.clone(), edge(far_id, &seed.object_id, relation, direction_from(far_id, relation), 1, false)));
+                out.links.push((
+                    seed.object_id.clone(),
+                    edge(
+                        far_id,
+                        &seed.object_id,
+                        relation,
+                        direction_from(far_id, relation),
+                        1,
+                        false,
+                    ),
+                ));
                 if relation.kind == "duplicates" {
                     out.aliases.push((seed.object_id.clone(), far_id.clone()));
                 }
@@ -236,20 +281,41 @@ pub fn first_hop(ctx: &Context<'_>, seeds: &[Seed], relations: &[RelationRow], d
             }
             let base = base_weight(&relation.kind, dir);
             let multiplier = intent_multiplier(&relation.kind, dir, ctx.intent);
-            candidates.push(Candidate { far_id: far_id.clone(), seed_index, seed_id: seed.object_id.clone(), relation: relation.clone(), dir, base, multiplier, score: seed.hybrid * base * multiplier * HOP_DECAY });
+            candidates.push(Candidate {
+                far_id: far_id.clone(),
+                seed_index,
+                seed_id: seed.object_id.clone(),
+                relation: relation.clone(),
+                dir,
+                base,
+                multiplier,
+                score: seed.hybrid * base * multiplier * HOP_DECAY,
+            });
         }
     }
     let mut seen_links = HashSet::new();
-    out.links.retain(|(object, e)| seen_links.insert((object.clone(), e.relation_id.clone(), e.from_object_id.clone())));
+    out.links.retain(|(object, e)| {
+        seen_links.insert((
+            object.clone(),
+            e.relation_id.clone(),
+            e.from_object_id.clone(),
+        ))
+    });
     candidates.sort_by(|a, b| {
-        b.score.total_cmp(&a.score).then_with(|| a.relation.created_at.cmp(&b.relation.created_at)).then_with(|| a.relation.id.cmp(&b.relation.id)).then_with(|| a.far_id.cmp(&b.far_id))
+        b.score
+            .total_cmp(&a.score)
+            .then_with(|| a.relation.created_at.cmp(&b.relation.created_at))
+            .then_with(|| a.relation.id.cmp(&b.relation.id))
+            .then_with(|| a.far_id.cmp(&b.far_id))
     });
 
     let mut per_seed: HashMap<usize, usize> = HashMap::new();
     let mut per_seed_kind: HashMap<(usize, String), usize> = HashMap::new();
     let mut external = 0usize;
     for candidate in candidates {
-        let Some(far) = details.get(&candidate.far_id) else { continue };
+        let Some(far) = details.get(&candidate.far_id) else {
+            continue;
+        };
         let external_project = far.object.project_id != ctx.scope_project;
         if external_project && far.archived {
             out.omissions.archived_external += 1;
@@ -257,23 +323,42 @@ pub fn first_hop(ctx: &Context<'_>, seeds: &[Seed], relations: &[RelationRow], d
         }
         if candidate.relation.kind == "duplicates" {
             // Reduce redundancy: note the alias on the seed, spend no context on a second copy of the same thought.
-            out.aliases.push((candidate.seed_id.clone(), candidate.far_id.clone()));
+            out.aliases
+                .push((candidate.seed_id.clone(), candidate.far_id.clone()));
             continue;
         }
         if candidate.score < floor {
             continue;
         }
-        let path_edge = edge(&candidate.seed_id, &candidate.far_id, &candidate.relation, candidate.dir, 1, external_project);
-        if let Some(existing) = out.admitted.iter_mut().find(|a| a.object_id == candidate.far_id) {
+        let path_edge = edge(
+            &candidate.seed_id,
+            &candidate.far_id,
+            &candidate.relation,
+            candidate.dir,
+            1,
+            external_project,
+        );
+        if let Some(existing) = out
+            .admitted
+            .iter_mut()
+            .find(|a| a.object_id == candidate.far_id)
+        {
             if existing.also_via.len() < 3 {
                 existing.also_via.push(path_edge);
             }
             continue;
         }
-        if out.admitted.iter().filter(|a| !a.external_project).count() >= MAX_GRAPH_OBJECTS && !external_project {
+        if out.admitted.iter().filter(|a| !a.external_project).count() >= MAX_GRAPH_OBJECTS
+            && !external_project
+        {
             continue;
         }
-        if *per_seed.get(&candidate.seed_index).unwrap_or(&0) >= MAX_PER_SEED || *per_seed_kind.get(&(candidate.seed_index, candidate.relation.kind.clone())).unwrap_or(&0) >= MAX_PER_SEED_KIND {
+        if *per_seed.get(&candidate.seed_index).unwrap_or(&0) >= MAX_PER_SEED
+            || *per_seed_kind
+                .get(&(candidate.seed_index, candidate.relation.kind.clone()))
+                .unwrap_or(&0)
+                >= MAX_PER_SEED_KIND
+        {
             continue;
         }
         if external_project {
@@ -284,7 +369,9 @@ pub fn first_hop(ctx: &Context<'_>, seeds: &[Seed], relations: &[RelationRow], d
             external += 1;
         }
         *per_seed.entry(candidate.seed_index).or_insert(0) += 1;
-        *per_seed_kind.entry((candidate.seed_index, candidate.relation.kind.clone())).or_insert(0) += 1;
+        *per_seed_kind
+            .entry((candidate.seed_index, candidate.relation.kind.clone()))
+            .or_insert(0) += 1;
         out.admitted.push(Admission {
             object_id: candidate.far_id,
             score: candidate.score,
@@ -301,26 +388,51 @@ pub fn first_hop(ctx: &Context<'_>, seeds: &[Seed], relations: &[RelationRow], d
 
 /// The in-scope first-hop admissions that may seed a second hop: reached by `depends_on` / `supersedes`, and only when the question asks.
 pub fn frontier<'a>(ctx: &Context<'_>, first: &'a [Admission]) -> Vec<&'a Admission> {
-    first.iter().filter(|a| !a.external_project && a.path.len() == 1 && second_hop_allowed(&a.path[0].relation_kind, ctx.intent) && a.intent_relevant).collect()
+    first
+        .iter()
+        .filter(|a| {
+            !a.external_project
+                && a.path.len() == 1
+                && second_hop_allowed(&a.path[0].relation_kind, ctx.intent)
+                && a.intent_relevant
+        })
+        .collect()
 }
 
 /// The narrowly allowed second hop: from each frontier object, ONE more edge of the SAME kind in the SAME direction. Far ends must be in
 /// scope and not already present; at most `MAX_SECOND_HOP` in total. Both path edges are kept.
-pub fn second_hop(ctx: &Context<'_>, frontier: &[&Admission], relations: &[RelationRow], details: &HashMap<String, Far>, present: &HashSet<String>) -> Vec<Admission> {
+pub fn second_hop(
+    ctx: &Context<'_>,
+    frontier: &[&Admission],
+    relations: &[RelationRow],
+    details: &HashMap<String, Far>,
+    present: &HashSet<String>,
+) -> Vec<Admission> {
     let mut candidates: Vec<Admission> = Vec::new();
     for front in frontier {
         let first_edge = &front.path[0];
-        for relation in relations.iter().filter(|r| r.kind == first_edge.relation_kind && r.id != first_edge.relation_id) {
+        for relation in relations
+            .iter()
+            .filter(|r| r.kind == first_edge.relation_kind && r.id != first_edge.relation_id)
+        {
             let dir = direction_from(&front.object_id, relation);
             if dir != first_edge.direction {
                 continue;
             }
-            let far_id = if relation.source_object_id == front.object_id { &relation.target_object_id } else { &relation.source_object_id };
+            let far_id = if relation.source_object_id == front.object_id {
+                &relation.target_object_id
+            } else {
+                &relation.source_object_id
+            };
             if far_id == &front.object_id || present.contains(far_id) {
                 continue;
             }
-            let Some(far) = details.get(far_id) else { continue };
-            if far.object.project_id != ctx.scope_project || (far.archived && far.object.project_id != ctx.scope_project) {
+            let Some(far) = details.get(far_id) else {
+                continue;
+            };
+            if far.object.project_id != ctx.scope_project
+                || (far.archived && far.object.project_id != ctx.scope_project)
+            {
                 continue;
             }
             let base = base_weight(&relation.kind, dir);
@@ -330,14 +442,22 @@ pub fn second_hop(ctx: &Context<'_>, frontier: &[&Admission], relations: &[Relat
                 score: front.score * base * multiplier * HOP_DECAY,
                 base_weight: base,
                 intent_multiplier: multiplier,
-                path: vec![first_edge.clone(), edge(&front.object_id, far_id, relation, dir, 2, false)],
+                path: vec![
+                    first_edge.clone(),
+                    edge(&front.object_id, far_id, relation, dir, 2, false),
+                ],
                 also_via: Vec::new(),
                 intent_relevant: multiplier > 1.0,
                 external_project: false,
             });
         }
     }
-    candidates.sort_by(|a, b| b.score.total_cmp(&a.score).then_with(|| a.path[1].relation_id.cmp(&b.path[1].relation_id)).then_with(|| a.object_id.cmp(&b.object_id)));
+    candidates.sort_by(|a, b| {
+        b.score
+            .total_cmp(&a.score)
+            .then_with(|| a.path[1].relation_id.cmp(&b.path[1].relation_id))
+            .then_with(|| a.object_id.cmp(&b.object_id))
+    });
     let mut seen = HashSet::new();
     candidates.retain(|c| seen.insert(c.object_id.clone()));
     candidates.truncate(MAX_SECOND_HOP);
@@ -357,7 +477,11 @@ pub struct Marks {
     pub aliases: HashMap<String, Vec<String>>,
 }
 
-pub fn marks(present: &HashSet<String>, relations: &[RelationRow], aliases: &[(String, String)]) -> Marks {
+pub fn marks(
+    present: &HashSet<String>,
+    relations: &[RelationRow],
+    aliases: &[(String, String)],
+) -> Marks {
     let mut out = Marks::default();
     for relation in relations {
         let (s, t) = (&relation.source_object_id, &relation.target_object_id);
@@ -366,12 +490,21 @@ pub fn marks(present: &HashSet<String>, relations: &[RelationRow], aliases: &[(S
         }
         match relation.kind.as_str() {
             "supersedes" => {
-                out.superseded_by.entry(t.clone()).or_default().push(s.clone());
+                out.superseded_by
+                    .entry(t.clone())
+                    .or_default()
+                    .push(s.clone());
                 out.supersedes.entry(s.clone()).or_default().push(t.clone());
             }
             "contradicts" => {
-                out.conflicts_with.entry(s.clone()).or_default().push(t.clone());
-                out.conflicts_with.entry(t.clone()).or_default().push(s.clone());
+                out.conflicts_with
+                    .entry(s.clone())
+                    .or_default()
+                    .push(t.clone());
+                out.conflicts_with
+                    .entry(t.clone())
+                    .or_default()
+                    .push(s.clone());
             }
             _ => {}
         }
@@ -382,7 +515,13 @@ pub fn marks(present: &HashSet<String>, relations: &[RelationRow], aliases: &[(S
             list.push(alias.clone());
         }
     }
-    for list in out.superseded_by.values_mut().chain(out.supersedes.values_mut()).chain(out.conflicts_with.values_mut()).chain(out.aliases.values_mut()) {
+    for list in out
+        .superseded_by
+        .values_mut()
+        .chain(out.supersedes.values_mut())
+        .chain(out.conflicts_with.values_mut())
+        .chain(out.aliases.values_mut())
+    {
         list.sort();
         list.dedup();
     }
@@ -395,52 +534,130 @@ mod tests {
     use crate::recall::query::interpret;
 
     fn object(id: &str, project: &str) -> CurrentObject {
-        CurrentObject { object_id: id.into(), project_id: project.into(), kind: "idea".into(), title: id.into(), body: "b".into(), current_revision_id: format!("{id}-r"), updated_at: "2026-01-01T00:00:00Z".into(), seq: 1 }
+        CurrentObject {
+            object_id: id.into(),
+            project_id: project.into(),
+            kind: "idea".into(),
+            title: id.into(),
+            body: "b".into(),
+            current_revision_id: format!("{id}-r"),
+            updated_at: "2026-01-01T00:00:00Z".into(),
+            seq: 1,
+        }
     }
 
     fn far(id: &str, project: &str, archived: bool) -> (String, Far) {
-        (id.to_string(), Far { object: object(id, project), project_name: project.to_string(), archived, current_origin: "initial".into(), current_source: None, original_source: None, revision_count: 1 })
+        (
+            id.to_string(),
+            Far {
+                object: object(id, project),
+                project_name: project.to_string(),
+                archived,
+                current_origin: "initial".into(),
+                current_source: None,
+                original_source: None,
+                revision_count: 1,
+            },
+        )
     }
 
     fn rel(id: &str, kind: &str, source: &str, target: &str, at: &str) -> RelationRow {
-        RelationRow { id: id.into(), kind: kind.into(), source_object_id: source.into(), target_object_id: target.into(), origin: "user".into(), created_at: at.into() }
+        RelationRow {
+            id: id.into(),
+            kind: kind.into(),
+            source_object_id: source.into(),
+            target_object_id: target.into(),
+            origin: "user".into(),
+            created_at: at.into(),
+        }
     }
 
     fn seed(id: &str, hybrid: f64) -> Seed {
-        Seed { object_id: id.into(), hybrid }
+        Seed {
+            object_id: id.into(),
+            hybrid,
+        }
     }
 
-    fn run(intent: &str, seeds: &[Seed], relations: &[RelationRow], details: Vec<(String, Far)>) -> FirstHop {
+    fn run(
+        intent: &str,
+        seeds: &[Seed],
+        relations: &[RelationRow],
+        details: Vec<(String, Far)>,
+    ) -> FirstHop {
         let intent = interpret(intent).unwrap().intent;
         let details: HashMap<String, Far> = details.into_iter().collect();
         let retrieved: HashSet<String> = seeds.iter().map(|s| s.object_id.clone()).collect();
-        first_hop(&Context { scope_project: "P", intent: &intent }, seeds, relations, &details, &retrieved)
+        first_hop(
+            &Context {
+                scope_project: "P",
+                intent: &intent,
+            },
+            seeds,
+            relations,
+            &details,
+            &retrieved,
+        )
     }
 
     #[test]
     fn exact_base_weights_and_symmetric_kinds_have_no_direction() {
         let table = [
-            ("related_to", Dir::Sym, 0.5), ("extends", Dir::Out, 0.7), ("extends", Dir::In, 0.6), ("depends_on", Dir::Out, 0.8), ("depends_on", Dir::In, 0.6),
-            ("contradicts", Dir::Sym, 0.8), ("derived_from", Dir::Out, 0.7), ("derived_from", Dir::In, 0.5), ("duplicates", Dir::Sym, 0.4), ("supersedes", Dir::Out, 0.7), ("supersedes", Dir::In, 0.9),
+            ("related_to", Dir::Sym, 0.5),
+            ("extends", Dir::Out, 0.7),
+            ("extends", Dir::In, 0.6),
+            ("depends_on", Dir::Out, 0.8),
+            ("depends_on", Dir::In, 0.6),
+            ("contradicts", Dir::Sym, 0.8),
+            ("derived_from", Dir::Out, 0.7),
+            ("derived_from", Dir::In, 0.5),
+            ("duplicates", Dir::Sym, 0.4),
+            ("supersedes", Dir::Out, 0.7),
+            ("supersedes", Dir::In, 0.9),
         ];
         for (kind, dir, expected) in table {
             assert_eq!(base_weight(kind, dir), expected, "{kind} {dir:?}");
         }
         let r = rel("r", "contradicts", "a", "b", "t");
-        assert_eq!((direction_from("a", &r), direction_from("b", &r)), (Dir::Sym, Dir::Sym));
+        assert_eq!(
+            (direction_from("a", &r), direction_from("b", &r)),
+            (Dir::Sym, Dir::Sym)
+        );
         let d = rel("d", "depends_on", "a", "b", "t");
-        assert_eq!((direction_from("a", &d), direction_from("b", &d)), (Dir::Out, Dir::In));
+        assert_eq!(
+            (direction_from("a", &d), direction_from("b", &d)),
+            (Dir::Out, Dir::In)
+        );
     }
 
     #[test]
     fn exact_intent_multipliers() {
         let w = |q: &str| interpret(q).unwrap().intent;
-        assert_eq!(intent_multiplier("depends_on", Dir::Out, &w("what does X depend on")), 1.5);
-        assert_eq!(intent_multiplier("depends_on", Dir::In, &w("what does X depend on")), 1.2);
-        assert_eq!(intent_multiplier("related_to", Dir::Sym, &w("what does X depend on")), 0.7);
-        assert_eq!(intent_multiplier("contradicts", Dir::Sym, &w("what conflicts with X")), 1.6);
-        assert_eq!(intent_multiplier("supersedes", Dir::In, &w("how did X evolve")), 1.3);
-        assert_eq!(intent_multiplier("related_to", Dir::Sym, &w("tell me about X")), 1.0, "no intent, no change");
+        assert_eq!(
+            intent_multiplier("depends_on", Dir::Out, &w("what does X depend on")),
+            1.5
+        );
+        assert_eq!(
+            intent_multiplier("depends_on", Dir::In, &w("what does X depend on")),
+            1.2
+        );
+        assert_eq!(
+            intent_multiplier("related_to", Dir::Sym, &w("what does X depend on")),
+            0.7
+        );
+        assert_eq!(
+            intent_multiplier("contradicts", Dir::Sym, &w("what conflicts with X")),
+            1.6
+        );
+        assert_eq!(
+            intent_multiplier("supersedes", Dir::In, &w("how did X evolve")),
+            1.3
+        );
+        assert_eq!(
+            intent_multiplier("related_to", Dir::Sym, &w("tell me about X")),
+            1.0,
+            "no intent, no change"
+        );
         // stacking is clamped
         let both = w("what does X depend on and how did it evolve and why did I decide");
         assert!(intent_multiplier("depends_on", Dir::Out, &both) <= MULTIPLIER_MAX);
@@ -448,11 +665,29 @@ mod tests {
 
     #[test]
     fn the_intent_decides_which_neighbour_wins() {
-        let relations = [rel("r1", "related_to", "s", "x", "t1"), rel("r2", "depends_on", "s", "y", "t2"), rel("r3", "contradicts", "s", "z", "t3")];
-        let details = vec![far("x", "P", false), far("y", "P", false), far("z", "P", false)];
-        let order = |q: &str| run(q, &[seed("s", 1.0)], &relations, details.clone()).admitted.iter().map(|a| a.object_id.clone()).collect::<Vec<_>>();
+        let relations = [
+            rel("r1", "related_to", "s", "x", "t1"),
+            rel("r2", "depends_on", "s", "y", "t2"),
+            rel("r3", "contradicts", "s", "z", "t3"),
+        ];
+        let details = vec![
+            far("x", "P", false),
+            far("y", "P", false),
+            far("z", "P", false),
+        ];
+        let order = |q: &str| {
+            run(q, &[seed("s", 1.0)], &relations, details.clone())
+                .admitted
+                .iter()
+                .map(|a| a.object_id.clone())
+                .collect::<Vec<_>>()
+        };
         // Scores: seed 1.0 x base x multiplier x 0.6, and anything under the floor 0.25 x weakest seed is not worth adding.
-        assert_eq!(order("what does s depend on"), ["y", "z"], "depends_on 0.72 > contradicts 0.34; related_to 0.21 is under the floor");
+        assert_eq!(
+            order("what does s depend on"),
+            ["y", "z"],
+            "depends_on 0.72 > contradicts 0.34; related_to 0.21 is under the floor"
+        );
         assert_eq!(order("what conflicts with s"), ["z", "y", "x"], "contradicts 0.77 > depends_on 0.48 > related_to 0.30 (other kinds are not penalised for this intent)");
         assert_eq!(order("tell me about s"), ["y", "z", "x"], "default: depends_on 0.48 = contradicts 0.48 (the older relation first) > related_to 0.30");
     }
@@ -462,16 +697,53 @@ mod tests {
         let mut relations = Vec::new();
         let mut details = Vec::new();
         for i in 0..10 {
-            relations.push(rel(&format!("r{i:02}"), "extends", "s", &format!("x{i:02}"), &format!("t{i:02}")));
+            relations.push(rel(
+                &format!("r{i:02}"),
+                "extends",
+                "s",
+                &format!("x{i:02}"),
+                &format!("t{i:02}"),
+            ));
             details.push(far(&format!("x{i:02}"), "P", false));
         }
         let hop = run("tell me about s", &[seed("s", 1.0)], &relations, details);
-        assert_eq!(hop.admitted.len(), MAX_PER_SEED_KIND, "at most 2 per relation kind per seed");
+        assert_eq!(
+            hop.admitted.len(),
+            MAX_PER_SEED_KIND,
+            "at most 2 per relation kind per seed"
+        );
         // many kinds from one seed: at most 4 per seed
-        let kinds = ["extends", "depends_on", "derived_from", "related_to", "supersedes"];
-        let relations: Vec<RelationRow> = kinds.iter().flat_map(|k| (0..2).map(move |i| rel(&format!("{k}{i}"), k, "s", &format!("{k}-{i}"), &format!("t{k}{i}")))).collect();
-        let details: Vec<(String, Far)> = kinds.iter().flat_map(|k| (0..2).map(move |i| far(&format!("{k}-{i}"), "P", false))).collect();
-        assert_eq!(run("tell me about s", &[seed("s", 1.0)], &relations, details).admitted.len(), MAX_PER_SEED);
+        let kinds = [
+            "extends",
+            "depends_on",
+            "derived_from",
+            "related_to",
+            "supersedes",
+        ];
+        let relations: Vec<RelationRow> = kinds
+            .iter()
+            .flat_map(|k| {
+                (0..2).map(move |i| {
+                    rel(
+                        &format!("{k}{i}"),
+                        k,
+                        "s",
+                        &format!("{k}-{i}"),
+                        &format!("t{k}{i}"),
+                    )
+                })
+            })
+            .collect();
+        let details: Vec<(String, Far)> = kinds
+            .iter()
+            .flat_map(|k| (0..2).map(move |i| far(&format!("{k}-{i}"), "P", false)))
+            .collect();
+        assert_eq!(
+            run("tell me about s", &[seed("s", 1.0)], &relations, details)
+                .admitted
+                .len(),
+            MAX_PER_SEED
+        );
     }
 
     #[test]
@@ -482,7 +754,13 @@ mod tests {
         for (i, s) in seeds.iter().enumerate() {
             for j in 0..4 {
                 let far_id = format!("x{i}{j}");
-                relations.push(rel(&format!("r{i}{j}"), ["extends", "depends_on", "derived_from", "related_to"][j], &s.object_id, &far_id, &format!("t{i}{j}")));
+                relations.push(rel(
+                    &format!("r{i}{j}"),
+                    ["extends", "depends_on", "derived_from", "related_to"][j],
+                    &s.object_id,
+                    &far_id,
+                    &format!("t{i}{j}"),
+                ));
                 details.push(far(&far_id, "P", false));
             }
         }
@@ -497,22 +775,60 @@ mod tests {
 
     #[test]
     fn external_objects_follow_the_closed_rule() {
-        let relations = [rel("r1", "depends_on", "s", "e1", "t1"), rel("r2", "depends_on", "s", "e2", "t2"), rel("r3", "extends", "s", "e3", "t3"), rel("r4", "related_to", "s", "e4", "t4"), rel("r5", "extends", "s", "arch", "t5"), rel("r6", "related_to", "s", "x", "t6")];
-        let details = vec![far("e1", "Q", false), far("e2", "Q", false), far("e3", "R", false), far("e4", "S", false), far("arch", "OLD", true), far("x", "P", false)];
+        let relations = [
+            rel("r1", "depends_on", "s", "e1", "t1"),
+            rel("r2", "depends_on", "s", "e2", "t2"),
+            rel("r3", "extends", "s", "e3", "t3"),
+            rel("r4", "related_to", "s", "e4", "t4"),
+            rel("r5", "extends", "s", "arch", "t5"),
+            rel("r6", "related_to", "s", "x", "t6"),
+        ];
+        let details = vec![
+            far("e1", "Q", false),
+            far("e2", "Q", false),
+            far("e3", "R", false),
+            far("e4", "S", false),
+            far("arch", "OLD", true),
+            far("x", "P", false),
+        ];
         let hop = run("tell me about s", &[seed("s", 1.0)], &relations, details);
-        let external: Vec<&str> = hop.admitted.iter().filter(|a| a.external_project).map(|a| a.object_id.as_str()).collect();
+        let external: Vec<&str> = hop
+            .admitted
+            .iter()
+            .filter(|a| a.external_project)
+            .map(|a| a.object_id.as_str())
+            .collect();
         assert!(external.len() <= MAX_EXTERNAL, "{external:?}");
-        assert!(!hop.admitted.iter().any(|a| a.object_id == "arch"), "an archived project's object never enters, from any scope");
+        assert!(
+            !hop.admitted.iter().any(|a| a.object_id == "arch"),
+            "an archived project's object never enters, from any scope"
+        );
         assert_eq!(hop.omissions.archived_external, 1);
-        assert!(hop.admitted.iter().filter(|a| a.external_project).all(|a| a.path.len() == 1 && a.path[0].external_project), "one hop, labelled");
+        assert!(
+            hop.admitted
+                .iter()
+                .filter(|a| a.external_project)
+                .all(|a| a.path.len() == 1 && a.path[0].external_project),
+            "one hop, labelled"
+        );
         // a relation between two retrieved objects is support, not admission
-        let hop = run("tell me about s", &[seed("s", 1.0), seed("t", 0.9)], &[rel("r", "extends", "s", "t", "t0")], vec![]);
+        let hop = run(
+            "tell me about s",
+            &[seed("s", 1.0), seed("t", 0.9)],
+            &[rel("r", "extends", "s", "t", "t0")],
+            vec![],
+        );
         assert!(hop.admitted.is_empty() && hop.links.len() == 2);
     }
 
     #[test]
     fn duplicates_collapse_into_an_alias_instead_of_a_second_copy() {
-        let hop = run("tell me about s", &[seed("s", 1.0)], &[rel("r", "duplicates", "s", "dup", "t")], vec![far("dup", "P", false)]);
+        let hop = run(
+            "tell me about s",
+            &[seed("s", 1.0)],
+            &[rel("r", "duplicates", "s", "dup", "t")],
+            vec![far("dup", "P", false)],
+        );
         assert!(hop.admitted.is_empty());
         assert_eq!(hop.aliases, [("s".to_string(), "dup".to_string())]);
     }
@@ -520,32 +836,96 @@ mod tests {
     #[test]
     fn the_second_hop_follows_one_kind_in_one_direction_only_when_the_question_asks() {
         let intent = interpret("what does s depend on").unwrap().intent;
-        let ctx = Context { scope_project: "P", intent: &intent };
-        let first = [Admission { object_id: "y".into(), score: 0.5, base_weight: 0.8, intent_multiplier: 1.5, path: vec![PathEdge { from_object_id: "s".into(), to_object_id: "y".into(), relation_id: "r1".into(), relation_kind: "depends_on".into(), direction: Dir::Out, distance: 1, external_project: false }], also_via: vec![], intent_relevant: true, external_project: false }];
+        let ctx = Context {
+            scope_project: "P",
+            intent: &intent,
+        };
+        let first = [Admission {
+            object_id: "y".into(),
+            score: 0.5,
+            base_weight: 0.8,
+            intent_multiplier: 1.5,
+            path: vec![PathEdge {
+                from_object_id: "s".into(),
+                to_object_id: "y".into(),
+                relation_id: "r1".into(),
+                relation_kind: "depends_on".into(),
+                direction: Dir::Out,
+                distance: 1,
+                external_project: false,
+            }],
+            also_via: vec![],
+            intent_relevant: true,
+            external_project: false,
+        }];
         let front = frontier(&ctx, &first);
         assert_eq!(front.len(), 1);
-        let relations = [rel("r2", "depends_on", "y", "z", "t2"), rel("r3", "related_to", "y", "w", "t3"), rel("r4", "depends_on", "v", "y", "t4"), rel("r1", "depends_on", "s", "y", "t1")];
-        let details: HashMap<String, Far> = vec![far("z", "P", false), far("w", "P", false), far("v", "P", false)].into_iter().collect();
+        let relations = [
+            rel("r2", "depends_on", "y", "z", "t2"),
+            rel("r3", "related_to", "y", "w", "t3"),
+            rel("r4", "depends_on", "v", "y", "t4"),
+            rel("r1", "depends_on", "s", "y", "t1"),
+        ];
+        let details: HashMap<String, Far> = vec![
+            far("z", "P", false),
+            far("w", "P", false),
+            far("v", "P", false),
+        ]
+        .into_iter()
+        .collect();
         let present: HashSet<String> = ["s", "y"].iter().map(|s| s.to_string()).collect();
         let hop2 = second_hop(&ctx, &front, &relations, &details, &present);
-        assert_eq!(hop2.iter().map(|a| a.object_id.as_str()).collect::<Vec<_>>(), ["z"], "same kind, same direction only");
+        assert_eq!(
+            hop2.iter()
+                .map(|a| a.object_id.as_str())
+                .collect::<Vec<_>>(),
+            ["z"],
+            "same kind, same direction only"
+        );
         assert_eq!(hop2[0].path.len(), 2, "both edges are kept");
-        assert_eq!((hop2[0].path[0].relation_id.as_str(), hop2[0].path[1].relation_id.as_str(), hop2[0].path[1].distance), ("r1", "r2", 2));
+        assert_eq!(
+            (
+                hop2[0].path[0].relation_id.as_str(),
+                hop2[0].path[1].relation_id.as_str(),
+                hop2[0].path[1].distance
+            ),
+            ("r1", "r2", 2)
+        );
         // another question: no second hop at all
         let plain = interpret("tell me about s").unwrap().intent;
-        assert!(frontier(&Context { scope_project: "P", intent: &plain }, &first).is_empty());
+        assert!(frontier(
+            &Context {
+                scope_project: "P",
+                intent: &plain
+            },
+            &first
+        )
+        .is_empty());
         // supersedes needs the evolution intent, not the dependency one
-        assert!(!second_hop_allowed("supersedes", &intent) && second_hop_allowed("supersedes", &interpret("how did it evolve").unwrap().intent));
+        assert!(
+            !second_hop_allowed("supersedes", &intent)
+                && second_hop_allowed(
+                    "supersedes",
+                    &interpret("how did it evolve").unwrap().intent
+                )
+        );
     }
 
     #[test]
     fn marks_label_supersession_and_contradiction() {
         let present: HashSet<String> = ["a", "b", "c"].iter().map(|s| s.to_string()).collect();
-        let relations = [rel("r1", "supersedes", "b", "a", "t"), rel("r2", "contradicts", "a", "c", "t"), rel("r3", "supersedes", "z", "a", "t")];
+        let relations = [
+            rel("r1", "supersedes", "b", "a", "t"),
+            rel("r2", "contradicts", "a", "c", "t"),
+            rel("r3", "supersedes", "z", "a", "t"),
+        ];
         let m = marks(&present, &relations, &[("a".into(), "dup".into())]);
         assert_eq!(m.superseded_by["a"], ["b"], "only present objects count");
         assert_eq!(m.supersedes["b"], ["a"]);
-        assert_eq!((m.conflicts_with["a"].clone(), m.conflicts_with["c"].clone()), (vec!["c".to_string()], vec!["a".to_string()]));
+        assert_eq!(
+            (m.conflicts_with["a"].clone(), m.conflicts_with["c"].clone()),
+            (vec!["c".to_string()], vec!["a".to_string()])
+        );
         assert_eq!(m.aliases["a"], ["dup"]);
     }
 }

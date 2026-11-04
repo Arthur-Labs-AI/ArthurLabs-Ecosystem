@@ -9,8 +9,8 @@
   max-width: 1240px;
 }
 .ask-head h1 {
-  font: 400 32px/1.05 var(--serif);
-  letter-spacing: -0.015em;
+  font: 600 30px/1.1 var(--sans);
+  letter-spacing: -0.03em;
 }
 .ask-project {
   margin-top: 8px;
@@ -48,7 +48,8 @@
   background: none;
   border: 0;
   outline: none;
-  font: 400 19px/1.5 var(--serif);
+  font: 450 18px/1.5 var(--sans);
+  letter-spacing: -0.015em;
   color: var(--ink);
   min-height: 3em;
   field-sizing: content;
@@ -182,7 +183,8 @@
   gap: 8px;
 }
 .ans-lead {
-  font: 400 18px/1.55 var(--serif);
+  font: 500 17px/1.55 var(--sans);
+  letter-spacing: -0.01em;
   color: var(--ink);
   overflow-wrap: anywhere;
 }
@@ -221,7 +223,7 @@
   padding-top: 14px;
 }
 .ans-text {
-  font: 400 18px/1.62 var(--serif);
+  font: 400 16px/1.65 var(--serif);
   color: var(--ink);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -352,7 +354,8 @@
   border-color: var(--pencil);
 }
 .ev-title {
-  font: 450 16.5px/1.35 var(--serif);
+  font: 550 15.5px/1.35 var(--sans);
+  letter-spacing: -0.01em;
   margin-top: 6px;
   overflow-wrap: anywhere;
 }
@@ -381,7 +384,7 @@
   gap: 12px;
 }
 .ev-body {
-  font: 400 15px/1.6 var(--serif);
+  font: 400 14px/1.6 var(--sans);
   color: var(--ink-2);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -430,11 +433,11 @@
   line-height: 1.4;
 }
 .ev-past-title {
-  font: italic 450 15px/1.35 var(--serif);
+  font: 550 14px/1.35 var(--sans);
   margin-top: 4px;
 }
 .ev-past-body {
-  font: italic 400 14px/1.55 var(--serif);
+  font: 400 13.5px/1.55 var(--sans);
   margin-top: 2px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;

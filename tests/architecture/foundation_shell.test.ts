@@ -265,7 +265,7 @@ test("the Kotlin recorder is foreground-only, cache-confined and requests the pe
 
 test("voice error codes agree across the contract, the Rust service and the Kotlin plugin", () => {
   const rust = readText(tauriDir, "src/audio/error.rs");
-  const rustCodes = [...rust.slice(rust.indexOf("pub fn code"), rust.indexOf("pub fn message")).matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]);
+  const rustCodes = [...rust.slice(rust.indexOf("pub fn code"), rust.indexOf("pub fn message")).matchAll(/=>\s*(?:\{\s*)?"([a-z_]+)"/g)].map((m) => m[1]);
   assert.deepEqual([...rustCodes].sort(), [...VOICE_CAPTURE_ERROR_CODES].sort());
 
   const kotlinCodes = [...audioPlugin.matchAll(/invoke\.reject\([^,]+,\s*"([a-z_]+)"/g)].map((m) => m[1] as string);
@@ -327,12 +327,13 @@ test("knowledge kinds, limits and error codes agree across the contract, Rust, S
 
   const distill = readText(tauriDir, "src/distillation/mod.rs");
   const codes = distill.slice(distill.indexOf("pub fn code"), distill.indexOf("pub fn message"));
-  assert.deepEqual([...new Set([...codes.matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...DISTILLATION_ERROR_CODES].sort());
+  assert.deepEqual([...new Set([...codes.matchAll(/=>\s*(?:\{\s*)?"([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...DISTILLATION_ERROR_CODES].sort());
 });
 
 test("the schema is changed only through ordered, transactional migration steps", () => {
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
-  assert.match(migrations, /pub const STEPS: \[Step; 9\] = \[\(1, SCHEMA_V1\), \(2, SCHEMA_V2\), \(3, SCHEMA_V3\), \(4, SCHEMA_V4\), \(5, SCHEMA_V5\), \(6, SCHEMA_V6\), \(7, SCHEMA_V7\), \(8, SCHEMA_V8\), \(9, SCHEMA_V9\)\];/);
+  // Match the complete ordered declaration, independent of rustfmt line breaks/trailing comma.
+  assert.match(migrations.replace(/\s/g, ""), /pubconstSTEPS:\[Step;9\]=\[\(1,SCHEMA_V1\),\(2,SCHEMA_V2\),\(3,SCHEMA_V3\),\(4,SCHEMA_V4\),\(5,SCHEMA_V5\),\(6,SCHEMA_V6\),\(7,SCHEMA_V7\),\(8,SCHEMA_V8\),\(9,SCHEMA_V9\),?\];/);
   assert.match(migrations, /connection\.transaction\(\)/);
   for (const table of ["distillation_runs", "knowledge_objects", "object_sources", "relations", "thought_revisions", "revision_parents"]) assert.match(migrations, new RegExp(`CREATE TABLE ${table}\\b`));
   assert.match(migrations, /REFERENCES captures\(id\)/);
@@ -387,7 +388,7 @@ test("relation kinds, symmetry, origins and limits agree across the contract, Ru
   assert.equal(Number(/pub const MAX_INTEGRATION_PROPOSALS: usize = (\d+);/.exec(integrate)?.[1]), MAX_INTEGRATION_PROPOSALS);
   assert.equal(Number(/pub const MAX_REVALIDATIONS: usize = (\d+);/.exec(integrate)?.[1]), MAX_INTEGRATION_REVALIDATIONS);
   const codes = graph.slice(graph.indexOf("pub fn code"), graph.indexOf("pub fn message"));
-  assert.deepEqual([...new Set([...codes.matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...RELATION_ERROR_CODES].sort());
+  assert.deepEqual([...new Set([...codes.matchAll(/=>\s*(?:\{\s*)?"([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...RELATION_ERROR_CODES].sort());
 });
 
 test("graph schema: foreign keys to knowledge objects, canonical identity, indexes, and no lineage in it", () => {
@@ -414,7 +415,7 @@ test("the model never writes to the graph: the provider client and prompt cannot
     assert.doesNotMatch(production, /rusqlite|CaptureStore|record_relations|create_relation|\.execute\(/, `${file} must not write to storage`);
   }
   // Only the service persists, and only through the all-or-nothing store call, after validation.
-  const production = productionCode(readText(tauriDir, "src/graph/mod.rs"));
+  const production = productionCode(readText(tauriDir, "src/graph/mod.rs")).replace(/\r?\n\s*\./g, ".");
   assert.match(production, /store\.record_relations\(verified, "model"\)/);
   // Stage A -> structural validation -> Stage B votes -> gates -> final validation -> persistence.
   const steps = ["self.proposer.propose", "validate::validate_proposals", "self.verifier.verify", "verify::apply_votes", "validate::validate_edges", "store.record_relations"];
@@ -492,7 +493,7 @@ test("revision origins, limits and error codes agree across the contract, Rust a
 
   const lineage = readText(tauriDir, "src/lineage/mod.rs");
   const codes = lineage.slice(lineage.indexOf("pub fn code"), lineage.indexOf("pub fn message"));
-  assert.deepEqual([...new Set([...codes.matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...LINEAGE_ERROR_CODES].sort());
+  assert.deepEqual([...new Set([...codes.matchAll(/=>\s*(?:\{\s*)?"([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...LINEAGE_ERROR_CODES].sort());
 });
 
 test("schema v4: an append-only revision DAG with a guarded projection and a deterministic bootstrap", () => {
@@ -640,7 +641,7 @@ test("temporary audio is bounded, app-private, never logged and never stored", (
 
 test("schema v6: projects own captures and objects, and nothing else carries a project", () => {
   const migrations = readText(tauriDir, "src/storage/migrations.rs");
-  const v6 = /pub const SCHEMA_V6: &str = "([\s\S]*?)";\n/.exec(migrations)?.[1] ?? "";
+  const v6 = /pub const SCHEMA_V6: &str = "([\s\S]*?)";\r?\n/.exec(migrations)?.[1] ?? "";
   assert.ok(v6.length > 0, "SCHEMA_V6 exists");
   assert.match(v6, /CREATE TABLE projects \(/);
   assert.match(v6, /ALTER TABLE captures ADD COLUMN project_id TEXT REFERENCES projects\(id\)/);
@@ -667,7 +668,7 @@ test("schema v6: projects own captures and objects, and nothing else carries a p
   const projects = readText(tauriDir, "src/storage/project_store.rs");
   assert.equal(Number(/MAX_PROJECT_NAME_CHARS: usize = (\d+);/.exec(projects)?.[1]), MAX_PROJECT_NAME_CHARS);
   const codes = projects.slice(projects.indexOf("pub fn code"), projects.indexOf("pub fn message"));
-  assert.deepEqual([...new Set([...codes.matchAll(/=> "([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...PROJECT_ERROR_CODES].sort());
+  assert.deepEqual([...new Set([...codes.matchAll(/=>\s*(?:\{\s*)?"([a-z_]+)"/g)].map((m) => m[1]))].sort(), [...PROJECT_ERROR_CODES].sort());
   assert.equal(Number(/MAX_CAPTURE_LOOKUP: usize = ([\d_]+);/.exec(readText(tauriDir, "src/storage/capture_store.rs"))?.[1]?.replaceAll("_", "")), MAX_CAPTURE_LOOKUP);
   // There is no hard delete: projects are archived, so rows can never be orphaned by the API.
   assert.doesNotMatch(productionCode(projects), /DELETE FROM projects|DROP TABLE/);
@@ -683,8 +684,8 @@ test("projects are a domain boundary the model never decides: distillation and i
   assert.match(knowledge, /INSERT INTO knowledge_objects \(id, kind, title, body, created_at, project_id\)/);
   // Inference candidates are project-local by construction.
   const graph = productionCode(readText(tauriDir, "src/graph/mod.rs"));
-  assert.match(graph, /store\.list_knowledge_objects_in\(Some\(&project_id\)\)/);
-  assert.doesNotMatch(graph, /store\.list_knowledge_objects\(\)/, "inference never reads every project's objects");
+  assert.match(graph, /store\s*\.list_knowledge_objects_in\(Some\(&project_id\)\)/);
+  assert.doesNotMatch(graph, /store\s*\.list_knowledge_objects\(\)/, "inference never reads every project's objects");
 });
 
 test("M04C: Recall reads only through the store, writes only its own projections, and the answer model cannot reach the store or any tool", () => {
@@ -787,7 +788,7 @@ test("credentials: Android never falls back to a file, and the webview can neith
   assert.doesNotMatch(lib, /FileSecretStore|FileCredentialSource/);
   const secrets = readText(tauriDir, "src/providers/secrets.rs");
   const select = secrets.slice(secrets.indexOf("pub fn select_store"), secrets.indexOf("/// One-time move"));
-  assert.match(select, /StoragePlatform::Android => keystore\.unwrap_or_else\(\|\| std::sync::Arc::new\(UnavailableSecretStore\)\)/);
+  assert.match(select, /StoragePlatform::Android =>\s*(?:\{\s*)?keystore\.unwrap_or_else\(\|\| std::sync::Arc::new\(UnavailableSecretStore\)\)/);
   assert.doesNotMatch(select.split("StoragePlatform::Other")[0] ?? "", /FileSecretStore/);
 
   // No command returns a credential, and no Tauri command is registered for the Keystore plugin.
@@ -830,7 +831,7 @@ test("voice output (M04.6): TTS goes through the provider and SecretStore layer,
   const commands = productionCode(readText(tauriDir, "src/commands/speech.rs"));
   assert.doesNotMatch(commands, /Vec<u8>|bytes|Speech\b|ApiKey|expose\(|endpoint|Authorization/);
   const contract = readFileSync(path.join(root, "packages/contracts/speech.ts"), "utf8");
-  const fields = contract.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "").replace(/export interface SpeakInput[\s\S]*?\n}\n/, "");
+  const fields = contract.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "").replace(/export interface SpeakInput[\s\S]*?\r?\n}\r?\n/, "");
   assert.doesNotMatch(fields, /\b(audio|bytes|blob|text|secret|apiKey|endpoint|header)\??\s*:/i, "no status or result field can carry audio, text or a credential");
 
   // The schema is still v7 and nothing speech-related exists in it.

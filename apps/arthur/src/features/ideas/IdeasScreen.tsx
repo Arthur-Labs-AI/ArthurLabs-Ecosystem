@@ -54,7 +54,7 @@ function IdeaInspector({ object }: { object: KnowledgeObject }) {
   return (
     <aside className="inspector" aria-label="Idea details">
       <div className="insp-head">
-        <div className="meta">
+        <div className="meta" style={{ ["--c" as string]: `var(--kind-${object.kind})` }}>
           <KindGlyph kind={object.kind} />
           <span className="kindname">{KIND_LABELS[object.kind]}</span>
           <span aria-hidden="true">·</span>

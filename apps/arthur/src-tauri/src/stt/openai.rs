@@ -6,9 +6,9 @@ use reqwest::multipart::{Form, Part};
 
 use crate::async_util::BoxFuture;
 
+use super::{SttError, Transcriber};
 use crate::providers::credentials::CredentialSource;
 use crate::providers::http;
-use super::{SttError, Transcriber};
 
 pub const DEFAULT_ENDPOINT: &str = "https://api.openai.com/v1/audio/transcriptions";
 /// Same default as the TypeScript provider (`OPENAI_STT_MODEL`).
@@ -28,9 +28,18 @@ impl OpenAiTranscriber {
         Self::with_endpoint(credentials, DEFAULT_ENDPOINT, DEFAULT_MODEL)
     }
 
-    pub fn with_endpoint(credentials: Arc<dyn CredentialSource>, endpoint: &str, model: &str) -> Result<Self, reqwest::Error> {
+    pub fn with_endpoint(
+        credentials: Arc<dyn CredentialSource>,
+        endpoint: &str,
+        model: &str,
+    ) -> Result<Self, reqwest::Error> {
         let client = http::client(REQUEST_TIMEOUT)?;
-        Ok(Self { client, endpoint: endpoint.to_string(), model: model.to_string(), credentials })
+        Ok(Self {
+            client,
+            endpoint: endpoint.to_string(),
+            model: model.to_string(),
+            credentials,
+        })
     }
 
     async fn request(&self, audio: &[u8], file_name: &str) -> Result<String, SttError> {
@@ -65,7 +74,11 @@ impl OpenAiTranscriber {
         }
 
         let body: serde_json::Value = response.json().await.map_err(|error| {
-            if error.is_decode() { SttError::Protocol } else { SttError::Network }
+            if error.is_decode() {
+                SttError::Protocol
+            } else {
+                SttError::Network
+            }
         })?;
         match body.get("text") {
             Some(serde_json::Value::String(text)) => Ok(text.clone()),
@@ -75,14 +88,21 @@ impl OpenAiTranscriber {
 }
 
 impl Transcriber for OpenAiTranscriber {
-    fn transcribe<'a>(&'a self, audio: &'a [u8], file_name: &'a str) -> BoxFuture<'a, Result<String, SttError>> {
+    fn transcribe<'a>(
+        &'a self,
+        audio: &'a [u8],
+        file_name: &'a str,
+    ) -> BoxFuture<'a, Result<String, SttError>> {
         Box::pin(self.request(audio, file_name))
     }
 }
 
 impl fmt::Debug for OpenAiTranscriber {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OpenAiTranscriber").field("endpoint", &self.endpoint).field("model", &self.model).finish_non_exhaustive()
+        f.debug_struct("OpenAiTranscriber")
+            .field("endpoint", &self.endpoint)
+            .field("model", &self.model)
+            .finish_non_exhaustive()
     }
 }
 
@@ -120,7 +140,11 @@ mod tests {
 
     #[test]
     fn sends_the_documented_request_and_returns_the_transcript() {
-        let (url, request) = serve_once("/v1/audio/transcriptions", "200 OK", r#"{"text":" hello arthur"}"#.into());
+        let (url, request) = serve_once(
+            "/v1/audio/transcriptions",
+            "200 OK",
+            r#"{"text":" hello arthur"}"#.into(),
+        );
         let text = run(&transcriber(&url, Some("sk-test-key")), b"FAKE-AUDIO-BYTES").unwrap();
         assert_eq!(text, " hello arthur");
 
@@ -135,7 +159,10 @@ mod tests {
         assert!(wire.contains("name=\"file\"; filename=\"recording.m4a\""));
         assert!(lower.contains("content-type: audio/mp4"));
         assert!(find(&raw, b"FAKE-AUDIO-BYTES").is_some());
-        assert!(!wire.contains("name=\"language\""), "language stays on auto");
+        assert!(
+            !wire.contains("name=\"language\""),
+            "language stays on auto"
+        );
     }
 
     #[test]
@@ -153,23 +180,39 @@ mod tests {
             ("429 Too Many Requests", SttError::Provider(429)),
             ("500 Internal Server Error", SttError::Provider(500)),
         ] {
-            let (url, _request) = serve_once("/v1/audio/transcriptions", status, r#"{"error":{"message":"secret detail"}}"#.into());
-            assert_eq!(run(&transcriber(&url, Some("sk-k")), b"audio"), Err(expected), "{status}");
+            let (url, _request) = serve_once(
+                "/v1/audio/transcriptions",
+                status,
+                r#"{"error":{"message":"secret detail"}}"#.into(),
+            );
+            assert_eq!(
+                run(&transcriber(&url, Some("sk-k")), b"audio"),
+                Err(expected),
+                "{status}"
+            );
         }
     }
 
     #[test]
     fn a_success_response_that_is_not_a_transcript_is_a_protocol_error() {
         for body in ["not json", "[]", "{}", r#"{"text":42}"#, r#"{"text":null}"#] {
-            let (url, _request) = serve_once("/v1/audio/transcriptions", "200 OK", body.to_string());
-            assert_eq!(run(&transcriber(&url, Some("sk-k")), b"audio"), Err(SttError::Protocol), "{body}");
+            let (url, _request) =
+                serve_once("/v1/audio/transcriptions", "200 OK", body.to_string());
+            assert_eq!(
+                run(&transcriber(&url, Some("sk-k")), b"audio"),
+                Err(SttError::Protocol),
+                "{body}"
+            );
         }
     }
 
     #[test]
     fn an_unreachable_provider_is_a_network_error() {
         let url = dead_endpoint("/v1/audio/transcriptions");
-        assert_eq!(run(&transcriber(&url, Some("sk-k")), b"audio"), Err(SttError::Network));
+        assert_eq!(
+            run(&transcriber(&url, Some("sk-k")), b"audio"),
+            Err(SttError::Network)
+        );
     }
 
     #[test]

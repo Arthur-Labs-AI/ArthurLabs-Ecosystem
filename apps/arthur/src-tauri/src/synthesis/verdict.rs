@@ -13,14 +13,26 @@ use super::{Verdict, VerifyRequest, VetoReason};
 /// The twelve checks, in the order the prompt lists them. `true` in an answer means the problem WAS found.
 pub const CHECKS: [(&str, VetoReason); 12] = [
     ("unsupported_new_fact", VetoReason::UnsupportedAssertion),
-    ("unsupported_date_quantity_or_entity", VetoReason::UnsupportedDateQuantityOrEntity),
+    (
+        "unsupported_date_quantity_or_entity",
+        VetoReason::UnsupportedDateQuantityOrEntity,
+    ),
     ("dropped_existing_fact", VetoReason::RemovedExistingFact),
-    ("negation_or_qualifier_changed", VetoReason::QualifierOrNegationChanged),
-    ("wrong_correction_behaviour", VetoReason::WrongCorrectionBehaviour),
+    (
+        "negation_or_qualifier_changed",
+        VetoReason::QualifierOrNegationChanged,
+    ),
+    (
+        "wrong_correction_behaviour",
+        VetoReason::WrongCorrectionBehaviour,
+    ),
     ("scope_expanded", VetoReason::ScopeChanged),
     ("evidence_misattributed", VetoReason::EvidenceNotCovered),
     ("contradiction", VetoReason::Contradiction),
-    ("ambiguous_reference_guessed", VetoReason::AmbiguousReference),
+    (
+        "ambiguous_reference_guessed",
+        VetoReason::AmbiguousReference,
+    ),
     ("certainty_increased", VetoReason::CertaintyIncreased),
     ("unfaithful_to_previous", VetoReason::UnfaithfulToPrevious),
     ("unfaithful_to_new_claim", VetoReason::UnfaithfulToClaim),
@@ -54,7 +66,11 @@ Use \"pass\" only if every check is false; use \"veto\" if any check is true.";
 pub fn user_message(request: &VerifyRequest) -> String {
     let r = &request.request;
     let d = &request.draft;
-    let assertions = |list: &[super::Assertion]| list.iter().map(|a| json!({ "text": a.text, "source": a.source })).collect::<Vec<_>>();
+    let assertions = |list: &[super::Assertion]| {
+        list.iter()
+            .map(|a| json!({ "text": a.text, "source": a.source }))
+            .collect::<Vec<_>>()
+    };
     json!({
         "change_kind": r.change.as_str(),
         "existing_idea": { "title": r.title, "text": r.base_body },
@@ -69,8 +85,14 @@ pub fn user_message(request: &VerifyRequest) -> String {
 pub fn parse_verdict(text: &str) -> Result<Verdict, &'static str> {
     let value: Value = serde_json::from_str(text).map_err(|_| "not json")?;
     let object = value.as_object().filter(|o| o.len() == 2).ok_or("shape")?;
-    let verdict = object.get("verdict").and_then(Value::as_str).ok_or("verdict")?;
-    let checks = object.get("checks").and_then(Value::as_object).ok_or("checks")?;
+    let verdict = object
+        .get("verdict")
+        .and_then(Value::as_str)
+        .ok_or("verdict")?;
+    let checks = object
+        .get("checks")
+        .and_then(Value::as_object)
+        .ok_or("checks")?;
     if checks.len() != CHECKS.len() || !CHECKS.iter().all(|(name, _)| checks.contains_key(*name)) {
         return Err("check keys");
     }
@@ -92,7 +114,10 @@ pub fn parse_verdict(text: &str) -> Result<Verdict, &'static str> {
 
 /// The strict schema the provider is asked to enforce (the local parser enforces it again).
 pub fn response_schema() -> Value {
-    let checks: serde_json::Map<String, Value> = CHECKS.iter().map(|(name, _)| (name.to_string(), json!({ "type": "boolean" }))).collect();
+    let checks: serde_json::Map<String, Value> = CHECKS
+        .iter()
+        .map(|(name, _)| (name.to_string(), json!({ "type": "boolean" })))
+        .collect();
     let names: Vec<&str> = CHECKS.iter().map(|(name, _)| *name).collect();
     json!({
         "type": "object",
@@ -107,5 +132,9 @@ pub fn response_schema() -> Value {
 
 /// The verdict kinds a flagged set can produce, for reports.
 pub fn reason_names(reasons: &[VetoReason]) -> BTreeSet<&'static str> {
-    CHECKS.iter().filter(|(_, r)| reasons.contains(r)).map(|(n, _)| *n).collect()
+    CHECKS
+        .iter()
+        .filter(|(_, r)| reasons.contains(r))
+        .map(|(n, _)| *n)
+        .collect()
 }

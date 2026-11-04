@@ -27,7 +27,7 @@ describe("first-run Setup", () => {
 
   it("does not appear once Setup is done, or for an installation that already has a credential", async () => {
     renderApp(createPreviewClient({ distillation: NOTHING }));
-    expect(await screen.findByRole("heading", { name: /Good (morning|afternoon|evening)/ })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: /Your thoughts, expanded/ })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Welcome to Arthur" })).toBeNull();
   });
 
@@ -64,7 +64,7 @@ describe("first-run Setup", () => {
     expect(await screen.findByRole("heading", { name: "Done" })).toBeTruthy();
     expect(screen.getByText(/Semantic Recall is off/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Open Arthur" }));
-    expect(await screen.findByRole("heading", { name: /Good (morning|afternoon|evening)/ })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: /Your thoughts, expanded/ })).toBeTruthy();
     expect(document.body.textContent).not.toContain(SECRET);
     // Connecting never turned Semantic Recall on.
     expect((await client.getSemanticRecallStatus()).enabled).toBe(false);

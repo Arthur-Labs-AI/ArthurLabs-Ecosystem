@@ -22,7 +22,10 @@ pub const RETRY_TTL: Duration = Duration::from_secs(15 * 60);
 
 /// The sentence every retryable failure ends with, so the user is told exactly what is kept and for how long.
 pub fn retry_note() -> String {
-    format!("Your recording is kept for up to {} minutes so you can try again without speaking again.", RETRY_TTL.as_secs() / 60)
+    format!(
+        "Your recording is kept for up to {} minutes so you can try again without speaking again.",
+        RETRY_TTL.as_secs() / 60
+    )
 }
 
 /// A transcription failure that may pass: no connection, a busy or overloaded provider. Everything else is final
@@ -62,7 +65,10 @@ type SharedState = Arc<Shared>;
 
 fn lock(shared: &SharedState) -> MutexGuard<'_, State> {
     // A panic elsewhere must not wedge voice capture forever.
-    shared.state.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    shared
+        .state
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 /// Deletes the recording and returns the service to `Idle` when dropped, on every exit path (success, error, early
@@ -75,7 +81,11 @@ struct RecordingGuard {
 
 impl RecordingGuard {
     fn new(path: PathBuf, shared: SharedState) -> Self {
-        Self { path, shared, armed: true }
+        Self {
+            path,
+            shared,
+            armed: true,
+        }
     }
     /// The recording stays on disk; the caller has put the service into a state that owns it.
     fn keep(mut self) {
@@ -104,14 +114,32 @@ pub struct VoiceCaptureService {
 impl VoiceCaptureService {
     /// Creates the recordings directory and purges recordings a previous run
     /// left behind (for example after a crash, or a retry that was still open when the app died).
-    pub fn new(recorder: Arc<dyn Recorder>, transcriber: Arc<dyn Transcriber>, recordings_dir: PathBuf) -> std::io::Result<Self> {
+    pub fn new(
+        recorder: Arc<dyn Recorder>,
+        transcriber: Arc<dyn Transcriber>,
+        recordings_dir: PathBuf,
+    ) -> std::io::Result<Self> {
         Self::with_retry_ttl(recorder, transcriber, recordings_dir, RETRY_TTL)
     }
 
-    pub fn with_retry_ttl(recorder: Arc<dyn Recorder>, transcriber: Arc<dyn Transcriber>, recordings_dir: PathBuf, retry_ttl: Duration) -> std::io::Result<Self> {
+    pub fn with_retry_ttl(
+        recorder: Arc<dyn Recorder>,
+        transcriber: Arc<dyn Transcriber>,
+        recordings_dir: PathBuf,
+        retry_ttl: Duration,
+    ) -> std::io::Result<Self> {
         fs::create_dir_all(&recordings_dir)?;
         purge_stale_recordings(&recordings_dir);
-        Ok(Self { recorder, transcriber, recordings_dir, shared: Arc::new(Shared { state: Mutex::new(State::Idle) }), retry_ttl, next_token: AtomicU64::new(1) })
+        Ok(Self {
+            recorder,
+            transcriber,
+            recordings_dir,
+            shared: Arc::new(Shared {
+                state: Mutex::new(State::Idle),
+            }),
+            retry_ttl,
+            next_token: AtomicU64::new(1),
+        })
     }
 
     pub async fn start(&self) -> Result<(), VoiceError> {
@@ -128,7 +156,9 @@ impl VoiceCaptureService {
             *state = State::Starting;
         }
 
-        let path = self.recordings_dir.join(format!("{FILE_PREFIX}{}.{FILE_EXTENSION}", Uuid::new_v4()));
+        let path = self
+            .recordings_dir
+            .join(format!("{FILE_PREFIX}{}.{FILE_EXTENSION}", Uuid::new_v4()));
         match self.recorder.start(&path).await {
             Ok(()) => {
                 *lock(&self.shared) = State::Recording(path);
@@ -151,7 +181,11 @@ impl VoiceCaptureService {
     }
 
     /// As `stop`, capturing into `project_id` (the Inbox when `None`).
-    pub async fn stop_in(&self, store: &CaptureStore, project_id: Option<&str>) -> Result<Capture, VoiceError> {
+    pub async fn stop_in(
+        &self,
+        store: &CaptureStore,
+        project_id: Option<&str>,
+    ) -> Result<Capture, VoiceError> {
         let path = {
             let mut state = lock(&self.shared);
             match &*state {
@@ -179,7 +213,11 @@ impl VoiceCaptureService {
     }
 
     /// As `retry`, capturing into `project_id` (the Inbox when `None`).
-    pub async fn retry_in(&self, store: &CaptureStore, project_id: Option<&str>) -> Result<Capture, VoiceError> {
+    pub async fn retry_in(
+        &self,
+        store: &CaptureStore,
+        project_id: Option<&str>,
+    ) -> Result<Capture, VoiceError> {
         let kept = {
             let mut state = lock(&self.shared);
             match &*state {
@@ -210,13 +248,26 @@ impl VoiceCaptureService {
         }
     }
 
-    async fn transcribe(&self, guard: RecordingGuard, store: &CaptureStore, retry_of: Option<Kept>, project_id: Option<&str>) -> Result<Capture, VoiceError> {
+    async fn transcribe(
+        &self,
+        guard: RecordingGuard,
+        store: &CaptureStore,
+        retry_of: Option<Kept>,
+        project_id: Option<&str>,
+    ) -> Result<Capture, VoiceError> {
         let audio = read_audio(&guard.path)?;
-        let file_name = guard.path.file_name().and_then(|n| n.to_str()).unwrap_or("recording.m4a").to_string();
+        let file_name = guard
+            .path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("recording.m4a")
+            .to_string();
 
         let transcript = match self.transcriber.transcribe(&audio, &file_name).await {
             Ok(text) => text,
-            Err(cause) if is_retryable(&cause) => return self.keep_for_retry(guard, cause, retry_of),
+            Err(cause) if is_retryable(&cause) => {
+                return self.keep_for_retry(guard, cause, retry_of)
+            }
             Err(cause) => return Err(VoiceError::from(cause)),
         };
         let transcript = transcript.trim();
@@ -225,20 +276,37 @@ impl VoiceCaptureService {
         }
 
         store
-            .create(CreateCaptureInput { source: "voice".into(), content: transcript.to_string(), project_id: project_id.map(str::to_string) })
+            .create(CreateCaptureInput {
+                source: "voice".into(),
+                content: transcript.to_string(),
+                project_id: project_id.map(str::to_string),
+            })
             .map_err(|error| VoiceError::CaptureFailed(error.to_string()))
     }
 
-    fn keep_for_retry(&self, guard: RecordingGuard, cause: SttError, retry_of: Option<Kept>) -> Result<Capture, VoiceError> {
+    fn keep_for_retry(
+        &self,
+        guard: RecordingGuard,
+        cause: SttError,
+        retry_of: Option<Kept>,
+    ) -> Result<Capture, VoiceError> {
         let (token, deadline, first) = match retry_of {
             Some(kept) => (kept.token, kept.deadline, false),
-            None => (self.next_token.fetch_add(1, Ordering::SeqCst), Instant::now() + self.retry_ttl, true),
+            None => (
+                self.next_token.fetch_add(1, Ordering::SeqCst),
+                Instant::now() + self.retry_ttl,
+                true,
+            ),
         };
         if Instant::now() >= deadline {
             // The time ran out while the retry was in flight: the audio goes (the guard deletes it).
             return Err(VoiceError::from(cause));
         }
-        *lock(&self.shared) = State::Retryable(Kept { path: guard.path.clone(), token, deadline });
+        *lock(&self.shared) = State::Retryable(Kept {
+            path: guard.path.clone(),
+            token,
+            deadline,
+        });
         guard.keep();
         if first {
             self.expire_later(token, deadline);
@@ -288,7 +356,9 @@ impl VoiceCaptureService {
 }
 
 fn read_audio(path: &Path) -> Result<Vec<u8>, VoiceError> {
-    let size = fs::metadata(path).map_err(|_| VoiceError::RecordingFailed)?.len();
+    let size = fs::metadata(path)
+        .map_err(|_| VoiceError::RecordingFailed)?
+        .len();
     if size == 0 || size > MAX_RECORDING_BYTES {
         return Err(VoiceError::RecordingFailed);
     }
@@ -296,9 +366,14 @@ fn read_audio(path: &Path) -> Result<Vec<u8>, VoiceError> {
 }
 
 fn purge_stale_recordings(dir: &Path) {
-    let Ok(entries) = fs::read_dir(dir) else { return };
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
     for entry in entries.flatten() {
-        let is_recording = entry.file_name().to_str().is_some_and(|name| name.starts_with(FILE_PREFIX));
+        let is_recording = entry
+            .file_name()
+            .to_str()
+            .is_some_and(|name| name.starts_with(FILE_PREFIX));
         if is_recording {
             let _ = fs::remove_file(entry.path());
         }
@@ -398,7 +473,11 @@ mod tests {
     }
 
     impl Transcriber for FakeTranscriber {
-        fn transcribe<'a>(&'a self, audio: &'a [u8], file_name: &'a str) -> BoxFuture<'a, Result<String, SttError>> {
+        fn transcribe<'a>(
+            &'a self,
+            audio: &'a [u8],
+            file_name: &'a str,
+        ) -> BoxFuture<'a, Result<String, SttError>> {
             Box::pin(async move {
                 self.calls.fetch_add(1, Ordering::SeqCst);
                 *self.received.lock().unwrap() = audio.to_vec();
@@ -424,8 +503,20 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let recorder = FakeRecorder::new();
         let stt = FakeTranscriber::returning(stt_result);
-        let service = VoiceCaptureService::with_retry_ttl(recorder.clone(), stt.clone(), dir.path().join("recordings"), ttl).unwrap();
-        Harness { service, recorder, stt, store: CaptureStore::open_in_memory().unwrap(), dir }
+        let service = VoiceCaptureService::with_retry_ttl(
+            recorder.clone(),
+            stt.clone(),
+            dir.path().join("recordings"),
+            ttl,
+        )
+        .unwrap();
+        Harness {
+            service,
+            recorder,
+            stt,
+            store: CaptureStore::open_in_memory().unwrap(),
+            dir,
+        }
     }
 
     impl Harness {
@@ -464,8 +555,15 @@ mod tests {
         assert_eq!(Uuid::parse_str(&capture.id).unwrap().get_version_num(), 4);
         assert!(!capture.created_at.is_empty());
         assert_eq!(h.store.list().unwrap(), vec![capture]);
-        assert_eq!(h.stt.received.lock().unwrap().as_slice(), b"FAKE-M4A", "the recorded bytes were transcribed");
-        assert!(h.recordings().is_empty(), "temporary audio is deleted after transcription");
+        assert_eq!(
+            h.stt.received.lock().unwrap().as_slice(),
+            b"FAKE-M4A",
+            "the recorded bytes were transcribed"
+        );
+        assert!(
+            h.recordings().is_empty(),
+            "temporary audio is deleted after transcription"
+        );
         h.start().unwrap();
     }
 
@@ -478,7 +576,11 @@ mod tests {
         assert_eq!(error, VoiceError::MicrophonePermissionDenied);
         assert_eq!(error.code(), "microphone_permission_denied");
         assert!(h.recordings().is_empty());
-        assert_eq!(h.stop().unwrap_err(), VoiceError::NotRecording, "no recording was started");
+        assert_eq!(
+            h.stop().unwrap_err(),
+            VoiceError::NotRecording,
+            "no recording was started"
+        );
 
         *h.recorder.start_error.lock().unwrap() = None;
         h.start().unwrap();
@@ -492,10 +594,18 @@ mod tests {
 
         h.start().unwrap();
         assert_eq!(h.start().unwrap_err(), VoiceError::AlreadyRecording);
-        assert_eq!(h.recordings().len(), 1, "a rejected duplicate start creates no second file");
+        assert_eq!(
+            h.recordings().len(),
+            1,
+            "a rejected duplicate start creates no second file"
+        );
 
         h.stop().unwrap();
-        assert_eq!(h.stop().unwrap_err(), VoiceError::NotRecording, "stop twice");
+        assert_eq!(
+            h.stop().unwrap_err(),
+            VoiceError::NotRecording,
+            "stop twice"
+        );
         assert_eq!(h.stt.calls.load(Ordering::SeqCst), 1);
     }
 
@@ -507,15 +617,29 @@ mod tests {
         let error = h.stop().unwrap_err();
 
         assert_eq!(error.code(), "stt_retryable");
-        assert!(error.message().contains("Could not reach the speech service"));
-        assert!(error.message().contains("kept for up to 15 minutes"), "{}", error.message());
-        assert_eq!(h.recordings().len(), 1, "the recording is kept for the retry");
-        assert!(h.store.list().unwrap().is_empty(), "a Capture exists only after a successful transcription");
+        assert!(error
+            .message()
+            .contains("Could not reach the speech service"));
+        assert!(
+            error.message().contains("kept for up to 15 minutes"),
+            "{}",
+            error.message()
+        );
+        assert_eq!(
+            h.recordings().len(),
+            1,
+            "the recording is kept for the retry"
+        );
+        assert!(
+            h.store.list().unwrap().is_empty(),
+            "a Capture exists only after a successful transcription"
+        );
         assert!(matches!(&*lock(&h.service.shared), State::Retryable(_)));
     }
 
     #[test]
-    fn retrying_transcribes_the_same_recording_without_recording_again_then_saves_one_capture_and_deletes_the_audio() {
+    fn retrying_transcribes_the_same_recording_without_recording_again_then_saves_one_capture_and_deletes_the_audio(
+    ) {
         let h = harness(Err(SttError::Network));
         h.start().unwrap();
         h.stop().unwrap_err();
@@ -524,15 +648,29 @@ mod tests {
         h.stt.set(Ok(" what I said "));
         let capture = h.retry().unwrap();
 
-        assert_eq!((capture.source.as_str(), capture.content.as_str()), ("voice", "what I said"));
-        assert_eq!(h.recorder.starts.load(Ordering::SeqCst), 1, "nobody spoke again");
+        assert_eq!(
+            (capture.source.as_str(), capture.content.as_str()),
+            ("voice", "what I said")
+        );
+        assert_eq!(
+            h.recorder.starts.load(Ordering::SeqCst),
+            1,
+            "nobody spoke again"
+        );
         let names = h.stt.names.lock().unwrap().clone();
         assert_eq!(names.len(), 2);
         assert_eq!(names[0], names[1], "the very same file was sent both times");
         assert_eq!(kept, vec![names[0].clone()]);
         assert_eq!(h.stt.received.lock().unwrap().as_slice(), b"FAKE-M4A");
-        assert_eq!(h.store.list().unwrap(), vec![capture], "exactly one Capture");
-        assert!(h.recordings().is_empty(), "the audio is deleted once it has been transcribed");
+        assert_eq!(
+            h.store.list().unwrap(),
+            vec![capture],
+            "exactly one Capture"
+        );
+        assert!(
+            h.recordings().is_empty(),
+            "the audio is deleted once it has been transcribed"
+        );
         h.start().unwrap();
     }
 
@@ -550,7 +688,9 @@ mod tests {
         assert_eq!(h.retry().unwrap_err().code(), "stt_retryable");
 
         match &*lock(&h.service.shared) {
-            State::Retryable(kept) => assert_eq!(kept, &first, "same file, same token, same deadline"),
+            State::Retryable(kept) => {
+                assert_eq!(kept, &first, "same file, same token, same deadline")
+            }
             other => panic!("{other:?}"),
         }
         assert_eq!(h.recordings().len(), 1);
@@ -646,7 +786,11 @@ mod tests {
         h.stop().unwrap_err();
         h.start().unwrap(); // leaves the retry flow, starts recording again
         std::thread::sleep(Duration::from_millis(500));
-        assert_eq!(h.recordings().len(), 1, "the live recording survives the old timer");
+        assert_eq!(
+            h.recordings().len(),
+            1,
+            "the live recording survives the old timer"
+        );
         assert!(matches!(&*lock(&h.service.shared), State::Recording(_)));
     }
 
@@ -679,23 +823,50 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let recordings = dir.path().join("recordings");
         {
-            let h = VoiceCaptureService::new(FakeRecorder::new(), FakeTranscriber::returning(Err(SttError::Network)), recordings.clone()).unwrap();
+            let h = VoiceCaptureService::new(
+                FakeRecorder::new(),
+                FakeTranscriber::returning(Err(SttError::Network)),
+                recordings.clone(),
+            )
+            .unwrap();
             tauri::async_runtime::block_on(h.start()).unwrap();
-            tauri::async_runtime::block_on(h.stop(&CaptureStore::open_in_memory().unwrap())).unwrap_err();
-            assert_eq!(fs::read_dir(&recordings).unwrap().count(), 1, "kept for a retry that never happened");
+            tauri::async_runtime::block_on(h.stop(&CaptureStore::open_in_memory().unwrap()))
+                .unwrap_err();
+            assert_eq!(
+                fs::read_dir(&recordings).unwrap().count(),
+                1,
+                "kept for a retry that never happened"
+            );
         } // the app dies: nothing deletes it
-        VoiceCaptureService::new(FakeRecorder::new(), FakeTranscriber::returning(Ok("x")), recordings.clone()).unwrap();
+        VoiceCaptureService::new(
+            FakeRecorder::new(),
+            FakeTranscriber::returning(Ok("x")),
+            recordings.clone(),
+        )
+        .unwrap();
         assert_eq!(fs::read_dir(&recordings).unwrap().count(), 0);
     }
 
     #[test]
     fn the_permission_is_read_without_starting_anything_and_settings_can_be_opened() {
         let h = harness(Ok("x"));
-        for expected in [MicrophonePermission::Unknown, MicrophonePermission::Granted, MicrophonePermission::Denied, MicrophonePermission::DeniedPermanently] {
+        for expected in [
+            MicrophonePermission::Unknown,
+            MicrophonePermission::Granted,
+            MicrophonePermission::Denied,
+            MicrophonePermission::DeniedPermanently,
+        ] {
             *h.recorder.permission.lock().unwrap() = expected;
-            assert_eq!(tauri::async_runtime::block_on(h.service.microphone_permission()).unwrap(), expected);
+            assert_eq!(
+                tauri::async_runtime::block_on(h.service.microphone_permission()).unwrap(),
+                expected
+            );
         }
-        assert_eq!(h.recorder.starts.load(Ordering::SeqCst), 0, "reading the permission never records");
+        assert_eq!(
+            h.recorder.starts.load(Ordering::SeqCst),
+            0,
+            "reading the permission never records"
+        );
         assert!(h.recordings().is_empty());
         tauri::async_runtime::block_on(h.service.open_app_settings()).unwrap();
         assert_eq!(h.recorder.settings_opened.load(Ordering::SeqCst), 1);
@@ -703,20 +874,42 @@ mod tests {
 
     #[test]
     fn permission_states_serialize_as_the_contract_words() {
-        let words: Vec<String> = [MicrophonePermission::Unknown, MicrophonePermission::Granted, MicrophonePermission::Denied, MicrophonePermission::DeniedPermanently]
-            .iter()
-            .map(|state| serde_json::to_value(state).unwrap().as_str().unwrap().to_string())
-            .collect();
-        assert_eq!(words, ["unknown", "granted", "denied", "denied_permanently"]);
+        let words: Vec<String> = [
+            MicrophonePermission::Unknown,
+            MicrophonePermission::Granted,
+            MicrophonePermission::Denied,
+            MicrophonePermission::DeniedPermanently,
+        ]
+        .iter()
+        .map(|state| {
+            serde_json::to_value(state)
+                .unwrap()
+                .as_str()
+                .unwrap()
+                .to_string()
+        })
+        .collect();
+        assert_eq!(
+            words,
+            ["unknown", "granted", "denied", "denied_permanently"]
+        );
     }
 
     #[test]
     fn provider_and_credential_failures_have_distinct_safe_messages() {
         for (failure, code, fragment) in [
-            (SttError::Auth(401), "stt_failed", "rejected the configured credentials"),
+            (
+                SttError::Auth(401),
+                "stt_failed",
+                "rejected the configured credentials",
+            ),
             (SttError::Provider(400), "stt_failed", "HTTP 400"),
             (SttError::Protocol, "stt_failed", "unreadable response"),
-            (SttError::NotConfigured, "stt_not_configured", "not configured"),
+            (
+                SttError::NotConfigured,
+                "stt_not_configured",
+                "not configured",
+            ),
         ] {
             let h = harness(Err(failure));
             h.start().unwrap();
@@ -754,7 +947,9 @@ mod tests {
     fn an_empty_audio_file_fails_safely_without_calling_stt() {
         let mut h = harness(Ok("never used"));
         let recorder = FakeRecorder::with_audio(Vec::new());
-        h.service = VoiceCaptureService::new(recorder, h.stt.clone(), h.dir.path().join("recordings")).unwrap();
+        h.service =
+            VoiceCaptureService::new(recorder, h.stt.clone(), h.dir.path().join("recordings"))
+                .unwrap();
         h.start().unwrap();
 
         assert_eq!(h.stop().unwrap_err(), VoiceError::RecordingFailed);
@@ -778,7 +973,11 @@ mod tests {
     fn cancel_discards_the_recording_without_transcribing_and_is_a_no_op_otherwise() {
         let h = harness(Ok("never used"));
         h.cancel();
-        assert_eq!(h.recorder.cancelled.load(Ordering::SeqCst), 0, "nothing to cancel while idle");
+        assert_eq!(
+            h.recorder.cancelled.load(Ordering::SeqCst),
+            0,
+            "nothing to cancel while idle"
+        );
 
         h.start().unwrap();
         h.cancel();
@@ -797,7 +996,12 @@ mod tests {
         fs::write(recordings.join("arthur-recording-stale.m4a"), b"old audio").unwrap();
         fs::write(recordings.join("unrelated.txt"), b"keep").unwrap();
 
-        VoiceCaptureService::new(FakeRecorder::new(), FakeTranscriber::returning(Ok("x")), recordings.clone()).unwrap();
+        VoiceCaptureService::new(
+            FakeRecorder::new(),
+            FakeTranscriber::returning(Ok("x")),
+            recordings.clone(),
+        )
+        .unwrap();
 
         assert!(!recordings.join("arthur-recording-stale.m4a").exists());
         assert!(recordings.join("unrelated.txt").exists());
@@ -821,6 +1025,11 @@ mod tests {
             dir.path().join("r"),
         )
         .unwrap();
-        assert_eq!(tauri::async_runtime::block_on(service.start()).unwrap_err().code(), "voice_unavailable");
+        assert_eq!(
+            tauri::async_runtime::block_on(service.start())
+                .unwrap_err()
+                .code(),
+            "voice_unavailable"
+        );
     }
 }

@@ -34,7 +34,7 @@ describe("mobile shell and navigation", () => {
       expect(tab(name).getAttribute("aria-current")).toBe("page");
     }
     fireEvent.click(tab("Home"));
-    expect(await screen.findByRole("heading", { name: /What’s on your mind/ })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: /Your thoughts, expanded/ })).toBeTruthy();
   });
 
   it("picks the layout from the width alone and keeps the user's place when the width crosses the breakpoint", async () => {

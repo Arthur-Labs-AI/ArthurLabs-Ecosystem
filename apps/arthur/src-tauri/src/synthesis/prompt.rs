@@ -19,7 +19,11 @@ Rules:
 - Return only JSON that matches the schema.";
 
 pub fn user_message(request: &SynthesisRequest) -> String {
-    let sources: Vec<Value> = request.sources.iter().map(|s| json!({ "id": s.id, "quote": s.quote })).collect();
+    let sources: Vec<Value> = request
+        .sources
+        .iter()
+        .map(|s| json!({ "id": s.id, "quote": s.quote }))
+        .collect();
     json!({
         "kind": request.kind,
         "expected_change": request.change.as_str(),

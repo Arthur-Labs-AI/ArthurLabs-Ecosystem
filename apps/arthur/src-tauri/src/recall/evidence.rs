@@ -172,14 +172,18 @@ fn excerpt(text: &str) -> String {
 }
 
 fn evidence_of(index: usize, seed_count: usize, ranked: Ranked) -> RetrievalEvidence {
-    let matched_historical = ranked.historical.as_ref().filter(|_| ranked.historical_discovery).map(|h| MatchedHistorical {
-        revision_id: h.revision_id.clone(),
-        status: "historical",
-        rank: h.rank,
-        coverage: h.coverage,
-        title: excerpt(&h.revision_title),
-        body: excerpt(&h.revision_body),
-    });
+    let matched_historical = ranked
+        .historical
+        .as_ref()
+        .filter(|_| ranked.historical_discovery)
+        .map(|h| MatchedHistorical {
+            revision_id: h.revision_id.clone(),
+            status: "historical",
+            rank: h.rank,
+            coverage: h.coverage,
+            title: excerpt(&h.revision_title),
+            body: excerpt(&h.revision_body),
+        });
     RetrievalEvidence {
         rank: index + 1,
         is_seed: index < seed_count,
@@ -189,17 +193,39 @@ fn evidence_of(index: usize, seed_count: usize, ranked: Ranked) -> RetrievalEvid
         title: ranked.object.title,
         body: ranked.object.body,
         current_revision_id: ranked.object.current_revision_id,
-        lexical: ranked.lexical.map(|l| LexicalEvidence { rank: l.rank, bm25: l.bm25, coverage: l.coverage }),
-        semantic: ranked.semantic.map(|s| SemanticEvidence { rank: s.rank, cosine: s.cosine }),
-        hybrid: HybridEvidence { score: ranked.hybrid, normalized: ranked.normalized, bonus: ranked.bonus, prior: ranked.prior, admission: ranked.admission.as_str() },
-        discovery: if ranked.historical_discovery { "historicalDiscovery" } else { "current" },
+        lexical: ranked.lexical.map(|l| LexicalEvidence {
+            rank: l.rank,
+            bm25: l.bm25,
+            coverage: l.coverage,
+        }),
+        semantic: ranked.semantic.map(|s| SemanticEvidence {
+            rank: s.rank,
+            cosine: s.cosine,
+        }),
+        hybrid: HybridEvidence {
+            score: ranked.hybrid,
+            normalized: ranked.normalized,
+            bonus: ranked.bonus,
+            prior: ranked.prior,
+            admission: ranked.admission.as_str(),
+        },
+        discovery: if ranked.historical_discovery {
+            "historicalDiscovery"
+        } else {
+            "current"
+        },
         matched_historical,
     }
 }
 
 pub fn evidence_list(fused: Fused) -> Vec<RetrievalEvidence> {
     let seeds = fused.seed_count;
-    fused.pool.into_iter().enumerate().map(|(index, ranked)| evidence_of(index, seeds, ranked)).collect()
+    fused
+        .pool
+        .into_iter()
+        .enumerate()
+        .map(|(index, ranked)| evidence_of(index, seeds, ranked))
+        .collect()
 }
 
 /// Why retrieval could not run at all. Degradation (a failed embedding, a broken index) is NOT an error: it is reported in
@@ -222,7 +248,9 @@ impl RecallError {
 
     pub fn message(&self) -> String {
         match self {
-            RecallError::InvalidQuery(reason) => format!("That question cannot be searched: {reason}."),
+            RecallError::InvalidQuery(reason) => {
+                format!("That question cannot be searched: {reason}.")
+            }
             RecallError::ProjectNotFound => "That project does not exist.".into(),
             RecallError::Storage(_) => "Your knowledge could not be searched. Try again.".into(),
         }

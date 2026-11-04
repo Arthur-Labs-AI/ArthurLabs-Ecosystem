@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { Capture, KnowledgeObject } from "@arthur/contracts";
 import { useNavigation } from "../../app/navigation";
-import { Icon, KindGlyph, SOURCE_LABELS, SourceIcon } from "../../components/icons";
+import { Icon, KIND_LABELS, KindGlyph, SOURCE_LABELS, SourceIcon } from "../../components/icons";
 import { Margin } from "../../components/Margin";
 import { dayLabel, isSameDay, relativeAge } from "../../components/format";
 import { AiOffNotice } from "../setup/AiOffNotice";
@@ -21,10 +21,10 @@ import "./home.css";
 /** How many recent captures Home shows. The full list is always one click away in Ideas. */
 const RECENT_CAPTURES = 8;
 
-/** "Good morning / afternoon / evening" for the user's local time. */
-export function greeting(now: Date = new Date()): string {
-  const hour = now.getHours();
-  return hour < 5 ? "Good evening" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+/** The one line under the headline: what the space holds, from real counts only. */
+export function spaceSummary(thoughts: number, connections: number): string {
+  const noun = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  return `${noun(thoughts, "thought", "thoughts")} · ${noun(connections, "connection", "connections")}`;
 }
 
 const excerpt = (text: string, max = 140): string => {
@@ -214,7 +214,10 @@ export function HomeScreen() {
 
   return (
     <div className="home">
-      <h1 className="hello">{greeting()}</h1>
+      <h1 className="hello">
+        Your thoughts, <em>expanded.</em>
+      </h1>
+      <p className="hello-sub">{spaceSummary(objects.length, index.usable.length)}</p>
       <CaptureComposer />
       <AiOffNotice variant="desktop" onOpenSettings={() => go("settings")} />
       <ReviewNotice variant="desktop" onOpen={() => go("review")} />
@@ -256,13 +259,16 @@ export function HomeScreen() {
                         <SourceIcon source={capture.source} />
                       </span>
                       <b>{SOURCE_LABELS[capture.source]}</b>
-                      <span>{relativeAge(capture.createdAt)}</span>
+                      <span className="when">{relativeAge(capture.createdAt)}</span>
                       <q>{excerpt(capture.content)}</q>
                     </div>
                     {mine.map((object) => (
                       <button key={object.id} type="button" className="obj" onClick={() => go("ideas", object.id)}>
                         <KindGlyph kind={object.kind} />
                         <span style={{ minWidth: 0 }}>
+                          <span className="pill" style={{ ["--c" as string]: `var(--kind-${object.kind})` }}>
+                            {KIND_LABELS[object.kind]}
+                          </span>
                           <span className="t" style={{ display: "block" }}>
                             {object.title}
                           </span>

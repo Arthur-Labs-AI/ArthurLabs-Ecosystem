@@ -66,7 +66,10 @@ pub struct Discovery {
 
 /// The text a changed object is searched with: its title first (the strongest signal), then its body, within the Recall query limit.
 fn search_text(focus: &KnowledgeObject) -> String {
-    format!("{}. {}", focus.title, focus.body).chars().take(MAX_QUERY_CHARS).collect()
+    format!("{}. {}", focus.title, focus.body)
+        .chars()
+        .take(MAX_QUERY_CHARS)
+        .collect()
 }
 
 fn idf(total: usize, document_frequency: usize) -> f64 {
@@ -78,9 +81,26 @@ pub fn rank_lexical(query: &InterpretedQuery, others: &[KnowledgeObject]) -> Vec
     if query.terms.is_empty() || others.is_empty() {
         return Vec::new();
     }
-    let documents: Vec<Vec<String>> = others.iter().map(|object| tokens(&format!("{} {}", object.title, object.body))).collect();
-    let matches = |term: &crate::recall::query::Term, document: &[String]| document.iter().any(|token| term.matches_token(token));
-    let weights: Vec<f64> = query.terms.iter().map(|term| idf(others.len(), documents.iter().filter(|document| matches(term, document)).count())).collect();
+    let documents: Vec<Vec<String>> = others
+        .iter()
+        .map(|object| tokens(&format!("{} {}", object.title, object.body)))
+        .collect();
+    let matches = |term: &crate::recall::query::Term, document: &[String]| {
+        document.iter().any(|token| term.matches_token(token))
+    };
+    let weights: Vec<f64> = query
+        .terms
+        .iter()
+        .map(|term| {
+            idf(
+                others.len(),
+                documents
+                    .iter()
+                    .filter(|document| matches(term, document))
+                    .count(),
+            )
+        })
+        .collect();
     let total: f64 = weights.iter().sum();
     let needed = query.terms.len().min(2);
 
@@ -88,40 +108,80 @@ pub fn rank_lexical(query: &InterpretedQuery, others: &[KnowledgeObject]) -> Vec
         .iter()
         .enumerate()
         .filter_map(|(index, document)| {
-            let hit: Vec<usize> = (0..query.terms.len()).filter(|&t| matches(&query.terms[t], document)).collect();
+            let hit: Vec<usize> = (0..query.terms.len())
+                .filter(|&t| matches(&query.terms[t], document))
+                .collect();
             let share = hit.iter().map(|&t| weights[t]).sum::<f64>() / total;
             (hit.len() >= needed && share >= MIN_LEXICAL_SHARE).then_some((index, share))
         })
         .collect();
-    ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal).then(a.0.cmp(&b.0)));
+    ranked.sort_by(|a, b| {
+        b.1.partial_cmp(&a.1)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then(a.0.cmp(&b.0))
+    });
     ranked
 }
 
 /// Nominates candidates for `focus` from its own project. `others` are the project's objects in `list_knowledge_objects` order
 /// (most recent first); the changed object may be among them and is ignored.
-pub async fn discover(store: &CaptureStore, recall: &RecallService, focus: &KnowledgeObject, project_id: &str) -> Result<Discovery, RelationError> {
-    let storage = |error: crate::storage::capture_store::StoreError| RelationError::Storage(error.to_string());
-    let others: Vec<KnowledgeObject> = store.list_knowledge_objects_in(Some(project_id)).map_err(storage)?.into_iter().filter(|object| object.id != focus.id).collect();
-    let mut report = DiscoveryReport { project_objects: others.len(), ..DiscoveryReport::default() };
+pub async fn discover(
+    store: &CaptureStore,
+    recall: &RecallService,
+    focus: &KnowledgeObject,
+    project_id: &str,
+) -> Result<Discovery, RelationError> {
+    let storage = |error: crate::storage::capture_store::StoreError| {
+        RelationError::Storage(error.to_string())
+    };
+    let others: Vec<KnowledgeObject> = store
+        .list_knowledge_objects_in(Some(project_id))
+        .map_err(storage)?
+        .into_iter()
+        .filter(|object| object.id != focus.id)
+        .collect();
+    let mut report = DiscoveryReport {
+        project_objects: others.len(),
+        ..DiscoveryReport::default()
+    };
     if others.len() <= MAX_DISCOVERED {
         // Nothing to rank: the whole (small) project is the candidate set.
-        return Ok(Discovery { candidates: others, report });
+        return Ok(Discovery {
+            candidates: others,
+            report,
+        });
     }
 
     let text = search_text(focus);
     let mut chosen: Vec<usize> = Vec::new();
-    let position: HashMap<&str, usize> = others.iter().enumerate().map(|(index, object)| (object.id.as_str(), index)).collect();
+    let position: HashMap<&str, usize> = others
+        .iter()
+        .enumerate()
+        .map(|(index, object)| (object.id.as_str(), index))
+        .collect();
 
     let lexical: Vec<usize> = match interpret(&text) {
-        Ok(query) => rank_lexical(&query, &others).into_iter().map(|(index, _)| index).collect(),
+        Ok(query) => rank_lexical(&query, &others)
+            .into_iter()
+            .map(|(index, _)| index)
+            .collect(),
         Err(_) => Vec::new(),
     };
     let mut semantic: Vec<usize> = Vec::new();
     if recall.semantic_enabled() {
         // A failure here only means the semantic channel is unavailable this time; lexical discovery is unaffected.
         if let Ok(result) = recall.retrieve(store, &text, project_id).await {
-            report.semantic_ran = matches!(result.diagnostics.semantic, crate::recall::evidence::SemanticStatus::Ok | crate::recall::evidence::SemanticStatus::Partial);
-            semantic = result.evidence.iter().filter(|e| e.semantic.is_some()).filter_map(|e| position.get(e.object_id.as_str()).copied()).collect();
+            report.semantic_ran = matches!(
+                result.diagnostics.semantic,
+                crate::recall::evidence::SemanticStatus::Ok
+                    | crate::recall::evidence::SemanticStatus::Partial
+            );
+            semantic = result
+                .evidence
+                .iter()
+                .filter(|e| e.semantic.is_some())
+                .filter_map(|e| position.get(e.object_id.as_str()).copied())
+                .collect();
         }
     }
     report.lexical = lexical.len().min(MAX_RANKED);
@@ -138,7 +198,10 @@ pub async fn discover(store: &CaptureStore, recall: &RecallService, focus: &Know
     for &index in lexical.iter().filter(|index| semantic_set.contains(index)) {
         push(index, &mut chosen);
     }
-    let (mut l, mut s) = (lexical.iter().filter(|i| !semantic_set.contains(i)), semantic.iter().filter(|i| !lexical_set.contains(i)));
+    let (mut l, mut s) = (
+        lexical.iter().filter(|i| !semantic_set.contains(i)),
+        semantic.iter().filter(|i| !lexical_set.contains(i)),
+    );
     loop {
         let (a, b) = (l.next(), s.next());
         if a.is_none() && b.is_none() {
@@ -152,7 +215,9 @@ pub async fn discover(store: &CaptureStore, recall: &RecallService, focus: &Know
     // One hop from the best few, inside the project.
     let seeds: Vec<usize> = chosen.iter().take(NEIGHBOUR_SEEDS).copied().collect();
     for seed in seeds {
-        let neighbours = store.object_neighbors(&others[seed].id, Direction::Any, None).map_err(storage)?;
+        let neighbours = store
+            .object_neighbors(&others[seed].id, Direction::Any, None)
+            .map_err(storage)?;
         for neighbour in neighbours {
             if report.neighbours >= MAX_NEIGHBOURS {
                 break;
@@ -177,7 +242,10 @@ pub async fn discover(store: &CaptureStore, recall: &RecallService, focus: &Know
     }
 
     chosen.sort_unstable();
-    let candidates = chosen.into_iter().map(|index| others[index].clone()).collect();
+    let candidates = chosen
+        .into_iter()
+        .map(|index| others[index].clone())
+        .collect();
     Ok(Discovery { candidates, report })
 }
 
@@ -192,22 +260,37 @@ mod tests {
             title: title.into(),
             body: body.into(),
             created_at: "2026-10-04T10:00:00Z".into(),
-            provenance: crate::storage::knowledge_store::Provenance { capture_id: "c".into(), source_start: 0, source_end: 1 },
+            provenance: crate::storage::knowledge_store::Provenance {
+                capture_id: "c".into(),
+                source_start: 0,
+                source_end: 1,
+            },
             project_id: "p".into(),
         }
     }
 
     fn rank(focus: &KnowledgeObject, others: &[KnowledgeObject]) -> Vec<usize> {
-        rank_lexical(&interpret(&search_text(focus)).unwrap(), others).into_iter().map(|(index, _)| index).collect()
+        rank_lexical(&interpret(&search_text(focus)).unwrap(), others)
+            .into_iter()
+            .map(|(index, _)| index)
+            .collect()
     }
 
     #[test]
     fn shared_vocabulary_nominates_and_a_ubiquitous_word_alone_does_not() {
-        let focus = object("f", "Offline phone storage", "The phone keeps SQLite storage working offline.");
+        let focus = object(
+            "f",
+            "Offline phone storage",
+            "The phone keeps SQLite storage working offline.",
+        );
         let others = vec![
             object("a", "Arthur roadmap", "Arthur needs a roadmap."),
             object("b", "Arthur colours", "Arthur uses warm paper colours."),
-            object("c", "SQLite storage layer", "Local SQLite storage for captures."),
+            object(
+                "c",
+                "SQLite storage layer",
+                "Local SQLite storage for captures.",
+            ),
             object("d", "Arthur naming", "Arthur is a good name."),
         ];
         assert_eq!(rank(&focus, &others), vec![2]);
@@ -215,29 +298,62 @@ mod tests {
 
     #[test]
     fn a_single_shared_word_is_not_enough_when_the_object_has_several_terms() {
-        let focus = object("f", "Home Node synchronisation protocol", "Design the synchronisation protocol between phone and home node.");
-        let others = vec![object("a", "Protocol for naming", "A protocol for naming things."), object("b", "Synchronisation later", "The synchronisation protocol is a later milestone.")];
+        let focus = object(
+            "f",
+            "Home Node synchronisation protocol",
+            "Design the synchronisation protocol between phone and home node.",
+        );
+        let others = vec![
+            object("a", "Protocol for naming", "A protocol for naming things."),
+            object(
+                "b",
+                "Synchronisation later",
+                "The synchronisation protocol is a later milestone.",
+            ),
+        ];
         assert_eq!(rank(&focus, &others), vec![1]);
     }
 
     #[test]
     fn bulgarian_inflection_matches_by_stem_and_english_stemming_is_not_applied_to_it() {
-        let focus = object("f", "Телефонът работи локално", "Телефонът пази знанията локално в SQLite.");
-        let others = vec![object("a", "Локално пазене на знания", "Знанията се пазят локално на телефона."), object("b", "Unrelated shopping", "Buy milk and bread.")];
+        let focus = object(
+            "f",
+            "Телефонът работи локално",
+            "Телефонът пази знанията локално в SQLite.",
+        );
+        let others = vec![
+            object(
+                "a",
+                "Локално пазене на знания",
+                "Знанията се пазят локално на телефона.",
+            ),
+            object("b", "Unrelated shopping", "Buy milk and bread."),
+        ];
         assert_eq!(rank(&focus, &others), vec![0]);
     }
 
     #[test]
     fn ties_prefer_the_more_recent_object() {
-        let focus = object("f", "Voice capture pipeline", "Voice capture pipeline design.");
-        let others = vec![object("new", "Voice capture pipeline notes", "pipeline"), object("old", "Voice capture pipeline notes", "pipeline")];
+        let focus = object(
+            "f",
+            "Voice capture pipeline",
+            "Voice capture pipeline design.",
+        );
+        let others = vec![
+            object("new", "Voice capture pipeline notes", "pipeline"),
+            object("old", "Voice capture pipeline notes", "pipeline"),
+        ];
         assert_eq!(rank(&focus, &others), vec![0, 1]);
     }
 
     #[test]
     fn a_focus_with_no_content_terms_nominates_nothing() {
         let focus = object("f", "It is", "to be or not");
-        assert!(rank_lexical(&interpret("It is. to be or not").unwrap(), &[object("a", "It is", "to be")]).is_empty());
+        assert!(rank_lexical(
+            &interpret("It is. to be or not").unwrap(),
+            &[object("a", "It is", "to be")]
+        )
+        .is_empty());
         assert!(rank(&focus, &[]).is_empty());
     }
 }

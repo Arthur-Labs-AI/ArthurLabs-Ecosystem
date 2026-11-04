@@ -2,12 +2,13 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { createPreviewClient } from "../../client/preview-client";
 import { TEXT, TWO_OBJECTS, renderApp, seeded } from "../../test/render";
-import { greeting } from "./HomeScreen";
+import { spaceSummary } from "./HomeScreen";
 
-describe("greeting", () => {
-  it("follows the user's local time of day", () => {
-    const at = (hour: number) => greeting(new Date(2026, 9, 4, hour, 0));
-    expect([at(3), at(8), at(14), at(19), at(23)]).toEqual(["Good evening", "Good morning", "Good afternoon", "Good evening", "Good evening"]);
+describe("spaceSummary", () => {
+  it("counts only what exists and pluralises", () => {
+    expect(spaceSummary(0, 0)).toBe("0 thoughts · 0 connections");
+    expect(spaceSummary(1, 1)).toBe("1 thought · 1 connection");
+    expect(spaceSummary(42, 14)).toBe("42 thoughts · 14 connections");
   });
 });
 

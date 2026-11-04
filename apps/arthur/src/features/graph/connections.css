@@ -56,7 +56,7 @@
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   padding: 4px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--sunken) 70%, transparent);
 }
 .legend button {
   display: flex;
@@ -90,7 +90,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font: 450 17px/1.25 var(--serif);
+  font: 550 16px/1.3 var(--sans);
   text-align: left;
   border-radius: var(--r-sm);
   padding: 4px 6px;

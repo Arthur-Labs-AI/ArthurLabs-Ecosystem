@@ -8,11 +8,11 @@ pub mod ai;
 pub mod ai_config;
 #[cfg(target_os = "android")]
 pub mod android_keystore;
-pub mod credentials;
-pub mod http;
-pub mod chat;
-pub mod embed;
 pub mod answer;
+pub mod chat;
+pub mod credentials;
+pub mod embed;
+pub mod http;
 pub mod probe;
 pub mod registry;
 pub mod secrets;

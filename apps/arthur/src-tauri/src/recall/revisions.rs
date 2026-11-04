@@ -45,9 +45,20 @@ pub struct Pick {
 }
 
 /// `revisions` are one object's, oldest first (as `recall_revisions_of` returns them).
-pub fn select(revisions: &[RevisionRow], current_revision_id: &str, matched_revision_id: Option<&str>, mode: Mode) -> Vec<Pick> {
-    let index: HashMap<&str, usize> = revisions.iter().enumerate().map(|(i, r)| (r.id.as_str(), i)).collect();
-    let Some(&current_at) = index.get(current_revision_id) else { return Vec::new() };
+pub fn select(
+    revisions: &[RevisionRow],
+    current_revision_id: &str,
+    matched_revision_id: Option<&str>,
+    mode: Mode,
+) -> Vec<Pick> {
+    let index: HashMap<&str, usize> = revisions
+        .iter()
+        .enumerate()
+        .map(|(i, r)| (r.id.as_str(), i))
+        .collect();
+    let Some(&current_at) = index.get(current_revision_id) else {
+        return Vec::new();
+    };
     let object_id = revisions[current_at].object_id.clone();
 
     // children count per revision
@@ -81,7 +92,11 @@ pub fn select(revisions: &[RevisionRow], current_revision_id: &str, matched_revi
         let pick = picks.entry(revision.id.clone()).or_insert_with(|| Pick {
             object_id: object_id.clone(),
             revision_id: revision.id.clone(),
-            status: if leads { "historical" } else { "branch_not_current" },
+            status: if leads {
+                "historical"
+            } else {
+                "branch_not_current"
+            },
             marks: Vec::new(),
             leads_to_current: leads,
             priority,
@@ -110,8 +125,14 @@ pub fn select(revisions: &[RevisionRow], current_revision_id: &str, matched_revi
         let mut walked: Vec<usize> = Vec::new();
         let mut cursor = current_at;
         while walked.len() < MAX_PATH {
-            let parents: Vec<usize> = revisions[cursor].parents.iter().filter_map(|p| index.get(p.as_str()).copied()).collect();
-            let Some(&next) = parents.iter().max() else { break };
+            let parents: Vec<usize> = revisions[cursor]
+                .parents
+                .iter()
+                .filter_map(|p| index.get(p.as_str()).copied())
+                .collect();
+            let Some(&next) = parents.iter().max() else {
+                break;
+            };
             for &p in parents.iter().rev().take(MAX_MERGE_PARENTS) {
                 if !walked.contains(&p) && walked.len() < MAX_PATH {
                     walked.push(p);
@@ -136,7 +157,12 @@ pub fn select(revisions: &[RevisionRow], current_revision_id: &str, matched_revi
             }
         }
         // Lines that were never adopted: revisions with no children that are not the current one, most recent first.
-        let mut heads: Vec<usize> = (0..revisions.len()).filter(|&i| revisions[i].id != current_revision_id && !children.contains_key(revisions[i].id.as_str())).collect();
+        let mut heads: Vec<usize> = (0..revisions.len())
+            .filter(|&i| {
+                revisions[i].id != current_revision_id
+                    && !children.contains_key(revisions[i].id.as_str())
+            })
+            .collect();
         heads.sort_by(|a, b| b.cmp(a));
         for i in heads.into_iter().take(MAX_HEADS) {
             add(&revisions[i], "non_current_head", 6);
@@ -151,10 +177,19 @@ pub fn select(revisions: &[RevisionRow], current_revision_id: &str, matched_revi
 /// Applies the overall cap across all selected objects: lowest priority first, then older first; chronological order is restored.
 pub fn cap_total(mut picks: Vec<Pick>, limit: usize) -> Vec<Pick> {
     if picks.len() > limit {
-        picks.sort_by(|a, b| a.priority.cmp(&b.priority).then_with(|| b.seq.cmp(&a.seq)).then_with(|| a.revision_id.cmp(&b.revision_id)));
+        picks.sort_by(|a, b| {
+            a.priority
+                .cmp(&b.priority)
+                .then_with(|| b.seq.cmp(&a.seq))
+                .then_with(|| a.revision_id.cmp(&b.revision_id))
+        });
         picks.truncate(limit);
     }
-    picks.sort_by(|a, b| a.object_id.cmp(&b.object_id).then_with(|| a.seq.cmp(&b.seq)));
+    picks.sort_by(|a, b| {
+        a.object_id
+            .cmp(&b.object_id)
+            .then_with(|| a.seq.cmp(&b.seq))
+    });
     picks
 }
 
@@ -182,7 +217,14 @@ mod tests {
 
     /// r1 -> r2 -> r3 -> r4(current);  r2 -> b1 (never adopted);  r3 and b1 merge into m1 (not current)
     fn dag() -> Vec<RevisionRow> {
-        vec![rev("r1", "initial", &[], true), rev("r2", "user_edit", &["r1"], false), rev("b1", "user_edit", &["r2"], false), rev("r3", "distillation", &["r2"], true), rev("m1", "merge", &["r3", "b1"], false), rev("r4", "user_edit", &["r3"], false)]
+        vec![
+            rev("r1", "initial", &[], true),
+            rev("r2", "user_edit", &["r1"], false),
+            rev("b1", "user_edit", &["r2"], false),
+            rev("r3", "distillation", &["r2"], true),
+            rev("m1", "merge", &["r3", "b1"], false),
+            rev("r4", "user_edit", &["r3"], false),
+        ]
     }
 
     #[test]
@@ -198,15 +240,29 @@ mod tests {
     fn a_matched_old_revision_is_always_kept_with_its_status() {
         let picks = select(&dag(), "r4", Some("r1"), Mode::MatchedOnly);
         assert_eq!(ids(&picks), ["r1"]);
-        assert_eq!((picks[0].status, picks[0].leads_to_current, picks[0].marks.clone()), ("historical", true, vec!["matched_query"]));
+        assert_eq!(
+            (
+                picks[0].status,
+                picks[0].leads_to_current,
+                picks[0].marks.clone()
+            ),
+            ("historical", true, vec!["matched_query"])
+        );
         let branch = select(&dag(), "r4", Some("b1"), Mode::MatchedOnly);
-        assert_eq!((branch[0].status, branch[0].leads_to_current), ("branch_not_current", false), "an unadopted line is never `historical` ancestry");
+        assert_eq!(
+            (branch[0].status, branch[0].leads_to_current),
+            ("branch_not_current", false),
+            "an unadopted line is never `historical` ancestry"
+        );
     }
 
     #[test]
     fn why_adds_only_the_immediate_parent() {
         assert_eq!(ids(&select(&dag(), "r4", None, Mode::Why)), ["r3"]);
-        assert_eq!(ids(&select(&dag(), "r4", Some("r1"), Mode::Why)), ["r1", "r3"]);
+        assert_eq!(
+            ids(&select(&dag(), "r4", Some("r1"), Mode::Why)),
+            ["r1", "r3"]
+        );
     }
 
     #[test]
@@ -215,10 +271,21 @@ mod tests {
         // path r3, r2, r1; the unadopted head m1 (b1 has a child, so it is not a head and is not on the path).
         assert_eq!(ids(&picks), ["r1", "r2", "r3", "m1"]);
         let get = |id: &str| picks.iter().find(|p| p.revision_id == id).unwrap();
-        assert_eq!((get("r1").status, get("r3").status, get("m1").status), ("historical", "historical", "branch_not_current"));
-        assert!(get("r1").marks.contains(&"root") && !get("r1").marks.contains(&"new_capture"), "the root is the root, not a new-capture revision");
-        assert!(get("r3").marks.contains(&"new_capture"), "a revision interpreted from a NEW capture is a significant point");
-        assert!(get("r2").marks.contains(&"branch_point") && get("r3").marks.contains(&"branch_point"));
+        assert_eq!(
+            (get("r1").status, get("r3").status, get("m1").status),
+            ("historical", "historical", "branch_not_current")
+        );
+        assert!(
+            get("r1").marks.contains(&"root") && !get("r1").marks.contains(&"new_capture"),
+            "the root is the root, not a new-capture revision"
+        );
+        assert!(
+            get("r3").marks.contains(&"new_capture"),
+            "a revision interpreted from a NEW capture is a significant point"
+        );
+        assert!(
+            get("r2").marks.contains(&"branch_point") && get("r3").marks.contains(&"branch_point")
+        );
         assert!(get("m1").marks.contains(&"non_current_head") && !get("m1").leads_to_current);
         assert!(get("r3").leads_to_current);
     }
@@ -226,25 +293,68 @@ mod tests {
     #[test]
     fn the_path_is_bounded_and_the_total_cap_drops_the_lowest_priority_first() {
         // a long straight edit chain: r0 (root) ... r19 (current)
-        let revisions: Vec<RevisionRow> = (0..20).map(|i| rev(&format!("r{i:02}"), if i == 0 { "initial" } else { "user_edit" }, &if i == 0 { vec![] } else { vec![format!("r{:02}", i - 1)] }.iter().map(String::as_str).collect::<Vec<_>>(), i == 0)).collect();
+        let revisions: Vec<RevisionRow> = (0..20)
+            .map(|i| {
+                rev(
+                    &format!("r{i:02}"),
+                    if i == 0 { "initial" } else { "user_edit" },
+                    &if i == 0 {
+                        vec![]
+                    } else {
+                        vec![format!("r{:02}", i - 1)]
+                    }
+                    .iter()
+                    .map(String::as_str)
+                    .collect::<Vec<_>>(),
+                    i == 0,
+                )
+            })
+            .collect();
         let picks = select(&revisions, "r19", None, Mode::Evolution);
-        assert_eq!(picks.len(), MAX_PATH, "the parent path is at most 6 revisions");
+        assert_eq!(
+            picks.len(),
+            MAX_PATH,
+            "the parent path is at most 6 revisions"
+        );
         assert_eq!(ids(&picks), ["r13", "r14", "r15", "r16", "r17", "r18"]);
         // total cap across objects: matched first, then parent, root...; the cheapest (plain path) goes first
-        let many: Vec<Pick> = (0..15).map(|i| Pick { object_id: "o".into(), revision_id: format!("x{i:02}"), status: "historical", marks: vec![], leads_to_current: true, priority: if i < 3 { 0 } else { 7 }, seq: i }).collect();
+        let many: Vec<Pick> = (0..15)
+            .map(|i| Pick {
+                object_id: "o".into(),
+                revision_id: format!("x{i:02}"),
+                status: "historical",
+                marks: vec![],
+                leads_to_current: true,
+                priority: if i < 3 { 0 } else { 7 },
+                seq: i,
+            })
+            .collect();
         let capped = cap_total(many, MAX_HISTORY_TOTAL);
         assert_eq!(capped.len(), MAX_HISTORY_TOTAL);
-        assert!(["x00", "x01", "x02"].iter().all(|k| ids(&capped).contains(k)), "high priority is never dropped for plain path entries");
+        assert!(
+            ["x00", "x01", "x02"]
+                .iter()
+                .all(|k| ids(&capped).contains(k)),
+            "high priority is never dropped for plain path entries"
+        );
     }
 
     #[test]
     fn merges_on_the_path_include_their_parents_and_are_marked() {
         // r1 -> a, r1 -> b, merge(a, b) = m, m -> cur
-        let revisions = vec![rev("r1", "initial", &[], true), rev("a", "user_edit", &["r1"], false), rev("b", "user_edit", &["r1"], false), rev("m", "merge", &["a", "b"], false), rev("cur", "user_edit", &["m"], false)];
+        let revisions = vec![
+            rev("r1", "initial", &[], true),
+            rev("a", "user_edit", &["r1"], false),
+            rev("b", "user_edit", &["r1"], false),
+            rev("m", "merge", &["a", "b"], false),
+            rev("cur", "user_edit", &["m"], false),
+        ];
         let picks = select(&revisions, "cur", None, Mode::Evolution);
         let get = |id: &str| picks.iter().find(|p| p.revision_id == id).unwrap();
         assert!(get("m").marks.contains(&"merge") && get("m").marks.contains(&"parent"));
-        assert!(ids(&picks).contains(&"a") && ids(&picks).contains(&"b") && ids(&picks).contains(&"r1"));
+        assert!(
+            ids(&picks).contains(&"a") && ids(&picks).contains(&"b") && ids(&picks).contains(&"r1")
+        );
         assert!(get("r1").marks.contains(&"branch_point"));
     }
 }

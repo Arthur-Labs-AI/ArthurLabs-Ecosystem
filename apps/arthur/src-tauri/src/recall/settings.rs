@@ -42,23 +42,48 @@ impl SemanticSettings {
     }
 
     pub fn state(&self) -> SettingsState {
-        let absent = SettingsState { saved_enabled: false, saved_model_key: None, corrupt: false };
+        let absent = SettingsState {
+            saved_enabled: false,
+            saved_model_key: None,
+            corrupt: false,
+        };
         let raw = match fs::read_to_string(&self.path) {
             Ok(raw) => raw,
             Err(error) if error.kind() == io::ErrorKind::NotFound => return absent,
-            Err(_) => return SettingsState { corrupt: true, ..absent },
+            Err(_) => {
+                return SettingsState {
+                    corrupt: true,
+                    ..absent
+                }
+            }
         };
-        let corrupt = || SettingsState { corrupt: true, ..absent.clone() };
-        let Ok(value) = serde_json::from_str::<Value>(&raw) else { return corrupt() };
+        let corrupt = || SettingsState {
+            corrupt: true,
+            ..absent.clone()
+        };
+        let Ok(value) = serde_json::from_str::<Value>(&raw) else {
+            return corrupt();
+        };
         if value.get("version").and_then(Value::as_u64) != Some(FILE_VERSION) {
             return corrupt();
         }
-        let Some(section) = value.get("semanticRecall").and_then(Value::as_object) else { return corrupt() };
-        let (Some(enabled), Some(model_key)) = (section.get("enabled").and_then(Value::as_bool), section.get("modelKey").and_then(Value::as_str)) else { return corrupt() };
+        let Some(section) = value.get("semanticRecall").and_then(Value::as_object) else {
+            return corrupt();
+        };
+        let (Some(enabled), Some(model_key)) = (
+            section.get("enabled").and_then(Value::as_bool),
+            section.get("modelKey").and_then(Value::as_str),
+        ) else {
+            return corrupt();
+        };
         if model_key.is_empty() {
             return corrupt();
         }
-        SettingsState { saved_enabled: enabled, saved_model_key: Some(model_key.to_string()), corrupt: false }
+        SettingsState {
+            saved_enabled: enabled,
+            saved_model_key: Some(model_key.to_string()),
+            corrupt: false,
+        }
     }
 
     /// True only when the user explicitly enabled semantic Recall FOR THIS embedding space.
@@ -74,7 +99,10 @@ impl SemanticSettings {
         }
         let body = json!({ "version": FILE_VERSION, "semanticRecall": { "enabled": enabled, "modelKey": key.as_str() } });
         let temporary = self.path.with_extension("tmp");
-        fs::write(&temporary, serde_json::to_vec_pretty(&body).map_err(io::Error::other)?)?;
+        fs::write(
+            &temporary,
+            serde_json::to_vec_pretty(&body).map_err(io::Error::other)?,
+        )?;
         fs::rename(&temporary, &self.path)
     }
 }
@@ -97,7 +125,14 @@ mod tests {
     fn it_is_off_by_default_and_a_missing_file_is_not_corruption() {
         let (_dir, settings) = settings();
         assert!(!settings.is_enabled_for(&key(512)));
-        assert_eq!(settings.state(), SettingsState { saved_enabled: false, saved_model_key: None, corrupt: false });
+        assert_eq!(
+            settings.state(),
+            SettingsState {
+                saved_enabled: false,
+                saved_model_key: None,
+                corrupt: false
+            }
+        );
     }
 
     #[test]
@@ -106,18 +141,30 @@ mod tests {
         settings.set(&key(512), true).unwrap();
         assert!(settings.is_enabled_for(&key(512)));
         // A fresh handle (a restart) sees the same.
-        assert!(SemanticSettings::new(dir.path().join("recall").join("semantic.json")).is_enabled_for(&key(512)));
+        assert!(
+            SemanticSettings::new(dir.path().join("recall").join("semantic.json"))
+                .is_enabled_for(&key(512))
+        );
         settings.set(&key(512), false).unwrap();
         assert!(!settings.is_enabled_for(&key(512)));
-        assert_eq!(settings.state().saved_model_key.as_deref(), Some("openai:text-embedding-3-small:512:v1"));
+        assert_eq!(
+            settings.state().saved_model_key.as_deref(),
+            Some("openai:text-embedding-3-small:512:v1")
+        );
     }
 
     #[test]
     fn consent_is_bound_to_the_embedding_space_it_was_granted_for() {
         let (_dir, settings) = settings();
         settings.set(&key(512), true).unwrap();
-        assert!(!settings.is_enabled_for(&key(1536)), "another dimension is another key");
-        assert!(!settings.is_enabled_for(&ModelKey::new("local", "e5", 512, "v1")), "another provider is another recipient");
+        assert!(
+            !settings.is_enabled_for(&key(1536)),
+            "another dimension is another key"
+        );
+        assert!(
+            !settings.is_enabled_for(&ModelKey::new("local", "e5", 512, "v1")),
+            "another provider is another recipient"
+        );
     }
 
     #[test]

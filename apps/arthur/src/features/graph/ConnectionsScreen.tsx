@@ -292,7 +292,7 @@ export function ConnectionsScreen() {
         ) : node ? (
           <>
             <div className="insp-head">
-              <div className="meta">
+              <div className="meta" style={{ ["--c" as string]: `var(--kind-${node.kind})` }}>
                 <KindGlyph kind={node.kind} />
                 <span className="kindname">{KIND_LABELS[node.kind]}</span>
               </div>
@@ -361,7 +361,7 @@ export function ConnectionsScreen() {
         ) : farNode ? (
           <>
             <div className="insp-head">
-              <div className="meta">
+              <div className="meta" style={{ ["--c" as string]: `var(--kind-${farNode.kind})` }}>
                 <KindGlyph kind={farNode.kind} />
                 <span className="kindname">{KIND_LABELS[farNode.kind]}</span>
                 <span aria-hidden="true">·</span>

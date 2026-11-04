@@ -166,7 +166,7 @@
   color: var(--ink);
 }
 .setup-lead {
-  font: italic 400 18px/1.4 var(--serif) !important;
+  font: 400 18px/1.4 var(--serif) !important;
   color: var(--ink) !important;
   margin-bottom: 14px !important;
 }

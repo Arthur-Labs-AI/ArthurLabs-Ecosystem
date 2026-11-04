@@ -13,6 +13,23 @@ const VOICE_STATUS: Partial<Record<VoiceState, string>> = {
   transcribing: "Transcribing…",
 };
 
+/** Elapsed recording time: the only live signal that is true without access to the audio level. */
+function RecTimer() {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setSeconds((value) => value + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const ss = String(seconds % 60).padStart(2, "0");
+  return (
+    <span className="rec-time" aria-hidden="true">
+      <i />
+      {mm}:{ss}
+    </span>
+  );
+}
+
 /**
  * The one place a thought is captured: typed or spoken. Saving only persists the Capture; organizing it into ideas
  * starts afterwards (see AutoOrganize) and can never fail or undo the capture.
@@ -59,14 +76,15 @@ export function CaptureComposer({ compact = false, autoFocus = false, onSaved }:
         ref={input}
         id={compact ? "capture-input-dialog" : "capture-input"}
         rows={2}
-        placeholder="What's on your mind?"
+        placeholder="Capture a thought…"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={handleKeyDown}
       />
       {status && (
         <p role="status" className="composer-status">
-          {status}
+          <span>{status}</span>
+          {voiceState === "recording" && <RecTimer />}
         </p>
       )}
       <div className="composer-bar">

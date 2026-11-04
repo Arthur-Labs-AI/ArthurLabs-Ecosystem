@@ -136,22 +136,22 @@ const KIND_SHAPES: Record<KnowledgeObjectKind, ReactNode> = {
 export const KIND_LABELS: Record<KnowledgeObjectKind, string> = { idea: "Idea", task: "Task", decision: "Decision", question: "Question", note: "Note" };
 export const KIND_PLURALS: Record<KnowledgeObjectKind, string> = { idea: "Ideas", task: "Tasks", decision: "Decisions", question: "Questions", note: "Notes" };
 
-/** Kind is told by shape, never by colour. */
+/** Kind is told by shape; colour (--kind-*) only reinforces it. */
 export function KindGlyph({ kind }: { kind: KnowledgeObjectKind }) {
   return (
-    <svg className="kind" viewBox="0 0 16 16" role="img" aria-label={KIND_LABELS[kind]}>
+    <svg className="kind" viewBox="0 0 16 16" role="img" aria-label={KIND_LABELS[kind]} style={{ color: `var(--kind-${kind})` }}>
       {KIND_SHAPES[kind]}
     </svg>
   );
 }
 
-/** Two legs meet at one node: a letter, or a thought that branches. The node is the only accent-coloured part. */
-export function Mark({ size = 26 }: { size?: number }) {
+/** An A drawn as two legs meeting at one node, held in a rounded frame. The node is the only accent-coloured part. */
+export function Mark({ size = 24 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 28 28" fill="none" aria-hidden="true" focusable="false">
-      <path d="M5 23 14 6l9 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9.6 16.2h8.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity=".38" />
-      <circle cx="14" cy="6" r="3.1" fill="var(--accent)" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+      <rect x=".75" y=".75" width="22.5" height="22.5" rx="6.5" stroke="var(--line)" strokeWidth="1.5" />
+      <path d="M7 16.5 12 7l5 9.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="7" r="2.1" fill="var(--accent)" />
     </svg>
   );
 }

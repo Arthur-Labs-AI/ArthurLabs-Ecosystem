@@ -8,7 +8,10 @@ pub struct Rate {
 
 impl Rate {
     pub fn of(num: usize, den: usize) -> Self {
-        Self { num: num as u32, den: den as u32 }
+        Self {
+            num: num as u32,
+            den: den as u32,
+        }
     }
 
     /// 95% Wilson score interval; `None` when there is nothing to divide by.
@@ -16,7 +19,11 @@ impl Rate {
         if self.den == 0 {
             return None;
         }
-        let (n, p, z) = (self.den as f64, self.num as f64 / self.den as f64, 1.959_964);
+        let (n, p, z) = (
+            self.den as f64,
+            self.num as f64 / self.den as f64,
+            1.959_964,
+        );
         let denom = 1.0 + z * z / n;
         let centre = (p + z * z / (2.0 * n)) / denom;
         let half = z * ((p * (1.0 - p) / n + z * z / (4.0 * n * n)).sqrt()) / denom;
@@ -26,7 +33,14 @@ impl Rate {
     pub fn show(&self) -> String {
         match self.wilson() {
             None => format!("{}/{} (n/a: no cases)", self.num, self.den),
-            Some((lo, hi)) => format!("{}/{} = {:.1}% (95% CI {:.1}–{:.1}%)", self.num, self.den, 100.0 * self.num as f64 / self.den as f64, 100.0 * lo, 100.0 * hi),
+            Some((lo, hi)) => format!(
+                "{}/{} = {:.1}% (95% CI {:.1}–{:.1}%)",
+                self.num,
+                self.den,
+                100.0 * self.num as f64 / self.den as f64,
+                100.0 * lo,
+                100.0 * hi
+            ),
         }
     }
 }
@@ -39,6 +53,10 @@ impl Rows {
         self.0.push((name.into(), rate));
     }
     pub fn get(&self, name: &str) -> Rate {
-        self.0.iter().find(|(n, _)| n == name).map(|(_, r)| *r).unwrap_or_default()
+        self.0
+            .iter()
+            .find(|(n, _)| n == name)
+            .map(|(_, r)| *r)
+            .unwrap_or_default()
     }
 }

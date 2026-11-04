@@ -34,6 +34,7 @@
 //! * not configured / rejected credentials: DEFERRED (retried slowly, free, uncounted) so the graph catches up once the key works
 //! * network / provider / unreadable output: up to `MAX_ATTEMPTS`, then FAILED (until the object changes again)
 //! * no candidates, or the verifier rejects everything: a SUCCESSFUL no-op
+//!
 //! A provider failure writes nothing: there are never unverified or partial relations.
 //!
 //! # Idempotence and concurrency
@@ -98,22 +99,39 @@ pub struct ChangedKnowledge {
 
 impl ChangedKnowledge {
     pub fn created(object_id: &str, current_revision_id: &str) -> Self {
-        Self { object_id: object_id.into(), previous_revision_id: None, current_revision_id: current_revision_id.into(), reason: ChangeReason::Created }
+        Self {
+            object_id: object_id.into(),
+            previous_revision_id: None,
+            current_revision_id: current_revision_id.into(),
+            reason: ChangeReason::Created,
+        }
     }
 
     pub fn revised(object_id: &str, previous_revision_id: &str, current_revision_id: &str) -> Self {
-        Self { object_id: object_id.into(), previous_revision_id: Some(previous_revision_id.into()), current_revision_id: current_revision_id.into(), reason: ChangeReason::Revised }
+        Self {
+            object_id: object_id.into(),
+            previous_revision_id: Some(previous_revision_id.into()),
+            current_revision_id: current_revision_id.into(),
+            reason: ChangeReason::Revised,
+        }
     }
 
     pub fn moved(object_id: &str, current_revision_id: &str) -> Self {
-        Self { object_id: object_id.into(), previous_revision_id: None, current_revision_id: current_revision_id.into(), reason: ChangeReason::Moved }
+        Self {
+            object_id: object_id.into(),
+            previous_revision_id: None,
+            current_revision_id: current_revision_id.into(),
+            reason: ChangeReason::Moved,
+        }
     }
 }
 
 /// Whether the wording moved enough to matter. Case, punctuation and whitespace do not; a changed, added, removed or re-ordered word
 /// does (so does a changed kind). Words are never dropped as "unimportant": "Arthur works" -> "Arthur does not work" is a change.
 pub fn meaning_changed(previous: (&str, &str, &str), current: (&str, &str, &str)) -> bool {
-    previous.0 != current.0 || tokens(previous.1) != tokens(current.1) || tokens(previous.2) != tokens(current.2)
+    previous.0 != current.0
+        || tokens(previous.1) != tokens(current.1)
+        || tokens(previous.2) != tokens(current.2)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -154,7 +172,17 @@ pub struct IntegrationReport {
 
 impl IntegrationReport {
     fn new(object_id: &str, status: Status) -> Self {
-        Self { object_id: object_id.into(), status, candidates: 0, discovery: DiscoveryReport::default(), decision: DecisionReport::default(), added: 0, removed: 0, skipped_stale: 0, elapsed_ms: 0 }
+        Self {
+            object_id: object_id.into(),
+            status,
+            candidates: 0,
+            discovery: DiscoveryReport::default(),
+            decision: DecisionReport::default(),
+            added: 0,
+            removed: 0,
+            skipped_stale: 0,
+            elapsed_ms: 0,
+        }
     }
 }
 
@@ -174,12 +202,22 @@ pub struct IntegrationSettings {
 
 impl IntegrationSettings {
     pub fn new(path: PathBuf) -> Self {
-        let enabled = std::fs::read(&path).ok().and_then(|bytes| serde_json::from_slice::<SettingsFile>(&bytes).ok()).map(|file| file.enabled).unwrap_or(DEFAULT_ENABLED);
-        Self { enabled: AtomicBool::new(enabled), path: Some(path) }
+        let enabled = std::fs::read(&path)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<SettingsFile>(&bytes).ok())
+            .map(|file| file.enabled)
+            .unwrap_or(DEFAULT_ENABLED);
+        Self {
+            enabled: AtomicBool::new(enabled),
+            path: Some(path),
+        }
     }
 
     pub fn in_memory(enabled: bool) -> Self {
-        Self { enabled: AtomicBool::new(enabled), path: None }
+        Self {
+            enabled: AtomicBool::new(enabled),
+            path: None,
+        }
     }
 
     pub fn enabled(&self) -> bool {
@@ -188,7 +226,10 @@ impl IntegrationSettings {
 
     pub fn set(&self, enabled: bool) -> std::io::Result<()> {
         if let Some(path) = &self.path {
-            write_atomically(path, &serde_json::to_vec(&SettingsFile { enabled }).unwrap_or_default())?;
+            write_atomically(
+                path,
+                &serde_json::to_vec(&SettingsFile { enabled }).unwrap_or_default(),
+            )?;
         }
         self.enabled.store(enabled, Ordering::SeqCst);
         Ok(())
@@ -212,13 +253,24 @@ fn write_atomically(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()>
 pub enum Entry {
     /// The (revision, project) last integrated for this object.
     #[serde(rename_all = "camelCase")]
-    Done { revision_id: String, project_id: String },
+    Done {
+        revision_id: String,
+        project_id: String,
+    },
     /// Not completed; due again at `not_before` (unix seconds). `attempts` counts only real failures.
     #[serde(rename_all = "camelCase")]
-    Pending { change: ChangedKnowledge, attempts: u32, not_before: u64, last_error: String },
+    Pending {
+        change: ChangedKnowledge,
+        attempts: u32,
+        not_before: u64,
+        last_error: String,
+    },
     /// Gave up after `MAX_ATTEMPTS`. Not retried until the object changes again (or the user runs Find connections).
     #[serde(rename_all = "camelCase")]
-    Failed { change: ChangedKnowledge, last_error: String },
+    Failed {
+        change: ChangedKnowledge,
+        last_error: String,
+    },
 }
 
 /// Per-object integration state. In memory, mirrored to an app-private file (best effort: losing it only means some work is redone).
@@ -229,16 +281,27 @@ pub struct Ledger {
 
 impl Ledger {
     pub fn new(path: PathBuf) -> Self {
-        let entries = std::fs::read(&path).ok().and_then(|bytes| serde_json::from_slice::<BTreeMap<String, Entry>>(&bytes).ok()).unwrap_or_default();
-        Self { entries: Mutex::new(entries), path: Some(path) }
+        let entries = std::fs::read(&path)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<BTreeMap<String, Entry>>(&bytes).ok())
+            .unwrap_or_default();
+        Self {
+            entries: Mutex::new(entries),
+            path: Some(path),
+        }
     }
 
     pub fn in_memory() -> Self {
-        Self { entries: Mutex::new(BTreeMap::new()), path: None }
+        Self {
+            entries: Mutex::new(BTreeMap::new()),
+            path: None,
+        }
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, BTreeMap<String, Entry>> {
-        self.entries.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.entries
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     pub fn get(&self, object_id: &str) -> Option<Entry> {
@@ -262,7 +325,9 @@ impl Ledger {
         self.lock()
             .values()
             .filter_map(|entry| match entry {
-                Entry::Pending { change, not_before, .. } if *not_before <= now => Some(change.clone()),
+                Entry::Pending {
+                    change, not_before, ..
+                } if *not_before <= now => Some(change.clone()),
                 _ => None,
             })
             .take(limit)
@@ -277,7 +342,10 @@ impl Ledger {
     }
 
     pub fn pending(&self) -> usize {
-        self.lock().values().filter(|entry| matches!(entry, Entry::Pending { .. })).count()
+        self.lock()
+            .values()
+            .filter(|entry| matches!(entry, Entry::Pending { .. }))
+            .count()
     }
 }
 
@@ -295,7 +363,10 @@ pub struct IntegrationService {
 }
 
 fn unix_seconds() -> u64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 fn storage(error: StoreError) -> RelationError {
@@ -306,17 +377,29 @@ fn storage(error: StoreError) -> RelationError {
 fn classify(report: &IntegrationReport) -> (Outcome, Option<String>) {
     match &report.status {
         Status::Skipped(skip) => (Outcome::Skipped, Some(format!("{skip:?}").to_lowercase())),
-        Status::Deferred(code) | Status::Failed(code) => (Outcome::ProviderFailed, Some((*code).to_string())),
+        Status::Deferred(code) | Status::Failed(code) => {
+            (Outcome::ProviderFailed, Some((*code).to_string()))
+        }
         Status::Integrated if report.added > 0 || report.removed > 0 => (Outcome::Success, None),
-        Status::Integrated if report.candidates == 0 && report.decision.proposed == 0 => (Outcome::NoCandidates, None),
-        Status::Integrated if report.decision.verified > 0 && report.decision.survived == 0 => (Outcome::AllRejected, None),
+        Status::Integrated if report.candidates == 0 && report.decision.proposed == 0 => {
+            (Outcome::NoCandidates, None)
+        }
+        Status::Integrated if report.decision.verified > 0 && report.decision.survived == 0 => {
+            (Outcome::AllRejected, None)
+        }
         Status::Integrated => (Outcome::SuccessNoNewEdges, None),
     }
 }
 
 impl IntegrationService {
     pub fn new(graph: GraphService, settings: IntegrationSettings, ledger: Ledger) -> Self {
-        Self { graph, settings: Arc::new(settings), ledger, diagnostics: IntegrationDiagnostics::default(), gate: tauri::async_runtime::Mutex::new(()) }
+        Self {
+            graph,
+            settings: Arc::new(settings),
+            ledger,
+            diagnostics: IntegrationDiagnostics::default(),
+            gate: tauri::async_runtime::Mutex::new(()),
+        }
     }
 
     /// The user's explicit choice. Persisted first: if the preference cannot be saved nothing changes and the error is returned.
@@ -338,7 +421,12 @@ impl IntegrationService {
     }
 
     /// Integrates one change. Never returns an error and never touches the object: whatever happens is in the report and the ledger.
-    pub async fn integrate(&self, store: &CaptureStore, recall: &RecallService, change: ChangedKnowledge) -> IntegrationReport {
+    pub async fn integrate(
+        &self,
+        store: &CaptureStore,
+        recall: &RecallService,
+        change: ChangedKnowledge,
+    ) -> IntegrationReport {
         self.diagnostics.event_received();
         let reason = match change.reason {
             ChangeReason::Created => "created",
@@ -346,13 +434,15 @@ impl IntegrationService {
             ChangeReason::Moved => "moved",
         };
         if !self.enabled() {
-            self.diagnostics.skipped_at_the_door(&change.object_id, reason, "disabled");
+            self.diagnostics
+                .skipped_at_the_door(&change.object_id, reason, "disabled");
             return IntegrationReport::new(&change.object_id, Status::Skipped(Skip::Disabled));
         }
         let _one_at_a_time = self.gate.lock().await;
         // The switch may have been turned off while this waited its turn.
         if !self.enabled() {
-            self.diagnostics.skipped_at_the_door(&change.object_id, reason, "disabled");
+            self.diagnostics
+                .skipped_at_the_door(&change.object_id, reason, "disabled");
             return IntegrationReport::new(&change.object_id, Status::Skipped(Skip::Disabled));
         }
         let started = Instant::now();
@@ -365,12 +455,18 @@ impl IntegrationService {
             }
             // Switched off while the provider was working: a failure is not worth remembering, and nothing may be scheduled.
             Err(_) if !self.enabled() => {
-                self.diagnostics.finish_run(Outcome::Skipped, Some("disabled".into()));
+                self.diagnostics
+                    .finish_run(Outcome::Skipped, Some("disabled".into()));
                 IntegrationReport::new(&change.object_id, Status::Skipped(Skip::Disabled))
             }
             Err(error) => {
-                let outcome = if matches!(error, RelationError::Storage(_)) { Outcome::PersistenceFailed } else { Outcome::ProviderFailed };
-                self.diagnostics.finish_run(outcome, Some(error.code().to_string()));
+                let outcome = if matches!(error, RelationError::Storage(_)) {
+                    Outcome::PersistenceFailed
+                } else {
+                    Outcome::ProviderFailed
+                };
+                self.diagnostics
+                    .finish_run(outcome, Some(error.code().to_string()));
                 self.record_failure(&change, &error)
             }
         };
@@ -390,10 +486,18 @@ impl IntegrationService {
         self.due_retries(unix_seconds())
     }
 
-    fn record_failure(&self, change: &ChangedKnowledge, error: &RelationError) -> IntegrationReport {
+    fn record_failure(
+        &self,
+        change: &ChangedKnowledge,
+        error: &RelationError,
+    ) -> IntegrationReport {
         let code = error.code();
         let previous_attempts = match self.ledger.get(&change.object_id) {
-            Some(Entry::Pending { change: pending, attempts, .. }) if pending.current_revision_id == change.current_revision_id => attempts,
+            Some(Entry::Pending {
+                change: pending,
+                attempts,
+                ..
+            }) if pending.current_revision_id == change.current_revision_id => attempts,
             _ => 0,
         };
         let message = error.to_string();
@@ -401,22 +505,51 @@ impl IntegrationService {
         let status = match error {
             // Free and expected until the person configures a provider; retried slowly and never counted.
             RelationError::NotConfigured | RelationError::Auth(_) => {
-                self.ledger.put(&change.object_id, Entry::Pending { change: change.clone(), attempts: previous_attempts, not_before: now + DEFERRED_SECONDS, last_error: message });
+                self.ledger.put(
+                    &change.object_id,
+                    Entry::Pending {
+                        change: change.clone(),
+                        attempts: previous_attempts,
+                        not_before: now + DEFERRED_SECONDS,
+                        last_error: message,
+                    },
+                );
                 Status::Deferred(code)
             }
             RelationError::Refused => {
-                self.ledger.put(&change.object_id, Entry::Failed { change: change.clone(), last_error: message });
+                self.ledger.put(
+                    &change.object_id,
+                    Entry::Failed {
+                        change: change.clone(),
+                        last_error: message,
+                    },
+                );
                 Status::Failed(code)
             }
             RelationError::ObjectNotFound => Status::Skipped(Skip::ObjectGone),
             _ => {
                 let attempts = previous_attempts + 1;
                 if attempts >= MAX_ATTEMPTS {
-                    self.ledger.put(&change.object_id, Entry::Failed { change: change.clone(), last_error: message });
+                    self.ledger.put(
+                        &change.object_id,
+                        Entry::Failed {
+                            change: change.clone(),
+                            last_error: message,
+                        },
+                    );
                     Status::Failed(code)
                 } else {
-                    let wait = BACKOFF_SECONDS[(attempts as usize - 1).min(BACKOFF_SECONDS.len() - 1)];
-                    self.ledger.put(&change.object_id, Entry::Pending { change: change.clone(), attempts, not_before: now + wait, last_error: message });
+                    let wait =
+                        BACKOFF_SECONDS[(attempts as usize - 1).min(BACKOFF_SECONDS.len() - 1)];
+                    self.ledger.put(
+                        &change.object_id,
+                        Entry::Pending {
+                            change: change.clone(),
+                            attempts,
+                            not_before: now + wait,
+                            last_error: message,
+                        },
+                    );
                     Status::Deferred(code)
                 }
             }
@@ -424,37 +557,62 @@ impl IntegrationService {
         IntegrationReport::new(&change.object_id, status)
     }
 
-    async fn run(&self, store: &CaptureStore, recall: &RecallService, change: &ChangedKnowledge) -> Result<IntegrationReport, RelationError> {
+    async fn run(
+        &self,
+        store: &CaptureStore,
+        recall: &RecallService,
+        change: &ChangedKnowledge,
+    ) -> Result<IntegrationReport, RelationError> {
         let object_id = change.object_id.as_str();
         let skipped = |skip: Skip| Ok(IntegrationReport::new(object_id, Status::Skipped(skip)));
 
         // Authoritative state NOW. An event can be late: the object may be gone, moved, archived, or already newer.
-        let Some(current_revision) = store.current_revision_id_of(object_id).map_err(storage)? else { return skipped(Skip::ObjectGone) };
+        let Some(current_revision) = store.current_revision_id_of(object_id).map_err(storage)?
+        else {
+            return skipped(Skip::ObjectGone);
+        };
         if current_revision != change.current_revision_id {
             return skipped(Skip::Stale);
         }
-        let Some(project_id) = store.project_of_object(object_id).map_err(|e: ProjectError| RelationError::Storage(e.to_string()))? else { return skipped(Skip::ObjectGone) };
+        let Some(project_id) = store
+            .project_of_object(object_id)
+            .map_err(|e: ProjectError| RelationError::Storage(e.to_string()))?
+        else {
+            return skipped(Skip::ObjectGone);
+        };
         match store.get_project(&project_id) {
             Ok(project) if project.archived_at.is_some() => return skipped(Skip::ArchivedProject),
             Ok(_) => {}
             Err(error) => return Err(RelationError::Storage(error.to_string())),
         }
-        let Some(focus) = store.get_knowledge_object(object_id).map_err(storage)? else { return skipped(Skip::ObjectGone) };
+        let Some(focus) = store.get_knowledge_object(object_id).map_err(storage)? else {
+            return skipped(Skip::ObjectGone);
+        };
 
         // Idempotence: this revision, in this project, was already integrated.
-        if let Some(Entry::Done { revision_id, project_id: done_project }) = self.ledger.get(object_id) {
+        if let Some(Entry::Done {
+            revision_id,
+            project_id: done_project,
+        }) = self.ledger.get(object_id)
+        {
             if revision_id == current_revision && done_project == project_id {
                 return skipped(Skip::AlreadyIntegrated);
             }
         }
 
-        let done = Entry::Done { revision_id: current_revision.clone(), project_id: project_id.clone() };
+        let done = Entry::Done {
+            revision_id: current_revision.clone(),
+            project_id: project_id.clone(),
+        };
         // A wording-only revision needs no graph work.
         let mut revalidate_existing = false;
         if change.reason == ChangeReason::Revised {
             if let Some(previous_id) = &change.previous_revision_id {
                 let previous = store.get_revision(previous_id).map_err(storage)?;
-                if !meaning_changed((&previous.kind, &previous.title, &previous.body), (&focus.kind, &focus.title, &focus.body)) {
+                if !meaning_changed(
+                    (&previous.kind, &previous.title, &previous.body),
+                    (&focus.kind, &focus.title, &focus.body),
+                ) {
                     self.ledger.put(object_id, done);
                     return skipped(Skip::NotMeaningful);
                 }
@@ -464,10 +622,17 @@ impl IntegrationService {
 
         // The revisions every decision below is based on, read BEFORE the text and before any provider call. The write re-checks them.
         let revisions = store.project_revisions(&project_id).map_err(storage)?;
-        let snapshot = |object: &KnowledgeObject| revisions.get(&object.id).map(|revision_id| ObjectSnapshot { object_id: object.id.clone(), revision_id: revision_id.clone(), project_id: object.project_id.clone() });
+        let snapshot = |object: &KnowledgeObject| {
+            revisions.get(&object.id).map(|revision_id| ObjectSnapshot {
+                object_id: object.id.clone(),
+                revision_id: revision_id.clone(),
+                project_id: object.project_id.clone(),
+            })
+        };
 
         let discovery = discover(store, recall, &focus, &project_id).await?;
-        self.diagnostics.discovered(discovery.report.project_objects, discovery.candidates.len());
+        self.diagnostics
+            .discovered(discovery.report.project_objects, discovery.candidates.len());
 
         // Model relations to re-check: only same-project, bounded, newest first. Cross-project ones are never revalidated here.
         let mut revalidate: Vec<Revalidation> = Vec::new();
@@ -476,8 +641,14 @@ impl IntegrationService {
                 if revalidate.len() >= MAX_REVALIDATIONS {
                     break;
                 }
-                let other_id = if relation.source_object_id == object_id { &relation.target_object_id } else { &relation.source_object_id };
-                let Some(other) = store.get_knowledge_object(other_id).map_err(storage)? else { continue };
+                let other_id = if relation.source_object_id == object_id {
+                    &relation.target_object_id
+                } else {
+                    &relation.source_object_id
+                };
+                let Some(other) = store.get_knowledge_object(other_id).map_err(storage)? else {
+                    continue;
+                };
                 if other.project_id != project_id || !revisions.contains_key(&other.id) {
                     continue;
                 }
@@ -496,29 +667,63 @@ impl IntegrationService {
         report.candidates = discovery.candidates.len();
         report.discovery = discovery.report.clone();
 
-        let written_at = store.project_current_revision_times(&project_id).map_err(storage)?;
-        let decision = self.graph.decide_integration(IntegrationInput { focus: &focus, candidates: &discovery.candidates, revalidate: &revalidate, existing: &existing, written_at: &written_at, diagnostics: Some(&self.diagnostics) }).await?;
+        let written_at = store
+            .project_current_revision_times(&project_id)
+            .map_err(storage)?;
+        let decision = self
+            .graph
+            .decide_integration(IntegrationInput {
+                focus: &focus,
+                candidates: &discovery.candidates,
+                revalidate: &revalidate,
+                existing: &existing,
+                written_at: &written_at,
+                diagnostics: Some(&self.diagnostics),
+            })
+            .await?;
         report.decision = decision.report.clone();
-        self.diagnostics.decided(&decision.report, decision.add.len());
+        self.diagnostics
+            .decided(&decision.report, decision.add.len());
 
         // The switch is read again immediately before anything is persisted: an answer that arrives after the person turned Automatic
         // Connections off changes nothing and does not complete the event.
         if !self.enabled() {
-            return Ok(IntegrationReport { status: Status::Skipped(Skip::Disabled), ..report });
+            return Ok(IntegrationReport {
+                status: Status::Skipped(Skip::Disabled),
+                ..report
+            });
         }
         if !decision.add.is_empty() || !decision.remove.is_empty() {
             // Every object the decision looked at, as of the snapshot taken before the provider calls.
-            let context: Vec<ObjectSnapshot> = discovery.candidates.iter().chain(revalidate.iter().map(|item| &item.other)).filter_map(|object| snapshot(object)).collect();
+            let context: Vec<ObjectSnapshot> = discovery
+                .candidates
+                .iter()
+                .chain(revalidate.iter().map(|item| &item.other))
+                .filter_map(snapshot)
+                .collect();
             let written = store
-                .apply_integration(IntegrationWrite { focus: ObjectSnapshot { object_id: focus.id.clone(), revision_id: current_revision.clone(), project_id: project_id.clone() }, context, remove: decision.remove, add: decision.add })
+                .apply_integration(IntegrationWrite {
+                    focus: ObjectSnapshot {
+                        object_id: focus.id.clone(),
+                        revision_id: current_revision.clone(),
+                        project_id: project_id.clone(),
+                    },
+                    context,
+                    remove: decision.remove,
+                    add: decision.add,
+                })
                 .map_err(|error| {
                     self.diagnostics.persist_failed();
                     storage(error)
                 })?;
-            self.diagnostics.persisted(written.added.len(), written.removed, written.stale);
+            self.diagnostics
+                .persisted(written.added.len(), written.removed, written.stale);
             if written.stale {
                 // The object moved on while the provider worked; its own (newer) event carries the work.
-                return Ok(IntegrationReport { status: Status::Skipped(Skip::Stale), ..report });
+                return Ok(IntegrationReport {
+                    status: Status::Skipped(Skip::Stale),
+                    ..report
+                });
             }
             report.added = written.added.len();
             report.removed = written.removed;

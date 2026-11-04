@@ -40,14 +40,33 @@ mod tests {
     /// If this fails the disclosure text changed: bump the matching `*_VERSION` (so older grants stop counting) and update the pinned value.
     #[test]
     fn the_disclosure_text_is_pinned_to_its_version() {
-        assert_eq!((SYNTHESIS_DISCLOSURE_VERSION, checksum(&SYNTHESIS_DISCLOSURE)), ("openai-synthesis-2026-10-v1", PIN_SYNTHESIS));
-        assert_eq!((VERIFICATION_DISCLOSURE_VERSION, checksum(&VERIFICATION_DISCLOSURE)), ("openai-verification-samefamily-2026-10-v1", PIN_VERIFICATION));
+        assert_eq!(
+            (
+                SYNTHESIS_DISCLOSURE_VERSION,
+                checksum(&SYNTHESIS_DISCLOSURE)
+            ),
+            ("openai-synthesis-2026-10-v1", PIN_SYNTHESIS)
+        );
+        assert_eq!(
+            (
+                VERIFICATION_DISCLOSURE_VERSION,
+                checksum(&VERIFICATION_DISCLOSURE)
+            ),
+            (
+                "openai-verification-samefamily-2026-10-v1",
+                PIN_VERIFICATION
+            )
+        );
     }
 
     #[test]
     fn the_verification_disclosure_says_it_is_not_independent() {
         let text = VERIFICATION_DISCLOSURE.join(" ").to_lowercase();
-        assert!(text.contains("same model family") && text.contains("not an independent review") && text.contains("approve every change"));
+        assert!(
+            text.contains("same model family")
+                && text.contains("not an independent review")
+                && text.contains("approve every change")
+        );
     }
 
     const PIN_SYNTHESIS: u64 = 15959226179711550454;

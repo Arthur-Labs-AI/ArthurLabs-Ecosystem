@@ -40,14 +40,24 @@ impl AudioPlayer for AndroidPlayer {
     fn start<'a>(&'a self, path: &'a Path) -> BoxFuture<'a, Result<Started, PlaybackError>> {
         Box::pin(async move {
             let path = path.to_str().ok_or(PlaybackError::Failed)?;
-            let started = self.handle.run_mobile_plugin_async::<StartedPayload>("startPlayback", PlayArgs { path }).await.map_err(|_| PlaybackError::Failed)?;
-            Ok(Started { prepare_ms: started.prepare_ms })
+            let started = self
+                .handle
+                .run_mobile_plugin_async::<StartedPayload>("startPlayback", PlayArgs { path })
+                .await
+                .map_err(|_| PlaybackError::Failed)?;
+            Ok(Started {
+                prepare_ms: started.prepare_ms,
+            })
         })
     }
 
     fn wait<'a>(&'a self) -> BoxFuture<'a, Result<(), PlaybackError>> {
         Box::pin(async move {
-            match self.handle.run_mobile_plugin_async::<EndedPayload>("awaitPlayback", ()).await {
+            match self
+                .handle
+                .run_mobile_plugin_async::<EndedPayload>("awaitPlayback", ())
+                .await
+            {
                 Ok(ended) if ended.cancelled => Err(PlaybackError::Cancelled),
                 Ok(_) => Ok(()),
                 Err(_) => Err(PlaybackError::Failed),
@@ -57,7 +67,10 @@ impl AudioPlayer for AndroidPlayer {
 
     fn stop<'a>(&'a self) -> BoxFuture<'a, ()> {
         Box::pin(async move {
-            let _ = self.handle.run_mobile_plugin_async::<serde_json::Value>("stopPlayback", ()).await;
+            let _ = self
+                .handle
+                .run_mobile_plugin_async::<serde_json::Value>("stopPlayback", ())
+                .await;
         })
     }
 }

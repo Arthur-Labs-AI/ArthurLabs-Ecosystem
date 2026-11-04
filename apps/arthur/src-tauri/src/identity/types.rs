@@ -180,7 +180,10 @@ pub enum Identity {
     /// No plausible referent.
     Distinct,
     /// One uniquely resolved target.
-    Same { target_id: String, relation: Relation },
+    Same {
+        target_id: String,
+        relation: Relation,
+    },
     /// More than one plausible target, weak or inconsistent evidence.
     Ambiguous,
     /// Could not be determined (failure, invalid input, subtask).
@@ -200,9 +203,17 @@ pub enum Permission {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Outcome {
-    New { reason: NewReason },
-    Revise { target: TargetSnapshot, relation: Relation },
-    Uncertain { candidates: Vec<String>, reason: Vec<Veto> },
+    New {
+        reason: NewReason,
+    },
+    Revise {
+        target: TargetSnapshot,
+        relation: Relation,
+    },
+    Uncertain {
+        candidates: Vec<String>,
+        reason: Vec<Veto>,
+    },
 }
 
 /// Replayable record of one decision. Holds ids, scores and model/policy versions; never capture or object text.

@@ -36,7 +36,10 @@ use crate::storage::relation_store::{canonical_ends, NewRelation, Relation};
 
 use super::resolve::{resolve, Resolution};
 use super::validate::validate_edges;
-use super::verify::{combine, dependency_requirement_gone, dependent_plan_cancelled, judge_each, Judgement, Outcome, Presentation, VerifyCandidate};
+use super::verify::{
+    combine, dependency_requirement_gone, dependent_plan_cancelled, judge_each, Judgement, Outcome,
+    Presentation, VerifyCandidate,
+};
 use super::{GraphService, RelationError, MAX_PROVIDER_REQUESTS_PER_RUN};
 
 /// Stage A proposals that are verified per integration. Mirrors `MAX_INTEGRATION_PROPOSALS` in `packages/contracts/cognitive.ts`.
@@ -159,7 +162,9 @@ impl GraphService {
                     if let Some(d) = diagnostics {
                         match &other {
                             Ok(_) => d.stage_b_succeeded(),
-                            Err(error) => d.stage_b_failed(matches!(error, RelationError::InvalidOutput(_))),
+                            Err(error) => {
+                                d.stage_b_failed(matches!(error, RelationError::InvalidOutput(_)))
+                            }
                         }
                     }
                     return other;
@@ -168,32 +173,69 @@ impl GraphService {
         }
     }
 
-    pub async fn decide_integration(&self, input: IntegrationInput<'_>) -> Result<Decision, RelationError> {
+    pub async fn decide_integration(
+        &self,
+        input: IntegrationInput<'_>,
+    ) -> Result<Decision, RelationError> {
         let mut report = DecisionReport::default();
         let focus_id = input.focus.id.as_str();
 
         // Every object the provider may be shown, each once: the focus, the discovered pool, the revalidation ends.
         let mut objects: Vec<KnowledgeObject> = vec![input.focus.clone()];
-        for object in input.candidates.iter().chain(input.revalidate.iter().map(|item| &item.other)) {
+        for object in input
+            .candidates
+            .iter()
+            .chain(input.revalidate.iter().map(|item| &item.other))
+        {
             if !objects.iter().any(|known| known.id == object.id) {
                 objects.push(object.clone());
             }
         }
-        let by_id = |id: &str| objects.iter().find(|object| object.id == id).cloned().ok_or_else(|| RelationError::InvalidOutput("refers to an object that was not supplied".into()));
-        let known: HashSet<Identity> = input.existing.iter().map(|r| identity(&r.kind, &r.source_object_id, &r.target_object_id)).collect();
-        let other_end = |edge: &NewRelation| if edge.source_object_id == focus_id { edge.target_object_id.clone() } else { edge.source_object_id.clone() };
+        let by_id = |id: &str| {
+            objects
+                .iter()
+                .find(|object| object.id == id)
+                .cloned()
+                .ok_or_else(|| {
+                    RelationError::InvalidOutput("refers to an object that was not supplied".into())
+                })
+        };
+        let known: HashSet<Identity> = input
+            .existing
+            .iter()
+            .map(|r| identity(&r.kind, &r.source_object_id, &r.target_object_id))
+            .collect();
+        let other_end = |edge: &NewRelation| {
+            if edge.source_object_id == focus_id {
+                edge.target_object_id.clone()
+            } else {
+                edge.source_object_id.clone()
+            }
+        };
 
         // Stage A: the best supported relation for the focus object, or none.
         let mut fresh: Vec<NewRelation> = Vec::new();
         let mut typed_claimed: HashSet<String> = HashSet::new();
         // Pairs that already have a typed relation (any origin): a bare `related_to` adds nothing there.
-        let typed_existing: HashSet<String> = input.existing.iter().filter(|r| r.kind != "related_to" && (r.source_object_id == focus_id || r.target_object_id == focus_id)).map(|r| relation_other_end(r, focus_id)).collect();
+        let typed_existing: HashSet<String> = input
+            .existing
+            .iter()
+            .filter(|r| {
+                r.kind != "related_to"
+                    && (r.source_object_id == focus_id || r.target_object_id == focus_id)
+            })
+            .map(|r| relation_other_end(r, focus_id))
+            .collect();
         if objects.len() >= 2 {
             report.provider_requests += 1;
             if let Some(d) = input.diagnostics {
                 d.stage_a_attempted();
             }
-            let claims = match self.proposer.propose_for(focus_id, &objects, input.existing).await {
+            let claims = match self
+                .proposer
+                .propose_for(focus_id, &objects, input.existing)
+                .await
+            {
                 Ok(claims) => claims,
                 Err(error) => {
                     if let Some(d) = input.diagnostics {
@@ -202,7 +244,14 @@ impl GraphService {
                     return Err(error);
                 }
             };
-            let edges = claims.into_iter().map(|p| NewRelation { kind: p.kind, source_object_id: p.source_object_id, target_object_id: p.target_object_id }).collect();
+            let edges = claims
+                .into_iter()
+                .map(|p| NewRelation {
+                    kind: p.kind,
+                    source_object_id: p.source_object_id,
+                    target_object_id: p.target_object_id,
+                })
+                .collect();
             let claims = match validate_edges(&objects, edges) {
                 Ok(claims) => claims,
                 Err(error) => {
@@ -215,35 +264,78 @@ impl GraphService {
             if let Some(d) = input.diagnostics {
                 d.stage_a_succeeded();
             }
-            let (on_focus, off_focus): (Vec<NewRelation>, Vec<NewRelation>) = claims.into_iter().partition(|edge| edge.source_object_id == focus_id || edge.target_object_id == focus_id);
+            let (on_focus, off_focus): (Vec<NewRelation>, Vec<NewRelation>) =
+                claims.into_iter().partition(|edge| {
+                    edge.source_object_id == focus_id || edge.target_object_id == focus_id
+                });
             report.off_focus = off_focus.len();
             report.proposed = on_focus.len();
             // Pairs for which Stage A claimed a stronger, typed relation. If that claim fails verification, `related_to` must not take its place.
-            typed_claimed.extend(on_focus.iter().filter(|edge| edge.kind != "related_to").map(&other_end));
-            let (new, existing): (Vec<NewRelation>, Vec<NewRelation>) = on_focus.into_iter().partition(|edge| !known.contains(&identity_of(edge)));
+            typed_claimed.extend(
+                on_focus
+                    .iter()
+                    .filter(|edge| edge.kind != "related_to")
+                    .map(&other_end),
+            );
+            let (new, existing): (Vec<NewRelation>, Vec<NewRelation>) = on_focus
+                .into_iter()
+                .partition(|edge| !known.contains(&identity_of(edge)));
             report.skipped_existing = existing.len();
             report.truncated = new.len().saturating_sub(MAX_INTEGRATION_PROPOSALS);
             fresh = new.into_iter().take(MAX_INTEGRATION_PROPOSALS).collect();
         }
 
         // Stage B: the positives and the relations being revalidated share ONE batch (two votes in total).
-        let mut to_verify: Vec<VerifyCandidate> = Vec::with_capacity(fresh.len() + input.revalidate.len());
+        let mut to_verify: Vec<VerifyCandidate> =
+            Vec::with_capacity(fresh.len() + input.revalidate.len());
         for edge in &fresh {
-            to_verify.push(VerifyCandidate { index: to_verify.len(), source: by_id(&edge.source_object_id)?, target: by_id(&edge.target_object_id)?, kind: edge.kind.clone(), source_written_at: input.written_at.get(&edge.source_object_id).cloned(), target_written_at: input.written_at.get(&edge.target_object_id).cloned() });
+            to_verify.push(VerifyCandidate {
+                index: to_verify.len(),
+                source: by_id(&edge.source_object_id)?,
+                target: by_id(&edge.target_object_id)?,
+                kind: edge.kind.clone(),
+                source_written_at: input.written_at.get(&edge.source_object_id).cloned(),
+                target_written_at: input.written_at.get(&edge.target_object_id).cloned(),
+            });
         }
         let first_revalidation = to_verify.len();
         for item in input.revalidate {
             let relation = &item.relation;
-            to_verify.push(VerifyCandidate { index: to_verify.len(), source: by_id(&relation.source_object_id)?, target: by_id(&relation.target_object_id)?, kind: relation.kind.clone(), source_written_at: input.written_at.get(&relation.source_object_id).cloned(), target_written_at: input.written_at.get(&relation.target_object_id).cloned() });
+            to_verify.push(VerifyCandidate {
+                index: to_verify.len(),
+                source: by_id(&relation.source_object_id)?,
+                target: by_id(&relation.target_object_id)?,
+                kind: relation.kind.clone(),
+                source_written_at: input.written_at.get(&relation.source_object_id).cloned(),
+                target_written_at: input.written_at.get(&relation.target_object_id).cloned(),
+            });
         }
         report.verified = to_verify.len();
         if to_verify.is_empty() {
-            return Ok(Decision { add: vec![], remove: vec![], report });
+            return Ok(Decision {
+                add: vec![],
+                remove: vec![],
+                report,
+            });
         }
         report.provider_requests += 1;
-        let first = self.verify_pass(&to_verify, Presentation::LowerIdFirst, &mut report, input.diagnostics).await?;
+        let first = self
+            .verify_pass(
+                &to_verify,
+                Presentation::LowerIdFirst,
+                &mut report,
+                input.diagnostics,
+            )
+            .await?;
         report.provider_requests += 1;
-        let second = self.verify_pass(&to_verify, Presentation::HigherIdFirst, &mut report, input.diagnostics).await?;
+        let second = self
+            .verify_pass(
+                &to_verify,
+                Presentation::HigherIdFirst,
+                &mut report,
+                input.diagnostics,
+            )
+            .await?;
         debug_assert!(report.provider_requests <= MAX_PROVIDER_REQUESTS_PER_RUN);
         // Direction-aware structured signals for `depends_on`, read from the RAW verdicts before they are reduced to judgements. The dependent is
         // the object that was said to NEED the other: for an existing relation that is its source, for a new claim the source of the edge the
@@ -256,18 +348,23 @@ impl GraphService {
         let mut signals = vec![vec![Signal::default(); to_verify.len()]; 2];
         for (vote, verdicts) in [&first, &second].into_iter().enumerate() {
             for verdict in verdicts {
-                let Some(candidate) = to_verify.get(verdict.index) else { continue };
+                let Some(candidate) = to_verify.get(verdict.index) else {
+                    continue;
+                };
                 if verdict.kind != "depends_on" {
                     continue;
                 }
-                let dependent = if verdict.index >= first_revalidation {
-                    &candidate.source
-                } else if verdict.source_object_id == candidate.source.id {
+                let dependent = if verdict.index >= first_revalidation
+                    || verdict.source_object_id == candidate.source.id
+                {
                     &candidate.source
                 } else {
                     &candidate.target
                 };
-                signals[vote][verdict.index] = Signal { plan_cancelled: dependent_plan_cancelled(verdict, dependent), requirement_gone: dependency_requirement_gone(verdict, dependent) };
+                signals[vote][verdict.index] = Signal {
+                    plan_cancelled: dependent_plan_cancelled(verdict, dependent),
+                    requirement_gone: dependency_requirement_gone(verdict, dependent),
+                };
             }
         }
         let votes = match judge_each(&to_verify, vec![first, second]) {
@@ -300,7 +397,10 @@ impl GraphService {
                             report.rejected += 1;
                             continue;
                         }
-                        if edge.kind == "depends_on" && (signals[0][position].plan_cancelled || signals[1][position].plan_cancelled) {
+                        if edge.kind == "depends_on"
+                            && (signals[0][position].plan_cancelled
+                                || signals[1][position].plan_cancelled)
+                        {
                             // A NEW dependency of a plan that its own text cancels is never created (so a retracted edge cannot come straight back).
                             report.moot_blocked += 1;
                             report.rejected += 1;
@@ -320,7 +420,13 @@ impl GraphService {
                 // Every other kind keeps the independently tested rule: it stays only if both passes support it.
                 if let Outcome::Keep(edge) = outcome {
                     report.survived += 1;
-                    if identity_of(&edge) == identity(&relation.kind, &relation.source_object_id, &relation.target_object_id) {
+                    if identity_of(&edge)
+                        == identity(
+                            &relation.kind,
+                            &relation.source_object_id,
+                            &relation.target_object_id,
+                        )
+                    {
                         supported_existing.insert(relation.id.clone());
                     }
                     survivors.entry(other_end(&edge)).or_default().push(edge);
@@ -331,10 +437,17 @@ impl GraphService {
             }
 
             // `depends_on` (M04.7A.3). A rejecting pass alone never deletes an authoritative dependency.
-            let this = identity(&relation.kind, &relation.source_object_id, &relation.target_object_id);
+            let this = identity(
+                &relation.kind,
+                &relation.source_object_id,
+                &relation.target_object_id,
+            );
             let supports = votes.iter().filter(|vote| matches!(&vote[position], Judgement::Keep(edge) if identity_of(edge) == this)).count();
-            let cancelled_both = signals[0][position].plan_cancelled && signals[1][position].plan_cancelled;
-            let gone_both = supports == 0 && signals[0][position].requirement_gone && signals[1][position].requirement_gone;
+            let cancelled_both =
+                signals[0][position].plan_cancelled && signals[1][position].plan_cancelled;
+            let gone_both = supports == 0
+                && signals[0][position].requirement_gone
+                && signals[1][position].requirement_gone;
             if cancelled_both {
                 // Case 1: both passes confirm the DEPENDENT's own current text cancels its plan. The edge goes; nothing replaces it.
                 removed_dependencies.insert(relation.id.clone());
@@ -359,8 +472,14 @@ impl GraphService {
                 held_dependencies.insert(relation.id.clone());
                 no_new_edge.insert(pair);
                 report.dependency_unresolved += 1;
-                if supports + usize::from(signals[0][position].plan_cancelled) + usize::from(signals[1][position].plan_cancelled) > 0 {
-                    report.moot_unresolved += usize::from(signals[0][position].plan_cancelled || signals[1][position].plan_cancelled);
+                if supports
+                    + usize::from(signals[0][position].plan_cancelled)
+                    + usize::from(signals[1][position].plan_cancelled)
+                    > 0
+                {
+                    report.moot_unresolved += usize::from(
+                        signals[0][position].plan_cancelled || signals[1][position].plan_cancelled,
+                    );
                 }
             }
         }
@@ -375,16 +494,26 @@ impl GraphService {
         let mut pairs: Vec<String> = pairs.into_iter().collect();
         pairs.sort();
         for pair in pairs {
-            let existing_here: Vec<&Relation> = input.revalidate.iter().filter(|item| item.other.id == pair).map(|item| &item.relation).collect();
+            let existing_here: Vec<&Relation> = input
+                .revalidate
+                .iter()
+                .filter(|item| item.other.id == pair)
+                .map(|item| &item.relation)
+                .collect();
             let resolution = resolve(survivors.remove(&pair).unwrap_or_default());
             // The relations on this pair that the resolution keeps as they are.
             let mut kept_here: Vec<&Relation> = Vec::new();
             match &resolution {
                 Resolution::None => {}
                 Resolution::Persist(edge) => {
-                    if let Some(same) = existing_here.iter().find(|r| identity(&r.kind, &r.source_object_id, &r.target_object_id) == identity_of(edge)) {
+                    if let Some(same) = existing_here.iter().find(|r| {
+                        identity(&r.kind, &r.source_object_id, &r.target_object_id)
+                            == identity_of(edge)
+                    }) {
                         kept_here.push(same);
-                    } else if edge.kind == "related_to" && (typed_claimed.contains(&pair) || typed_existing.contains(&pair)) {
+                    } else if edge.kind == "related_to"
+                        && (typed_claimed.contains(&pair) || typed_existing.contains(&pair))
+                    {
                         // M04.7A.4 relation specificity: a stronger typed relation was claimed (or already exists) for this pair, and only the
                         // weaker `related_to` survived. A failed typed verification is never converted into a weaker relation.
                         report.related_suppressed += 1;
@@ -395,15 +524,23 @@ impl GraphService {
                 Resolution::Ambiguous(list) => {
                     report.ambiguous_pairs += 1;
                     // A relation that is itself still positively supported stays; nothing new is chosen between the survivors.
-                    kept_here.extend(existing_here.iter().filter(|r| supported_existing.contains(&r.id)));
+                    kept_here.extend(
+                        existing_here
+                            .iter()
+                            .filter(|r| supported_existing.contains(&r.id)),
+                    );
                     report.ambiguous_dropped += list.len().saturating_sub(kept_here.len());
                 }
             }
-            let replaced_here = !add.is_empty() && matches!(resolution, Resolution::Persist(_)) && add.last().is_some_and(|edge| other_end(edge) == pair);
+            let replaced_here = !add.is_empty()
+                && matches!(resolution, Resolution::Persist(_))
+                && add.last().is_some_and(|edge| other_end(edge) == pair);
             for relation in existing_here {
                 if removed_dependencies.contains(&relation.id) {
                     remove.push(relation.id.clone());
-                } else if held_dependencies.contains(&relation.id) || kept_here.iter().any(|kept| kept.id == relation.id) {
+                } else if held_dependencies.contains(&relation.id)
+                    || kept_here.iter().any(|kept| kept.id == relation.id)
+                {
                     report.kept += 1;
                 } else {
                     remove.push(relation.id.clone());
@@ -417,10 +554,18 @@ impl GraphService {
         }
         // The deterministic invariants have the last word, whatever the verifier said.
         let add = validate_edges(&objects, add)?;
-        Ok(Decision { add, remove, report })
+        Ok(Decision {
+            add,
+            remove,
+            report,
+        })
     }
 }
 
 fn relation_other_end(relation: &Relation, focus_id: &str) -> String {
-    if relation.source_object_id == focus_id { relation.target_object_id.clone() } else { relation.source_object_id.clone() }
+    if relation.source_object_id == focus_id {
+        relation.target_object_id.clone()
+    } else {
+        relation.source_object_id.clone()
+    }
 }

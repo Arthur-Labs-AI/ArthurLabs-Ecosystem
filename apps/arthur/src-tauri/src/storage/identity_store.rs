@@ -26,7 +26,10 @@ use uuid::Uuid;
 use super::capture_store::{now_rfc3339, CaptureStore, StoreError};
 use super::evidence_store::{attach_revision_evidence_in, EvidenceRole, NewEvidence};
 use super::knowledge_store::{validate_span, KINDS, MAX_BODY_CHARS, MAX_TITLE_CHARS};
-use super::lineage_store::{create_initial_revision, revise_if_current_in, CasOrigin, ExpectedRevision, ReviseConflict, Revision, RevisionContent};
+use super::lineage_store::{
+    create_initial_revision, revise_if_current_in, CasOrigin, ExpectedRevision, ReviseConflict,
+    Revision, RevisionContent,
+};
 use super::relation_store::is_object_id;
 
 pub const MAX_PENDING_CANDIDATES: usize = 4;
@@ -34,15 +37,53 @@ const MAX_AUDIT_ENTRIES: usize = 16;
 
 /// Names the audit may record. A mirror of `identity::types::Veto` as snake_case; kept as data so storage imports nothing from it.
 pub const VETO_NAMES: [&str; 36] = [
-    "project_mismatch", "project_archived", "target_archived", "inconsistent_snapshot", "classifier_failed", "unknown_model", "too_few_runs",
-    "unknown_candidate_id", "duplicate_signal", "incomplete_signals", "out_of_range_score", "ambiguous_target", "weak_evidence", "runs_disagree",
-    "relation_contradicts_score", "fundamental_reframing", "reframing_signal", "subtask_of_target", "referent_unresolved", "incompatible_kind",
-    "user_owned_revision", "supersession_not_explicit", "not_a_prior_decision", "inbox_requires_confirmation", "conflicting_claims", "stale_target", "invalid_draft", "evolution_withdrawn",
-    "draft_bad_reference", "draft_unsupported_fact", "draft_omits_fact", "draft_scope_change", "verifier_veto", "verifier_unavailable", "synthesis_unavailable",
+    "project_mismatch",
+    "project_archived",
+    "target_archived",
+    "inconsistent_snapshot",
+    "classifier_failed",
+    "unknown_model",
+    "too_few_runs",
+    "unknown_candidate_id",
+    "duplicate_signal",
+    "incomplete_signals",
+    "out_of_range_score",
+    "ambiguous_target",
+    "weak_evidence",
+    "runs_disagree",
+    "relation_contradicts_score",
+    "fundamental_reframing",
+    "reframing_signal",
+    "subtask_of_target",
+    "referent_unresolved",
+    "incompatible_kind",
+    "user_owned_revision",
+    "supersession_not_explicit",
+    "not_a_prior_decision",
+    "inbox_requires_confirmation",
+    "conflicting_claims",
+    "stale_target",
+    "invalid_draft",
+    "evolution_withdrawn",
+    "draft_bad_reference",
+    "draft_unsupported_fact",
+    "draft_omits_fact",
+    "draft_scope_change",
+    "verifier_veto",
+    "verifier_unavailable",
+    "synthesis_unavailable",
     "review_required",
 ];
 const REFRAMING_VETOES: [&str; 2] = ["fundamental_reframing", "reframing_signal"];
-pub const UNCHECKED_REASONS: [&str; 7] = ["disabled", "invalid_claim", "invalid_candidates", "no_eligible_candidates", "classifier_failed", "malformed_signals", "review_quota"];
+pub const UNCHECKED_REASONS: [&str; 7] = [
+    "disabled",
+    "invalid_claim",
+    "invalid_candidates",
+    "no_eligible_candidates",
+    "classifier_failed",
+    "malformed_signals",
+    "review_quota",
+];
 
 #[derive(Debug)]
 pub enum IdentityStoreError {
@@ -101,7 +142,9 @@ impl DecisionOutcome {
         }
     }
     fn parse(raw: &str) -> Option<Self> {
-        [Self::New, Self::Revise, Self::Uncertain, Self::Unchecked].into_iter().find(|o| o.as_str() == raw)
+        [Self::New, Self::Revise, Self::Uncertain, Self::Unchecked]
+            .into_iter()
+            .find(|o| o.as_str() == raw)
     }
 }
 
@@ -119,14 +162,27 @@ pub struct DecisionAudit {
 impl DecisionAudit {
     fn validate(&self) -> Res<()> {
         let ids_ok = |id: &str| is_object_id(id);
-        if self.candidates_sent.len() > MAX_AUDIT_ENTRIES || self.excluded.len() > MAX_AUDIT_ENTRIES || self.scores.len() > MAX_AUDIT_ENTRIES || self.runs > 16 {
+        if self.candidates_sent.len() > MAX_AUDIT_ENTRIES
+            || self.excluded.len() > MAX_AUDIT_ENTRIES
+            || self.scores.len() > MAX_AUDIT_ENTRIES
+            || self.runs > 16
+        {
             return invalid("audit is too large");
         }
-        if !self.candidates_sent.iter().all(|id| ids_ok(id)) || !self.excluded.iter().all(|(id, veto)| ids_ok(id) && VETO_NAMES.contains(&veto.as_str())) {
+        if !self.candidates_sent.iter().all(|id| ids_ok(id))
+            || !self
+                .excluded
+                .iter()
+                .all(|(id, veto)| ids_ok(id) && VETO_NAMES.contains(&veto.as_str()))
+        {
             return invalid("audit holds only object ids and known veto names");
         }
         let unit = |x: f64| x.is_finite() && (0.0..=1.0).contains(&x);
-        if !self.scores.iter().all(|(id, same, reframing)| ids_ok(id) && unit(*same) && unit(*reframing)) {
+        if !self
+            .scores
+            .iter()
+            .all(|(id, same, reframing)| ids_ok(id) && unit(*same) && unit(*reframing))
+        {
             return invalid("audit scores must be finite numbers between 0 and 1 for object ids");
         }
         Ok(())
@@ -173,27 +229,53 @@ fn validate_decision(input: &IdentityDecisionInput) -> Res<()> {
     if input.policy_version.is_empty() || input.policy_version.chars().count() > 64 {
         return invalid("policy version must be 1 to 64 characters");
     }
-    if input.model_id.as_deref().is_some_and(|m| m.is_empty() || m.chars().count() > 128) {
+    if input
+        .model_id
+        .as_deref()
+        .is_some_and(|m| m.is_empty() || m.chars().count() > 128)
+    {
         return invalid("model id must be 1 to 128 characters");
     }
-    if input.vetoes.len() > MAX_AUDIT_ENTRIES || !input.vetoes.iter().all(|v| VETO_NAMES.contains(&v.as_str())) {
+    if input.vetoes.len() > MAX_AUDIT_ENTRIES
+        || !input
+            .vetoes
+            .iter()
+            .all(|v| VETO_NAMES.contains(&v.as_str()))
+    {
         return invalid("vetoes must be known veto names");
     }
-    if input.unchecked_reason.as_deref().is_some_and(|r| !UNCHECKED_REASONS.contains(&r)) {
+    if input
+        .unchecked_reason
+        .as_deref()
+        .is_some_and(|r| !UNCHECKED_REASONS.contains(&r))
+    {
         return invalid("unknown unchecked reason");
     }
-    for id in [&input.target_object_id, &input.created_object_id].into_iter().flatten() {
+    for id in [&input.target_object_id, &input.created_object_id]
+        .into_iter()
+        .flatten()
+    {
         if !is_object_id(id) {
             return invalid("malformed object id");
         }
     }
     // The same shape the schema CHECK enforces, with precise messages. UNCHECKED never carries model verification as its basis.
-    let (has_model, has_reason, target, created) = (input.model_id.is_some(), input.unchecked_reason.is_some(), input.target_object_id.is_some(), input.created_object_id.is_some());
-    let (base, result) = (input.base_revision_id.is_some(), input.result_revision_id.is_some());
+    let (has_model, has_reason, target, created) = (
+        input.model_id.is_some(),
+        input.unchecked_reason.is_some(),
+        input.target_object_id.is_some(),
+        input.created_object_id.is_some(),
+    );
+    let (base, result) = (
+        input.base_revision_id.is_some(),
+        input.result_revision_id.is_some(),
+    );
     let ok = match input.outcome {
         DecisionOutcome::New => has_model && !has_reason && created && !target && !base && !result,
         DecisionOutcome::Revise => has_model && !has_reason && !created && target && base && result,
-        DecisionOutcome::Uncertain => has_model && !has_reason && !created && !target && !base && !result,
+        DecisionOutcome::Uncertain => {
+            has_model && !has_reason && !created && !target && !base && !result
+        }
         DecisionOutcome::Unchecked => has_reason && created && !target && !base && !result,
     };
     if !ok {
@@ -235,23 +317,67 @@ fn decision_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<(IdentityDecis
 
 fn audit_from_json(raw: &str) -> DecisionAudit {
     let value: Value = serde_json::from_str(raw).unwrap_or(Value::Null);
-    let strings = |key: &str| -> Vec<String> { value[key].as_array().map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()).unwrap_or_default() };
+    let strings = |key: &str| -> Vec<String> {
+        value[key]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
     DecisionAudit {
         candidates_sent: strings("candidatesSent"),
-        excluded: value["excluded"].as_array().map(|a| a.iter().filter_map(|v| Some((v["id"].as_str()?.to_string(), v["veto"].as_str()?.to_string()))).collect()).unwrap_or_default(),
-        scores: value["scores"].as_array().map(|a| a.iter().filter_map(|v| Some((v["id"].as_str()?.to_string(), v["sameMin"].as_f64()?, v["reframingMax"].as_f64()?))).collect()).unwrap_or_default(),
+        excluded: value["excluded"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| {
+                        Some((
+                            v["id"].as_str()?.to_string(),
+                            v["veto"].as_str()?.to_string(),
+                        ))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        scores: value["scores"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| {
+                        Some((
+                            v["id"].as_str()?.to_string(),
+                            v["sameMin"].as_f64()?,
+                            v["reframingMax"].as_f64()?,
+                        ))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
         runs: value["runs"].as_u64().unwrap_or(0) as u32,
     }
 }
 
-pub(super) fn decisions_for_in(connection: &Connection, capture_id: &str) -> Res<Vec<IdentityDecision>> {
-    let mut statement = connection.prepare(&format!("SELECT {DECISION_COLUMNS} FROM identity_decisions WHERE capture_id = ?1 ORDER BY ordinal"))?;
-    let rows = statement.query_map([capture_id], decision_from_row)?.collect::<Result<Vec<_>, _>>()?;
+pub(super) fn decisions_for_in(
+    connection: &Connection,
+    capture_id: &str,
+) -> Res<Vec<IdentityDecision>> {
+    let mut statement = connection.prepare(&format!(
+        "SELECT {DECISION_COLUMNS} FROM identity_decisions WHERE capture_id = ?1 ORDER BY ordinal"
+    ))?;
+    let rows = statement
+        .query_map([capture_id], decision_from_row)?
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(rows.into_iter().map(|(decision, _)| decision).collect())
 }
 
 /// Records one decision. `created == false` means the identical decision was already stored and nothing was written.
-pub fn record_identity_decision_in(connection: &Connection, input: &IdentityDecisionInput) -> Res<(IdentityDecision, bool)> {
+pub fn record_identity_decision_in(
+    connection: &Connection,
+    input: &IdentityDecisionInput,
+) -> Res<(IdentityDecision, bool)> {
     validate_decision(input)?;
     if input.outcome == DecisionOutcome::Uncertain {
         return invalid("an uncertain decision is recorded together with its pending claim (stage_uncertain_claim)");
@@ -259,19 +385,38 @@ pub fn record_identity_decision_in(connection: &Connection, input: &IdentityDeci
     insert_decision_in(connection, input)
 }
 
-fn insert_decision_in(connection: &Connection, input: &IdentityDecisionInput) -> Res<(IdentityDecision, bool)> {
-    if let Some(existing) = decisions_for_in(connection, &input.capture_id)?.into_iter().find(|d| d.input.ordinal == input.ordinal) {
+fn insert_decision_in(
+    connection: &Connection,
+    input: &IdentityDecisionInput,
+) -> Res<(IdentityDecision, bool)> {
+    if let Some(existing) = decisions_for_in(connection, &input.capture_id)?
+        .into_iter()
+        .find(|d| d.input.ordinal == input.ordinal)
+    {
         return if existing.input == *input {
             Ok((existing, false))
         } else {
-            Err(IdentityStoreError::Conflict("a different identity decision is already recorded for this claim".into()))
+            Err(IdentityStoreError::Conflict(
+                "a different identity decision is already recorded for this claim".into(),
+            ))
         };
     }
-    let ran: bool = connection.query_row("SELECT 1 FROM distillation_runs WHERE capture_id = ?1", [&input.capture_id], |_| Ok(true)).optional()?.unwrap_or(false);
+    let ran: bool = connection
+        .query_row(
+            "SELECT 1 FROM distillation_runs WHERE capture_id = ?1",
+            [&input.capture_id],
+            |_| Ok(true),
+        )
+        .optional()?
+        .unwrap_or(false);
     if !ran {
         return invalid("the capture has no distillation run");
     }
-    let decided_by = if input.outcome == DecisionOutcome::Unchecked { "fallback" } else { "gate" };
+    let decided_by = if input.outcome == DecisionOutcome::Unchecked {
+        "fallback"
+    } else {
+        "gate"
+    };
     let decided_at = now_rfc3339()?;
     connection.execute(
         &format!("INSERT INTO identity_decisions ({DECISION_COLUMNS}) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)"),
@@ -281,7 +426,14 @@ fn insert_decision_in(connection: &Connection, input: &IdentityDecisionInput) ->
             input.audit.to_json().to_string(), decided_at
         ],
     )?;
-    Ok((IdentityDecision { input: input.clone(), decided_by: decided_by.into(), decided_at }, true))
+    Ok((
+        IdentityDecision {
+            input: input.clone(),
+            decided_by: decided_by.into(),
+            decided_at,
+        },
+        true,
+    ))
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -370,15 +522,32 @@ fn pending_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<PendingClaim> {
 }
 
 pub(super) fn pending_in(connection: &Connection, id: &str) -> Res<Option<PendingClaim>> {
-    Ok(connection.query_row(&format!("{PENDING_SELECT} WHERE p.id = ?1"), [id], pending_from_row).optional()?)
+    Ok(connection
+        .query_row(
+            &format!("{PENDING_SELECT} WHERE p.id = ?1"),
+            [id],
+            pending_from_row,
+        )
+        .optional()?)
 }
 
-fn pending_for_claim_in(connection: &Connection, capture_id: &str, ordinal: i64) -> Res<Option<PendingClaim>> {
-    Ok(connection.query_row(&format!("{PENDING_SELECT} WHERE p.capture_id = ?1 AND p.ordinal = ?2"), params![capture_id, ordinal], pending_from_row).optional()?)
+fn pending_for_claim_in(
+    connection: &Connection,
+    capture_id: &str,
+    ordinal: i64,
+) -> Res<Option<PendingClaim>> {
+    Ok(connection
+        .query_row(
+            &format!("{PENDING_SELECT} WHERE p.capture_id = ?1 AND p.ordinal = ?2"),
+            params![capture_id, ordinal],
+            pending_from_row,
+        )
+        .optional()?)
 }
 
 fn parse_time(raw: &str) -> Res<OffsetDateTime> {
-    OffsetDateTime::parse(raw, &Rfc3339).map_err(|_| IdentityStoreError::Invalid("a time must be RFC 3339".into()))
+    OffsetDateTime::parse(raw, &Rfc3339)
+        .map_err(|_| IdentityStoreError::Invalid("a time must be RFC 3339".into()))
 }
 
 fn validate_pending(connection: &Connection, input: &PendingClaimInput) -> Res<()> {
@@ -389,33 +558,69 @@ fn validate_pending(connection: &Connection, input: &PendingClaimInput) -> Res<(
     if !KINDS.contains(&input.kind.as_str()) {
         return invalid("unknown kind");
     }
-    if input.title.trim().is_empty() || input.title.chars().count() > MAX_TITLE_CHARS || input.body.trim().is_empty() || input.body.chars().count() > MAX_BODY_CHARS {
+    if input.title.trim().is_empty()
+        || input.title.chars().count() > MAX_TITLE_CHARS
+        || input.body.trim().is_empty()
+        || input.body.chars().count() > MAX_BODY_CHARS
+    {
         return invalid("title or body is empty or too long");
     }
     let unique: std::collections::BTreeSet<&String> = input.candidate_ids.iter().collect();
-    if input.candidate_ids.is_empty() || input.candidate_ids.len() > MAX_PENDING_CANDIDATES || unique.len() != input.candidate_ids.len() || !input.candidate_ids.iter().all(|id| is_object_id(id)) {
+    if input.candidate_ids.is_empty()
+        || input.candidate_ids.len() > MAX_PENDING_CANDIDATES
+        || unique.len() != input.candidate_ids.len()
+        || !input.candidate_ids.iter().all(|id| is_object_id(id))
+    {
         return invalid("a pending claim names 1 to 4 distinct candidate objects");
     }
     if let Some(due) = &input.due_at {
         parse_time(due)?;
     }
-    let content: Option<String> = connection.query_row("SELECT content FROM captures WHERE id = ?1", [&input.decision.capture_id], |row| row.get(0)).optional()?;
-    let content = content.ok_or_else(|| IdentityStoreError::Invalid("the capture does not exist".into()))?;
-    validate_span(&content, input.source_start, input.source_end).or_else(|reason| invalid(reason))
+    let content: Option<String> = connection
+        .query_row(
+            "SELECT content FROM captures WHERE id = ?1",
+            [&input.decision.capture_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let content =
+        content.ok_or_else(|| IdentityStoreError::Invalid("the capture does not exist".into()))?;
+    validate_span(&content, input.source_start, input.source_end).or_else(invalid)
 }
 
 /// Stores the UNCERTAIN decision and its pending claim together. Idempotent: the identical claim returns the stored one
 /// (`created == false`); a different claim for the same (capture, ordinal) is a conflict. A full review queue never discards a claim:
 /// this function has no quota, so the caller decides what to do (Phase 3: keep it as a separate object) and nothing is dropped here.
-pub fn stage_uncertain_claim_in(connection: &Connection, input: &PendingClaimInput) -> Res<(PendingClaim, bool)> {
+pub fn stage_uncertain_claim_in(
+    connection: &Connection,
+    input: &PendingClaimInput,
+) -> Res<(PendingClaim, bool)> {
     validate_pending(connection, input)?;
-    if let Some(existing) = pending_for_claim_in(connection, &input.decision.capture_id, input.decision.ordinal)? {
-        let same = existing.kind == input.kind && existing.title == input.title && existing.body == input.body && existing.source_start == input.source_start
-            && existing.source_end == input.source_end && existing.candidate_ids == input.candidate_ids;
-        return if same { Ok((existing, false)) } else { Err(IdentityStoreError::Conflict("a different claim is already pending for this capture and ordinal".into())) };
+    if let Some(existing) = pending_for_claim_in(
+        connection,
+        &input.decision.capture_id,
+        input.decision.ordinal,
+    )? {
+        let same = existing.kind == input.kind
+            && existing.title == input.title
+            && existing.body == input.body
+            && existing.source_start == input.source_start
+            && existing.source_end == input.source_end
+            && existing.candidate_ids == input.candidate_ids;
+        return if same {
+            Ok((existing, false))
+        } else {
+            Err(IdentityStoreError::Conflict(
+                "a different claim is already pending for this capture and ordinal".into(),
+            ))
+        };
     }
     insert_decision_in(connection, &input.decision)?;
-    let reframing = input.decision.vetoes.iter().any(|v| REFRAMING_VETOES.contains(&v.as_str()));
+    let reframing = input
+        .decision
+        .vetoes
+        .iter()
+        .any(|v| REFRAMING_VETOES.contains(&v.as_str()));
     let now = now_rfc3339()?;
     let id = Uuid::new_v4().to_string();
     connection.execute(
@@ -426,7 +631,12 @@ pub fn stage_uncertain_claim_in(connection: &Connection, input: &PendingClaimInp
             serde_json::to_string(&input.candidate_ids).unwrap_or_default(), serde_json::to_string(&input.decision.vetoes).unwrap_or_default(), reframing as i64, input.due_at, now
         ],
     )?;
-    Ok((pending_in(connection, &id)?.ok_or_else(|| IdentityStoreError::Store(StoreError::Corrupt("a pending claim vanished".into())))?, true))
+    Ok((
+        pending_in(connection, &id)?.ok_or_else(|| {
+            IdentityStoreError::Store(StoreError::Corrupt("a pending claim vanished".into()))
+        })?,
+        true,
+    ))
 }
 
 #[derive(Debug, Clone)]
@@ -453,48 +663,88 @@ pub struct PendingResolution {
 }
 
 fn require_pending(connection: &Connection, id: &str) -> Res<PendingClaim> {
-    pending_in(connection, id)?.ok_or_else(|| IdentityStoreError::NotFound("pending claim does not exist".into()))
+    pending_in(connection, id)?
+        .ok_or_else(|| IdentityStoreError::NotFound("pending claim does not exist".into()))
 }
 
 /// The user accepted "update that idea": a compare-and-set automatic revision of the target, the claim's span attached as evidence, and
 /// the claim marked accepted, all in the caller's transaction (begin it IMMEDIATE). The schema refuses `accepted` without that revision.
-pub fn accept_pending_claim_in(connection: &Connection, input: &AcceptPendingInput) -> Res<PendingResolution> {
+pub fn accept_pending_claim_in(
+    connection: &Connection,
+    input: &AcceptPendingInput,
+) -> Res<PendingResolution> {
     accept_pending_claim_hooked_in(connection, input, &mut |_| Ok(()))
 }
 
 /// `accept_pending_claim_in` with a step that runs after the revision and its evidence exist and BEFORE the claim is marked accepted, in
 /// the same transaction. Phase 5 uses it to close the claim's revision proposal with the revision that was just written (the claim's own
 /// resolution would otherwise supersede it). The hook does not run when the claim was already accepted (the idempotent return).
-pub fn accept_pending_claim_hooked_in(connection: &Connection, input: &AcceptPendingInput, before_resolved: &mut dyn FnMut(&Revision) -> Res<()>) -> Res<PendingResolution> {
+pub fn accept_pending_claim_hooked_in(
+    connection: &Connection,
+    input: &AcceptPendingInput,
+    before_resolved: &mut dyn FnMut(&Revision) -> Res<()>,
+) -> Res<PendingResolution> {
     let claim = require_pending(connection, &input.pending_id)?;
     match claim.state.as_str() {
-        "accepted" if claim.resolved_object_id.as_deref() == Some(input.target_object_id.as_str()) => {
-            let revision = claim.resolved_revision_id.as_deref().map(|id| revision_of(connection, id)).transpose()?;
-            return Ok(PendingResolution { object_id: input.target_object_id.clone(), claim, applied: false, revision });
+        "accepted"
+            if claim.resolved_object_id.as_deref() == Some(input.target_object_id.as_str()) =>
+        {
+            let revision = claim
+                .resolved_revision_id
+                .as_deref()
+                .map(|id| revision_of(connection, id))
+                .transpose()?;
+            return Ok(PendingResolution {
+                object_id: input.target_object_id.clone(),
+                claim,
+                applied: false,
+                revision,
+            });
         }
-        "accepted" | "separated" => return Err(IdentityStoreError::Conflict("the claim was already resolved differently".into())),
+        "accepted" | "separated" => {
+            return Err(IdentityStoreError::Conflict(
+                "the claim was already resolved differently".into(),
+            ))
+        }
         _ => {}
     }
     if !claim.candidate_ids.contains(&input.target_object_id) {
         return invalid("the target is not one of the claim's candidates");
     }
     let target_project: String = connection
-        .query_row("SELECT project_id FROM knowledge_objects WHERE id = ?1", [&input.target_object_id], |row| row.get(0))
+        .query_row(
+            "SELECT project_id FROM knowledge_objects WHERE id = ?1",
+            [&input.target_object_id],
+            |row| row.get(0),
+        )
         .optional()?
         .ok_or_else(|| IdentityStoreError::NotFound("the target object does not exist".into()))?;
     if target_project != claim.project_id {
-        return Err(IdentityStoreError::Conflict("the capture and the target are no longer in the same project".into()));
+        return Err(IdentityStoreError::Conflict(
+            "the capture and the target are no longer in the same project".into(),
+        ));
     }
     let revision = revise_if_current_in(
         connection,
-        &ExpectedRevision { object_id: &input.target_object_id, project_id: &claim.project_id, base_revision_id: &input.expected_base_revision_id },
+        &ExpectedRevision {
+            object_id: &input.target_object_id,
+            project_id: &claim.project_id,
+            base_revision_id: &input.expected_base_revision_id,
+        },
         input.content.clone(),
         CasOrigin::System,
     )?;
     attach_revision_evidence_in(
         connection,
         &revision.id,
-        &[NewEvidence { capture_id: claim.capture_id.clone(), source_start: claim.source_start, source_end: claim.source_end, role: input.role, retracts: input.retracts.clone(), interpretation_label: input.interpretation_label.clone() }],
+        &[NewEvidence {
+            capture_id: claim.capture_id.clone(),
+            source_start: claim.source_start,
+            source_end: claim.source_end,
+            role: input.role,
+            retracts: input.retracts.clone(),
+            interpretation_label: input.interpretation_label.clone(),
+        }],
     )?;
     before_resolved(&revision)?;
     let now = now_rfc3339()?;
@@ -503,9 +753,16 @@ pub fn accept_pending_claim_hooked_in(connection: &Connection, input: &AcceptPen
         params![claim.id, now, input.target_object_id, revision.id],
     )?;
     if changed != 1 {
-        return Err(IdentityStoreError::Conflict("the claim changed while it was being resolved".into()));
+        return Err(IdentityStoreError::Conflict(
+            "the claim changed while it was being resolved".into(),
+        ));
     }
-    Ok(PendingResolution { claim: require_pending(connection, &input.pending_id)?, applied: true, revision: Some(revision), object_id: input.target_object_id.clone() })
+    Ok(PendingResolution {
+        claim: require_pending(connection, &input.pending_id)?,
+        applied: true,
+        revision: Some(revision),
+        object_id: input.target_object_id.clone(),
+    })
 }
 
 fn revision_of(connection: &Connection, id: &str) -> Res<Revision> {
@@ -514,13 +771,22 @@ fn revision_of(connection: &Connection, id: &str) -> Res<Revision> {
 
 /// "Keep as a separate idea" (or, later, expiry): creates a new KnowledgeObject from the claim, in the capture's CURRENT project, with
 /// the claim's span as its source and an initial revision, and marks the claim separated, in the caller's transaction.
-pub fn separate_pending_claim_in(connection: &Connection, pending_id: &str, method: &str) -> Res<PendingResolution> {
+pub fn separate_pending_claim_in(
+    connection: &Connection,
+    pending_id: &str,
+    method: &str,
+) -> Res<PendingResolution> {
     separate_pending_claim_hooked_in(connection, pending_id, method, &mut |_| Ok(()))
 }
 
 /// `separate_pending_claim_in` with a step (given the new object's id) that runs after the object exists and BEFORE the claim is marked
 /// separated, in the same transaction. Not run for the idempotent return.
-pub fn separate_pending_claim_hooked_in(connection: &Connection, pending_id: &str, method: &str, before_resolved: &mut dyn FnMut(&str) -> Res<()>) -> Res<PendingResolution> {
+pub fn separate_pending_claim_hooked_in(
+    connection: &Connection,
+    pending_id: &str,
+    method: &str,
+    before_resolved: &mut dyn FnMut(&str) -> Res<()>,
+) -> Res<PendingResolution> {
     if !matches!(method, "user" | "expiry") {
         return invalid("unknown resolution method");
     }
@@ -528,13 +794,24 @@ pub fn separate_pending_claim_hooked_in(connection: &Connection, pending_id: &st
     match claim.state.as_str() {
         "separated" => {
             let object_id = claim.resolved_object_id.clone().unwrap_or_default();
-            return Ok(PendingResolution { claim, applied: false, revision: None, object_id });
+            return Ok(PendingResolution {
+                claim,
+                applied: false,
+                revision: None,
+                object_id,
+            });
         }
-        "accepted" => return Err(IdentityStoreError::Conflict("the claim was already accepted into an existing object".into())),
+        "accepted" => {
+            return Err(IdentityStoreError::Conflict(
+                "the claim was already accepted into an existing object".into(),
+            ))
+        }
         _ => {}
     }
     if claim.project_archived {
-        return Err(IdentityStoreError::Conflict("the project is archived: restore it to resolve this claim".into()));
+        return Err(IdentityStoreError::Conflict(
+            "the project is archived: restore it to resolve this claim".into(),
+        ));
     }
     let object_id = Uuid::new_v4().to_string();
     let now = now_rfc3339()?;
@@ -543,28 +820,52 @@ pub fn separate_pending_claim_hooked_in(connection: &Connection, pending_id: &st
         params![object_id, claim.kind, claim.title, claim.body, now, claim.project_id],
     )?;
     connection.execute("INSERT INTO object_sources (object_id, capture_id, source_start, source_end) VALUES (?1, ?2, ?3, ?4)", params![object_id, claim.capture_id, claim.source_start, claim.source_end])?;
-    create_initial_revision(connection, &object_id, (&claim.kind, &claim.title, &claim.body), &now, Some((&claim.capture_id, claim.source_start, claim.source_end)))?;
+    create_initial_revision(
+        connection,
+        &object_id,
+        (&claim.kind, &claim.title, &claim.body),
+        &now,
+        Some((&claim.capture_id, claim.source_start, claim.source_end)),
+    )?;
     before_resolved(&object_id)?;
     let changed = connection.execute(
         "UPDATE pending_claims SET state = 'separated', resolved_at = ?2, resolved_method = ?3, resolved_object_id = ?4, updated_at = ?2 WHERE id = ?1 AND state IN ('open', 'deferred')",
         params![claim.id, now, method, object_id],
     )?;
     if changed != 1 {
-        return Err(IdentityStoreError::Conflict("the claim changed while it was being resolved".into()));
+        return Err(IdentityStoreError::Conflict(
+            "the claim changed while it was being resolved".into(),
+        ));
     }
-    Ok(PendingResolution { claim: require_pending(connection, pending_id)?, applied: true, revision: None, object_id })
+    Ok(PendingResolution {
+        claim: require_pending(connection, pending_id)?,
+        applied: true,
+        revision: None,
+        object_id,
+    })
 }
 
-fn set_open_or_deferred(connection: &Connection, id: &str, to: &str, due_at: Option<&str>) -> Res<PendingClaim> {
+fn set_open_or_deferred(
+    connection: &Connection,
+    id: &str,
+    to: &str,
+    due_at: Option<&str>,
+) -> Res<PendingClaim> {
     let claim = require_pending(connection, id)?;
     if claim.is_terminal() {
-        return Err(IdentityStoreError::Conflict("the claim is already resolved".into()));
+        return Err(IdentityStoreError::Conflict(
+            "the claim is already resolved".into(),
+        ));
     }
     if let Some(due) = due_at {
         parse_time(due)?;
     }
     let now = now_rfc3339()?;
-    let deferred_at = if to == "deferred" && claim.state != "deferred" { Some(now.clone()) } else { claim.deferred_at.clone() };
+    let deferred_at = if to == "deferred" && claim.state != "deferred" {
+        Some(now.clone())
+    } else {
+        claim.deferred_at.clone()
+    };
     connection.execute(
         "UPDATE pending_claims SET state = ?2, due_at = coalesce(?3, due_at), deferred_at = ?4, updated_at = ?5 WHERE id = ?1",
         params![id, to, due_at, deferred_at, now],
@@ -572,7 +873,11 @@ fn set_open_or_deferred(connection: &Connection, id: &str, to: &str, due_at: Opt
     require_pending(connection, id)
 }
 
-pub fn defer_pending_claim_in(connection: &Connection, id: &str, due_at: Option<&str>) -> Res<PendingClaim> {
+pub fn defer_pending_claim_in(
+    connection: &Connection,
+    id: &str,
+    due_at: Option<&str>,
+) -> Res<PendingClaim> {
     set_open_or_deferred(connection, id, "deferred", due_at)
 }
 
@@ -580,23 +885,92 @@ pub fn reopen_pending_claim_in(connection: &Connection, id: &str) -> Res<Pending
     set_open_or_deferred(connection, id, "open", None)
 }
 
+/// Reporting preserves v9's tolerant handling of malformed persisted due dates.
+/// Execution fails closed; neither mode itself grants execution authority.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum DueSelection {
+    Reporting,
+    Execution,
+}
+
+fn claim_is_due(claim: &PendingClaim, now: OffsetDateTime, mode: DueSelection) -> Res<bool> {
+    if !matches!(claim.state.as_str(), "open" | "deferred") || claim.project_archived {
+        return Ok(false);
+    }
+    match claim.due_at.as_deref().map(parse_time).transpose() {
+        Ok(due) => Ok(due.is_some_and(|due| due <= now)),
+        Err(_) if mode == DueSelection::Reporting => Ok(false),
+        Err(error) => Err(error),
+    }
+}
+
+/// Borrow the caller's connection; selection never writes or owns a transaction.
+/// `seq` is the unique insertion order used by the original reporting query.
+/// Stream rows instead of materializing the entire queue before applying limit.
+pub(super) fn due_pending_claims_in(
+    connection: &Connection,
+    now: &str,
+    limit: usize,
+    mode: DueSelection,
+) -> Res<Vec<PendingClaim>> {
+    let now = parse_time(now)?;
+    let mut selected = Vec::new();
+    if limit == 0 {
+        return Ok(selected);
+    }
+    let mut statement = connection.prepare(&format!("{PENDING_SELECT} ORDER BY p.seq"))?;
+    let mut rows = statement.query([])?;
+    while let Some(row) = rows.next()? {
+        let claim = pending_from_row(row)?;
+        if claim_is_due(&claim, now, mode)? {
+            selected.push(claim);
+            if selected.len() == limit {
+                break;
+            }
+        }
+    }
+    Ok(selected)
+}
+
+/// Re-read eligibility from the owning transaction, never from preview IDs.
+pub(super) fn due_pending_claim_in(
+    connection: &Connection,
+    id: &str,
+    now: &str,
+) -> Res<Option<PendingClaim>> {
+    let now = parse_time(now)?;
+    match pending_in(connection, id)? {
+        Some(claim) if claim_is_due(&claim, now, DueSelection::Execution)? => Ok(Some(claim)),
+        _ => Ok(None),
+    }
+}
+
 impl CaptureStore {
     /// Runs `work` in ONE write transaction (IMMEDIATE) and commits only if it returns `Ok`; any error rolls everything back. This is the
     /// composition point for the future pipeline: distillation run + decisions + revisions + evidence + pending state in one commit.
     pub fn in_identity_transaction<T>(&self, work: impl FnOnce(&Connection) -> Res<T>) -> Res<T> {
-        let mut connection = self.connection.lock().map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
         let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let value = work(&transaction)?;
         transaction.commit()?;
         Ok(value)
     }
 
-    pub fn record_identity_decision(&self, input: &IdentityDecisionInput) -> Res<(IdentityDecision, bool)> {
+    pub fn record_identity_decision(
+        &self,
+        input: &IdentityDecisionInput,
+    ) -> Res<(IdentityDecision, bool)> {
         self.in_identity_transaction(|tx| record_identity_decision_in(tx, input))
     }
 
     pub fn identity_decisions_for(&self, capture_id: &str) -> Res<Vec<IdentityDecision>> {
-        let connection = self.connection.lock().map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
         decisions_for_in(&connection, capture_id)
     }
 
@@ -605,32 +979,47 @@ impl CaptureStore {
     }
 
     pub fn get_pending_claim(&self, id: &str) -> Res<Option<PendingClaim>> {
-        let connection = self.connection.lock().map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
         pending_in(&connection, id)
     }
 
     /// Claims in the given states (empty = every state), optionally of one project (the capture's current one, archived included).
     /// Oldest first. Nothing is ever filtered out because of age or quota: a deferred or expired-due claim is still listed.
-    pub fn list_pending_claims(&self, project_id: Option<&str>, states: &[&str]) -> Res<Vec<PendingClaim>> {
+    pub fn list_pending_claims(
+        &self,
+        project_id: Option<&str>,
+        states: &[&str],
+    ) -> Res<Vec<PendingClaim>> {
         if states.iter().any(|s| !PENDING_STATES.contains(s)) {
             return invalid("unknown pending state");
         }
-        let connection = self.connection.lock().map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
-        let mut statement = connection.prepare(&format!("{PENDING_SELECT} WHERE (?1 IS NULL OR c.project_id = ?1) ORDER BY p.seq"))?;
-        let rows = statement.query_map([project_id], pending_from_row)?.collect::<Result<Vec<_>, _>>()?;
-        Ok(rows.into_iter().filter(|claim| states.is_empty() || states.contains(&claim.state.as_str())).collect())
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
+        let mut statement = connection.prepare(&format!(
+            "{PENDING_SELECT} WHERE (?1 IS NULL OR c.project_id = ?1) ORDER BY p.seq"
+        ))?;
+        let rows = statement
+            .query_map([project_id], pending_from_row)?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows
+            .into_iter()
+            .filter(|claim| states.is_empty() || states.contains(&claim.state.as_str()))
+            .collect())
     }
 
     /// Open or deferred claims whose `due_at` has passed `now`, in an OPEN project, oldest first. This only REPORTS: it resolves and
     /// hides nothing. A claim in an archived project is not returned (it cannot be resolved) but stays listed by `list_pending_claims`.
     pub fn due_pending_claims(&self, now: &str, limit: usize) -> Res<Vec<PendingClaim>> {
-        let now = parse_time(now)?;
-        let all = self.list_pending_claims(None, &["open", "deferred"])?;
-        Ok(all
-            .into_iter()
-            .filter(|claim| !claim.project_archived && claim.due_at.as_deref().and_then(|due| OffsetDateTime::parse(due, &Rfc3339).ok()).is_some_and(|due| due <= now))
-            .take(limit)
-            .collect())
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
+        due_pending_claims_in(&connection, now, limit, DueSelection::Reporting)
     }
 
     pub fn defer_pending_claim(&self, id: &str, due_at: Option<&str>) -> Res<PendingClaim> {
@@ -666,7 +1055,10 @@ pub struct PoolObject {
 }
 
 /// The capture's CURRENT project and whether it is archived.
-pub fn capture_project_in(connection: &Connection, capture_id: &str) -> Res<Option<(String, bool)>> {
+pub fn capture_project_in(
+    connection: &Connection,
+    capture_id: &str,
+) -> Res<Option<(String, bool)>> {
     Ok(connection
         .query_row("SELECT c.project_id, p.archived_at IS NOT NULL FROM captures c JOIN projects p ON p.id = c.project_id WHERE c.id = ?1", [capture_id], |row| Ok((row.get(0)?, row.get(1)?)))
         .optional()?)
@@ -678,15 +1070,34 @@ pub fn project_pool_in(connection: &Connection, project_id: &str) -> Res<Vec<Poo
         "SELECT o.id, o.kind, o.title, o.body, r.id, r.origin FROM knowledge_objects o JOIN thought_revisions r ON r.id = o.current_revision_id AND r.object_id = o.id WHERE o.project_id = ?1 ORDER BY o.seq DESC",
     )?;
     let rows = statement
-        .query_map([project_id], |row| Ok(PoolObject { object_id: row.get(0)?, kind: row.get(1)?, title: row.get(2)?, body: row.get(3)?, revision_id: row.get(4)?, revision_origin: row.get(5)? }))?
+        .query_map([project_id], |row| {
+            Ok(PoolObject {
+                object_id: row.get(0)?,
+                kind: row.get(1)?,
+                title: row.get(2)?,
+                body: row.get(3)?,
+                revision_id: row.get(4)?,
+                revision_origin: row.get(5)?,
+            })
+        })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(rows)
 }
 
 /// Open or deferred claims whose capture is CURRENTLY in the project.
 /// The object's current revision id, only if the object is in `project_id` (so a moved object reads as "not there").
-pub fn current_revision_in_project_in(connection: &Connection, object_id: &str, project_id: &str) -> Res<Option<String>> {
-    Ok(connection.query_row("SELECT current_revision_id FROM knowledge_objects WHERE id = ?1 AND project_id = ?2", params![object_id, project_id], |row| row.get(0)).optional()?)
+pub fn current_revision_in_project_in(
+    connection: &Connection,
+    object_id: &str,
+    project_id: &str,
+) -> Res<Option<String>> {
+    Ok(connection
+        .query_row(
+            "SELECT current_revision_id FROM knowledge_objects WHERE id = ?1 AND project_id = ?2",
+            params![object_id, project_id],
+            |row| row.get(0),
+        )
+        .optional()?)
 }
 
 pub fn unresolved_pending_count_in(connection: &Connection, project_id: &str) -> Res<usize> {
@@ -700,9 +1111,17 @@ pub fn unresolved_pending_count_in(connection: &Connection, project_id: &str) ->
 
 impl CaptureStore {
     /// `(project id, archived, pool)` for a capture, in one short read.
-    pub fn identity_snapshot(&self, capture_id: &str) -> Res<Option<(String, bool, Vec<PoolObject>)>> {
-        let connection = self.connection.lock().map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
-        let Some((project_id, archived)) = capture_project_in(&connection, capture_id)? else { return Ok(None) };
+    pub fn identity_snapshot(
+        &self,
+        capture_id: &str,
+    ) -> Res<Option<(String, bool, Vec<PoolObject>)>> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| IdentityStoreError::Store(StoreError::Poisoned))?;
+        let Some((project_id, archived)) = capture_project_in(&connection, capture_id)? else {
+            return Ok(None);
+        };
         let pool = project_pool_in(&connection, &project_id)?;
         Ok(Some((project_id, archived, pool)))
     }

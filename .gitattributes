@@ -1,0 +1,2 @@
+# Frozen evaluation checksums pin these exact LF bytes, including on Windows.
+apps/arthur/src-tauri/src/synthesis/eval/corpus/* text eol=lf

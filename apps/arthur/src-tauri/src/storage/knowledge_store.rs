@@ -60,7 +60,10 @@ const OBJECT_JOINS: &str = "knowledge_objects o \
 
 impl CaptureStore {
     /// `None` when the capture has never been distilled; `Some(vec![])` when it was and yielded nothing.
-    pub fn distillation_for(&self, capture_id: &str) -> Result<Option<Vec<KnowledgeObject>>, StoreError> {
+    pub fn distillation_for(
+        &self,
+        capture_id: &str,
+    ) -> Result<Option<Vec<KnowledgeObject>>, StoreError> {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         distillation_in(&connection, capture_id)
     }
@@ -73,33 +76,17 @@ impl CaptureStore {
     pub fn record_distillation(
         &self,
         capture_id: &str,
-        mut objects: Vec<NewKnowledgeObject>,
+        objects: Vec<NewKnowledgeObject>,
     ) -> Result<Vec<KnowledgeObject>, StoreError> {
-        if objects.len() > MAX_OBJECTS_PER_DISTILLATION {
-            return Err(StoreError::Invalid(format!("more than {MAX_OBJECTS_PER_DISTILLATION} objects")));
-        }
+        validate_objects_count(&objects)?;
 
         let mut connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let transaction = connection.transaction()?;
-
-        // The objects inherit the capture's project as it is NOW, in this same transaction.
-        let start = match begin_distillation_in(&transaction, capture_id)? {
-            Begin::Existing(existing) => return Ok(existing),
-            Begin::Fresh(start) => start,
-        };
-
-        for (index, object) in objects.iter().enumerate() {
-            validate_new(&start.content, object).map_err(|reason| StoreError::Invalid(format!("object {index}: {reason}")))?;
+        let (stored, fresh) = record_distillation_in(&transaction, capture_id, objects)?;
+        // Existing retains the original read-only rollback path.
+        if fresh {
+            transaction.commit()?;
         }
-        // Source order, so `seq` order is reading order.
-        objects.sort_by_key(|object| (object.source_start, object.source_end));
-
-        let mut stored = Vec::with_capacity(objects.len());
-        for object in objects {
-            stored.push(insert_object_in(&transaction, capture_id, &start.project_id, object)?);
-        }
-
-        transaction.commit()?;
         Ok(stored)
     }
 
@@ -110,7 +97,10 @@ impl CaptureStore {
     }
 
     /// The same order, restricted to one project when `project_id` is given (an indexed lookup).
-    pub fn list_knowledge_objects_in(&self, project_id: Option<&str>) -> Result<Vec<KnowledgeObject>, StoreError> {
+    pub fn list_knowledge_objects_in(
+        &self,
+        project_id: Option<&str>,
+    ) -> Result<Vec<KnowledgeObject>, StoreError> {
         let connection = self.connection.lock().map_err(|_| StoreError::Poisoned)?;
         let sql = format!(
             "SELECT {OBJECT_COLUMNS} FROM {OBJECT_JOINS} \
@@ -120,6 +110,49 @@ impl CaptureStore {
         );
         read_objects(&connection, &sql, [project_id])
     }
+}
+
+fn validate_objects_count(objects: &[NewKnowledgeObject]) -> Result<(), StoreError> {
+    if objects.len() > MAX_OBJECTS_PER_DISTILLATION {
+        return Err(StoreError::Invalid(format!(
+            "more than {MAX_OBJECTS_PER_DISTILLATION} objects"
+        )));
+    }
+    Ok(())
+}
+
+/// Returns rows plus whether a fresh run was inserted. The caller owns rollback.
+pub(super) fn record_distillation_in(
+    connection: &Connection,
+    capture_id: &str,
+    mut objects: Vec<NewKnowledgeObject>,
+) -> Result<(Vec<KnowledgeObject>, bool), StoreError> {
+    validate_objects_count(&objects)?;
+
+    // The objects inherit the capture's project as it is NOW, in this same transaction.
+    let start = match begin_distillation_in(connection, capture_id)? {
+        Begin::Existing(existing) => return Ok((existing, false)),
+        Begin::Fresh(start) => start,
+    };
+
+    for (index, object) in objects.iter().enumerate() {
+        validate_new(&start.content, object)
+            .map_err(|reason| StoreError::Invalid(format!("object {index}: {reason}")))?;
+    }
+    // Source order, so `seq` order is reading order.
+    objects.sort_by_key(|object| (object.source_start, object.source_end));
+
+    let mut stored = Vec::with_capacity(objects.len());
+    for object in objects {
+        stored.push(insert_object_in(
+            connection,
+            capture_id,
+            &start.project_id,
+            object,
+        )?);
+    }
+
+    Ok((stored, true))
 }
 
 /// What a distillation commit starts from: the capture's text and its project as of NOW.
@@ -137,22 +170,43 @@ pub enum Begin {
 
 /// The first step of every distillation commit (identity-aware or not): read the capture, honour an earlier run, record this run, and
 /// clear a recorded failure. Shared so the two commit paths cannot drift apart. The caller owns the transaction.
-pub fn begin_distillation_in(transaction: &Connection, capture_id: &str) -> Result<Begin, StoreError> {
+pub fn begin_distillation_in(
+    transaction: &Connection,
+    capture_id: &str,
+) -> Result<Begin, StoreError> {
     let (content, project_id): (String, String) = transaction
-        .query_row("SELECT content, project_id FROM captures WHERE id = ?1", [capture_id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .query_row(
+            "SELECT content, project_id FROM captures WHERE id = ?1",
+            [capture_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
         .optional()?
         .ok_or_else(|| StoreError::Invalid("capture does not exist".into()))?;
     if let Some(existing) = distillation_in(transaction, capture_id)? {
         return Ok(Begin::Existing(existing));
     }
-    transaction.execute("INSERT INTO distillation_runs (capture_id, created_at) VALUES (?1, ?2)", params![capture_id, now_rfc3339()?])?;
+    transaction.execute(
+        "INSERT INTO distillation_runs (capture_id, created_at) VALUES (?1, ?2)",
+        params![capture_id, now_rfc3339()?],
+    )?;
     // A success supersedes any recorded failure, in the same transaction, so the two never disagree.
-    transaction.execute("DELETE FROM organization_failures WHERE capture_id = ?1", [capture_id])?;
-    Ok(Begin::Fresh(DistillationStart { content, project_id }))
+    transaction.execute(
+        "DELETE FROM organization_failures WHERE capture_id = ?1",
+        [capture_id],
+    )?;
+    Ok(Begin::Fresh(DistillationStart {
+        content,
+        project_id,
+    }))
 }
 
 /// Creates one object from a validated claim: the object, its source mapping and its initial revision. The caller owns the transaction.
-pub fn insert_object_in(transaction: &Connection, capture_id: &str, project_id: &str, object: NewKnowledgeObject) -> Result<KnowledgeObject, StoreError> {
+pub fn insert_object_in(
+    transaction: &Connection,
+    capture_id: &str,
+    project_id: &str,
+    object: NewKnowledgeObject,
+) -> Result<KnowledgeObject, StoreError> {
     let id = Uuid::new_v4().to_string();
     let created_at = now_rfc3339()?;
     transaction.execute(
@@ -164,14 +218,24 @@ pub fn insert_object_in(transaction: &Connection, capture_id: &str, project_id: 
         params![id, capture_id, object.source_start, object.source_end],
     )?;
     // Every object starts its history with one initial revision, which keeps the original source span.
-    super::lineage_store::create_initial_revision(transaction, &id, (&object.kind, &object.title, &object.body), &created_at, Some((capture_id, object.source_start, object.source_end)))?;
+    super::lineage_store::create_initial_revision(
+        transaction,
+        &id,
+        (&object.kind, &object.title, &object.body),
+        &created_at,
+        Some((capture_id, object.source_start, object.source_end)),
+    )?;
     Ok(KnowledgeObject {
         id,
         kind: object.kind,
         title: object.title,
         body: object.body,
         created_at,
-        provenance: Provenance { capture_id: capture_id.to_string(), source_start: object.source_start, source_end: object.source_end },
+        provenance: Provenance {
+            capture_id: capture_id.to_string(),
+            source_start: object.source_start,
+            source_end: object.source_end,
+        },
         project_id: project_id.to_string(),
     })
 }
@@ -180,24 +244,40 @@ pub fn validate_claim(content: &str, object: &NewKnowledgeObject) -> Result<(), 
     validate_new(content, object)
 }
 
-pub(super) fn get_object_in(connection: &Connection, object_id: &str) -> Result<Option<KnowledgeObject>, StoreError> {
+pub(super) fn get_object_in(
+    connection: &Connection,
+    object_id: &str,
+) -> Result<Option<KnowledgeObject>, StoreError> {
     let sql = format!("SELECT {OBJECT_COLUMNS} FROM {OBJECT_JOINS} WHERE o.id = ?1");
     Ok(read_objects(connection, &sql, [object_id])?.pop())
 }
 
-fn distillation_in(connection: &Connection, capture_id: &str) -> Result<Option<Vec<KnowledgeObject>>, StoreError> {
+fn distillation_in(
+    connection: &Connection,
+    capture_id: &str,
+) -> Result<Option<Vec<KnowledgeObject>>, StoreError> {
     let ran: bool = connection
-        .query_row("SELECT 1 FROM distillation_runs WHERE capture_id = ?1", [capture_id], |_| Ok(true))
+        .query_row(
+            "SELECT 1 FROM distillation_runs WHERE capture_id = ?1",
+            [capture_id],
+            |_| Ok(true),
+        )
         .optional()?
         .unwrap_or(false);
     if !ran {
         return Ok(None);
     }
-    let sql = format!("SELECT {OBJECT_COLUMNS} FROM {OBJECT_JOINS} WHERE s.capture_id = ?1 ORDER BY o.seq ASC");
+    let sql = format!(
+        "SELECT {OBJECT_COLUMNS} FROM {OBJECT_JOINS} WHERE s.capture_id = ?1 ORDER BY o.seq ASC"
+    );
     read_objects(connection, &sql, [capture_id]).map(Some)
 }
 
-fn read_objects<P: rusqlite::Params>(connection: &Connection, sql: &str, params: P) -> Result<Vec<KnowledgeObject>, StoreError> {
+fn read_objects<P: rusqlite::Params>(
+    connection: &Connection,
+    sql: &str,
+    params: P,
+) -> Result<Vec<KnowledgeObject>, StoreError> {
     let mut statement = connection.prepare(sql)?;
     let rows = statement.query_map(params, |row| {
         Ok((
@@ -210,16 +290,35 @@ fn read_objects<P: rusqlite::Params>(connection: &Connection, sql: &str, params:
             row.get::<_, Option<i64>>(6)?,
             row.get::<_, Option<i64>>(7)?,
             row.get::<_, Option<i64>>(8)?,
-            (row.get::<_, Option<String>>(9)?, row.get::<_, Option<String>>(10)?, row.get::<_, Option<String>>(11)?),
+            (
+                row.get::<_, Option<String>>(9)?,
+                row.get::<_, Option<String>>(10)?,
+                row.get::<_, Option<String>>(11)?,
+            ),
             row.get::<_, Option<String>>(12)?,
         ))
     })?;
 
     let mut objects = Vec::new();
     for row in rows {
-        let (id, kind, title, body, created_at, capture_id, start, end, capture_len, current, project_id) = row?;
-        let corrupt = |reason: &str| StoreError::Corrupt(format!("knowledge object {id:?}: {reason}"));
-        let (Some(capture_id), Some(source_start), Some(source_end), Some(capture_len)) = (capture_id, start, end, capture_len) else {
+        let (
+            id,
+            kind,
+            title,
+            body,
+            created_at,
+            capture_id,
+            start,
+            end,
+            capture_len,
+            current,
+            project_id,
+        ) = row?;
+        let corrupt =
+            |reason: &str| StoreError::Corrupt(format!("knowledge object {id:?}: {reason}"));
+        let (Some(capture_id), Some(source_start), Some(source_end), Some(capture_len)) =
+            (capture_id, start, end, capture_len)
+        else {
             return Err(corrupt("provenance does not resolve to a capture"));
         };
         if !KINDS.contains(&kind.as_str()) {
@@ -237,17 +336,25 @@ fn read_objects<P: rusqlite::Params>(connection: &Connection, sql: &str, params:
         // The object is a projection of its current revision (schema v4). They can never differ.
         match &current {
             (Some(k), Some(t), Some(b)) if *k == kind && *t == title && *b == body => {}
-            (None, _, _) | (_, None, _) | (_, _, None) => return Err(corrupt("it has no current revision")),
+            (None, _, _) | (_, None, _) | (_, _, None) => {
+                return Err(corrupt("it has no current revision"))
+            }
             _ => return Err(corrupt("it differs from its current revision")),
         }
-        let Some(project_id) = project_id else { return Err(corrupt("it belongs to no project")) };
+        let Some(project_id) = project_id else {
+            return Err(corrupt("it belongs to no project"));
+        };
         objects.push(KnowledgeObject {
             id,
             kind,
             title,
             body,
             created_at,
-            provenance: Provenance { capture_id, source_start, source_end },
+            provenance: Provenance {
+                capture_id,
+                source_start,
+                source_end,
+            },
             project_id,
         });
     }
@@ -286,7 +393,11 @@ pub fn validate_span(content: &str, start: i64, end: i64) -> Result<(), String> 
     if end > length {
         return Err("source span ends after the capture".into());
     }
-    let span: String = content.chars().skip(start as usize).take((end - start) as usize).collect();
+    let span: String = content
+        .chars()
+        .skip(start as usize)
+        .take((end - start) as usize)
+        .collect();
     if span.trim().is_empty() {
         return Err("source span contains no text".into());
     }
@@ -300,16 +411,32 @@ mod tests {
 
     fn store_with(content: &str) -> (CaptureStore, Capture) {
         let store = CaptureStore::open_in_memory().unwrap();
-        let capture = store.create(CreateCaptureInput { source: "text".into(), content: content.into(), project_id: None }).unwrap();
+        let capture = store
+            .create(CreateCaptureInput {
+                source: "text".into(),
+                content: content.into(),
+                project_id: None,
+            })
+            .unwrap();
         (store, capture)
     }
 
     fn object(kind: &str, title: &str, body: &str, start: i64, end: i64) -> NewKnowledgeObject {
-        NewKnowledgeObject { kind: kind.into(), title: title.into(), body: body.into(), source_start: start, source_end: end }
+        NewKnowledgeObject {
+            kind: kind.into(),
+            title: title.into(),
+            body: body.into(),
+            source_start: start,
+            source_end: end,
+        }
     }
 
     fn span_text(content: &str, provenance: &Provenance) -> String {
-        content.chars().skip(provenance.source_start as usize).take((provenance.source_end - provenance.source_start) as usize).collect()
+        content
+            .chars()
+            .skip(provenance.source_start as usize)
+            .take((provenance.source_end - provenance.source_start) as usize)
+            .collect()
     }
 
     const TEXT: &str = "Improve the capture screen. Email Ignatov tomorrow.";
@@ -320,7 +447,16 @@ mod tests {
         let stored = store
             .record_distillation(
                 &capture.id,
-                vec![object("idea", "Improve capture screen", "Make the screen better.", 0, 27), object("task", "Email Ignatov", "Email Ignatov.", 28, 51)],
+                vec![
+                    object(
+                        "idea",
+                        "Improve capture screen",
+                        "Make the screen better.",
+                        0,
+                        27,
+                    ),
+                    object("task", "Email Ignatov", "Email Ignatov.", 28, 51),
+                ],
             )
             .unwrap();
 
@@ -331,8 +467,14 @@ mod tests {
             assert_eq!(item.provenance.capture_id, capture.id);
         }
         assert_ne!(stored[0].id, stored[1].id);
-        assert_eq!(span_text(TEXT, &stored[0].provenance), "Improve the capture screen.");
-        assert_eq!(span_text(TEXT, &stored[1].provenance), "Email Ignatov tomorrow.");
+        assert_eq!(
+            span_text(TEXT, &stored[0].provenance),
+            "Improve the capture screen."
+        );
+        assert_eq!(
+            span_text(TEXT, &stored[1].provenance),
+            "Email Ignatov tomorrow."
+        );
         assert_eq!(store.list_knowledge_objects().unwrap(), stored);
         assert_eq!(store.distillation_for(&capture.id).unwrap(), Some(stored));
     }
@@ -340,8 +482,16 @@ mod tests {
     #[test]
     fn the_raw_capture_is_untouched_by_distillation() {
         let (store, capture) = store_with(TEXT);
-        store.record_distillation(&capture.id, vec![object("note", "Whole", "All of it.", 0, 51)]).unwrap();
-        assert_eq!(store.get_capture(&capture.id).unwrap(), Some(capture.clone()));
+        store
+            .record_distillation(
+                &capture.id,
+                vec![object("note", "Whole", "All of it.", 0, 51)],
+            )
+            .unwrap();
+        assert_eq!(
+            store.get_capture(&capture.id).unwrap(),
+            Some(capture.clone())
+        );
         assert_eq!(store.list().unwrap(), vec![capture]);
     }
 
@@ -353,19 +503,36 @@ mod tests {
             .iter()
             .enumerate()
             .map(|(i, kind)| {
-                let start = ["idea ", "task ", "decision ", "question "].iter().take(i).map(|w| w.len() as i64).sum::<i64>();
+                let start = ["idea ", "task ", "decision ", "question "]
+                    .iter()
+                    .take(i)
+                    .map(|w| w.len() as i64)
+                    .sum::<i64>();
                 object(kind, "t", "b", start, start + kind.len() as i64)
             })
             .collect();
         let stored = store.record_distillation(&capture.id, objects).unwrap();
-        assert_eq!(stored.iter().map(|o| o.kind.as_str()).collect::<Vec<_>>(), kinds);
+        assert_eq!(
+            stored.iter().map(|o| o.kind.as_str()).collect::<Vec<_>>(),
+            kinds
+        );
     }
 
     fn rejected(content: &str, candidate: NewKnowledgeObject) {
         let (store, capture) = store_with(content);
-        assert!(matches!(store.record_distillation(&capture.id, vec![candidate]), Err(StoreError::Invalid(_))));
-        assert!(store.list_knowledge_objects().unwrap().is_empty(), "nothing is stored");
-        assert_eq!(store.distillation_for(&capture.id).unwrap(), None, "a rejected attempt is not a run");
+        assert!(matches!(
+            store.record_distillation(&capture.id, vec![candidate]),
+            Err(StoreError::Invalid(_))
+        ));
+        assert!(
+            store.list_knowledge_objects().unwrap().is_empty(),
+            "nothing is stored"
+        );
+        assert_eq!(
+            store.distillation_for(&capture.id).unwrap(),
+            None,
+            "a rejected attempt is not a run"
+        );
     }
 
     #[test]
@@ -381,24 +548,54 @@ mod tests {
         rejected(TEXT, object("idea", "  \n\t", "b", 0, 5));
         rejected(TEXT, object("idea", "t", "", 0, 5));
         rejected(TEXT, object("idea", "t", "   ", 0, 5));
-        rejected(TEXT, object("idea", &"t".repeat(MAX_TITLE_CHARS + 1), "b", 0, 5));
-        rejected(TEXT, object("idea", "t", &"b".repeat(MAX_BODY_CHARS + 1), 0, 5));
+        rejected(
+            TEXT,
+            object("idea", &"t".repeat(MAX_TITLE_CHARS + 1), "b", 0, 5),
+        );
+        rejected(
+            TEXT,
+            object("idea", "t", &"b".repeat(MAX_BODY_CHARS + 1), 0, 5),
+        );
         let (store, capture) = store_with(TEXT);
-        assert!(store.record_distillation(&capture.id, vec![object("idea", &"t".repeat(MAX_TITLE_CHARS), &"b".repeat(MAX_BODY_CHARS), 0, 5)]).is_ok());
+        assert!(store
+            .record_distillation(
+                &capture.id,
+                vec![object(
+                    "idea",
+                    &"t".repeat(MAX_TITLE_CHARS),
+                    &"b".repeat(MAX_BODY_CHARS),
+                    0,
+                    5
+                )]
+            )
+            .is_ok());
     }
 
     #[test]
     fn provenance_must_reference_an_existing_capture() {
         let store = CaptureStore::open_in_memory().unwrap();
-        let result = store.record_distillation("00000000-0000-4000-8000-000000000000", vec![object("idea", "t", "b", 0, 1)]);
-        assert!(matches!(result, Err(StoreError::Invalid(reason)) if reason.contains("capture does not exist")));
+        let result = store.record_distillation(
+            "00000000-0000-4000-8000-000000000000",
+            vec![object("idea", "t", "b", 0, 1)],
+        );
+        assert!(
+            matches!(result, Err(StoreError::Invalid(reason)) if reason.contains("capture does not exist"))
+        );
         assert!(store.list_knowledge_objects().unwrap().is_empty());
     }
 
     #[test]
     fn invalid_source_spans_are_rejected() {
         let length = TEXT.chars().count() as i64;
-        for (start, end) in [(-1, 5), (-10, -2), (5, 5), (9, 3), (0, length + 1), (length, length + 4), (0, 0)] {
+        for (start, end) in [
+            (-1, 5),
+            (-10, -2),
+            (5, 5),
+            (9, 3),
+            (0, length + 1),
+            (length, length + 4),
+            (0, 0),
+        ] {
             rejected(TEXT, object("idea", "t", "b", start, end));
         }
         rejected("abc   def", object("idea", "t", "b", 3, 6)); // span of whitespace only
@@ -409,13 +606,30 @@ mod tests {
         let content = "Здравей 😀 свят";
         let (store, capture) = store_with(content);
         // "😀 свят": code points 8..14 (one emoji is one code point, two UTF-16 units, four bytes).
-        let stored = store.record_distillation(&capture.id, vec![object("note", "Поздрав", "Поздрав.", 8, 14)]).unwrap();
+        let stored = store
+            .record_distillation(
+                &capture.id,
+                vec![object("note", "Поздрав", "Поздрав.", 8, 14)],
+            )
+            .unwrap();
         assert_eq!(span_text(content, &stored[0].provenance), "😀 свят");
-        assert!(store.record_distillation(&store_with(content).1.id, vec![]).is_err(), "unknown capture in another store");
+        assert!(
+            store
+                .record_distillation(&store_with(content).1.id, vec![])
+                .is_err(),
+            "unknown capture in another store"
+        );
         let (other, other_capture) = store_with(content);
         let length = content.chars().count() as i64;
-        assert!(other.record_distillation(&other_capture.id, vec![object("note", "t", "b", 0, length + 1)]).is_err());
-        assert!(other.record_distillation(&other_capture.id, vec![object("note", "t", "b", 0, length)]).is_ok());
+        assert!(other
+            .record_distillation(
+                &other_capture.id,
+                vec![object("note", "t", "b", 0, length + 1)]
+            )
+            .is_err());
+        assert!(other
+            .record_distillation(&other_capture.id, vec![object("note", "t", "b", 0, length)])
+            .is_ok());
     }
 
     #[test]
@@ -423,13 +637,25 @@ mod tests {
         let (store, capture) = store_with(TEXT);
         let result = store.record_distillation(
             &capture.id,
-            vec![object("idea", "ok", "ok", 0, 26), object("task", "bad span", "b", 27, 9_999), object("note", "ok too", "ok", 27, 51)],
+            vec![
+                object("idea", "ok", "ok", 0, 26),
+                object("task", "bad span", "b", 27, 9_999),
+                object("note", "ok too", "ok", 27, 51),
+            ],
         );
-        assert!(matches!(result, Err(StoreError::Invalid(reason)) if reason.starts_with("object 1:")));
+        assert!(
+            matches!(result, Err(StoreError::Invalid(reason)) if reason.starts_with("object 1:"))
+        );
         assert!(store.list_knowledge_objects().unwrap().is_empty());
         assert_eq!(store.distillation_for(&capture.id).unwrap(), None);
         // The failed attempt did not use up the capture's one distillation.
-        assert_eq!(store.record_distillation(&capture.id, vec![object("idea", "ok", "ok", 0, 26)]).unwrap().len(), 1);
+        assert_eq!(
+            store
+                .record_distillation(&capture.id, vec![object("idea", "ok", "ok", 0, 26)])
+                .unwrap()
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -444,13 +670,18 @@ mod tests {
 
         let result = store.record_distillation(
             &capture.id,
-            vec![object("idea", "first", "b", 0, 26), object("task", "boom", "b", 27, 51)],
+            vec![
+                object("idea", "first", "b", 0, 26),
+                object("task", "boom", "b", 27, 51),
+            ],
         );
 
         assert!(matches!(result, Err(StoreError::Database(_))));
         let connection = store.connection.lock().unwrap();
         for table in ["distillation_runs", "knowledge_objects", "object_sources"] {
-            let count: i64 = connection.query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0)).unwrap();
+            let count: i64 = connection
+                .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
+                .unwrap();
             assert_eq!(count, 0, "{table} must be empty after rollback");
         }
         drop(connection);
@@ -460,8 +691,18 @@ mod tests {
     #[test]
     fn distilling_twice_returns_the_first_set_and_never_duplicates() {
         let (store, capture) = store_with(TEXT);
-        let first = store.record_distillation(&capture.id, vec![object("idea", "first", "b", 0, 26)]).unwrap();
-        let second = store.record_distillation(&capture.id, vec![object("task", "different", "b", 27, 51), object("note", "more", "b", 0, 5)]).unwrap();
+        let first = store
+            .record_distillation(&capture.id, vec![object("idea", "first", "b", 0, 26)])
+            .unwrap();
+        let second = store
+            .record_distillation(
+                &capture.id,
+                vec![
+                    object("task", "different", "b", 27, 51),
+                    object("note", "more", "b", 0, 5),
+                ],
+            )
+            .unwrap();
 
         assert_eq!(second, first);
         assert_eq!(store.list_knowledge_objects().unwrap(), first);
@@ -471,39 +712,98 @@ mod tests {
     fn a_distillation_with_no_objects_is_a_valid_recorded_result() {
         let (store, capture) = store_with(TEXT);
         assert_eq!(store.distillation_for(&capture.id).unwrap(), None);
-        assert_eq!(store.record_distillation(&capture.id, vec![]).unwrap(), vec![]);
+        assert_eq!(
+            store.record_distillation(&capture.id, vec![]).unwrap(),
+            vec![]
+        );
         assert_eq!(store.distillation_for(&capture.id).unwrap(), Some(vec![]));
-        assert_eq!(store.record_distillation(&capture.id, vec![object("idea", "late", "b", 0, 5)]).unwrap(), vec![]);
+        assert_eq!(
+            store
+                .record_distillation(&capture.id, vec![object("idea", "late", "b", 0, 5)])
+                .unwrap(),
+            vec![]
+        );
     }
 
     #[test]
     fn too_many_objects_are_rejected() {
         let (store, capture) = store_with(TEXT);
-        let many = (0..=MAX_OBJECTS_PER_DISTILLATION).map(|_| object("note", "t", "b", 0, 5)).collect();
-        assert!(matches!(store.record_distillation(&capture.id, many), Err(StoreError::Invalid(_))));
+        let many = (0..=MAX_OBJECTS_PER_DISTILLATION)
+            .map(|_| object("note", "t", "b", 0, 5))
+            .collect();
+        assert!(matches!(
+            store.record_distillation(&capture.id, many),
+            Err(StoreError::Invalid(_))
+        ));
     }
 
     #[test]
     fn listing_is_newest_distillation_first_and_source_order_within_one() {
         let store = CaptureStore::open_in_memory().unwrap();
-        let first = store.create(CreateCaptureInput { source: "text".into(), content: "alpha beta".into(), project_id: None }).unwrap();
-        let second = store.create(CreateCaptureInput { source: "voice".into(), content: "gamma delta".into(), project_id: None }).unwrap();
+        let first = store
+            .create(CreateCaptureInput {
+                source: "text".into(),
+                content: "alpha beta".into(),
+                project_id: None,
+            })
+            .unwrap();
+        let second = store
+            .create(CreateCaptureInput {
+                source: "voice".into(),
+                content: "gamma delta".into(),
+                project_id: None,
+            })
+            .unwrap();
 
         // Candidates are supplied out of order; the store keeps reading order.
-        store.record_distillation(&first.id, vec![object("note", "beta", "b", 6, 10), object("note", "alpha", "b", 0, 5)]).unwrap();
-        store.record_distillation(&second.id, vec![object("task", "delta", "b", 6, 11), object("idea", "gamma", "b", 0, 5)]).unwrap();
+        store
+            .record_distillation(
+                &first.id,
+                vec![
+                    object("note", "beta", "b", 6, 10),
+                    object("note", "alpha", "b", 0, 5),
+                ],
+            )
+            .unwrap();
+        store
+            .record_distillation(
+                &second.id,
+                vec![
+                    object("task", "delta", "b", 6, 11),
+                    object("idea", "gamma", "b", 0, 5),
+                ],
+            )
+            .unwrap();
 
-        let titles: Vec<String> = store.list_knowledge_objects().unwrap().into_iter().map(|o| o.title).collect();
+        let titles: Vec<String> = store
+            .list_knowledge_objects()
+            .unwrap()
+            .into_iter()
+            .map(|o| o.title)
+            .collect();
         assert_eq!(titles, ["gamma", "delta", "alpha", "beta"]);
-        assert_eq!(store.list_knowledge_objects().unwrap(), store.list_knowledge_objects().unwrap());
+        assert_eq!(
+            store.list_knowledge_objects().unwrap(),
+            store.list_knowledge_objects().unwrap()
+        );
     }
 
     #[test]
     fn captures_cannot_be_rewritten_because_provenance_offsets_depend_on_their_text() {
         let (store, capture) = store_with(TEXT);
         let connection = store.connection.lock().unwrap();
-        assert!(connection.execute("UPDATE captures SET content = 'changed' WHERE id = ?1", [&capture.id]).is_err());
-        assert!(connection.execute("UPDATE captures SET created_at = 'x' WHERE id = ?1", [&capture.id]).is_err());
+        assert!(connection
+            .execute(
+                "UPDATE captures SET content = 'changed' WHERE id = ?1",
+                [&capture.id]
+            )
+            .is_err());
+        assert!(connection
+            .execute(
+                "UPDATE captures SET created_at = 'x' WHERE id = ?1",
+                [&capture.id]
+            )
+            .is_err());
         drop(connection);
         assert_eq!(store.get_capture(&capture.id).unwrap(), Some(capture));
     }
@@ -511,26 +811,41 @@ mod tests {
     #[test]
     fn foreign_keys_are_enforced() {
         let (store, capture) = store_with(TEXT);
-        store.record_distillation(&capture.id, vec![object("idea", "t", "b", 0, 5)]).unwrap();
+        store
+            .record_distillation(&capture.id, vec![object("idea", "t", "b", 0, 5)])
+            .unwrap();
         let connection = store.connection.lock().unwrap();
 
-        let orphan = connection.execute("INSERT INTO distillation_runs (capture_id, created_at) VALUES ('missing', 'now')", []);
+        let orphan = connection.execute(
+            "INSERT INTO distillation_runs (capture_id, created_at) VALUES ('missing', 'now')",
+            [],
+        );
         assert!(orphan.is_err(), "a run needs an existing capture");
         let dangling = connection.execute("INSERT INTO object_sources (object_id, capture_id, source_start, source_end) VALUES ('nope', ?1, 0, 1)", [&capture.id]);
         assert!(dangling.is_err(), "a source needs an existing object");
-        assert!(connection.execute("DELETE FROM captures WHERE id = ?1", [&capture.id]).is_err(), "a capture with objects cannot be deleted");
+        assert!(
+            connection
+                .execute("DELETE FROM captures WHERE id = ?1", [&capture.id])
+                .is_err(),
+            "a capture with objects cannot be deleted"
+        );
     }
 
     #[test]
     fn a_row_with_unresolvable_provenance_fails_the_listing() {
         let (store, capture) = store_with(TEXT);
-        store.record_distillation(&capture.id, vec![object("idea", "t", "b", 0, 5)]).unwrap();
+        store
+            .record_distillation(&capture.id, vec![object("idea", "t", "b", 0, 5)])
+            .unwrap();
         {
             let connection = store.connection.lock().unwrap();
             // A faulty writer that bypassed the constraints.
             connection.execute_batch("PRAGMA ignore_check_constraints = ON; UPDATE object_sources SET source_end = 9999;").unwrap();
         }
-        assert!(matches!(store.list_knowledge_objects(), Err(StoreError::Corrupt(_))));
+        assert!(matches!(
+            store.list_knowledge_objects(),
+            Err(StoreError::Corrupt(_))
+        ));
     }
 
     #[test]
@@ -542,18 +857,35 @@ mod tests {
             .unwrap()
             .execute("INSERT INTO knowledge_objects (id, kind, title, body, created_at, project_id) VALUES ('x', 'idea', 't', 'b', '2026-01-01T00:00:00Z', '00000000-0000-4000-8000-000000000001')", [])
             .unwrap();
-        assert!(matches!(store.list_knowledge_objects(), Err(StoreError::Corrupt(_))));
+        assert!(matches!(
+            store.list_knowledge_objects(),
+            Err(StoreError::Corrupt(_))
+        ));
     }
 
     #[test]
     fn serializes_to_the_contract_shape() {
         let (store, capture) = store_with(TEXT);
-        let stored = store.record_distillation(&capture.id, vec![object("idea", "t", "b", 0, 5)]).unwrap();
+        let stored = store
+            .record_distillation(&capture.id, vec![object("idea", "t", "b", 0, 5)])
+            .unwrap();
         let value = serde_json::to_value(&stored[0]).unwrap();
         let mut keys: Vec<&String> = value.as_object().unwrap().keys().collect();
         keys.sort();
-        assert_eq!(keys, ["body", "createdAt", "id", "kind", "projectId", "provenance", "title"]);
-        let mut provenance: Vec<&String> = value["provenance"].as_object().unwrap().keys().collect();
+        assert_eq!(
+            keys,
+            [
+                "body",
+                "createdAt",
+                "id",
+                "kind",
+                "projectId",
+                "provenance",
+                "title"
+            ]
+        );
+        let mut provenance: Vec<&String> =
+            value["provenance"].as_object().unwrap().keys().collect();
         provenance.sort();
         assert_eq!(provenance, ["captureId", "sourceEnd", "sourceStart"]);
     }

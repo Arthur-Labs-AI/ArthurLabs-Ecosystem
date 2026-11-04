@@ -26,5 +26,9 @@ pub enum SttError {
 
 pub trait Transcriber: Send + Sync {
     /// `file_name` carries the container type (for example `recording.m4a`).
-    fn transcribe<'a>(&'a self, audio: &'a [u8], file_name: &'a str) -> BoxFuture<'a, Result<String, SttError>>;
+    fn transcribe<'a>(
+        &'a self,
+        audio: &'a [u8],
+        file_name: &'a str,
+    ) -> BoxFuture<'a, Result<String, SttError>>;
 }

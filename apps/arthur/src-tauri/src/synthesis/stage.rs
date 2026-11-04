@@ -7,7 +7,10 @@ use std::sync::Arc;
 use super::authorization::ProviderAuthorization;
 use super::validate::{validate_draft, ValidatedDraft};
 use super::verifier::{ensure_independent, ensure_same_family, StageError};
-use super::{RevisionSynthesizer, RevisionVerifier, SynthesisRequest, VerificationMode, Verdict, VerifyRequest};
+use super::{
+    RevisionSynthesizer, RevisionVerifier, SynthesisRequest, Verdict, VerificationMode,
+    VerifyRequest,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StageLimits {
@@ -18,7 +21,10 @@ pub struct StageLimits {
 
 impl Default for StageLimits {
     fn default() -> Self {
-        Self { max_drafts_per_capture: 4, max_verifications_per_capture: 4 }
+        Self {
+            max_drafts_per_capture: 4,
+            max_verifications_per_capture: 4,
+        }
     }
 }
 
@@ -49,7 +55,14 @@ impl SynthesisStage {
         limits: StageLimits,
     ) -> Result<Self, StageError> {
         ensure_independent(synthesizer.as_ref(), verifier.as_ref())?;
-        Ok(Self::build(synthesizer, verifier, synthesis_authorization, verification_authorization, limits, VerificationMode::Independent))
+        Ok(Self::build(
+            synthesizer,
+            verifier,
+            synthesis_authorization,
+            verification_authorization,
+            limits,
+            VerificationMode::Independent,
+        ))
     }
 
     /// A verifier of the SAME family as the synthesizer (GPT-6 Luna reviewing GPT-6 Luna). This is a self-check, not independent
@@ -62,7 +75,14 @@ impl SynthesisStage {
         limits: StageLimits,
     ) -> Result<Self, StageError> {
         ensure_same_family(synthesizer.as_ref(), verifier.as_ref())?;
-        Ok(Self::build(synthesizer, verifier, synthesis_authorization, verification_authorization, limits, VerificationMode::SameFamilyReview))
+        Ok(Self::build(
+            synthesizer,
+            verifier,
+            synthesis_authorization,
+            verification_authorization,
+            limits,
+            VerificationMode::SameFamilyReview,
+        ))
     }
 
     fn build(
@@ -74,7 +94,15 @@ impl SynthesisStage {
         mode: VerificationMode,
     ) -> Self {
         let expected_model_prefix = synthesizer.identity().model;
-        Self { synthesizer, verifier, synthesis_authorization, verification_authorization, expected_model_prefix, limits, mode }
+        Self {
+            synthesizer,
+            verifier,
+            synthesis_authorization,
+            verification_authorization,
+            expected_model_prefix,
+            limits,
+            mode,
+        }
     }
 
     pub fn mode(&self) -> VerificationMode {
@@ -88,7 +116,12 @@ impl SynthesisStage {
 
     /// `Err(name)`: do not revise; keep the claim for a person, recording this allow-listed veto name. A same-family pass is
     /// `Err("review_required")`: this is the form that can never apply anything by itself.
-    pub async fn run(&self, request: &SynthesisRequest, allowed: &(dyn Fn() -> bool + Sync), budget: &mut StageBudget) -> Result<ValidatedDraft, &'static str> {
+    pub async fn run(
+        &self,
+        request: &SynthesisRequest,
+        allowed: &(dyn Fn() -> bool + Sync),
+        budget: &mut StageBudget,
+    ) -> Result<ValidatedDraft, &'static str> {
         let outcome = self.run_outcome(request, allowed, budget).await?;
         if outcome.review_only() {
             return Err("review_required");
@@ -98,35 +131,61 @@ impl SynthesisStage {
 
     /// The same pipeline, but a passing draft of a same-family review is RETURNED (marked review-only) instead of being turned into a
     /// refusal, so it can be stored as a proposal for a person to approve. Everything else is identical to `run`.
-    pub async fn run_outcome(&self, request: &SynthesisRequest, allowed: &(dyn Fn() -> bool + Sync), budget: &mut StageBudget) -> Result<StageOutcome, &'static str> {
+    pub async fn run_outcome(
+        &self,
+        request: &SynthesisRequest,
+        allowed: &(dyn Fn() -> bool + Sync),
+        budget: &mut StageBudget,
+    ) -> Result<StageOutcome, &'static str> {
         if !allowed() {
             return Err("evolution_withdrawn");
         }
         // both permissions up front: nothing is sent to the synthesizer if the verifier could not be asked afterwards
-        if !self.synthesis_authorization.granted() || budget.drafts >= self.limits.max_drafts_per_capture {
+        if !self.synthesis_authorization.granted()
+            || budget.drafts >= self.limits.max_drafts_per_capture
+        {
             return Err("synthesis_unavailable");
         }
-        if !self.verifier.available() || !self.verification_authorization.granted() || budget.verifications >= self.limits.max_verifications_per_capture {
+        if !self.verifier.available()
+            || !self.verification_authorization.granted()
+            || budget.verifications >= self.limits.max_verifications_per_capture
+        {
             return Err("verifier_unavailable");
         }
         budget.drafts += 1;
-        let draft = self.synthesizer.synthesize(request).await.map_err(|_| "synthesis_unavailable")?;
+        let draft = self
+            .synthesizer
+            .synthesize(request)
+            .await
+            .map_err(|_| "synthesis_unavailable")?;
         // read again after the wait: a permission withdrawn while the model worked discards the draft
         if !allowed() || !self.authorized() {
             return Err("evolution_withdrawn");
         }
         let synthesis_model = draft.model.clone();
-        let validated = validate_draft(request, &draft, &self.expected_model_prefix).map_err(|veto| veto.storage_name())?;
+        let validated = validate_draft(request, &draft, &self.expected_model_prefix)
+            .map_err(|veto| veto.storage_name())?;
         if !self.verification_authorization.granted() {
             return Err("verifier_unavailable");
         }
         budget.verifications += 1;
-        let verdict = self.verifier.verify(&VerifyRequest { request: request.clone(), draft }).await;
+        let verdict = self
+            .verifier
+            .verify(&VerifyRequest {
+                request: request.clone(),
+                draft,
+            })
+            .await;
         if !allowed() || !self.authorized() {
             return Err("evolution_withdrawn");
         }
         match verdict {
-            Verdict::Pass => Ok(StageOutcome { draft: validated, mode: self.mode, synthesis_model, verifier_model: self.verifier.identity().model }),
+            Verdict::Pass => Ok(StageOutcome {
+                draft: validated,
+                mode: self.mode,
+                synthesis_model,
+                verifier_model: self.verifier.identity().model,
+            }),
             Verdict::Veto(_) => Err("verifier_veto"),
             Verdict::Unavailable(_) => Err("verifier_unavailable"),
         }

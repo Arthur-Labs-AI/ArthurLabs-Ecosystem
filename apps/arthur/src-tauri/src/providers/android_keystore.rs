@@ -46,24 +46,52 @@ struct ValuePayload {
 impl SecretStore for AndroidKeystoreStore {
     fn set(&self, provider: ProviderId, key: &ApiKey) -> Result<(), SecretError> {
         self.handle
-            .run_mobile_plugin::<serde_json::Value>("putSecret", PutArgs { id: provider.as_str(), value: key.expose() })
+            .run_mobile_plugin::<serde_json::Value>(
+                "putSecret",
+                PutArgs {
+                    id: provider.as_str(),
+                    value: key.expose(),
+                },
+            )
             .map(|_| ())
-            .map_err(|_| SecretError("the credential could not be saved securely on this device".into()))
+            .map_err(|_| {
+                SecretError("the credential could not be saved securely on this device".into())
+            })
     }
 
     fn has(&self, provider: ProviderId) -> bool {
-        self.handle.run_mobile_plugin::<PresentPayload>("hasSecret", IdArgs { id: provider.as_str() }).is_ok_and(|payload| payload.present)
+        self.handle
+            .run_mobile_plugin::<PresentPayload>(
+                "hasSecret",
+                IdArgs {
+                    id: provider.as_str(),
+                },
+            )
+            .is_ok_and(|payload| payload.present)
     }
 
     fn delete(&self, provider: ProviderId) -> Result<(), SecretError> {
         self.handle
-            .run_mobile_plugin::<serde_json::Value>("deleteSecret", IdArgs { id: provider.as_str() })
+            .run_mobile_plugin::<serde_json::Value>(
+                "deleteSecret",
+                IdArgs {
+                    id: provider.as_str(),
+                },
+            )
             .map(|_| ())
             .map_err(|_| SecretError("the credential could not be removed".into()))
     }
 
     fn get(&self, provider: ProviderId) -> Option<ApiKey> {
-        let payload = self.handle.run_mobile_plugin::<ValuePayload>("readSecret", IdArgs { id: provider.as_str() }).ok()?;
+        let payload = self
+            .handle
+            .run_mobile_plugin::<ValuePayload>(
+                "readSecret",
+                IdArgs {
+                    id: provider.as_str(),
+                },
+            )
+            .ok()?;
         payload.value.as_deref().and_then(ApiKey::parse)
     }
 }

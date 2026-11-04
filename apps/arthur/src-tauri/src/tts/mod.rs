@@ -4,12 +4,12 @@
 //! configured provider (credentials from the `SecretStore` through the capability-bound source), plays it, and deletes it. Nothing is
 //! archived and nothing about what was spoken is stored.
 
+#[cfg(target_os = "android")]
+pub mod android;
 pub mod chunk;
 pub mod openai;
 pub mod player;
 pub mod service;
-#[cfg(target_os = "android")]
-pub mod android;
 
 use crate::async_util::BoxFuture;
 
@@ -36,5 +36,10 @@ pub struct Speech {
 }
 
 pub trait Synthesizer: Send + Sync {
-    fn synthesize<'a>(&'a self, text: &'a str, voice: &'a str, model: &'a str) -> BoxFuture<'a, Result<Speech, TtsError>>;
+    fn synthesize<'a>(
+        &'a self,
+        text: &'a str,
+        voice: &'a str,
+        model: &'a str,
+    ) -> BoxFuture<'a, Result<Speech, TtsError>>;
 }

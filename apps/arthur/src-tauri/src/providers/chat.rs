@@ -79,7 +79,13 @@ pub fn request_body(request: &ChatRequest<'_>) -> Value {
 /// Whether the model that answered is the one asked for: the same id, or that id with a date snapshot suffix (`gpt-6-luna-20260922`).
 /// A longer id (`gpt-6-luna-pro`, `gpt-6-lunar`) or a different family is NOT a match.
 pub fn model_matches(answered: &str, requested: &str) -> bool {
-    answered == requested || answered.strip_prefix(requested).and_then(|rest| rest.strip_prefix('-')).is_some_and(|date| !date.is_empty() && date.chars().all(|c| c.is_ascii_digit() || c == '-'))
+    answered == requested
+        || answered
+            .strip_prefix(requested)
+            .and_then(|rest| rest.strip_prefix('-'))
+            .is_some_and(|date| {
+                !date.is_empty() && date.chars().all(|c| c.is_ascii_digit() || c == '-')
+            })
 }
 
 /// What a completion carried besides its text: the model that actually answered and the token usage, when the provider reports them.
@@ -127,21 +133,42 @@ pub mod last_call {
 }
 
 /// Sends the request and returns the text of the model's answer.
-pub async fn complete_json(client: &reqwest::Client, credentials: &dyn CredentialSource, request: ChatRequest<'_>) -> Result<String, ChatFailure> {
-    complete_json_detailed(client, credentials, request).await.map(|completion| completion.text)
+pub async fn complete_json(
+    client: &reqwest::Client,
+    credentials: &dyn CredentialSource,
+    request: ChatRequest<'_>,
+) -> Result<String, ChatFailure> {
+    complete_json_detailed(client, credentials, request)
+        .await
+        .map(|completion| completion.text)
 }
 
 /// As `complete_json`, also returning the answering model and token usage so a caller can check it got the model it asked for and
 /// account for what it spent.
-pub async fn complete_json_detailed(client: &reqwest::Client, credentials: &dyn CredentialSource, request: ChatRequest<'_>) -> Result<Completion, ChatFailure> {
+pub async fn complete_json_detailed(
+    client: &reqwest::Client,
+    credentials: &dyn CredentialSource,
+    request: ChatRequest<'_>,
+) -> Result<Completion, ChatFailure> {
     let key = credentials.api_key().ok_or(ChatFailure::NotConfigured)?;
     let body = request_body(&request);
 
-    let response = client.post(request.endpoint).bearer_auth(key.expose()).json(&body).send().await.map_err(|_| ChatFailure::Network)?;
+    let response = client
+        .post(request.endpoint)
+        .bearer_auth(key.expose())
+        .json(&body)
+        .send()
+        .await
+        .map_err(|_| ChatFailure::Network)?;
 
     let status = response.status().as_u16();
     #[cfg(test)]
-    last_call::update(|record| *record = last_call::CallRecord { status: Some(status), ..Default::default() });
+    last_call::update(|record| {
+        *record = last_call::CallRecord {
+            status: Some(status),
+            ..Default::default()
+        }
+    });
     if status == 401 || status == 403 {
         return Err(ChatFailure::Auth(status));
     }
@@ -150,32 +177,66 @@ pub async fn complete_json_detailed(client: &reqwest::Client, credentials: &dyn 
         {
             let body: Value = response.json().await.unwrap_or(Value::Null);
             last_call::update(|record| {
-                record.error_message = body.pointer("/error/message").and_then(Value::as_str).map(|m| m.chars().take(300).collect());
-                record.error_param = body.pointer("/error/param").and_then(Value::as_str).map(str::to_string);
+                record.error_message = body
+                    .pointer("/error/message")
+                    .and_then(Value::as_str)
+                    .map(|m| m.chars().take(300).collect());
+                record.error_param = body
+                    .pointer("/error/param")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
             });
         }
         return Err(ChatFailure::Provider(status));
     }
 
     let envelope: Value = response.json().await.map_err(|error| {
-        if error.is_decode() { ChatFailure::Unreadable("unreadable response".into()) } else { ChatFailure::Network }
+        if error.is_decode() {
+            ChatFailure::Unreadable("unreadable response".into())
+        } else {
+            ChatFailure::Network
+        }
     })?;
     #[cfg(test)]
     last_call::update(|record| {
-        record.model = envelope.get("model").and_then(Value::as_str).map(str::to_string);
-        record.finish_reason = envelope.pointer("/choices/0/finish_reason").and_then(Value::as_str).map(str::to_string);
-        record.prompt_tokens = envelope.pointer("/usage/prompt_tokens").and_then(Value::as_u64);
-        record.completion_tokens = envelope.pointer("/usage/completion_tokens").and_then(Value::as_u64);
-        record.reasoning_tokens = envelope.pointer("/usage/completion_tokens_details/reasoning_tokens").and_then(Value::as_u64);
+        record.model = envelope
+            .get("model")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        record.finish_reason = envelope
+            .pointer("/choices/0/finish_reason")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        record.prompt_tokens = envelope
+            .pointer("/usage/prompt_tokens")
+            .and_then(Value::as_u64);
+        record.completion_tokens = envelope
+            .pointer("/usage/completion_tokens")
+            .and_then(Value::as_u64);
+        record.reasoning_tokens = envelope
+            .pointer("/usage/completion_tokens_details/reasoning_tokens")
+            .and_then(Value::as_u64);
     });
     let text = answer_text(&envelope)?;
     Ok(Completion {
-        finish_reason: envelope.pointer("/choices/0/finish_reason").and_then(Value::as_str).map(str::to_string),
+        finish_reason: envelope
+            .pointer("/choices/0/finish_reason")
+            .and_then(Value::as_str)
+            .map(str::to_string),
         text,
-        model: envelope.get("model").and_then(Value::as_str).map(str::to_string),
-        prompt_tokens: envelope.pointer("/usage/prompt_tokens").and_then(Value::as_u64),
-        completion_tokens: envelope.pointer("/usage/completion_tokens").and_then(Value::as_u64),
-        reasoning_tokens: envelope.pointer("/usage/completion_tokens_details/reasoning_tokens").and_then(Value::as_u64),
+        model: envelope
+            .get("model")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        prompt_tokens: envelope
+            .pointer("/usage/prompt_tokens")
+            .and_then(Value::as_u64),
+        completion_tokens: envelope
+            .pointer("/usage/completion_tokens")
+            .and_then(Value::as_u64),
+        reasoning_tokens: envelope
+            .pointer("/usage/completion_tokens_details/reasoning_tokens")
+            .and_then(Value::as_u64),
     })
 }
 
@@ -185,10 +246,19 @@ fn unreadable(reason: &str) -> ChatFailure {
 
 /// Reads the chat-completion envelope and returns the answer text inside it.
 fn answer_text(envelope: &Value) -> Result<String, ChatFailure> {
-    let choice = envelope.get("choices").and_then(Value::as_array).and_then(|choices| choices.first()).ok_or_else(|| unreadable("no completion"))?;
-    let message = choice.get("message").ok_or_else(|| unreadable("no message"))?;
+    let choice = envelope
+        .get("choices")
+        .and_then(Value::as_array)
+        .and_then(|choices| choices.first())
+        .ok_or_else(|| unreadable("no completion"))?;
+    let message = choice
+        .get("message")
+        .ok_or_else(|| unreadable("no message"))?;
 
-    if message.get("refusal").is_some_and(|refusal| refusal.as_str().is_some_and(|text| !text.is_empty())) {
+    if message
+        .get("refusal")
+        .is_some_and(|refusal| refusal.as_str().is_some_and(|text| !text.is_empty()))
+    {
         return Err(ChatFailure::Refused);
     }
     match choice.get("finish_reason").and_then(Value::as_str) {
@@ -196,7 +266,11 @@ fn answer_text(envelope: &Value) -> Result<String, ChatFailure> {
         Some("length") => return Err(unreadable("the answer was cut off")),
         _ => {}
     }
-    message.get("content").and_then(Value::as_str).map(str::to_string).ok_or_else(|| unreadable("no content"))
+    message
+        .get("content")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| unreadable("no content"))
 }
 
 #[cfg(test)]
@@ -204,26 +278,67 @@ mod tests {
     use super::*;
 
     fn request(model: &'static str, sampling: Sampling, limit: Option<u32>) -> Value {
-        request_body(&ChatRequest { endpoint: "http://x", model, system: "s", user: "u", schema_name: "n", schema: json!({ "type": "object" }), sampling, max_output_tokens: limit })
+        request_body(&ChatRequest {
+            endpoint: "http://x",
+            model,
+            system: "s",
+            user: "u",
+            schema_name: "n",
+            schema: json!({ "type": "object" }),
+            sampling,
+            max_output_tokens: limit,
+        })
     }
 
     #[test]
     fn a_luna_request_sets_the_effort_and_the_output_budget_and_never_a_sampling_parameter() {
         for (effort, limit) in [("none", 4096u32), ("low", 8192)] {
             let body = request(LUNA_MODEL, Sampling::Reasoning(effort), Some(limit));
-            assert_eq!((body["model"].as_str(), body["reasoning_effort"].as_str(), body["max_completion_tokens"].as_u64()), (Some("gpt-6-luna"), Some(effort), Some(u64::from(limit))));
-            for unsupported in ["temperature", "top_p", "logprobs", "top_logprobs", "presence_penalty", "frequency_penalty", "max_tokens", "tools", "functions"] {
-                assert!(body.get(unsupported).is_none(), "effort {effort}: {unsupported} must not be sent");
+            assert_eq!(
+                (
+                    body["model"].as_str(),
+                    body["reasoning_effort"].as_str(),
+                    body["max_completion_tokens"].as_u64()
+                ),
+                (Some("gpt-6-luna"), Some(effort), Some(u64::from(limit)))
+            );
+            for unsupported in [
+                "temperature",
+                "top_p",
+                "logprobs",
+                "top_logprobs",
+                "presence_penalty",
+                "frequency_penalty",
+                "max_tokens",
+                "tools",
+                "functions",
+            ] {
+                assert!(
+                    body.get(unsupported).is_none(),
+                    "effort {effort}: {unsupported} must not be sent"
+                );
             }
-            assert_eq!((body["response_format"]["type"].as_str(), body["response_format"]["json_schema"]["strict"].as_bool()), (Some("json_schema"), Some(true)), "structured output is preserved");
+            assert_eq!(
+                (
+                    body["response_format"]["type"].as_str(),
+                    body["response_format"]["json_schema"]["strict"].as_bool()
+                ),
+                (Some("json_schema"), Some(true)),
+                "structured output is preserved"
+            );
         }
     }
 
     #[test]
     fn the_non_reasoning_models_that_remain_are_requested_exactly_as_before() {
         let body = request(DEFAULT_MODEL, Sampling::Deterministic, None);
-        assert_eq!((body["model"].as_str(), body["temperature"].as_i64()), (Some("gpt-4.1-mini"), Some(0)));
-        assert!(body.get("reasoning_effort").is_none() && body.get("max_completion_tokens").is_none());
+        assert_eq!(
+            (body["model"].as_str(), body["temperature"].as_i64()),
+            (Some("gpt-4.1-mini"), Some(0))
+        );
+        assert!(
+            body.get("reasoning_effort").is_none() && body.get("max_completion_tokens").is_none()
+        );
     }
 
     #[test]
@@ -231,14 +346,28 @@ mod tests {
         for ok in ["gpt-6-luna", "gpt-6-luna-20260922", "gpt-6-luna-2026-09-22"] {
             assert!(model_matches(ok, LUNA_MODEL), "{ok}");
         }
-        for bad in ["", "gpt-6", "gpt-6-lunar", "gpt-6-luna-pro", "gpt-6-luna-", "gpt-6-luna-mini-20260922", "GPT-6-LUNA", "gpt-5-mini", "gpt-4.1-mini", " gpt-6-luna"] {
+        for bad in [
+            "",
+            "gpt-6",
+            "gpt-6-lunar",
+            "gpt-6-luna-pro",
+            "gpt-6-luna-",
+            "gpt-6-luna-mini-20260922",
+            "GPT-6-LUNA",
+            "gpt-5-mini",
+            "gpt-4.1-mini",
+            " gpt-6-luna",
+        ] {
             assert!(!model_matches(bad, LUNA_MODEL), "{bad:?}");
         }
     }
 
     #[test]
     fn luna_pricing_is_the_listed_price_and_the_old_models_are_not_the_luna_default() {
-        assert!((LUNA_PRICE_IN * 1e6 - 0.10).abs() < 1e-12 && (LUNA_PRICE_OUT * 1e6 - 0.50).abs() < 1e-12);
+        assert!(
+            (LUNA_PRICE_IN * 1e6 - 0.10).abs() < 1e-12
+                && (LUNA_PRICE_OUT * 1e6 - 0.50).abs() < 1e-12
+        );
         assert_eq!((LUNA_MODEL, DEFAULT_MODEL), ("gpt-6-luna", "gpt-4.1-mini"));
     }
 
@@ -261,7 +390,10 @@ mod tests {
             json!({ "choices": [{ "message": { "content": null } }] }),
             json!({ "choices": [{}] }),
         ] {
-            assert!(matches!(answer_text(&broken), Err(ChatFailure::Unreadable(_))), "{broken}");
+            assert!(
+                matches!(answer_text(&broken), Err(ChatFailure::Unreadable(_))),
+                "{broken}"
+            );
         }
     }
 }

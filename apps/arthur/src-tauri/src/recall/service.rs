@@ -15,15 +15,29 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use super::evidence::{evidence_list, LexicalStatus, RecallError, RetrievalDiagnostics, RetrievalOutcome, RetrievalResult, RetrievalScope, SemanticStatus, Timings};
+use super::evidence::{
+    evidence_list, LexicalStatus, RecallError, RetrievalDiagnostics, RetrievalOutcome,
+    RetrievalResult, RetrievalScope, SemanticStatus, Timings,
+};
 use super::lexical::fallback_scan;
 use super::query::{interpret, match_expression, InterpretedQuery, QueryProblem};
-use super::ranking::{admit_historical, admit_lexical, fuse, historical_path_allowed, SemanticSignal, CHANNEL_LIMIT, HISTORICAL_LIMIT};
+use super::ranking::{
+    admit_historical, admit_lexical, fuse, historical_path_allowed, SemanticSignal, CHANNEL_LIMIT,
+    HISTORICAL_LIMIT,
+};
 use super::settings::SemanticSettings;
-use crate::providers::embed::{embedding_text, text_hash, EmbedFailure, EmbedPurpose, EmbeddingProvider, ModelKey};
+use crate::providers::embed::{
+    embedding_text, text_hash, EmbedFailure, EmbedPurpose, EmbeddingProvider, ModelKey,
+};
 use crate::storage::capture_store::{CaptureStore, StoreError};
 use crate::storage::project_store::ProjectError;
 use crate::storage::recall_store::CurrentObject;
+
+type SemanticScan = (
+    Vec<(CurrentObject, SemanticSignal)>,
+    SemanticStatus,
+    Option<f64>,
+);
 
 /// Similarity floor (M04A `tau_sem`) for `text-embedding-3-small` @ 512, calibrated by the live sweep on the golden corpus (see
 /// docs/architecture/cognitive-recall/m04b-implementation-notes.md): a floor on the plateau where every question that must return
@@ -158,10 +172,16 @@ impl RecallService {
 
     /// Takes the single-run indexing guard, or `None` if a run is already in progress.
     pub fn begin_indexing(&self) -> Option<IndexingGuard<'_>> {
-        self.indexing.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).ok().map(|_| IndexingGuard(&self.indexing))
+        self.indexing
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .ok()
+            .map(|_| IndexingGuard(&self.indexing))
     }
 
-    pub fn semantic_status(&self, store: &CaptureStore) -> Result<SemanticRecallStatus, RecallError> {
+    pub fn semantic_status(
+        &self,
+        store: &CaptureStore,
+    ) -> Result<SemanticRecallStatus, RecallError> {
         let state = self.settings.state();
         let key = self.provider.model_key().as_str();
         Ok(SemanticRecallStatus {
@@ -170,7 +190,9 @@ impl RecallService {
             saved_model_key: state.saved_model_key,
             settings_corrupt: state.corrupt,
             active_model_key: key.to_string(),
-            stored_vectors: store.recall_stored_vector_count(Some(key)).map_err(storage)?,
+            stored_vectors: store
+                .recall_stored_vector_count(Some(key))
+                .map_err(storage)?,
             stored_vectors_all_keys: store.recall_stored_vector_count(None).map_err(storage)?,
             pending_objects: store.recall_pending_count(key).map_err(storage)?,
         })
@@ -182,7 +204,12 @@ impl RecallService {
     }
 
     /// One bounded retrieval. `project_id` is the single, explicit scope: it is never widened.
-    pub async fn retrieve(&self, store: &CaptureStore, raw_query: &str, project_id: &str) -> Result<RetrievalResult, RecallError> {
+    pub async fn retrieve(
+        &self,
+        store: &CaptureStore,
+        raw_query: &str,
+        project_id: &str,
+    ) -> Result<RetrievalResult, RecallError> {
         let started = Instant::now();
         let mut sql_reads: u32 = 0;
         let mut timings = Timings::default();
@@ -191,7 +218,10 @@ impl RecallService {
         let query = interpret(raw_query).map_err(|problem| {
             RecallError::InvalidQuery(match problem {
                 QueryProblem::Empty => "it is empty".to_string(),
-                QueryProblem::TooLong => format!("it is longer than {} characters", super::query::MAX_QUERY_CHARS),
+                QueryProblem::TooLong => format!(
+                    "it is longer than {} characters",
+                    super::query::MAX_QUERY_CHARS
+                ),
             })
         })?;
         timings.interpret_ms = ms(interpret_started);
@@ -201,7 +231,11 @@ impl RecallService {
             ProjectError::ProjectNotFound => RecallError::ProjectNotFound,
             other => RecallError::Storage(other.to_string()),
         })?;
-        let scope = RetrievalScope { project_id: project.id.clone(), project_name: project.name.clone(), archived: project.archived_at.is_some() };
+        let scope = RetrievalScope {
+            project_id: project.id.clone(),
+            project_name: project.name.clone(),
+            archived: project.archived_at.is_some(),
+        };
 
         // 1. Start the query embedding first (consent permitting) so the network wait overlaps all local work.
         let mut embedding_requests: u32 = 0;
@@ -213,7 +247,9 @@ impl RecallService {
             let provider = self.provider.clone();
             let text = vec![query.raw.clone()];
             let timeout = self.query_embed_timeout;
-            Some(tauri::async_runtime::spawn(async move { tokio::time::timeout(timeout, provider.embed(&text, EmbedPurpose::Query)).await }))
+            Some(tauri::async_runtime::spawn(async move {
+                tokio::time::timeout(timeout, provider.embed(&text, EmbedPurpose::Query)).await
+            }))
         } else {
             None
         };
@@ -228,7 +264,11 @@ impl RecallService {
         let lexical_on = self.lexical_enabled.load(Ordering::SeqCst);
         #[cfg(not(test))]
         let lexical_on = true;
-        let (lexical_hits, lexical_status) = if lexical_on { self.lexical_current(store, &query, project_id, &mut sql_reads)? } else { (Vec::new(), LexicalStatus::SkippedNoTerms) };
+        let (lexical_hits, lexical_status) = if lexical_on {
+            self.lexical_current(store, &query, project_id, &mut sql_reads)?
+        } else {
+            (Vec::new(), LexicalStatus::SkippedNoTerms)
+        };
         let lexical = admit_lexical(&query, lexical_hits);
         timings.lexical_ms = ms(lexical_started);
 
@@ -236,12 +276,17 @@ impl RecallService {
         let mut historical_ran = false;
         let mut historical_nominated = 0usize;
         let mut historical = Vec::new();
-        if lexical_on && lexical_status == LexicalStatus::Ok && historical_path_allowed(&query, lexical.len()) {
+        if lexical_on
+            && lexical_status == LexicalStatus::Ok
+            && historical_path_allowed(&query, lexical.len())
+        {
             if let Some(expression) = match_expression(&query) {
                 let historical_started = Instant::now();
                 historical_ran = true;
                 sql_reads += 1;
-                let hits = store.recall_lexical_historical(&expression, project_id, HISTORICAL_LIMIT).map_err(storage)?;
+                let hits = store
+                    .recall_lexical_historical(&expression, project_id, HISTORICAL_LIMIT)
+                    .map_err(storage)?;
                 historical = admit_historical(&query, hits);
                 historical_nominated = historical.len();
                 timings.historical_ms = ms(historical_started);
@@ -258,10 +303,13 @@ impl RecallService {
             let outcome = handle.await;
             timings.query_embedding_ms = ms(embedding_started);
             match outcome {
-                Ok(Ok(Ok(mut vectors))) if vectors.len() == 1 && vectors[0].len() == self.provider.dims() => {
+                Ok(Ok(Ok(mut vectors)))
+                    if vectors.len() == 1 && vectors[0].len() == self.provider.dims() =>
+                {
                     let semantic_started = Instant::now();
                     let vector = vectors.remove(0);
-                    let scan = self.semantic_scan(store, &query, project_id, &vector, &mut sql_reads)?;
+                    let scan =
+                        self.semantic_scan(store, &query, project_id, &vector, &mut sql_reads)?;
                     semantic = scan.0;
                     semantic_status = scan.1;
                     semantic_coverage = scan.2;
@@ -289,22 +337,30 @@ impl RecallService {
         // 5. Deterministic fusion.
         let merge_started = Instant::now();
         let fused = fuse(&query, lexical, semantic, historical);
-        let (pool_size, seed_count, active_channels) = (fused.pool.len(), fused.seed_count, fused.active_channels);
+        let (pool_size, seed_count, active_channels) =
+            (fused.pool.len(), fused.seed_count, fused.active_channels);
         let evidence = evidence_list(fused);
         timings.merge_ms = ms(merge_started);
         // The FTS index failed this time: regenerate it from the authoritative revisions, once per process, best effort. The next
         // question benefits; this one was already answered by the fallback scan.
-        if lexical_status == LexicalStatus::DegradedScan && !self.rebuild_attempted.swap(true, Ordering::SeqCst) {
+        if lexical_status == LexicalStatus::DegradedScan
+            && !self.rebuild_attempted.swap(true, Ordering::SeqCst)
+        {
             let _ = store.recall_rebuild_lexical_index();
         }
         timings.wall_ms = ms(started);
         // Local time excludes the embedding wait that overlapped the lexical work.
-        timings.total_ms = (local_before_semantic + timings.semantic_local_ms + timings.merge_ms).min(timings.wall_ms);
+        timings.total_ms = (local_before_semantic + timings.semantic_local_ms + timings.merge_ms)
+            .min(timings.wall_ms);
 
         Ok(RetrievalResult {
             query: query.raw.clone(),
             scope,
-            outcome: if evidence.is_empty() { RetrievalOutcome::NoMatch } else { RetrievalOutcome::Results },
+            outcome: if evidence.is_empty() {
+                RetrievalOutcome::NoMatch
+            } else {
+                RetrievalOutcome::Results
+            },
             evidence,
             diagnostics: RetrievalDiagnostics {
                 intent: query.intent,
@@ -327,20 +383,37 @@ impl RecallService {
 
     /// FTS5 first. If it fails, the Rust scan answers and the status says so. If the scan fails too, that is a storage failure and
     /// is reported as one: a broken store is never presented as "no match".
-    fn lexical_current(&self, store: &CaptureStore, query: &InterpretedQuery, project_id: &str, sql_reads: &mut u32) -> Result<(Vec<crate::storage::recall_store::CurrentLexicalHit>, LexicalStatus), RecallError> {
+    fn lexical_current(
+        &self,
+        store: &CaptureStore,
+        query: &InterpretedQuery,
+        project_id: &str,
+        sql_reads: &mut u32,
+    ) -> Result<
+        (
+            Vec<crate::storage::recall_store::CurrentLexicalHit>,
+            LexicalStatus,
+        ),
+        RecallError,
+    > {
         let Some(expression) = match_expression(query) else {
             return Ok((Vec::new(), LexicalStatus::SkippedNoTerms));
         };
         *sql_reads += 1;
         match store.recall_lexical_current(&expression, project_id, CHANNEL_LIMIT) {
             // Silence is suspicious: an emptied index also answers "no match". Verify before believing it.
-            Ok(hits) if hits.is_empty() && !store.recall_lexical_index_is_complete().unwrap_or(false) => {
+            Ok(hits)
+                if hits.is_empty()
+                    && !store.recall_lexical_index_is_complete().unwrap_or(false) =>
+            {
                 *sql_reads += 2;
                 let objects = store.recall_scan_current(project_id).map_err(storage)?;
                 Ok((fallback_scan(query, objects), LexicalStatus::DegradedScan))
             }
             Ok(hits) => Ok((hits, LexicalStatus::Ok)),
-            Err(StoreError::Poisoned) => Err(RecallError::Storage(StoreError::Poisoned.to_string())),
+            Err(StoreError::Poisoned) => {
+                Err(RecallError::Storage(StoreError::Poisoned.to_string()))
+            }
             Err(_fts_failure) => {
                 *sql_reads += 1;
                 let objects = store.recall_scan_current(project_id).map_err(storage)?;
@@ -356,28 +429,55 @@ impl RecallService {
         project_id: &str,
         vector: &[f32],
         sql_reads: &mut u32,
-    ) -> Result<(Vec<(CurrentObject, SemanticSignal)>, SemanticStatus, Option<f64>), RecallError> {
+    ) -> Result<SemanticScan, RecallError> {
         let key = self.provider.model_key().as_str();
         *sql_reads += 1;
-        let coverage = store.recall_semantic_coverage(project_id, key).map_err(storage)?;
-        let ratio = if coverage.in_scope_objects == 0 { 1.0 } else { coverage.embedded_objects as f64 / coverage.in_scope_objects as f64 };
+        let coverage = store
+            .recall_semantic_coverage(project_id, key)
+            .map_err(storage)?;
+        let ratio = if coverage.in_scope_objects == 0 {
+            1.0
+        } else {
+            coverage.embedded_objects as f64 / coverage.in_scope_objects as f64
+        };
         if coverage.embedded_objects == 0 {
             return Ok((Vec::new(), SemanticStatus::NoIndex, Some(0.0)));
         }
         *sql_reads += 1;
-        let (hits, _scan) = store.recall_semantic_scan(project_id, key, self.provider.dims(), vector, CHANNEL_LIMIT, self.min_cosine).map_err(storage)?;
+        let (hits, _scan) = store
+            .recall_semantic_scan(
+                project_id,
+                key,
+                self.provider.dims(),
+                vector,
+                CHANNEL_LIMIT,
+                self.min_cosine,
+            )
+            .map_err(storage)?;
         let ids: Vec<String> = hits.iter().map(|hit| hit.object_id.clone()).collect();
         *sql_reads += 1;
-        let objects = store.recall_current_objects(&ids, project_id).map_err(storage)?;
+        let objects = store
+            .recall_current_objects(&ids, project_id)
+            .map_err(storage)?;
         let mut resolved = Vec::new();
         for hit in hits {
             // An id that no longer resolves in scope (it moved between the scan and now) is simply dropped.
             if let Some(object) = objects.iter().find(|o| o.object_id == hit.object_id) {
                 let rank = resolved.len() + 1;
-                resolved.push((object.clone(), SemanticSignal { rank, cosine: hit.cosine }));
+                resolved.push((
+                    object.clone(),
+                    SemanticSignal {
+                        rank,
+                        cosine: hit.cosine,
+                    },
+                ));
             }
         }
-        let status = if coverage.embedded_objects < coverage.in_scope_objects { SemanticStatus::Partial } else { SemanticStatus::Ok };
+        let status = if coverage.embedded_objects < coverage.in_scope_objects {
+            SemanticStatus::Partial
+        } else {
+            SemanticStatus::Ok
+        };
         Ok((resolved, status, Some(ratio)))
     }
 
@@ -386,7 +486,11 @@ impl RecallService {
     /// Consent is re-read before every batch and again before results are stored: turning semantic Recall off stops the next
     /// request, and a batch already in flight is DISCARDED, not stored. A vector is stored only if its revision is still the
     /// object's current one. Never run for an object without consent; never embeds historical revisions.
-    pub async fn index_pending(&self, store: &CaptureStore, max_objects: usize) -> Result<IndexReport, RecallError> {
+    pub async fn index_pending(
+        &self,
+        store: &CaptureStore,
+        max_objects: usize,
+    ) -> Result<IndexReport, RecallError> {
         let mut report = IndexReport::default();
         let key = self.provider.model_key().clone();
         let dims = self.provider.dims();
@@ -397,7 +501,9 @@ impl RecallService {
                 report.stopped_by_consent = true;
                 return Ok(report);
             }
-            let pending = store.recall_pending_embeddings(key.as_str(), batch_size.min(max_objects - seen)).map_err(storage)?;
+            let pending = store
+                .recall_pending_embeddings(key.as_str(), batch_size.min(max_objects - seen))
+                .map_err(storage)?;
             if pending.is_empty() {
                 break;
             }
@@ -408,8 +514,16 @@ impl RecallService {
                 let text = embedding_text(&item.kind, &item.title, &item.body);
                 let hash = text_hash(&text);
                 // Byte-identical embedded text (for instance a merge adopting an existing wording): no provider call needed.
-                if store.recall_stored_text_hash(&item.object_id, key.as_str()).map_err(storage)?.as_deref() == Some(hash.as_str()) {
-                    if store.recall_adopt_revision(&item.object_id, key.as_str(), &item.revision_id).map_err(storage)? {
+                if store
+                    .recall_stored_text_hash(&item.object_id, key.as_str())
+                    .map_err(storage)?
+                    .as_deref()
+                    == Some(hash.as_str())
+                {
+                    if store
+                        .recall_adopt_revision(&item.object_id, key.as_str(), &item.revision_id)
+                        .map_err(storage)?
+                    {
                         report.adopted += 1;
                     }
                     continue;
@@ -427,7 +541,11 @@ impl RecallService {
             report.embedding_requests += 1;
             report.uploaded_texts += texts.len() as u32;
             let vectors = match self.provider.embed(&texts, EmbedPurpose::Document).await {
-                Ok(vectors) if vectors.len() == texts.len() && vectors.iter().all(|v| v.len() == dims) => vectors,
+                Ok(vectors)
+                    if vectors.len() == texts.len() && vectors.iter().all(|v| v.len() == dims) =>
+                {
+                    vectors
+                }
                 Ok(_) => {
                     report.failure = Some("unreadable");
                     return Ok(report);
@@ -443,12 +561,23 @@ impl RecallService {
                 return Ok(report);
             }
             for ((item, _text, hash), vector) in to_embed.into_iter().zip(vectors) {
-                if store.recall_put_embedding(&item.object_id, key.as_str(), &item.revision_id, dims, &vector, &hash).map_err(storage)? {
+                if store
+                    .recall_put_embedding(
+                        &item.object_id,
+                        key.as_str(),
+                        &item.revision_id,
+                        dims,
+                        &vector,
+                        &hash,
+                    )
+                    .map_err(storage)?
+                {
                     report.embedded += 1;
                 }
             }
         }
-        report.remaining = Some(store.recall_pending_count(key.as_str()).map_err(storage)? as usize);
+        report.remaining =
+            Some(store.recall_pending_count(key.as_str()).map_err(storage)? as usize);
         Ok(report)
     }
 }

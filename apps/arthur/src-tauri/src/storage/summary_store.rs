@@ -26,15 +26,24 @@ pub struct KnowledgeSummary {
 
 impl CaptureStore {
     #[allow(dead_code)] // the unscoped form; the app itself always names a project
-    pub fn knowledge_summaries(&self, object_ids: Option<&[String]>) -> Result<Vec<KnowledgeSummary>, StoreError> {
+    pub fn knowledge_summaries(
+        &self,
+        object_ids: Option<&[String]>,
+    ) -> Result<Vec<KnowledgeSummary>, StoreError> {
         self.knowledge_summaries_in(object_ids, None)
     }
 
     /// As `knowledge_summaries`, optionally only for the objects of one project.
-    pub fn knowledge_summaries_in(&self, object_ids: Option<&[String]>, project_id: Option<&str>) -> Result<Vec<KnowledgeSummary>, StoreError> {
+    pub fn knowledge_summaries_in(
+        &self,
+        object_ids: Option<&[String]>,
+        project_id: Option<&str>,
+    ) -> Result<Vec<KnowledgeSummary>, StoreError> {
         if let Some(ids) = object_ids {
             if ids.len() > MAX_SUMMARY_IDS {
-                return Err(StoreError::Invalid(format!("more than {MAX_SUMMARY_IDS} ids")));
+                return Err(StoreError::Invalid(format!(
+                    "more than {MAX_SUMMARY_IDS} ids"
+                )));
             }
             if ids.is_empty() {
                 return Ok(Vec::new());
@@ -57,7 +66,11 @@ impl CaptureStore {
              {filter} ORDER BY o.seq"
         );
         let mut statement = connection.prepare(&sql)?;
-        let params = object_ids.unwrap_or(&[]).iter().map(|id| Some(id.as_str())).chain([project_id, project_id]);
+        let params = object_ids
+            .unwrap_or(&[])
+            .iter()
+            .map(|id| Some(id.as_str()))
+            .chain([project_id, project_id]);
         let rows = statement.query_map(params_from_iter(params), |row| {
             Ok(KnowledgeSummary {
                 object_id: row.get(0)?,
@@ -67,7 +80,8 @@ impl CaptureStore {
                 current_revision_id: row.get(4)?,
             })
         })?;
-        rows.collect::<Result<Vec<_>, _>>().map_err(StoreError::from)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(StoreError::from)
     }
 }
 
@@ -80,10 +94,28 @@ mod tests {
     use crate::storage::relation_store::NewRelation;
 
     fn relate(store: &CaptureStore, kind: &str, a: &str, b: &str) {
-        store.create_relation(NewRelation { kind: kind.into(), source_object_id: a.into(), target_object_id: b.into() }, "user").unwrap();
+        store
+            .create_relation(
+                NewRelation {
+                    kind: kind.into(),
+                    source_object_id: a.into(),
+                    target_object_id: b.into(),
+                },
+                "user",
+            )
+            .unwrap();
     }
     fn edit(store: &CaptureStore, id: &str) {
-        store.update_object(id, Changes { kind: None, title: Some(format!("edit {}", uuid::Uuid::new_v4())), body: None }).unwrap();
+        store
+            .update_object(
+                id,
+                Changes {
+                    kind: None,
+                    title: Some(format!("edit {}", uuid::Uuid::new_v4())),
+                    body: None,
+                },
+            )
+            .unwrap();
     }
 
     /// `objects` objects, spread over captures of at most twelve (the most one distillation may produce).
@@ -92,13 +124,31 @@ mod tests {
         let mut ids = Vec::new();
         for batch in (0..objects).collect::<Vec<_>>().chunks(12) {
             let text: String = batch.iter().map(|i| format!("word{i:03} ")).collect();
-            let capture = store.create(CreateCaptureInput { source: "text".into(), content: text, project_id: None }).unwrap();
+            let capture = store
+                .create(CreateCaptureInput {
+                    source: "text".into(),
+                    content: text,
+                    project_id: None,
+                })
+                .unwrap();
             let new: Vec<NewKnowledgeObject> = batch
                 .iter()
                 .enumerate()
-                .map(|(at, i)| NewKnowledgeObject { kind: "idea".into(), title: format!("T{i}"), body: "B".into(), source_start: (at * 8) as i64, source_end: (at * 8 + 7) as i64 })
+                .map(|(at, i)| NewKnowledgeObject {
+                    kind: "idea".into(),
+                    title: format!("T{i}"),
+                    body: "B".into(),
+                    source_start: (at * 8) as i64,
+                    source_end: (at * 8 + 7) as i64,
+                })
                 .collect();
-            ids.extend(store.record_distillation(&capture.id, new).unwrap().into_iter().map(|o| o.id));
+            ids.extend(
+                store
+                    .record_distillation(&capture.id, new)
+                    .unwrap()
+                    .into_iter()
+                    .map(|o| o.id),
+            );
         }
         (store, ids)
     }
@@ -124,10 +174,25 @@ mod tests {
         edit(&store, &ids[0]);
         edit(&store, &ids[0]);
 
-        let by_id = |id: &String| store.knowledge_summaries(Some(std::slice::from_ref(id))).unwrap().remove(0);
-        assert_eq!((by_id(&ids[0]).relation_count, by_id(&ids[0]).revision_count), (3, 3), "a hub: three relations, two edits");
-        assert_eq!((by_id(&ids[1]).relation_count, by_id(&ids[1]).revision_count), (2, 1));
-        assert_eq!((by_id(&ids[2]).relation_count, by_id(&ids[2]).revision_count), (1, 1));
+        let by_id = |id: &String| {
+            store
+                .knowledge_summaries(Some(std::slice::from_ref(id)))
+                .unwrap()
+                .remove(0)
+        };
+        assert_eq!(
+            (by_id(&ids[0]).relation_count, by_id(&ids[0]).revision_count),
+            (3, 3),
+            "a hub: three relations, two edits"
+        );
+        assert_eq!(
+            (by_id(&ids[1]).relation_count, by_id(&ids[1]).revision_count),
+            (2, 1)
+        );
+        assert_eq!(
+            (by_id(&ids[2]).relation_count, by_id(&ids[2]).revision_count),
+            (1, 1)
+        );
     }
 
     #[test]
@@ -144,16 +209,25 @@ mod tests {
     fn asking_for_some_ids_returns_only_those_and_asking_for_none_returns_nothing() {
         let (store, ids) = seeded(4);
         let two = store.knowledge_summaries(Some(&ids[1..3])).unwrap();
-        assert_eq!(two.iter().map(|s| s.object_id.clone()).collect::<Vec<_>>(), ids[1..3].to_vec());
+        assert_eq!(
+            two.iter().map(|s| s.object_id.clone()).collect::<Vec<_>>(),
+            ids[1..3].to_vec()
+        );
         assert!(store.knowledge_summaries(Some(&[])).unwrap().is_empty());
-        assert!(store.knowledge_summaries(Some(&["unknown".to_string()])).unwrap().is_empty());
+        assert!(store
+            .knowledge_summaries(Some(&["unknown".to_string()]))
+            .unwrap()
+            .is_empty());
     }
 
     #[test]
     fn the_request_is_bounded() {
         let (store, _) = seeded(1);
         let too_many: Vec<String> = (0..=MAX_SUMMARY_IDS).map(|i| i.to_string()).collect();
-        assert!(matches!(store.knowledge_summaries(Some(&too_many)), Err(StoreError::Invalid(_))));
+        assert!(matches!(
+            store.knowledge_summaries(Some(&too_many)),
+            Err(StoreError::Invalid(_))
+        ));
     }
 
     #[test]
@@ -166,6 +240,13 @@ mod tests {
         assert_eq!(all.len(), 49);
         let total: i64 = all.iter().map(|s| s.relation_count).sum();
         assert_eq!(total, 96, "48 relations, each counted for both of its ends");
-        assert_eq!((all[0].relation_count, all[1].relation_count, all[48].relation_count), (1, 2, 1));
+        assert_eq!(
+            (
+                all[0].relation_count,
+                all[1].relation_count,
+                all[48].relation_count
+            ),
+            (1, 2, 1)
+        );
     }
 }

@@ -8,11 +8,14 @@
 
 use serde::Serialize;
 
-use super::embed::OPENAI_MODEL as OPENAI_EMBEDDING_MODEL;
-use super::chat::LUNA_MODEL;
-use crate::stt::openai::DEFAULT_MODEL as OPENAI_STT_MODEL;
-use crate::tts::openai::{DEFAULT_MODEL as OPENAI_TTS_MODEL, DEFAULT_VOICE as OPENAI_TTS_VOICE, MODELS as OPENAI_TTS_MODELS, VOICES as OPENAI_TTS_VOICES};
 use super::chat::DEFAULT_MODEL as OPENAI_LLM_MODEL;
+use super::chat::LUNA_MODEL;
+use super::embed::OPENAI_MODEL as OPENAI_EMBEDDING_MODEL;
+use crate::stt::openai::DEFAULT_MODEL as OPENAI_STT_MODEL;
+use crate::tts::openai::{
+    DEFAULT_MODEL as OPENAI_TTS_MODEL, DEFAULT_VOICE as OPENAI_TTS_VOICE,
+    MODELS as OPENAI_TTS_MODELS, VOICES as OPENAI_TTS_VOICES,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,7 +40,9 @@ impl ProviderId {
     }
 
     pub fn parse(raw: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|provider| provider.as_str() == raw)
+        Self::ALL
+            .into_iter()
+            .find(|provider| provider.as_str() == raw)
     }
 
     pub fn display_name(self) -> &'static str {
@@ -57,7 +62,10 @@ impl ProviderId {
 
     pub fn supports(self, capability: Capability) -> bool {
         match self {
-            ProviderId::OpenAi => matches!(capability, Capability::Llm | Capability::Stt | Capability::Embeddings | Capability::Tts),
+            ProviderId::OpenAi => matches!(
+                capability,
+                Capability::Llm | Capability::Stt | Capability::Embeddings | Capability::Tts
+            ),
             ProviderId::TypeSafe => false,
         }
     }
@@ -78,7 +86,12 @@ pub enum Capability {
 }
 
 impl Capability {
-    pub const ALL: [Capability; 4] = [Capability::Llm, Capability::Stt, Capability::Embeddings, Capability::Tts];
+    pub const ALL: [Capability; 4] = [
+        Capability::Llm,
+        Capability::Stt,
+        Capability::Embeddings,
+        Capability::Tts,
+    ];
 
     pub fn as_str(self) -> &'static str {
         match self {
@@ -90,7 +103,9 @@ impl Capability {
     }
 
     pub fn parse(raw: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|capability| capability.as_str() == raw)
+        Self::ALL
+            .into_iter()
+            .find(|capability| capability.as_str() == raw)
     }
 
     pub fn default_provider(self) -> ProviderId {
@@ -119,8 +134,18 @@ pub struct TtsOptions {
 
 pub fn tts_options(provider: ProviderId) -> TtsOptions {
     match provider {
-        ProviderId::OpenAi => TtsOptions { models: OPENAI_TTS_MODELS, voices: OPENAI_TTS_VOICES, default_model: OPENAI_TTS_MODEL, default_voice: OPENAI_TTS_VOICE },
-        ProviderId::TypeSafe => TtsOptions { models: &[], voices: &[], default_model: "", default_voice: "" },
+        ProviderId::OpenAi => TtsOptions {
+            models: OPENAI_TTS_MODELS,
+            voices: OPENAI_TTS_VOICES,
+            default_model: OPENAI_TTS_MODEL,
+            default_voice: OPENAI_TTS_VOICE,
+        },
+        ProviderId::TypeSafe => TtsOptions {
+            models: &[],
+            voices: &[],
+            default_model: "",
+            default_voice: "",
+        },
     }
 }
 
@@ -143,7 +168,10 @@ mod tests {
             assert_eq!(serde_json::to_value(provider).unwrap(), provider.as_str());
         }
         for capability in Capability::ALL {
-            assert_eq!(serde_json::to_value(capability).unwrap(), capability.as_str());
+            assert_eq!(
+                serde_json::to_value(capability).unwrap(),
+                capability.as_str()
+            );
         }
     }
 
@@ -156,10 +184,20 @@ mod tests {
 
     #[test]
     fn the_typesafe_slot_is_native_only_and_serves_no_capability() {
-        assert!(!ProviderId::ALL.contains(&ProviderId::TypeSafe), "not listed in AI & Voice");
-        assert_eq!(ProviderId::parse("typesafe"), None, "no UI command can name it");
+        assert!(
+            !ProviderId::ALL.contains(&ProviderId::TypeSafe),
+            "not listed in AI & Voice"
+        );
+        assert_eq!(
+            ProviderId::parse("typesafe"),
+            None,
+            "no UI command can name it"
+        );
         assert_eq!(ProviderId::TypeSafe.as_str(), "typesafe");
-        assert!(Capability::ALL.into_iter().all(|capability| !ProviderId::TypeSafe.supports(capability) && capability.default_provider() != ProviderId::TypeSafe));
+        assert!(Capability::ALL
+            .into_iter()
+            .all(|capability| !ProviderId::TypeSafe.supports(capability)
+                && capability.default_provider() != ProviderId::TypeSafe));
     }
 
     #[test]
@@ -170,7 +208,11 @@ mod tests {
         for capability in Capability::ALL {
             assert_eq!(Capability::parse(capability.as_str()), Some(capability));
         }
-        assert_eq!(ProviderId::parse("tts"), None, "tts is a capability, not a provider");
+        assert_eq!(
+            ProviderId::parse("tts"),
+            None,
+            "tts is a capability, not a provider"
+        );
         assert_eq!(Capability::parse("speech"), None);
         assert_eq!(Capability::parse("tts"), Some(Capability::Tts));
     }

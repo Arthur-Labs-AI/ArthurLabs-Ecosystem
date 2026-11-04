@@ -43,7 +43,7 @@ test("a user relation can never be deleted by integration: the only relation DEL
 });
 
 test("automatic relations are stored as origin model", () => {
-  assert.match(shipped("storage/integration_store.rs"), /insert_all\(&transaction, edges, "model"\)/);
+  assert.match(shipped("storage/integration_store.rs"), /insert_all\(transaction, edges, "model"\)/);
   for (const file of INTEGRATION_FILES) assert.doesNotMatch(shipped(file), /"user"/, `${file} must never write a user relation`);
 });
 
@@ -87,7 +87,7 @@ test("Capture and Distillation know nothing about integration; the command notif
 
 test("only authoritative current revisions notify: edits, current branches and merges, moves", () => {
   const lineage = shipped("commands/lineage.rs");
-  for (const command of ["update_knowledge_object", "create_revision_from", "merge_revisions"]) assert.match(lineage, new RegExp(`fn ${command}\\(app: AppHandle`), `${command} reports its change`);
+  for (const command of ["update_knowledge_object", "create_revision_from", "merge_revisions"]) assert.match(lineage, new RegExp(`fn ${command}\\(\\s*app: AppHandle`), `${command} reports its change`);
   assert.equal([...lineage.matchAll(/integration::notify_revised\(/g)].length, 3);
   const integration = shipped("commands/integration.rs");
   assert.match(integration, /if previous != current/, "a revision that did not become current notifies nothing");

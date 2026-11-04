@@ -37,8 +37,12 @@ impl LineageError {
         match self {
             LineageError::ObjectNotFound => "That knowledge object no longer exists.".into(),
             LineageError::RevisionNotFound => "That revision no longer exists.".into(),
-            LineageError::InvalidRevision(reason) => format!("That revision is not valid: {reason}."),
-            LineageError::Storage(reason) => format!("The history could not be read or saved: {reason}"),
+            LineageError::InvalidRevision(reason) => {
+                format!("That revision is not valid: {reason}.")
+            }
+            LineageError::Storage(reason) => {
+                format!("The history could not be read or saved: {reason}")
+            }
         }
     }
 }
