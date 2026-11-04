@@ -1,0 +1,41 @@
+{
+  "name": "@qa/harness-deepseek",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-sdk-client": "0.1.5-rc.2",
+    "@qa/domain": "workspace:*",
+    "@qa/evidence-pipeline": "workspace:*",
+    "@qa/harness-protocol": "workspace:*",
+    "@qa/schemas": "workspace:*",
+    "@qa/shared": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-subprocess": "0.1.5-rc.2",
+    "@qa/persistence": "workspace:*",
+    "@qa/project-manager": "workspace:*",
+    "@qa/run-engine": "workspace:*",
+    "@qa/snapshot-engine": "workspace:*",
+    "@qa/workspace-factory": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

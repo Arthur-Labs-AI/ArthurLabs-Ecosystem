@@ -1,0 +1,803 @@
+import React from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowRight, Check, FlaskConical, X } from 'lucide-react';
+import { CopyId } from '../components/CopyId.js';
+import { PageHeader, PageSection } from '../components/ui/PageHeader.js';
+import { StatusPill, dotClassForStatus } from '../components/ui/StatusPill.js';
+import { SegmentedControl } from '../components/ui/Tabs.js';
+import { sentryApi } from '../lib/sentry-api.js';
+import { RemoveProjectButton } from '../components/RemoveProjectButton.js';
+import { isConfirmPaidRunsEnabled } from '../lib/app-preferences.js';
+import { ProjectProfilePanel } from '../components/ProjectProfilePanel.js';
+import { useProjectProfile } from '../lib/use-project-profile.js';
+
+const AGENT_ORDER = ['stack_opencode_main', 'stack_deepseek_main', 'stack_glm_main'];
+
+function shortModel(modelId: string | undefined): string {
+  if (modelId === undefined || modelId === '') return 'Default model';
+  const parts = modelId.split('/');
+  return parts[parts.length - 1] ?? modelId;
+}
+
+function shortRevision(id: string): string {
+  return id.length > 18 ? id.slice(0, 12) + '…' : id;
+}
+
+function formatRevisionDate(iso: string | undefined): string {
+  if (iso === undefined || iso === '') return '—';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleString([], {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function sortRevisionsNewestFirst<T extends { id: string; importedAt: string }>(
+  revisions: ReadonlyArray<T>,
+): T[] {
+  return [...revisions].sort((a, b) =>
+    a.importedAt < b.importedAt ? 1 : a.importedAt > b.importedAt ? -1 : b.id < a.id ? 1 : -1,
+  );
+}
+
+export function ProjectDetail(): React.JSX.Element {
+  const { projectId } = useParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [error, setError] = React.useState<string | undefined>(undefined);
+  const [mode, setMode] = React.useState<'full' | 'targeted'>('full');
+  const [targetPaths, setTargetPaths] = React.useState('');
+  const [webAccess, setWebAccess] = React.useState(false);
+  const [toolDownloads, setToolDownloads] = React.useState(false);
+  const detail = useQuery({
+    queryKey: ['project', projectId],
+    queryFn: () => sentryApi().projects.get(projectId as string),
+    enabled: projectId !== undefined,
+  });
+  const runs = useQuery({
+    queryKey: ['project-runs', projectId],
+    queryFn: () => sentryApi().runs.list(projectId as string),
+    enabled: projectId !== undefined,
+  });
+  const revisions = useQuery({
+    queryKey: ['project-revisions', projectId],
+    queryFn: () => sentryApi().projects.revisions(projectId as string),
+    enabled: projectId !== undefined,
+  });
+  const environment = useQuery({
+    queryKey: ['environment'],
+    queryFn: () => sentryApi().doctors.environment(),
+  });
+  const stacks = (
+    (
+      environment.data as
+        | {
+            agentStacks?: Array<{
+              id: string;
+              displayName: string;
+              readiness?: string;
+              modelId?: string;
+            }>;
+          }
+        | undefined
+    )?.agentStacks ?? []
+  )
+    .filter(
+      (s) =>
+        s.id === 'stack_opencode_main' ||
+        s.id === 'stack_deepseek_main' ||
+        s.id === 'stack_glm_main',
+    )
+    .sort((a, b) => AGENT_ORDER.indexOf(a.id) - AGENT_ORDER.indexOf(b.id));
+  const [selectedStacks, setSelectedStacks] = React.useState<string[] | undefined>(undefined);
+  const effectiveStacks = selectedStacks ?? stacks.map((s) => s.id);
+  const toggleStack = (id: string): void => {
+    const base = selectedStacks ?? stacks.map((s) => s.id);
+    setSelectedStacks(base.includes(id) ? base.filter((s) => s !== id) : [...base, id]);
+  };
+  const profile = useProjectProfile(projectId);
+  const profileAgents = profile.status.data?.agents ?? [];
+  const freshProfileCount = effectiveStacks.filter((id) =>
+    profileAgents.some((agent) => agent.agentStackId === id && agent.state === 'fresh'),
+  ).length;
+  // Default on once a selected agent has fresh notes; the choice is the user's after that.
+  const [useProfileChoice, setUseProfileChoice] = React.useState<boolean | undefined>(undefined);
+  const useProfile = (useProfileChoice ?? true) && freshProfileCount > 0;
+  const [confirmStart, setConfirmStart] = React.useState<'full' | 'targeted' | undefined>(
+    undefined,
+  );
+  const readiness = useQuery({
+    queryKey: ['production-readiness', [...effectiveStacks].sort()],
+    queryFn: () => sentryApi().production.readiness({ agentStackIds: effectiveStacks }),
+  });
+  const gate = readiness.data as
+    | {
+        ready?: boolean;
+        reasons?: string[];
+        warnings?: string[];
+        productionWired?: boolean;
+      }
+    | undefined;
+  const startOptions = (runMode: 'full' | 'targeted'): Record<string, unknown> => ({
+    mode: runMode,
+    ...(effectiveRevisionId === undefined ? {} : { revisionId: effectiveRevisionId }),
+    ...(runMode === 'targeted'
+      ? {
+          includePaths: targetPaths
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0),
+        }
+      : {}),
+    ...(effectiveStacks.length === 0 ? {} : { agentStackIds: effectiveStacks }),
+    ...(webAccess ? { webAccess: true } : {}),
+    ...(toolDownloads ? { toolDownloads: true } : {}),
+    ...(useProfile ? { useProfile: true } : {}),
+  });
+  const onStarted = (operation: unknown): void => {
+    const runId = (operation as { runId?: string }).runId;
+    if (runId !== undefined) navigate('/runs/' + runId);
+    setConfirmStart(undefined);
+    void queryClient.invalidateQueries({ queryKey: ['project-runs', projectId] });
+  };
+  const onStartError = (e: unknown): void => setError(e instanceof Error ? e.message : String(e));
+  const startFull = useMutation({
+    mutationFn: () => sentryApi().runs.start(projectId as string, startOptions('full') as never),
+    onSuccess: onStarted,
+    onError: onStartError,
+  });
+  const startTargeted = useMutation({
+    mutationFn: () =>
+      sentryApi().runs.start(projectId as string, startOptions('targeted') as never),
+    onSuccess: onStarted,
+    onError: onStartError,
+  });
+  const [updateStartedAt, setUpdateStartedAt] = React.useState<number | undefined>(undefined);
+  const [updateElapsed, setUpdateElapsed] = React.useState(0);
+  const [cancellingUpdate, setCancellingUpdate] = React.useState(false);
+  const updateCancelledByUserRef = React.useRef(false);
+  const update = useMutation({
+    mutationFn: () => sentryApi().projects.update(projectId as string),
+    onMutate: () => {
+      updateCancelledByUserRef.current = false;
+      setCancellingUpdate(false);
+      setError(undefined);
+      setUpdateStartedAt(Date.now());
+      setUpdateElapsed(0);
+    },
+    onSuccess: () => {
+      setError(undefined);
+      setUpdateStartedAt(undefined);
+      setCancellingUpdate(false);
+      void queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      void queryClient.invalidateQueries({ queryKey: ['project-revisions', projectId] });
+    },
+    onError: (e) => {
+      setUpdateStartedAt(undefined);
+      setCancellingUpdate(false);
+      if (updateCancelledByUserRef.current) {
+        updateCancelledByUserRef.current = false;
+        return;
+      }
+      const message = e instanceof Error ? e.message : String(e);
+      if (/cancelled|aborted/i.test(message)) return;
+      setError(message);
+    },
+  });
+  const cancelUpdate = async (): Promise<void> => {
+    updateCancelledByUserRef.current = true;
+    setCancellingUpdate(true);
+    try {
+      await sentryApi().projects.cancelUpdate?.();
+    } catch {
+      /* best-effort */
+    } finally {
+      setCancellingUpdate(false);
+    }
+  };
+  React.useEffect(() => {
+    if (updateStartedAt === undefined) return;
+    const timer = setInterval(() => setUpdateElapsed(Date.now() - updateStartedAt), 250);
+    return () => clearInterval(timer);
+  }, [updateStartedAt]);
+  React.useEffect(() => {
+    if (!update.isPending) return;
+    const onBeforeUnload = (): void => {
+      updateCancelledByUserRef.current = true;
+      void sentryApi().projects.cancelUpdate?.();
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [update.isPending]);
+  const doctor = useQuery({
+    queryKey: ['project-doctor', projectId],
+    queryFn: () => sentryApi().projects.doctor(projectId as string),
+    enabled: projectId !== undefined,
+  });
+  const doctorData = doctor.data as
+    | {
+        ready?: boolean;
+        managedCopyState?: string;
+        warnings?: string[];
+        detectedEcosystem?: string[];
+      }
+    | undefined;
+  const record = detail.data as
+    | {
+        project: { name: string; sourcePath: string };
+        revision: { id: string };
+        managedCopy: { state: string; lockedByQARunId?: string };
+      }
+    | undefined;
+  const runList =
+    (runs.data as Array<{ id: string; mode: string; status: string }> | undefined) ?? [];
+  const revisionList = sortRevisionsNewestFirst(
+    (revisions.data as Array<{ id: string; importedAt: string }> | undefined) ?? [],
+  );
+  const currentRevisionId = record?.revision.id;
+  const [selectedRevisionId, setSelectedRevisionId] = React.useState<string | undefined>(undefined);
+  // A selection from another project (or a deleted revision) never leaks
+  // into this run: fall back to the current revision unless the selected
+  // id is actually in this project's list.
+  const effectiveRevisionId =
+    selectedRevisionId !== undefined && revisionList.some((r) => r.id === selectedRevisionId)
+      ? selectedRevisionId
+      : currentRevisionId;
+  const effectiveRevision = revisionList.find((r) => r.id === effectiveRevisionId);
+  const pendingStart = confirmStart !== undefined;
+  const startPending = startFull.isPending || startTargeted.isPending;
+  return (
+    <div className="page">
+      <PageHeader
+        title={record?.project.name ?? 'Project'}
+        subtitle={record?.project.sourcePath ?? projectId}
+        crumbs={
+          <>
+            <Link to="/projects">Projects</Link> / {record?.project.name ?? 'Project'}
+          </>
+        }
+        actions={
+          <>
+            <button onClick={() => update.mutate()} disabled={update.isPending}>
+              {update.isPending ? 'Updating…' : 'Update Project'}
+            </button>
+            {record && projectId ? (
+              <RemoveProjectButton
+                projectId={projectId}
+                name={record.project.name}
+                state={record.managedCopy.state}
+                onRemoved={() => navigate('/projects')}
+              />
+            ) : null}
+          </>
+        }
+      />
+      {error !== undefined ? (
+        <div className="error-box" role="alert">
+          {error}{' '}
+          <button className="compact ghost" onClick={() => setError(undefined)}>
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+      {record?.managedCopy.state === 'locked_for_run' ? (
+        <div className="inline-notice tone-warning" role="status">
+          Project is in use by {record?.managedCopy.lockedByQARunId ?? 'an active run'}. Update
+          cannot start until the run finishes.
+        </div>
+      ) : null}
+      <PageSection title="Overview">
+        <div className="cards">
+          <div className="card">
+            <h3 className="card-title">Project state</h3>
+            <div style={{ marginTop: 8 }}>
+              <StatusPill status={record?.managedCopy.state ?? 'unknown'} />
+            </div>
+            <dl className="kv" style={{ marginTop: 8 }}>
+              <dt>Revision</dt>
+              <dd>
+                <CopyId id={record?.revision.id ?? ''} />
+              </dd>
+              <dt>Runs</dt>
+              <dd>{runList.length}</dd>
+            </dl>
+          </div>
+          <div className="card">
+            <h3 className="card-title">Readiness</h3>
+            {doctorData === undefined ? (
+              <p className="muted">Probing…</p>
+            ) : (
+              <>
+                <div style={{ marginTop: 8 }}>
+                  <StatusPill
+                    status={doctorData.ready === true ? 'ready' : 'not ready'}
+                    label={doctorData.ready === true ? 'Ready' : 'Not ready'}
+                  />
+                </div>
+                <p className="metadata">
+                  Ecosystem: {(doctorData.detectedEcosystem ?? []).join(', ') || '—'}
+                </p>
+                {(doctorData.warnings ?? []).map((warning) => (
+                  <p key={warning} className="metadata">
+                    ! {warning}
+                  </p>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      </PageSection>
+      <PageSection title="Project profile">
+        <ProjectProfilePanel
+          stacks={stacks}
+          agents={profileAgents}
+          loading={profile.status.isLoading}
+          onBuild={(ids) => profile.build.mutate(ids)}
+          buildError={
+            profile.build.error instanceof Error ? profile.build.error.message : undefined
+          }
+        />
+      </PageSection>
+      <PageSection title="Run QA">
+        <div className="card">
+          <p className="body-secondary" style={{ marginTop: 0 }}>
+            Real provider run — selected agents execute against this project and consume provider
+            budget.
+          </p>
+          {gate !== undefined && gate.ready !== true ? (
+            <div className="error-box" role="alert" style={{ marginBottom: 12 }}>
+              <strong>Cannot start QA</strong>
+              <ul style={{ margin: '4px 0 8px', paddingLeft: 18 }}>
+                {(gate.reasons ?? []).map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+              {(gate.warnings ?? []).length > 0 ? (
+                <>
+                  <strong>Warnings (non-blocking)</strong>
+                  <ul style={{ margin: '4px 0 8px', paddingLeft: 18 }}>
+                    {(gate.warnings ?? []).map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+              <span>
+                <Link to="/settings">Open Provider Settings</Link> ·{' '}
+                <Link to="/environment">Open Environment</Link>
+              </span>
+            </div>
+          ) : null}
+          <SegmentedControl
+            label="QA mode"
+            value={mode}
+            onChange={(value) => setMode(value as 'full' | 'targeted')}
+            options={[
+              { value: 'full', label: 'Full QA' },
+              { value: 'targeted', label: 'Targeted QA' },
+            ]}
+          />
+          <label
+            htmlFor="run-revision"
+            className="metadata"
+            style={{ display: 'block', margin: '12px 0 6px' }}
+          >
+            Revision
+          </label>
+          <select
+            id="run-revision"
+            aria-label="Run revision"
+            value={effectiveRevisionId ?? ''}
+            onChange={(e) => setSelectedRevisionId(e.target.value)}
+            disabled={revisionList.length === 0}
+            style={{ minWidth: 200, maxWidth: '100%' }}
+          >
+            {revisionList.length === 0 ? <option value="">No revisions yet</option> : null}
+            {revisionList.map((revision) => (
+              <option key={revision.id} value={revision.id}>
+                {`${shortRevision(revision.id)} · ${formatRevisionDate(revision.importedAt)}${revision.id === currentRevisionId ? ' · current' : ''}`}
+              </option>
+            ))}
+          </select>
+          <label
+            className="metadata"
+            style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '12px 0 6px' }}
+          >
+            <input
+              type="checkbox"
+              aria-label="Allow web access"
+              checked={webAccess}
+              onChange={(e) => setWebAccess(e.target.checked)}
+            />
+            Allow web access
+          </label>
+          <label
+            className="metadata"
+            style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '12px 0 6px' }}
+          >
+            <input
+              type="checkbox"
+              aria-label="Use project profile"
+              checked={useProfile}
+              disabled={freshProfileCount === 0}
+              onChange={(e) => setUseProfileChoice(e.target.checked)}
+            />
+            Use project profile
+          </label>
+          <p className="metadata" style={{ margin: '0 0 6px' }}>
+            {freshProfileCount === 0
+              ? 'No selected agent has an up-to-date profile; runs start without one.'
+              : freshProfileCount +
+                ' of ' +
+                effectiveStacks.length +
+                ' selected agents have an up-to-date profile and get it back; the others start without one.'}
+          </p>
+          <label
+            className="metadata"
+            style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '12px 0 6px' }}
+          >
+            <input
+              type="checkbox"
+              aria-label="Allow tool and SDK downloads"
+              checked={toolDownloads}
+              onChange={(e) => setToolDownloads(e.target.checked)}
+            />
+            Allow tool and SDK downloads
+          </label>
+          <p className="metadata" style={{ margin: '0 0 6px' }}>
+            Lets agents download missing compilers and SDKs from the official vendor sites (Rust,
+            .NET, Go, Python tooling, Java). Other sites stay blocked. Downloads are discarded after
+            the run; for repeated use install the toolchain under Settings, Toolchains. Applies to
+            OpenCode and Claude Code.
+          </p>
+          <p className="metadata" style={{ margin: '0 0 6px' }}>
+            Package installs from registries are always allowed. Web access also lets agents fetch
+            and search the web for docs and advisories.
+          </p>
+          <div className="metadata" style={{ margin: '12px 0 6px' }}>
+            Agents
+          </div>
+          {stacks.length === 0 ? (
+            <span className="muted">Loading agent readiness…</span>
+          ) : (
+            <div className="project-grid">
+              {stacks.map((stack) => {
+                const selected = effectiveStacks.includes(stack.id);
+                return (
+                  <button
+                    key={stack.id}
+                    className="card agent-card"
+                    aria-pressed={selected}
+                    onClick={() => toggleStack(stack.id)}
+                    title={(selected ? 'Deselect ' : 'Select ') + stack.displayName}
+                    style={selected ? { borderColor: 'var(--accent)' } : undefined}
+                  >
+                    <span
+                      className={dotClassForStatus(stack.readiness ?? '')}
+                      aria-hidden="true"
+                      style={{ marginTop: 4 }}
+                    />
+                    <span className="grow">
+                      <span
+                        className="card-title"
+                        style={{ display: 'flex', gap: 6, alignItems: 'center' }}
+                      >
+                        {selected ? <Check size={14} aria-hidden="true" /> : null}
+                        {stack.displayName}
+                      </span>
+                      <span
+                        className="mono metadata truncate"
+                        style={{ display: 'block' }}
+                        title={stack.modelId ?? 'Default model'}
+                      >
+                        {shortModel(stack.modelId)}
+                      </span>
+                      <span className="metadata">{stack.readiness ?? 'unknown'}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {stacks.length > 0 && effectiveStacks.length === 0 ? (
+            <p className="error-box" style={{ marginTop: 8 }} role="alert">
+              Select at least one agent to start a run.
+            </p>
+          ) : null}
+          {mode === 'targeted' ? (
+            <div style={{ marginTop: 12 }}>
+              <TargetPathInput
+                projectId={projectId as string}
+                value={targetPaths}
+                onChange={setTargetPaths}
+              />
+              <p className="metadata">
+                Agents remain full-strength QA workers; findings should relate to the selected
+                scope.
+              </p>
+            </div>
+          ) : null}
+          <div style={{ marginTop: 12 }}>
+            <button
+              className="primary"
+              onClick={() => {
+                if (!isConfirmPaidRunsEnabled()) {
+                  if (mode === 'full') startFull.mutate();
+                  else startTargeted.mutate();
+                  return;
+                }
+                setConfirmStart(mode);
+              }}
+              disabled={
+                startPending ||
+                update.isPending ||
+                effectiveStacks.length === 0 ||
+                gate?.ready !== true
+              }
+            >
+              <FlaskConical size={15} /> {mode === 'full' ? 'Start Full QA' : 'Start Targeted QA'}
+            </button>
+          </div>
+        </div>
+      </PageSection>
+      <PageSection title="Recent runs">
+        {runList.length === 0 ? (
+          <div className="empty">No QA runs yet.</div>
+        ) : (
+          <div className="project-grid">
+            {runList.slice(0, 6).map((run) => (
+              <article className="card" key={run.id} aria-label={run.mode + ' QA ' + run.status}>
+                <div className="chip-row">
+                  <span className="badge">{run.mode.toUpperCase()} QA</span>
+                  <StatusPill status={run.status} />
+                </div>
+                <div className="metadata mono truncate" style={{ margin: '8px 0' }} title={run.id}>
+                  {run.id}
+                </div>
+                <Link to={'/runs/' + run.id}>
+                  <button className="compact primary">
+                    Open <ArrowRight size={13} />
+                  </button>
+                </Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </PageSection>
+      <PageSection title="Revisions">
+        <div className="timeline">
+          {revisionList.map((revision) => (
+            <div key={revision.id} className="item">
+              <CopyId id={revision.id} />
+              <span className="time">{formatRevisionDate(revision.importedAt)}</span>
+            </div>
+          ))}
+          {revisionList.length === 0 ? <p className="muted">No revisions yet.</p> : null}
+        </div>
+      </PageSection>
+      {pendingStart ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={'Confirm start ' + confirmStart + ' QA'}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            zIndex: 60,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+          onClick={() => setConfirmStart(undefined)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setConfirmStart(undefined);
+          }}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: 420, width: '100%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="section-title">
+              Start {confirmStart === 'full' ? 'Full' : 'Targeted'} QA?
+            </h2>
+            <p className="body-secondary">
+              {effectiveStacks.length} agent{effectiveStacks.length === 1 ? '' : 's'} · uses real
+              provider budget.
+            </p>
+            {effectiveRevisionId !== undefined ? (
+              <p className="mono metadata" data-no-translate="true">
+                Revision: {shortRevision(effectiveRevisionId)} ·{' '}
+                {formatRevisionDate(effectiveRevision?.importedAt)}
+              </p>
+            ) : null}
+            <p className="metadata">
+              Web access: {webAccess ? 'on' : 'off'} · tool and SDK downloads:{' '}
+              {toolDownloads ? 'on' : 'off'} · package installs: on
+            </p>
+            {confirmStart === 'targeted' && targetPaths.trim() !== '' ? (
+              <p className="mono metadata">Scope: {targetPaths}</p>
+            ) : null}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+              <button className="ghost" onClick={() => setConfirmStart(undefined)}>
+                Cancel
+              </button>
+              <button
+                className="primary"
+                autoFocus
+                disabled={startPending || update.isPending}
+                onClick={() =>
+                  confirmStart === 'full' ? startFull.mutate() : startTargeted.mutate()
+                }
+              >
+                {startPending ? 'Starting…' : 'Start QA'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {update.isPending ? (
+        <div
+          className="project-import-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Updating project in Sentry"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
+        >
+          <div className="project-import-modal">
+            <img
+              src="./smooth_loader_flat_logo.gif"
+              alt=""
+              className="project-import-loader"
+              aria-hidden="true"
+            />
+            <h2 className="section-title" style={{ fontSize: 16 }}>
+              Updating project
+            </h2>
+            <div
+              className="mono metadata truncate"
+              style={{ maxWidth: '100%' }}
+              title={record?.project.name ?? projectId}
+              data-no-translate="true"
+            >
+              {record?.project.name ?? projectId}
+            </div>
+            <div className="project-import-timer" aria-live="polite">
+              <span>Elapsed:</span>
+              <span data-no-translate="true">{Math.max(0, Math.floor(updateElapsed / 1000))}s</span>
+            </div>
+            <p className="body-secondary" style={{ margin: 0 }}>
+              Rebuilding the project revision in the isolated Sentry runtime store. This window will
+              close automatically when the update completes. Starting a QA run stays disabled until
+              it finishes.
+            </p>
+            <div style={{ marginTop: 6 }}>
+              <button
+                type="button"
+                className="danger compact"
+                disabled={cancellingUpdate}
+                onClick={() => void cancelUpdate()}
+              >
+                {cancellingUpdate ? 'Cancelling…' : 'Cancel update'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TargetPathInput({
+  projectId,
+  value,
+  onChange,
+}: {
+  projectId: string;
+  value: string;
+  onChange: (value: string) => void;
+}): React.JSX.Element {
+  const suggestions = useQuery({
+    queryKey: ['target-suggest', projectId],
+    queryFn: () => sentryApi().projects.suggestTargets(projectId),
+  });
+  const allPaths = ((suggestions.data as { paths?: string[] } | undefined)?.paths ?? []).map((q) =>
+    q.endsWith('/') ? q.slice(0, -1) : q,
+  );
+  const [draft, setDraft] = React.useState('');
+  const [invalid, setInvalid] = React.useState<string | undefined>(undefined);
+  const chips = value
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  const addDraft = (raw: string): void => {
+    const candidate = raw.trim();
+    if (candidate.length === 0) return;
+    if (candidate.startsWith('/') || candidate.includes('..')) {
+      setInvalid('Paths must be project-relative (no leading / or ..): ' + candidate);
+      return;
+    }
+    setInvalid(undefined);
+    if (chips.includes(candidate)) {
+      setDraft('');
+      return;
+    }
+    onChange([...chips, candidate].join(','));
+    setDraft('');
+  };
+  const removeChip = (chip: string): void => {
+    onChange(chips.filter((c) => c !== chip).join(','));
+  };
+  return (
+    <div>
+      <div className="metadata">Target scope</div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addDraft(draft);
+            }
+          }}
+          placeholder="Search files… (e.g. src/auth/token.ts)"
+          aria-label="Add target path"
+          style={{ flex: 1 }}
+        />
+        <button onClick={() => addDraft(draft)} disabled={draft.trim().length === 0}>
+          Add path
+        </button>
+      </div>
+      {invalid !== undefined ? (
+        <p className="error-box" style={{ marginTop: 8 }} role="alert">
+          {invalid}
+        </p>
+      ) : null}
+      {chips.length > 0 ? (
+        <div className="chip-row" style={{ marginTop: 8 }}>
+          {chips.map((chip) => (
+            <span key={chip} className="copy-chip" title={chip}>
+              <span className="truncate" style={{ maxWidth: 220 }}>
+                {chip}
+              </span>
+              <button onClick={() => removeChip(chip)} aria-label={'Remove ' + chip}>
+                <X size={12} aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {allPaths.length > 0 ? (
+        <div className="chip-row" style={{ marginTop: 8 }}>
+          <span className="metadata">In this project:</span>
+          {allPaths.slice(0, 8).map((q) => (
+            <button
+              key={q}
+              className="compact ghost"
+              onClick={() => addDraft(q)}
+              title={'Add ' + q}
+            >
+              +{q}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <p className="mono metadata" style={{ fontSize: 11 }}>
+        TargetSpec preview: includePaths=[{chips.length === 0 ? '—' : chips.join(', ')}]
+      </p>
+    </div>
+  );
+}

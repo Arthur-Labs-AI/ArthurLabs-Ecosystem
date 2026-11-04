@@ -1,0 +1,208 @@
+import type { ObservedOperation } from './pipeline.js';
+
+/**
+ * Shared reporting-stage protocol (Phase 4.2). All three AgentStacks use
+ * these helpers so the frozen ledger format, confidence semantics, and
+ * correction behavior are IDENTICAL across harnesses. Harness-specific
+ * wording may differ; policy semantics must not.
+ */
+
+/** Maximum report attempts per AgentRun: initial + one correction. */
+export const MAX_REPORT_ATTEMPTS = 2;
+
+/** Maximum planning attempts per AgentRun: initial + one correction.
+ *  Planning suffers the same prose-first variance as reporting; a failed
+ *  plan parse retries once in the same session with bounded feedback.
+ *  Safe: the ledger is not frozen yet and planning ops stay valid. */
+export const MAX_PLANNING_ATTEMPTS = 2;
+
+/** Bounded planning-correction prompt: schema/parse errors plus the
+ *  output contract reminder. Same session; investigation not started. */
+export function buildPlanningCorrectionIntro(errors: readonly string[]): string {
+  const bounded = errors.slice(0, 8).map((error, index) => `${index + 1}. ${error}`);
+  return (
+    'Your plan was rejected. Return ONLY the JSON investigation plan, using the schema already given.\n' +
+    'Correct these plan issues:\n' +
+    bounded.join('\n') +
+    '\nNo Markdown. No code fences. No preamble or commentary. ' +
+    'The first character is { and the last character is }.'
+  );
+}
+
+/**
+ * Phase-scoped model-turn options (same shape for every harness session).
+ * `tools: 'none'` marks a tool-free reporting turn; harnesses without a
+ * native empty-tools mechanism enforce it with an adapter-side firewall.
+ */
+export interface ReportTurnOptions {
+  readonly phase: 'planning' | 'investigation' | 'reporting';
+  readonly tools: 'normal' | 'none';
+  /** Provider structured-output schema hint (GLM `--json-schema`); undefined when unsupported. */
+  readonly outputSchema?: Record<string, unknown>;
+}
+
+/** Render the frozen post-investigation ledger (§8 format). Each entry
+ *  carries the exact model-citable operation key plus the canonical
+ *  command/test identity Sentry derives provenance from. */
+export function renderFrozenLedger(operations: ReadonlyMap<string, ObservedOperation>): string {
+  if (operations.size === 0) return '(no operations observed)';
+  return [...operations.values()]
+    .map(
+      (op) =>
+        `Operation ${op.operationKey}\n` +
+        `type: ${op.isTestOperation ? 'test' : 'command'}\n` +
+        `tool: ${op.toolName}\n` +
+        `command: ${op.commandText ?? op.argsText ?? '(no target)'}\n` +
+        `exitCode: ${op.exitCode === undefined ? 'unknown' : op.exitCode}\n` +
+        `cite: If this operation is evidence for a finding, cite '${op.operationKey}' in command/test evidence.`,
+    )
+    .join('\n\n');
+}
+
+/** Reproduction contract shared by all three harness prompts (§19-§20,
+ *  §23-§24, §34): attempt a focused safe reproducer for significant
+ *  candidate bugs, cite its operation key, and never invent proof. */
+export const REPORT_REPRODUCTION_CONTRACT =
+  'Behavioral reproduction: when a candidate defect can be safely demonstrated in the isolated workspace, ' +
+  'attempt a focused command or test that observes the claimed failure. Prefer minimal, deterministic ' +
+  'reproduction over broad exploratory commands. Preserve the corresponding operation key and cite it in ' +
+  'the final report as command/test evidence. Source inspection (grep, cat, sed, ls, rg, file reads) helps ' +
+  'investigation but is NOT behavior reproduction: never cite exploration commands as behavioral proof. ' +
+  'For critical/high findings, attempt safe behavioral reproduction whenever technically feasible before final ' +
+  'reporting; for medium/low findings also reproduce where practical without wasting excessive operations. ' +
+  'If the environment or missing dependencies prevent reproduction, do not invent success: submit ' +
+  'source/manual evidence and state the limitation.';
+
+/** Uniform confidence semantics for every reporting prompt (§32). */
+export const REPORT_CONFIDENCE_CALIBRATION =
+  'Calibrate confidence with identical semantics: confirmed requires genuinely reproduced or operation-grounded proof; ' +
+  'strong requires grounded source or operation evidence; probable means credible evidence exists but not enough for strong; ' +
+  'speculative means a plausible concern with weak or manual evidence. ' +
+  'You may downgrade your own confidence or remove an unsupported finding. ' +
+  'Code references and manual reasoning alone support strong at most, never confirmed.';
+
+/** Uniform ledger-authority rules for every reporting prompt (§9). */
+export const REPORT_LEDGER_RULES =
+  'The ledger below is the ONLY authoritative source of Sentry operation keys and observed command exit codes. ' +
+  'Never invent operation keys. Never guess exit codes. Never reconstruct numbering from memory. ' +
+  'Never combine several commands into a mega-command unless that exact command exists in the ledger. ' +
+  'If exit is unknown, it is unknown: do not use an unknown-code operation as reproduced command or test proof requiring a known outcome. ' +
+  'If adequate operation proof does not exist, use code_reference or manual evidence and calibrate confidence accordingly.';
+
+/** Compact report-envelope schema for reporting prompts: checks,
+ *  hypotheses, findings, and limitations shapes the evidence contract
+ *  does not cover. Rendered from the same ReportV2 source the parser
+ *  validates (field names fixed; bounds match the Zod schema). */
+export const REPORT_ENVELOPE_SCHEMA =
+  'Report envelope (exact shapes; copy names exactly): ' +
+  '{"schemaVersion":2,"summary":string,"checks":[{"name":string,"status":"passed|failed|inconclusive|not_run","details"?:string,"coverage"?:"complete|partial","operationKeys"?:string[]}],' +
+  '"hypotheses":[{"title":string,"rationale":string,"relatedPaths":string[],"plannedChecks":string[at least one]}],' +
+  '"evidence":[<see Evidence variants above>],' +
+  '"findings":[{"title":string,"category":string,"categoryDetail"?:string,"severity":"critical|high|medium|low|info",' +
+  '"confidence":"confirmed|strong|probable|speculative","description":string,' +
+  '"expectedBehavior"?:string,"actualBehavior"?:string,' +
+  '"locations":[{"relativePath":string,"lineStart"?:number,"lineEnd"?:number,"symbol"?:string}][at least one],' +
+  '"evidenceKeys":string[at least one],"reproductionSteps":string[] (always include, [] allowed),' +
+  '"rootCause"?:string,"recommendedFix"?:string}],"limitations":string[]}. ' +
+  'Every evidence relativePath and findings[].locations[].relativePath MUST identify an existing regular file inside the workspace; ' +
+  'never a directory, glob, or missing path. If investigation identified only a directory, cite a concrete file actually inspected inside it, ' +
+  'or omit unsupported evidence and findings rather than inventing a path.';
+
+/** Evidence strength/type compatibility matrix: a strength label must
+ *  never manufacture provenance. Appended to the correction intro when
+ *  the rejection concerns strength, so a weaker model gets the rule
+ *  instead of just the violation. */
+export const REPORT_STRENGTH_COMPATIBILITY =
+  'Evidence strength/type compatibility (exact rule; strength MUST be one of ' +
+  "'reproduced_failure' | 'reproduced_behavior' | 'tool_diagnostic' | 'strong_code_evidence' | 'agent_reasoning' — " +
+  'no other value validates): ' +
+  "manual evidence (your own reasoning notes) allows ONLY 'agent_reasoning' strength; " +
+  "code_reference evidence allows 'strong_code_evidence', 'tool_diagnostic', or 'agent_reasoning' (never reproduced_*); " +
+  "'reproduced_failure'/'reproduced_behavior' require a tool/test operation from the frozen ledger; " +
+  "'tool_diagnostic' requires a ledger operation with a known outcome. " +
+  'When in doubt, downgrade the strength or drop the evidence item — a weaker honest report passes; an overclaimed one is rejected.';
+
+/**
+ * When a strength fix interacts with finding confidence (live regression
+ * run_01M3FSEE1VGJSP00BJEGQM2WDB): downgrading an evidence strength to
+ * 'agent_reasoning' removes that item as grounding, so a finding that cited
+ * it at strong/confirmed confidence fails next with a confidence violation
+ * the previous correction never mentioned. Strength and confidence fixes
+ * must therefore be applied atomically in the single retry: re-check every
+ * strong/confirmed finding against the corrected evidence in the same pass.
+ */
+export const REPORT_STRENGTH_CONFIDENCE_ATOMICITY =
+  'Strength and confidence interact — fix them together in this one correction: ' +
+  'a finding with strong or confirmed confidence needs at least one cited evidence item that stays grounded, ' +
+  "i.e. strength 'reproduced_failure', 'reproduced_behavior', 'tool_diagnostic' or 'strong_code_evidence', " +
+  'or type command, code_reference or test. ' +
+  "Downgrading an evidence strength to 'agent_reasoning' removes its grounding: " +
+  'in the same correction, downgrade the confidence of every finding that cited it, ' +
+  'cite different grounded evidence instead, or drop the finding.';
+
+/** Bounded correction intro for report-only retries (§34). */
+export function buildReportCorrectionIntro(errors: readonly string[]): string {
+  const bounded = errors.slice(0, 8).map((error, index) => `${index + 1}. ${error}`);
+  // The matrix is needed not only for strength rejections: a confidence
+  // rejection ('... require at least one grounded evidence item') means the
+  // model does not know what WOULD ground the finding, so teach the matrix
+  // there too instead of letting the retry guess.
+  const needsMatrix = errors.some((error) => /strength|confidence|grounded/i.test(error));
+  return (
+    'Your report was rejected. Do not investigate further. Do not use tools. No new operations will be observed.\n' +
+    'Correct these report issues:\n' +
+    bounded.join('\n') +
+    (needsMatrix
+      ? '\n' + REPORT_STRENGTH_COMPATIBILITY + '\n' + REPORT_STRENGTH_CONFIDENCE_ATOMICITY
+      : '') +
+    '\nUse ONLY the frozen ledger below. Return the complete corrected report.'
+  );
+}
+
+/** Bound a raw validation message for correction feedback (redacted upstream). */
+export function boundCorrectionMessage(message: string): string {
+  return message.length > 500 ? message.slice(0, 500) + '…' : message;
+}
+
+const GROUNDING_MISSING =
+  /require[ds]? (grounded|reproduced|directly correlated)|grounded source\/tool evidence|correlated observed operation|exit code was not observed|without observed|unobserved|no evidence references/i;
+const GROUNDING_FATAL =
+  /does not match|mismatch|unknown evidence|unknown operation correlation|no observed command text/i;
+
+/**
+ * A grounding failure is operation-repairable only when the defect is
+ * MISSING observation: the agent can still run the one cited read/command/
+ * test and let the host observe it. Misrepresentation (claimed exit code or
+ * command text contradicting what the host observed) is never repairable by
+ * another operation — the claim itself must be corrected or dropped. This
+ * classification is the gate for the bounded grounding-repair turn; it must
+ * fail closed.
+ */
+export function isGroundingRepairableError(errors: readonly string[]): boolean {
+  return errors.some((error) => GROUNDING_MISSING.test(error) && !GROUNDING_FATAL.test(error));
+}
+
+/**
+ * One bounded, tool-enabled repair turn scoped to the missing grounding.
+ * Unlike the tool-free report correction, this turn runs in the live
+ * investigation session so the host must observe the new operation and add
+ * it to the ledger before the report is retried. It never authorizes new
+ * lines of investigation or new findings.
+ */
+export function buildGroundingRepairPrompt(
+  errors: readonly string[],
+  operations: ReadonlyMap<string, ObservedOperation>,
+): string {
+  const bounded = errors.slice(0, 8).map((error, index) => `${index + 1}. ${error}`);
+  return (
+    'GROUNDING REPAIR. Your report was rejected only because observation is missing:\n' +
+    bounded.join('\n') +
+    '\nRun ONLY the operation needed to ground the cited finding: re-read the cited file at the cited lines, or run the exact reproduction command/test the finding claims. ' +
+    'Run it as ONE single non-compound command (no pipes, redirects, `;`, `&&` or `||`): write any probe to a temp file first and execute that file, so the host records one unambiguous exit code. ' +
+    'Do not start new lines of investigation. Do not search for new findings. Do not broaden scope. ' +
+    'The host must observe the operation and its outcome; your description of it is not grounding. ' +
+    'Stop as soon as that one operation completes, then return the same report citing the newly observed operation key from the ledger below.\n' +
+    'Frozen ledger:\n' +
+    renderFrozenLedger(operations)
+  );
+}

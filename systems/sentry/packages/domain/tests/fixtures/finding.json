@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "find_01K7777777777777777777A8W7",
+  "qaRunId": "run_01K7777777777777777777A8W3",
+  "agentRunId": "arun_01K7777777777777777777A8W4",
+  "sourceAgentStackId": "stack_muse_main",
+  "title": "Auth session never expires",
+  "category": "authentication",
+  "severity": "high",
+  "confidence": "strong",
+  "description": "Session tokens have no expiry check.",
+  "locations": [
+    {
+      "relativePath": "src/auth/session.ts",
+      "startLine": 42,
+      "endLine": 58,
+      "symbol": "validateSession"
+    }
+  ],
+  "evidenceIds": ["ev_01K7777777777777777777A8W9"],
+  "reproductionSteps": ["Log in", "Wait 48h", "Call /me"],
+  "createdAt": "2026-09-09T19:00:00.000Z"
+}

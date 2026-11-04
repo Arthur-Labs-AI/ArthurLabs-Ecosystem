@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "activity_01K7777777777777777777A8WA",
+  "qaRunId": "run_01K7777777777777777777A8W3",
+  "agentRunId": "arun_01K7777777777777777777A8W4",
+  "source": "agent",
+  "kind": "planning",
+  "status": "completed",
+  "title": "Create independent investigation plan",
+  "startedAt": "2026-09-09T19:00:00.000Z",
+  "completedAt": "2026-09-09T19:00:01.000Z",
+  "artifactIds": []
+}

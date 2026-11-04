@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "hyp_01K7777777777777777777A8WC",
+  "qaRunId": "run_01K7777777777777777777A8W3",
+  "agentRunId": "arun_01K7777777777777777777A8W4",
+  "title": "TTL is parsed but not enforced",
+  "rationale": "The configuration value is assigned but no comparison appears in validation.",
+  "relatedPaths": ["src/auth/session.ts"],
+  "plannedChecks": ["Trace reads of SESSION_TTL"],
+  "discoveredAt": "2026-09-09T19:01:00.000Z"
+}

@@ -1,0 +1,195 @@
+# CI for the QA platform's own repository.
+# This validates the platform source itself; it is NOT the future
+# CI/CD product feature (CICDPlan domain).
+name: ci
+
+on:
+  push:
+    # dev is the development integration branch (Milestone A transition,
+    # 2026-10-12): pushes to dev and main both run CI. Historical
+    # codex/release-* and codex/hotfix-* push triggers are preserved.
+    # Push CI validates only; it never publishes a release, creates a tag,
+    # or moves a branch pointer.
+    branches:
+      [
+        main,
+        dev,
+        release/v1.0.0-windows,
+        feature/native-linux-support,
+        'codex/release-*',
+        'codex/hotfix-*',
+      ]
+  # Broad pull_request coverage: PRs into dev, into main, and release/hotfix
+  # PRs targeting dev all trigger CI.
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Workspace preparation runs inside systemd user services.
+      # Non-interactive sessions have no user bus unless the runner user
+      # lingers, so provision it like any other test prerequisite (cf. socat
+      # for the Claude sandbox tests). The bus check is informational. A
+      # separate mount probe below decides whether this runner can execute
+      # the real-sandbox preparation smoke test.
+      - name: Enable systemd user lingering for sandbox tests
+        run: |
+          sudo loginctl enable-linger "$USER"
+          systemctl --user is-system-running || true
+      - name: Check sandbox capability
+        id: sandbox
+        run: |
+          probe_dir=$(mktemp -d /var/tmp/sentry-ci-probe.XXXXXX)
+          echo "probe dir: $probe_dir"
+          probe() {
+            label=$1
+            shift
+            if output=$("$@" 2>&1); then status=0; else status=$?; fi
+            printf '%s\n' "$output" | tail -6
+            printf '%s_exit=%s\n' "$label" "$status"
+          }
+          probe bare systemd-run --user --wait --pipe --collect --unit=ci-probe-bare -- /usr/bin/true
+          probe staged systemd-run --user --wait --pipe --collect --unit=ci-probe-staged \
+            -p TemporaryFileSystem=/ -p ProtectHome=yes -p PrivateNetwork=yes \
+            -p NoNewPrivileges=yes -p KillMode=control-group -p TimeoutStopSec=5s \
+            -p ProtectControlGroups=yes -p ProtectKernelTunables=yes \
+            -p ProtectKernelModules=yes -p RestrictSUIDSGID=yes \
+            -p ReadWritePaths="$probe_dir" -p BindPaths="$probe_dir" \
+            -p BindReadOnlyPaths=/usr/bin -p BindReadOnlyPaths=/usr/lib \
+            -p BindReadOnlyPaths=/usr/share -p BindReadOnlyPaths=/bin \
+            -p BindReadOnlyPaths=/lib -p BindReadOnlyPaths=/lib64 \
+            -p WorkingDirectory="$probe_dir" -- /usr/bin/test -d "$probe_dir"
+          rmdir "$probe_dir"
+          if [ "$status" -eq 0 ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::This runner cannot mount the sandbox (exit $status); the real-sandbox preparation smoke test will be skipped."
+          fi
+
+      - run: pnpm repository:check
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Test (required, full suite)
+        run: pnpm test
+      - name: Private workspace preparation (real sandbox)
+        if: steps.sandbox.outputs.available == 'true'
+        run: pnpm --filter @qa/run-engine test:preparation-sandbox
+      - run: pnpm build
+      - name: Managed DeepSeek current-switch regression (no WSL)
+        run: bash scripts/launcher/tests/test-dsh-switch.sh
+      - name: Sandbox prerequisite matrix (no WSL)
+        run: bash scripts/launcher/tests/test-sandbox-prereqs.sh
+      - name: Pre-run readiness gate matrix (no WSL)
+        run: pnpm --filter @qa/runtime exec vitest run tests/readiness-gate.test.ts tests/sandbox-deps.test.ts
+
+  launcher-windows:
+    name: launcher (windows, no WSL)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Full dependency build first (same semantics as `sentry setup` phase 4):
+      # the desktop TypeScript build needs workspace dists, which a bare
+      # `pnpm --filter @qa/desktop build` cannot provide on a clean checkout.
+      - run: pnpm build
+      - name: Launcher PowerShell syntax
+        shell: powershell
+        run: |
+          $files = @('sentry.ps1', 'scripts/launcher/SentryLauncher.psm1', 'scripts/launcher/prerequisites.ps1', 'scripts/launcher/wsl-setup.ps1', 'scripts/launcher/agent-tools.ps1', 'scripts/launcher/commands.ps1', 'scripts/launcher/commands2.ps1')
+          foreach ($f in $files) {
+            $tokens = $null; $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($f, [ref]$tokens, [ref]$errors)
+            if ($errors.Count -ne 0) { throw "syntax errors in $f" }
+          }
+      - name: Launcher decision-logic tests (no WSL)
+        run: node --test scripts/launcher/tests/launcher-logic.test.mjs
+      - name: Launcher PowerShell smoke (no WSL)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher/tests/launcher-smoke.ps1
+      - name: Launcher production-behavior tests, mocked boundaries (no WSL)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher/tests/launcher-behavior.test.ps1
+      - name: Launcher process IO stress test (no WSL)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher/tests/io-stress.test.ps1
+      - name: Shutdown safety regression (no WSL)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/launcher/tests/shutdown-safety.test.ps1
+      - name: Desktop control-parser tests
+        run: pnpm --filter @qa/desktop exec vitest run tests/unit/sentry-control.test.ts tests/unit/stdio-runtime-client.test.ts tests/unit/quit-lifecycle.test.ts
+      - name: Complete Windows Desktop regressions
+        run: pnpm --filter @qa/desktop test
+      - name: DeepSeek dshBin regression tests (no WSL)
+        run: pnpm --filter @qa/harness-deepseek exec vitest run tests/dsh-bin-selection.test.ts tests/dsh-sdk-resolution.test.ts
+      - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 help
+      - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 version
+      - run: powershell -NoProfile -ExecutionPolicy Bypass -File ./sentry.ps1 status
+
+  launcher-linux:
+    # Native Desktop validation remains on shared integration. Windows release
+    # stabilization still requires the Ubuntu quality/runtime/security job above.
+    if: github.ref != 'refs/heads/release/v1.0.0-windows' && github.base_ref != 'release/v1.0.0-windows' && github.head_ref != 'release/v1.0.0-windows'
+    # Native launcher on generic Linux (no CachyOS): proves the framework,
+    # decision logic, fixture tests, and the CachyOS-only gate. Ubuntu must
+    # fail closed here — this job never implies Ubuntu product support.
+    name: launcher (linux, no CachyOS)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Linux launcher shell syntax
+        run: |
+          for f in sentry scripts/launcher/linux/launcher.sh scripts/launcher/linux/lib/*.sh scripts/launcher/linux/distros/*.sh scripts/launcher/linux/commands/*.sh scripts/launcher/tests/test-*.sh; do
+            bash -n "$f" || exit 1
+          done
+      - name: Launcher Linux decision-logic tests
+        run: node --test scripts/launcher/tests/launcher-logic.test.mjs
+      - name: Launcher Linux shell tests (fixtures, no sudo)
+        run: |
+          bash scripts/launcher/tests/test-linux-host-gate.sh
+          bash scripts/launcher/tests/test-linux-framework.sh
+          bash scripts/launcher/tests/test-package-map-sync.sh
+          bash scripts/launcher/tests/test-setup-phases.sh
+          bash scripts/launcher/tests/test-node-resolve.sh
+          bash scripts/launcher/tests/test-lifecycle-shim.sh
+          bash scripts/launcher/tests/test-update-safety.sh
+          bash scripts/launcher/tests/test-update-channels.sh
+          bash scripts/launcher/tests/test-desktop-safety.sh
+          bash scripts/launcher/tests/test-desktop-startup.sh
+          bash scripts/launcher/tests/test-package-capabilities.sh
+          bash scripts/launcher/tests/test-pnpm-resolve.sh
+          bash scripts/launcher/tests/test-deploy-pnpm.sh
+          bash scripts/launcher/tests/test-agent-provision.sh
+          bash scripts/launcher/tests/test-config.sh
+          bash scripts/launcher/tests/test-desktop-marker.sh
+          bash scripts/launcher/tests/test-status-pins.sh
+          bash scripts/launcher/tests/test-npm-ignore-scripts.sh
+          bash scripts/launcher/tests/test-electron-repair.sh
+          bash scripts/launcher/tests/test-deepseek-wrapper.sh
+      - name: Native entrypoint smoke (host-independent + gate proof)
+        run: |
+          ./sentry help
+          ./sentry version
+          if ./sentry status; then echo 'Ubuntu must fail closed, never claim support'; exit 1; fi
+          ./sentry status 2>&1 | grep -q 'CachyOS only'

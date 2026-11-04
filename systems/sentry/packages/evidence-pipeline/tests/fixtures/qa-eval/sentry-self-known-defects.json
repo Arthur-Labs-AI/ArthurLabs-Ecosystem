@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "note": "Evaluator-side recall manifest for QA runs against the Sentry repository itself. Never copy it into an investigated workspace. Each entry is a defect a past run reproduced and that is still open; remove an entry when the defect is fixed.",
+  "fixtures": [
+    {
+      "id": "sentry-self",
+      "title": "Sentry repository: previously reproduced, still open defects",
+      "intendedBehavior": "Snapshots preserve literal filenames; workspace cleanup removes only workspace-shaped parents.",
+      "clean": false,
+      "entryPoints": [
+        "packages/persistence/src/filesystem.ts",
+        "packages/workspace-factory/src/index.ts"
+      ],
+      "relevantPaths": [
+        "packages/persistence/src/filesystem.ts",
+        "packages/workspace-factory/src/index.ts"
+      ],
+      "pathBases": [""],
+      "knownDefects": [
+        {
+          "id": "S1-backslash-filename-collapse",
+          "summary": "A file whose name contains a backslash is manifested with the backslash turned into a slash, colliding with a real nested path and restoring to the wrong location.",
+          "relevantPaths": ["packages/persistence/src/filesystem.ts"],
+          "markers": [
+            { "id": "mechanism", "phrases": ["backslash", "back\\slash", "replaceall('\\\\'"] },
+            {
+              "id": "effect",
+              "phrases": [
+                "collide",
+                "collision",
+                "collapse",
+                "duplicate",
+                "same relativepath",
+                "restored as",
+                "restores as",
+                "nested",
+                "wrong name",
+                "literal filename"
+              ]
+            },
+            {
+              "id": "subject",
+              "phrases": [
+                "filename",
+                "file name",
+                "manifest",
+                "snapshot",
+                "relativepath",
+                "walktree",
+                "copytree"
+              ]
+            }
+          ],
+          "minMarkers": 2,
+          "requiredMarkers": ["mechanism"],
+          "expectedBehavior": "The snapshot manifest preserves the literal filename and round-trips it, or rejects names it cannot represent.",
+          "actualBehavior": "Two distinct files get the same relativePath and a solo name with a backslash restores as a nested directory.",
+          "reproduction": "Create back\\slash.txt next to a back/slash.txt directory, run the tree walk and copy, compare relative paths."
+        },
+        {
+          "id": "S2-cleanup-no-shape-check",
+          "summary": "WorkspaceFactory.cleanup removes any path inside the data root, including the data root itself, instead of refusing paths that are not workspace-shaped.",
+          "relevantPaths": ["packages/workspace-factory/src/index.ts"],
+          "markers": [
+            {
+              "id": "mechanism",
+              "phrases": [
+                "not workspace-shaped",
+                "non-workspace",
+                "workspace shape",
+                "workspace-shaped",
+                "arbitrary path",
+                "any path inside",
+                "inside-root",
+                "no shape"
+              ]
+            },
+            {
+              "id": "effect",
+              "phrases": [
+                "removes",
+                "removed",
+                "deletes",
+                "deleted",
+                "cleaned:true",
+                "cleaned: true",
+                "data root",
+                "dataroot"
+              ]
+            },
+            { "id": "subject", "phrases": ["cleanup", "workspacefactory", "workspace factory"] }
+          ],
+          "minMarkers": 2,
+          "requiredMarkers": ["mechanism"],
+          "expectedBehavior": "Refuse paths that are not workspace-shaped and leave the data untouched.",
+          "actualBehavior": "cleanup returns cleaned:true and removes the target, including the whole data root.",
+          "reproduction": "Call WorkspaceFactory.cleanup with the data root, an empty string or an inner managed-copy directory."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# sentry — native Linux launcher entry point (CachyOS).
+# Usage: ./sentry setup | open | update | stop | status | doctor | version | help
+# After setup, ~/.local/bin/sentry allows the same from any directory.
+# Provider credentials are NEVER requested here; use Desktop Settings -> Providers.
+set -euo pipefail
+
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+REPO_ROOT="$(cd "$(dirname "$SELF")" && pwd)"
+export SENTRY_REPO_ROOT="$REPO_ROOT"
+exec bash "$REPO_ROOT/scripts/launcher/linux/launcher.sh" "$@"
+

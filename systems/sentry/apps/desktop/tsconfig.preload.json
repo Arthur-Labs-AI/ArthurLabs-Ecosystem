@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.desktop.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "composite": true,
+    "module": "CommonJS",
+    "moduleResolution": "Node10",
+    "types": ["node"]
+  },
+  "include": ["src/preload", "src/shared"]
+}

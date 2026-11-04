@@ -1,0 +1,140 @@
+import { RuntimePersistenceError } from '@qa/persistence';
+import { ProjectManagerError } from '@qa/project-manager';
+import { RunEngineError } from '@qa/run-engine';
+import { HarnessProtocolError } from '@qa/harness-protocol';
+import { OpenCodeHarnessError } from '@qa/harness-opencode';
+import { DeepSeekHarnessError } from '@qa/harness-deepseek';
+import { ClaudeCodeHarnessError } from '@qa/harness-claude-code';
+import {
+  CLI_CONTRACT_VERSION,
+  CliErrorEnvelopeSchema,
+  type CliCommand,
+  type CliError,
+  type CliErrorCode,
+  type CliErrorEnvelope,
+} from '@qa/schemas';
+import { CliUsageError } from './arguments.js';
+
+import { RETRYABLE } from './exit-codes.js';
+export { CLI_EXIT, errorExitCode } from './exit-codes.js';
+
+function bounded(message: string): string {
+  return message.replace(/[\r\n\t]+/g, ' ').slice(0, 1000) || 'Sentry command failed';
+}
+
+function canonicalError(cause: unknown): CliError {
+  if (cause instanceof CliUsageError) {
+    return {
+      code: 'INVALID_ARGUMENT',
+      message: bounded(cause.message),
+      retryable: false,
+      ...(cause.details === undefined ? {} : { details: cause.details }),
+    };
+  }
+  if (cause instanceof ProjectManagerError) {
+    const supported = new Set<CliErrorCode>([
+      'PROJECT_NOT_FOUND',
+      'PROJECT_SOURCE_NOT_FOUND',
+      'PROJECT_SOURCE_UNREADABLE',
+      'PROJECT_PATH_OVERLAP',
+      'PROJECT_COPY_FAILED',
+      'PROJECT_UPDATE_FAILED',
+      'PROJECT_DELETE_FAILED',
+      'PROJECT_LOCKED',
+      'ACTIVE_RUN_EXISTS',
+      'PROJECT_COPY_DRIFT',
+      'INSUFFICIENT_STORAGE',
+    ]);
+    const code = supported.has(cause.code as CliErrorCode)
+      ? (cause.code as CliErrorCode)
+      : 'INTERNAL_ERROR';
+    return {
+      code,
+      message:
+        code === 'INTERNAL_ERROR'
+          ? 'Sentry could not complete the project command.'
+          : bounded(cause.message),
+      retryable: RETRYABLE.has(code),
+    };
+  }
+  if (cause instanceof RunEngineError) {
+    const code: CliErrorCode =
+      cause.code === 'RUN_NOT_FOUND'
+        ? 'RUN_NOT_FOUND'
+        : cause.code === 'RUN_NOT_COMPLETE'
+          ? 'RUN_NOT_COMPLETE'
+          : cause.code === 'PROJECT_NOT_FOUND'
+            ? 'PROJECT_NOT_FOUND'
+            : cause.code === 'AGENT_STACK_NOT_FOUND' || cause.code === 'INVALID_TARGET'
+              ? 'INVALID_ARGUMENT'
+              : cause.code === 'PROJECT_COPY_DRIFT'
+                ? 'PROJECT_COPY_DRIFT'
+                : 'RUN_EXECUTION_FAILED';
+    return { code, message: bounded(cause.message), retryable: RETRYABLE.has(code) };
+  }
+  if (cause instanceof HarnessProtocolError) {
+    return {
+      code: 'HARNESS_PROTOCOL_VIOLATION',
+      message: 'The agent harness emitted invalid protocol data.',
+      retryable: false,
+    };
+  }
+  if (cause instanceof OpenCodeHarnessError) {
+    return {
+      code: cause.code,
+      message: bounded(cause.message),
+      retryable: cause.retryable,
+    };
+  }
+  // Vendor harness errors pass through with their typed codes so single-
+  // stack failures stay diagnosable instead of collapsing to
+  // INTERNAL_ERROR.
+  if (cause instanceof DeepSeekHarnessError || cause instanceof ClaudeCodeHarnessError) {
+    return {
+      code: cause.code,
+      message: bounded(cause.message),
+      retryable: cause.retryable,
+    };
+  }
+  if (cause instanceof RuntimePersistenceError) {
+    const code: CliErrorCode =
+      cause.code === 'SQLITE_BUSY'
+        ? 'SQLITE_BUSY'
+        : cause.code === 'RUNTIME_LEASE_CONFLICT'
+          ? 'RUNTIME_LEASE_CONFLICT'
+          : cause.code === 'RUNTIME_LEASE_LOST'
+            ? 'RUNTIME_LEASE_LOST'
+            : 'INTERNAL_ERROR';
+    return {
+      code,
+      message: code === 'INTERNAL_ERROR' ? 'Sentry persistence failed.' : bounded(cause.message),
+      retryable: RETRYABLE.has(code),
+    };
+  }
+  // A bare ZodError reaching here is an INTERNAL validation failure
+  // (domain/persistence decode), never a CLI argument problem:
+  // argument-bound parses throw CliUsageError above. Misreporting it as
+  // INVALID_ARGUMENT hides the real defect (live evidence: fingerprint
+  // overflow surfaced as invalid-argument instead of execution failure).
+  if (cause instanceof Error && cause.name === 'ZodError') {
+    return {
+      code: 'RUN_EXECUTION_FAILED',
+      message: 'Sentry hit an internal validation failure.',
+      retryable: false,
+    };
+  }
+  return {
+    code: 'INTERNAL_ERROR',
+    message: 'Sentry could not complete the command.',
+    retryable: false,
+  };
+}
+
+export function errorEnvelope(command: CliCommand | 'unknown', cause: unknown): CliErrorEnvelope {
+  return CliErrorEnvelopeSchema.parse({
+    schemaVersion: CLI_CONTRACT_VERSION,
+    command,
+    ok: false,
+    error: canonicalError(cause),
+  });
+}

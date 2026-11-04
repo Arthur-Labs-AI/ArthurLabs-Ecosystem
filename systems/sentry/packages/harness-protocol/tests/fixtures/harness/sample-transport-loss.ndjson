@@ -1,0 +1,2 @@
+{"schemaVersion":1,"eventId":"evt_01K7777777777777777777A80X","agentRunId":"arun_01K7777777777777777777A8W4","timestamp":"2026-09-09T19:00:00.000Z","type":"run.started"}
+{"schemaVersion":1,"eventId":"evt_01K7777777777777777777A81X","agentRunId":"arun_01K7777777777777777777A8W4","timestamp":"2026-09-09T19:00:01.000Z","type":"agent.status","status":"investigating","message":"Last observable message before transport loss"}

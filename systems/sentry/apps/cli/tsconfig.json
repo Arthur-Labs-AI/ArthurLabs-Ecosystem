@@ -1,0 +1,41 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "composite": true
+  },
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../../packages/schemas"
+    },
+    {
+      "path": "../../packages/domain"
+    },
+    {
+      "path": "../../packages/harness-protocol"
+    },
+    {
+      "path": "../../packages/harness-opencode"
+    },
+    {
+      "path": "../../packages/harness-deepseek"
+    },
+    {
+      "path": "../../packages/harness-claude-code"
+    },
+    {
+      "path": "../../packages/persistence"
+    },
+    {
+      "path": "../../packages/project-manager"
+    },
+    {
+      "path": "../../packages/run-engine"
+    },
+    {
+      "path": "../../packages/shared"
+    }
+  ]
+}

@@ -1,0 +1,544 @@
+import {
+  lstat,
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  RuntimeInstanceLease,
+  SentryDatabase,
+  SentryRepository,
+  projectDataPaths,
+  scanTree,
+} from '@qa/persistence';
+import {
+  ProjectManager,
+  ProjectManagerError,
+  revisionMaterialPath,
+  type ProjectMutationStage,
+} from '../src/index.js';
+
+const roots: string[] = [];
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map((value) => rm(value, { recursive: true, force: true })));
+});
+
+async function fixture(faultInjector?: (stage: ProjectMutationStage) => void) {
+  const root = await mkdtemp(join(tmpdir(), 'sentry-project-manager-'));
+  roots.push(root);
+  const source = join(root, 'Source Project ü');
+  const dataRoot = join(root, 'data');
+  await mkdir(join(source, '.git'), { recursive: true });
+  await mkdir(join(source, 'node_modules', 'fixture'), { recursive: true });
+  await writeFile(join(source, 'README.md'), '# Example\n\nFactual sample purpose.');
+  await writeFile(join(source, '.hidden'), 'hidden');
+  await writeFile(join(source, '.git', 'HEAD'), 'ref: refs/heads/main');
+  await writeFile(join(source, 'node_modules', 'fixture', 'index.js'), 'module.exports = 1');
+  const database = new SentryDatabase({ dataRoot });
+  const repository = new SentryRepository(database);
+  const lease = new RuntimeInstanceLease(repository, { autoHeartbeat: false });
+  lease.start();
+  return {
+    root,
+    source,
+    dataRoot,
+    database,
+    repository,
+    lease,
+    manager: new ProjectManager(dataRoot, repository, { runtimeLease: lease, faultInjector }),
+  };
+}
+
+describe('managed project lifecycle', () => {
+  it('imports the legacy full source with includeAll, locks mutations, preserves content', async () => {
+    const f = await fixture();
+    const original = await scanTree(f.source);
+    const added = await f.manager.addProject(f.source, { includeAll: true });
+    const paths = projectDataPaths(f.dataRoot, added.project.id);
+    expect(await readFile(join(paths.workingCopy, '.hidden'), 'utf8')).toBe('hidden');
+    expect(await readFile(join(paths.workingCopy, '.git', 'HEAD'), 'utf8')).toContain(
+      'refs/heads/main',
+    );
+    expect(
+      await readFile(join(paths.workingCopy, 'node_modules', 'fixture', 'index.js'), 'utf8'),
+    ).toContain('module.exports');
+    expect(added.revision.hashVersion).toBeUndefined();
+    expect(added.context?.purpose).toBe('Factual sample purpose.');
+    expect((await scanTree(f.source)).contentHash).toBe(original.contentHash);
+
+    const runId = 'run_01K7777777777777777777A8W3';
+    f.manager.lockProjectForRun(added.project.id, runId);
+    await expect(f.manager.updateProjectCopy(added.project.id)).rejects.toMatchObject({
+      code: 'ACTIVE_RUN_EXISTS',
+    });
+    f.manager.unlockProjectAfterRun(added.project.id, runId);
+    f.database.close();
+  });
+
+  it('excludes junk dirs by default and records hashVersion 2', async () => {
+    const f = await fixture();
+    const added = await f.manager.addProject(f.source);
+    const paths = projectDataPaths(f.dataRoot, added.project.id);
+    expect(added.revision.hashVersion).toBe(2);
+    await expect(stat(join(paths.workingCopy, '.git'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(stat(join(paths.workingCopy, 'node_modules'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    expect(await readFile(join(paths.workingCopy, 'README.md'), 'utf8')).toContain(
+      'Factual sample',
+    );
+    expect(added.revision.stats?.fileCount).toBe(2);
+    // Integrity rescan applies the same exclusions: no phantom drift.
+    const checked = await f.manager.assertWorkingCopyIntegrity(added.project.id);
+    expect(checked.id).toBe(added.revision.id);
+    // Update keeps v2 and still excludes junk after source changes.
+    await writeFile(join(f.source, 'README.md'), '# Example\n\nVersion two.');
+    await writeFile(join(f.source, 'node_modules', 'fixture', 'index.js'), 'module.exports = 2');
+    const updated = await f.manager.updateProjectCopy(added.project.id);
+    expect(updated.revision.hashVersion).toBe(2);
+    expect(updated.revision.contentHash).not.toBe(added.revision.contentHash);
+    await expect(stat(join(paths.workingCopy, 'node_modules'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    f.database.close();
+  });
+
+  it('creates a new revision while cancelled updates preserve the healthy copy', async () => {
+    const f = await fixture();
+    const added = await f.manager.addProject(f.source);
+    await writeFile(join(f.source, 'README.md'), '# Example\n\nVersion two.');
+    const updated = await f.manager.updateProjectCopy(added.project.id);
+    expect(updated.revision.id).not.toBe(added.revision.id);
+    expect(updated.revision.contentHash).not.toBe(added.revision.contentHash);
+    expect(f.repository.listRevisions(added.project.id)).toHaveLength(2);
+
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      f.manager.updateProjectCopy(added.project.id, undefined, { signal: controller.signal }),
+    ).rejects.toBeInstanceOf(ProjectManagerError);
+    expect(f.manager.getProject(added.project.id)?.revision.id).toBe(updated.revision.id);
+    expect(
+      await readFile(
+        join(projectDataPaths(f.dataRoot, added.project.id).workingCopy, 'README.md'),
+        'utf8',
+      ),
+    ).toContain('Version two');
+    f.database.close();
+  });
+
+  it('rejects importing a source that contains the Sentry data root', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sentry-overlap-'));
+    roots.push(root);
+    const source = join(root, 'source');
+    const dataRoot = join(source, '.sentry-data');
+    await mkdir(dataRoot, { recursive: true });
+    const database = new SentryDatabase({ dataRoot });
+    const manager = new ProjectManager(dataRoot, new SentryRepository(database));
+    await expect(manager.addProject(source)).rejects.toMatchObject({
+      code: 'PROJECT_PATH_OVERLAP',
+    });
+    database.close();
+  });
+
+  it('restores the recorded copy after a crash during update promotion', async () => {
+    const f = await fixture();
+    const added = await f.manager.addProject(f.source);
+    const paths = projectDataPaths(f.dataRoot, added.project.id);
+    const backup = join(paths.root, 'working-copy.backup');
+    await rename(paths.workingCopy, backup);
+    await mkdir(paths.workingCopy);
+    await writeFile(join(paths.workingCopy, 'README.md'), 'uncommitted promoted copy');
+    f.repository.saveManagedCopy({
+      ...added.managedCopy,
+      state: 'updating',
+      runtimeInstanceId: f.lease.instanceId,
+    });
+    f.repository.saveRuntimeOperation({
+      schemaVersion: 1,
+      id: 'op_01K7777777777777777777C020',
+      projectId: added.project.id,
+      runtimeInstanceId: f.lease.instanceId,
+      type: 'project_update',
+      stage: 'promoted',
+      createdAt: added.project.createdAt,
+      updatedAt: added.project.updatedAt,
+    });
+    f.lease.release();
+    const observer = new RuntimeInstanceLease(f.repository, { autoHeartbeat: false });
+    observer.start();
+
+    await new ProjectManager(f.dataRoot, f.repository, {
+      runtimeLease: observer,
+    }).recoverAbandonedOperations(observer);
+
+    expect(await readFile(join(paths.workingCopy, 'README.md'), 'utf8')).toContain(
+      'Factual sample purpose',
+    );
+    expect(f.manager.getManagedCopy(added.project.id).state).toBe('ready');
+    f.database.close();
+  });
+
+  it('rolls the update back when revision retention fails (§52)', async () => {
+    const f = await fixture();
+    const added = await f.manager.addProject(f.source);
+    const revisionA = added.revision.id;
+    await writeFile(join(f.source, 'README.md'), '# Example v2\n\nChanged.');
+    const original = f.manager.retainRevisionMaterial.bind(f.manager);
+    f.manager.retainRevisionMaterial = async () => {
+      throw new Error('simulated retention failure');
+    };
+    // Rollback wraps the cause: update fails, previous copy preserved.
+    await expect(f.manager.updateProjectCopy(added.project.id)).rejects.toMatchObject({
+      code: 'PROJECT_UPDATE_FAILED',
+    });
+    f.manager.retainRevisionMaterial = original;
+    // Working copy restored to A, current revision still A, revision B
+    // never committed, partial B material removed, project usable.
+    expect(
+      await readFile(
+        join(projectDataPaths(f.dataRoot, added.project.id).workingCopy, 'README.md'),
+        'utf8',
+      ),
+    ).toContain('Factual sample purpose');
+    expect(f.manager.getManagedCopy(added.project.id).currentRevisionId).toBe(revisionA);
+    const { revisionMaterialPath } = await import('../src/index.js');
+    const { stat: statFile } = await import('node:fs/promises');
+    const revisions = f.repository.listRevisions(added.project.id);
+    expect(revisions.map((r) => r.id)).toEqual([revisionA]);
+    await expect(
+      statFile(revisionMaterialPath(f.dataRoot, added.project.id, revisionA + 'X')),
+    ).rejects.toThrow();
+    // Project remains usable: a fresh update succeeds.
+    const updated = await f.manager.updateProjectCopy(added.project.id);
+    expect(updated.revision.id).not.toBe(revisionA);
+    f.database.close();
+  });
+
+  it('retains hash-valid material for A and B and verifies A after B (§53)', async () => {
+    const f = await fixture();
+    const added = await f.manager.addProject(f.source);
+    const revisionA = added.revision.id;
+    await writeFile(join(f.source, 'README.md'), '# Example v2\n\nChanged.');
+    const updated = await f.manager.updateProjectCopy(added.project.id);
+    const revisionB = updated.revision.id;
+    const { revisionMaterialPath } = await import('../src/index.js');
+    const { readFile: readMaterial } = await import('node:fs/promises');
+    const materialA = revisionMaterialPath(f.dataRoot, added.project.id, revisionA);
+    const materialB = revisionMaterialPath(f.dataRoot, added.project.id, revisionB);
+    // Both materials exist with valid content.
+    expect(await readMaterial(join(materialA, 'README.md'), 'utf8')).toContain(
+      'Factual sample purpose',
+    );
+    expect(await readMaterial(join(materialB, 'README.md'), 'utf8')).toContain('Changed');
+    // Hash validation passes for the committed revision.
+    await f.manager.validateRetainedMaterial(added.project.id, updated.revision, '');
+    // Current revision is B; working copy is B.
+    expect(f.manager.getManagedCopy(added.project.id).currentRevisionId).toBe(revisionB);
+    expect(
+      await readMaterial(
+        join(projectDataPaths(f.dataRoot, added.project.id).workingCopy, 'README.md'),
+        'utf8',
+      ),
+    ).toContain('Changed');
+    f.database.close();
+  });
+
+  it('does not expose staged revision/context rows when promotion fails', async () => {
+    const f = await fixture((stage) => {
+      if (stage === 'after_staging_promoted') throw new Error('injected promotion failure');
+    });
+    const added = await f.manager.addProject(f.source);
+    const revisionCount = f.repository.listRevisions(added.project.id).length;
+    const contextCount = f.repository.listContexts(added.project.id).length;
+    await writeFile(join(f.source, 'README.md'), '# Example\n\nUncommitted version.');
+
+    await expect(f.manager.updateProjectCopy(added.project.id)).rejects.toMatchObject({
+      code: 'PROJECT_UPDATE_FAILED',
+    });
+
+    expect(f.repository.listRevisions(added.project.id)).toHaveLength(revisionCount);
+    expect(f.repository.listContexts(added.project.id)).toHaveLength(contextCount);
+    expect(f.repository.listRuntimeOperations()).toHaveLength(0);
+    expect(
+      await readFile(
+        join(projectDataPaths(f.dataRoot, added.project.id).workingCopy, 'README.md'),
+        'utf8',
+      ),
+    ).toContain('Factual sample purpose');
+    f.database.close();
+  });
+
+  it('acquires the same-project run lock atomically across two connections', async () => {
+    const f = await fixture();
+    const added = await f.manager.addProject(f.source);
+    const databaseB = new SentryDatabase({ dataRoot: f.dataRoot });
+    const repositoryB = new SentryRepository(databaseB);
+    const leaseB = new RuntimeInstanceLease(repositoryB, { autoHeartbeat: false });
+    leaseB.start();
+    const managerB = new ProjectManager(f.dataRoot, repositoryB, { runtimeLease: leaseB });
+    f.manager.lockProjectForRun(added.project.id, 'run_01K7777777777777777777C021');
+
+    expect(() =>
+      managerB.lockProjectForRun(added.project.id, 'run_01K7777777777777777777C022'),
+    ).toThrowError(ProjectManagerError);
+    expect(repositoryB.getManagedCopy(added.project.id)?.lockedByQARunId).toBe(
+      'run_01K7777777777777777777C021',
+    );
+    leaseB.release();
+    databaseB.close();
+    f.database.close();
+  });
+
+  it.each(['working-copy', 'project-root', 'projects-directory'])(
+    'removes stored records and remaining materials after manual deletion of %s',
+    async (missing) => {
+      const f = await fixture();
+      try {
+        const original = await scanTree(f.source);
+        const added = await f.manager.addProject(f.source);
+        const paths = projectDataPaths(f.dataRoot, added.project.id);
+        const missingPath =
+          missing === 'working-copy'
+            ? paths.workingCopy
+            : missing === 'project-root'
+              ? paths.root
+              : join(f.dataRoot, 'projects');
+        await rm(missingPath, { recursive: true });
+        await f.manager.deleteProject(added.project.id);
+        expect(f.repository.getProject(added.project.id)).toBeUndefined();
+        expect(f.repository.getManagedCopy(added.project.id)).toBeUndefined();
+        expect(f.repository.listRevisions(added.project.id)).toEqual([]);
+        expect(f.repository.listContexts(added.project.id)).toEqual([]);
+        expect(f.repository.listRuntimeOperations()).toEqual([]);
+        await expect(stat(paths.root)).rejects.toMatchObject({ code: 'ENOENT' });
+        await expect(stat(paths.root + '.deleting')).rejects.toMatchObject({ code: 'ENOENT' });
+        expect((await scanTree(f.source)).contentHash).toBe(original.contentHash);
+      } finally {
+        f.database.close();
+      }
+    },
+  );
+
+  it('refuses removal of an active project even when its files are missing', async () => {
+    const f = await fixture();
+    try {
+      const added = await f.manager.addProject(f.source);
+      f.manager.lockProjectForRun(added.project.id, 'run_01K7777777777777777777C021');
+      await rm(projectDataPaths(f.dataRoot, added.project.id).root, { recursive: true });
+      await expect(f.manager.deleteProject(added.project.id)).rejects.toMatchObject({
+        code: 'PROJECT_LOCKED',
+      });
+      expect(f.repository.getProject(added.project.id)).toBeDefined();
+      expect(f.repository.getManagedCopy(added.project.id)?.state).toBe('locked_for_run');
+    } finally {
+      f.database.close();
+    }
+  });
+
+  it('removes managed material while preserving the source and another project', async () => {
+    const f = await fixture();
+    try {
+      const original = await scanTree(f.source);
+      const added = await f.manager.addProject(f.source);
+      const other = await f.manager.addProject(f.source);
+      const paths = projectDataPaths(f.dataRoot, added.project.id);
+      await mkdir(join(paths.runs, 'fixture-run', 'workspace'), { recursive: true });
+      await writeFile(
+        join(paths.runs, 'fixture-run', 'workspace', 'artifact.txt'),
+        'Stored run data',
+      );
+      await f.manager.deleteProject(added.project.id);
+      expect(f.manager.listProjects().map((record) => record.project.id)).toEqual([
+        other.project.id,
+      ]);
+      expect(f.repository.listRevisions(added.project.id)).toEqual([]);
+      expect(f.repository.listContexts(added.project.id)).toEqual([]);
+      await expect(stat(paths.root)).rejects.toMatchObject({ code: 'ENOENT' });
+      await expect(stat(paths.root + '.deleting')).rejects.toMatchObject({ code: 'ENOENT' });
+      expect((await scanTree(f.source)).contentHash).toBe(original.contentHash);
+      expect(
+        await readFile(
+          join(projectDataPaths(f.dataRoot, other.project.id).workingCopy, 'README.md'),
+          'utf8',
+        ),
+      ).toContain('Factual sample purpose');
+    } finally {
+      f.database.close();
+    }
+  });
+
+  it('retains canonical state and files when deletion fails before tombstoning', async () => {
+    const f = await fixture((stage) => {
+      if (stage === 'after_delete_marked') throw new Error('Injected filesystem failure');
+    });
+    try {
+      const added = await f.manager.addProject(f.source);
+      await expect(f.manager.deleteProject(added.project.id)).rejects.toMatchObject({
+        code: 'PROJECT_DELETE_FAILED',
+      });
+      expect(f.repository.getProject(added.project.id)).toEqual(added.project);
+      expect(f.repository.getManagedCopy(added.project.id)?.state).toBe('ready');
+      expect(f.repository.listRuntimeOperations()).toEqual([]);
+      expect(
+        await readFile(
+          join(projectDataPaths(f.dataRoot, added.project.id).workingCopy, 'README.md'),
+          'utf8',
+        ),
+      ).toContain('Factual sample purpose');
+    } finally {
+      f.database.close();
+    }
+  });
+
+  it('finishes a committed project deletion after its owner exits', async () => {
+    const f = await fixture((stage) => {
+      if (stage === 'after_delete_committed') throw new Error('injected process exit');
+    });
+    const added = await f.manager.addProject(f.source);
+    const paths = projectDataPaths(f.dataRoot, added.project.id);
+    await expect(f.manager.deleteProject(added.project.id)).rejects.toMatchObject({
+      code: 'PROJECT_DELETE_FAILED',
+    });
+    expect(f.repository.getProject(added.project.id)).toBeUndefined();
+    expect(f.repository.listRuntimeOperations()).toHaveLength(1);
+    f.lease.release();
+    const observer = new RuntimeInstanceLease(f.repository, { autoHeartbeat: false });
+    observer.start();
+    await new ProjectManager(f.dataRoot, f.repository, {
+      runtimeLease: observer,
+    }).recoverAbandonedOperations(observer);
+    expect(f.repository.listRuntimeOperations()).toHaveLength(0);
+    await expect(stat(paths.root + '.deleting')).rejects.toMatchObject({ code: 'ENOENT' });
+    f.database.close();
+  });
+
+  it('restores a tombstoned project when deletion did not commit before owner exit', async () => {
+    const f = await fixture();
+    const added = await f.manager.addProject(f.source);
+    const paths = projectDataPaths(f.dataRoot, added.project.id);
+    const tombstone = paths.root + '.deleting';
+    await rename(paths.root, tombstone);
+    f.repository.saveManagedCopy({
+      ...added.managedCopy,
+      state: 'deleting',
+      runtimeInstanceId: f.lease.instanceId,
+    });
+    f.repository.saveRuntimeOperation({
+      schemaVersion: 1,
+      id: 'op_01K7777777777777777777C023',
+      projectId: added.project.id,
+      runtimeInstanceId: f.lease.instanceId,
+      type: 'project_delete',
+      stage: 'tombstoned',
+      createdAt: added.project.createdAt,
+      updatedAt: added.project.updatedAt,
+    });
+    f.lease.release();
+    const observer = new RuntimeInstanceLease(f.repository, { autoHeartbeat: false });
+    observer.start();
+    await new ProjectManager(f.dataRoot, f.repository, {
+      runtimeLease: observer,
+    }).recoverAbandonedOperations(observer);
+
+    expect(f.repository.getProject(added.project.id)).toEqual(added.project);
+    expect(f.repository.getManagedCopy(added.project.id)?.state).toBe('ready');
+    expect(f.repository.listRuntimeOperations()).toHaveLength(0);
+    expect(await readFile(join(paths.workingCopy, 'README.md'), 'utf8')).toContain(
+      'Factual sample purpose',
+    );
+    expect(await readFile(join(f.source, 'README.md'), 'utf8')).toContain('Factual sample purpose');
+    observer.release();
+    f.database.close();
+  });
+
+  describe('sources containing external or broken symlinks', () => {
+    /** Symlinks need developer mode on Windows; skip where the platform refuses them. */
+    async function withLinks(f: Awaited<ReturnType<typeof fixture>>): Promise<boolean> {
+      try {
+        await writeFile(join(f.root, 'outside.txt'), 'outside the project');
+        await symlink(join('..', 'outside.txt'), join(f.source, 'external.txt'));
+        await symlink('missing.txt', join(f.source, 'broken.txt'));
+        await symlink('README.md', join(f.source, 'internal.txt'));
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    it('imports the source, keeps inert links out of the retained revision and still validates it', async () => {
+      const f = await fixture();
+      if (!(await withLinks(f))) return;
+      // Used to throw REVISION_MATERIAL_CORRUPT: the retained copy drops external and broken
+      // links by design while the revision hash covered the working copy that has them.
+      const added = await f.manager.addProject(f.source);
+      const material = revisionMaterialPath(f.dataRoot, added.project.id, added.revision.id);
+      const retained = await readdir(material);
+      expect(retained).toContain('README.md');
+      expect(retained).toContain('internal.txt');
+      expect(retained).not.toContain('external.txt');
+      expect(retained).not.toContain('broken.txt');
+      expect((await lstat(join(material, 'internal.txt'))).isSymbolicLink()).toBe(true);
+      // The mutable working copy keeps them, and the blocked-link metadata says what was dropped.
+      const working = projectDataPaths(f.dataRoot, added.project.id).workingCopy;
+      expect((await lstat(join(working, 'external.txt'))).isSymbolicLink()).toBe(true);
+      const blocked = await readdir(material + '.blocked-links');
+      expect(blocked).toHaveLength(2);
+      // Later runs on this revision re-hash the retained view, which differs from the revision hash.
+      const expected = await f.manager.expectedRetainedHash(added.project.id, added.revision);
+      expect(expected).not.toBe(added.revision.contentHash);
+      expect(expected).toBe((await scanTree(material)).contentHash);
+      // Real corruption is still caught when inert links are present.
+      await writeFile(join(material, 'README.md'), 'tampered');
+      await expect(
+        f.manager.validateRetainedMaterial(added.project.id, added.revision, working),
+      ).rejects.toMatchObject({ code: 'REVISION_MATERIAL_CORRUPT' });
+      f.database.close();
+    });
+
+    it('updates a source that gains a broken link', async () => {
+      const f = await fixture();
+      const added = await f.manager.addProject(f.source);
+      try {
+        await symlink('nowhere.txt', join(f.source, 'dangling.txt'));
+      } catch {
+        f.database.close();
+        return;
+      }
+      const updated = await f.manager.updateProjectCopy(added.project.id);
+      expect(updated.revision.id).not.toBe(added.revision.id);
+      const material = revisionMaterialPath(f.dataRoot, added.project.id, updated.revision.id);
+      expect(await readdir(material)).not.toContain('dangling.txt');
+      expect(f.repository.listRevisions(added.project.id)).toHaveLength(2);
+      f.database.close();
+    });
+
+    it('still detects a tampered revision when no links are involved', async () => {
+      const f = await fixture();
+      const added = await f.manager.addProject(f.source);
+      // Without inert links the retained hash is simply the revision hash.
+      expect(await f.manager.expectedRetainedHash(added.project.id, added.revision)).toBe(
+        added.revision.contentHash,
+      );
+      const material = revisionMaterialPath(f.dataRoot, added.project.id, added.revision.id);
+      await writeFile(join(material, 'README.md'), 'tampered');
+      await expect(
+        f.manager.validateRetainedMaterial(
+          added.project.id,
+          added.revision,
+          projectDataPaths(f.dataRoot, added.project.id).workingCopy,
+        ),
+      ).rejects.toMatchObject({ code: 'REVISION_MATERIAL_CORRUPT' });
+      f.database.close();
+    });
+  });
+});
