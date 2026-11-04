@@ -471,7 +471,7 @@ export class SentryRuntimeHost {
       .register(
         createOpenCodeRegistration({
           managedExecutable: managedOpenCodeExecutable(this.dataRoot),
-          toolchains: () => this.toolchains.setup(),
+          toolchains: (workspace) => this.toolchains.setup(workspace),
         }),
       )
       .register(createDeepSeekRegistration())

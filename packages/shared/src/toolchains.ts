@@ -95,6 +95,8 @@ export function toolchainEnvironment(
           DOTNET_CLI_TELEMETRY_OPTOUT: '1',
           DOTNET_NOLOGO: '1',
           DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: '1',
+          // A project pinned to a runtime that is not installed still runs on a newer one.
+          DOTNET_ROLL_FORWARD: 'Major',
         },
       };
     case 'rust':

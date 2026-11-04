@@ -176,7 +176,7 @@ export interface OpenCodeHarnessAdapterOptions {
   readonly launcherSelector?: OpenCodeLauncherSelector;
   readonly toolShellBuilder?: OpenCodeToolShellBuilder;
   /** Installed language toolchains to mount into tool shells; read when each run starts. */
-  readonly toolchains?: () => Promise<ToolchainSetup | undefined>;
+  readonly toolchains?: (workspace: string) => Promise<ToolchainSetup | undefined>;
   readonly shutdownTimeoutMs?: number;
   readonly turnTimeoutMs?: number;
   /** Provider context window in tokens for the configured model.
@@ -697,7 +697,7 @@ export class OpenCodeHarnessAdapter implements HarnessAdapter {
     }
     const realHome = this.hostEnvironment.HOME;
     const egress = await this.startToolShellEgress(scope, entry);
-    const toolchains = await this.options.toolchains?.().catch(() => undefined);
+    const toolchains = await this.options.toolchains?.(workspacePath).catch(() => undefined);
     // Windows drives and interop stay out of reach of model-controlled shells.
     const windows = await windowsHiddenPaths();
     return writeToolShellWrapper({

@@ -11,6 +11,8 @@ import {
   type ToolchainSetup,
 } from '@qa/shared';
 
+import { chooseVersion, projectToolchainHints, type ToolchainHints } from './toolchain-pins.js';
+
 const INSTALL_TIMEOUT_MS = 30 * 60_000;
 const LOG_TAIL_CHARS = 2000;
 const MARKER = '.installed.json';
@@ -308,20 +310,25 @@ export class ToolchainManager {
   }
 
   /** What an agent shell needs to use the installed toolchains, or undefined when none are installed. */
-  async setup(): Promise<ToolchainSetup | undefined> {
-    const { path, env } = await this.environment();
+  async setup(workspace?: string): Promise<ToolchainSetup | undefined> {
+    const { path, env } = await this.environment(workspace);
     return path.length === 0 ? undefined : { binds: [toolchainsRoot(this.dataRoot)], path, env };
   }
 
-  /** PATH folders and variables for the installed toolchains, newest version of each pack first. */
-  async environment(): Promise<{ path: string[]; env: Record<string, string> }> {
+  /**
+   * PATH folders and variables for the installed toolchains. Per pack the version the project
+   * pins (global.json, target framework, go.mod, ...) is used when installed, else the newest.
+   */
+  async environment(workspace?: string): Promise<{ path: string[]; env: Record<string, string> }> {
     const path: string[] = [];
     const env: Record<string, string> = {};
     const installed = await this.installed();
+    const hints = workspace === undefined ? {} : await projectToolchainHints(workspace).catch(() => ({}));
     for (const pack of TOOLCHAIN_PACKS) {
-      const first = installed.find((item) => item.packId === pack.id);
-      if (first === undefined) continue;
-      const setup = toolchainEnvironment(pack.id, toolchainDir(this.dataRoot, pack.id, first.version));
+      const versions = installed.filter((item) => item.packId === pack.id).map((item) => item.version);
+      const version = chooseVersion(versions, (hints as ToolchainHints)[pack.id]);
+      if (version === undefined) continue;
+      const setup = toolchainEnvironment(pack.id, toolchainDir(this.dataRoot, pack.id, version));
       path.push(...setup.path);
       Object.assign(env, setup.env);
     }
