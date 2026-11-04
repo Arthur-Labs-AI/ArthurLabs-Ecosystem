@@ -1,0 +1,106 @@
+name: Nexus release
+
+# Builds the Linux x86_64 .deb and the macOS arm64 .dmg and attaches both to a DRAFT GitHub release.
+# Nothing is published automatically: review the draft and publish it by hand.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create/attach to (e.g. nexus-v0.1.0)"
+        required: true
+  push:
+    tags:
+      - "nexus-v*"
+
+permissions:
+  contents: read
+
+env:
+  DESKTOP_DIR: systems/nexus/apps/nexus-desktop
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  linux:
+    name: Linux x86_64 (.deb)
+    runs-on: ubuntu-24.04 # glibc 2.39, matches the package's libc6 (>= 2.39) dependency
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ${{ env.DESKTOP_DIR }}/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - name: System packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev patchelf \
+            libssl-dev build-essential curl gnupg xz-utils bubblewrap
+      - name: Install frontend dependencies
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: npm ci
+      # build-release.sh: cargo build, fetch + GPG-verify private Node, stage resources, notices,
+      # tauri .deb bundle, then verify-package.mjs on the package content.
+      - name: Build and verify .deb
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: sh packaging/build-release.sh
+      - name: Checksum
+        working-directory: ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/deb
+        run: sha256sum Nexus_*_amd64.deb > SHA256SUMS-linux.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexus-linux
+          path: |
+            ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/deb/Nexus_*_amd64.deb
+            ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/deb/SHA256SUMS-linux.txt
+
+  macos:
+    name: macOS arm64 (.dmg)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ${{ env.DESKTOP_DIR }}/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install frontend dependencies
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: npm ci
+      # Shell-only build (no sandboxed engine): see systems/nexus/M1-MACOS-DESKTOP-REPORT.md.
+      # Ad-hoc signed, not notarized.
+      - name: Build app and dmg
+        working-directory: ${{ env.DESKTOP_DIR }}
+        run: npm run tauri -- build --bundles app,dmg
+      - name: Verify and checksum
+        working-directory: ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/dmg
+        run: |
+          hdiutil verify Nexus_*_aarch64.dmg
+          shasum -a 256 Nexus_*_aarch64.dmg > SHA256SUMS-macos.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexus-macos
+          path: |
+            ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/dmg/Nexus_*_aarch64.dmg
+            ${{ env.DESKTOP_DIR }}/src-tauri/target/release/bundle/dmg/SHA256SUMS-macos.txt
+
+  draft-release:
+    name: Draft GitHub release
+    needs: [linux, macos]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$TAG" dist/* --draft --title "Nexus $TAG" \
+            --notes "Linux x86_64 (.deb) and macOS arm64 (.dmg). The macOS build is ad-hoc signed, not notarized, and shell-only (no sandboxed engine)." \
+            --target "$GITHUB_SHA"
