@@ -18,3 +18,19 @@ Needs `TYPESAFE_API_KEY` and `OPENAI_API_KEY` (only those two variables are read
 
 ## Phase 1B (Automatic Graph relations) — `p1b/`
 `corpus-p1b.json` (150 events; `p1b/CORPUS_FREEZE.txt`), `p1b/baseline.mjs` (verbatim-prompt port of the M04.7A multiclass pipeline; prompts are extracted from the Rust sources at runtime), `p1b/jev.mjs` + `decide.mjs` (JEV Choice / Noul / hybrid), `run.mjs` → `tune.mjs` (dev only, writes `frozen.json`) → holdout/consistency → `evaluate.mjs` → `results/p1b/report-p1b.md`. Needs `TYPESAFE_API_KEY` and `OPENAI_API_KEY`; budget capped at $5.00 in `results/p1b/ledger.json`.
+
+## Archived historical raw outputs
+The previously committed 23 `results/**/raw-*.json` files were moved out of the
+active `dev` tree on 2026-11-04. Their **original bytes remain intact** on
+`archive/pre-cleanup-2026-11-04` at the same paths. The benchmark source, frozen policies,
+ledgers and summary reports remain in `dev`.
+
+Restore an individual raw fixture when you need exact historical offline scoring:
+
+```bash
+git fetch origin archive/pre-cleanup-2026-11-04
+git restore --source=origin/archive/pre-cleanup-2026-11-04 -- tools/jev-bench/results/p1b/raw-jev-dev.json
+```
+
+New runs may write local raw files; `.gitignore` keeps those generated files out
+of normal commits. See [artifact archive notes](../../docs/artifact-archive.md).

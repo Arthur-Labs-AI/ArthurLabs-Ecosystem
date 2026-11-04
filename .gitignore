@@ -47,3 +47,10 @@ apps/arthur/src-tauri/gen/schemas/
 **/*.kicad_pcb.bak
 /hardware/emg/var/
 /hardware/emg/rev-a-cost/kicad/ARTHUR_EMG_RevA_Cost/phase3c0_staging/
+
+# Historical KiCad snapshots are preserved on archive/pre-cleanup-2026-11-04; do not recommit them.
+/hardware/emg/rev-b-xiao/archive/
+/hardware/emg/rev-b-xiao/kicad/ARTHUR_EMG_RevB/_restore_backup_*/
+
+# Keep benchmark code, frozen policy, ledgers and reports, but not large raw output.
+/tools/jev-bench/results/**/raw-*.json
