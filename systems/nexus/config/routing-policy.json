@@ -1,0 +1,227 @@
+{
+  "version": 3,
+  "defaultPreset": "aih-engineering",
+  "defaultProfile": "deepseek-codex",
+  "defaultExecutionClass": "engineer_normal",
+  "presets": {
+    "aih-engineering": {
+      "displayName": "Normal Engineering",
+      "allowOpenAI": true,
+      "allowCodexSubagent": true,
+      "failurePolicy": "bounded-escalation",
+      "profile": "deepseek-codex",
+      "profileOverrideAllowed": true,
+      "rootExecutor": {
+        "name": "DeepSeek V4 Flash MAX",
+        "provider": "flash-max-direct",
+        "model": "deepseek-v4-flash",
+        "reasoning": "max"
+      },
+      "tiers": {
+        "1": {
+          "name": "Review (legacy tier1)",
+          "provider": "sol-local",
+          "model": "gpt-5.6-sol",
+          "reasoning": "medium"
+        },
+        "2": {
+          "name": "Engineer deep (legacy tier2)",
+          "provider": "flash-max-direct",
+          "model": "deepseek-v4-flash",
+          "reasoning": "max"
+        },
+        "3": {
+          "name": "Engineer normal (legacy tier3)",
+          "provider": "flash-high-direct",
+          "model": "deepseek-v4-flash",
+          "reasoning": "high"
+        }
+      }
+    },
+    "aih-muse": {
+      "displayName": "Muse Agent Plane (internal)",
+      "allowOpenAI": false,
+      "allowCodexSubagent": false,
+      "failurePolicy": "fail-closed",
+      "profile": "muse-spark-1.3-contributor",
+      "profileOverrideAllowed": true,
+      "rootExecutor": {
+        "name": "Muse Spark 1.3 Contributor",
+        "provider": "meta-model-api",
+        "model": "muse-spark-1.3-contributor",
+        "reasoning": "xhigh"
+      },
+      "tiers": {
+        "1": {
+          "name": "Muse (single agent plane)",
+          "provider": "meta-model-api",
+          "model": "muse-spark-1.3-contributor",
+          "reasoning": "xhigh"
+        },
+        "2": {
+          "name": "Muse (single agent plane)",
+          "provider": "meta-model-api",
+          "model": "muse-spark-1.3-contributor",
+          "reasoning": "xhigh"
+        },
+        "3": {
+          "name": "Muse (single agent plane)",
+          "provider": "meta-model-api",
+          "model": "muse-spark-1.3-contributor",
+          "reasoning": "xhigh"
+        }
+      }
+    },
+    "aih-deepseek": {
+      "displayName": "DeepSeek Only",
+      "allowOpenAI": false,
+      "allowCodexSubagent": false,
+      "failurePolicy": "fail-closed",
+      "profile": "deepseek-codex",
+      "profileOverrideAllowed": false,
+      "rootExecutor": {
+        "name": "DeepSeek V4 Flash MAX",
+        "provider": "flash-max-direct",
+        "model": "deepseek-v4-flash",
+        "reasoning": "max"
+      },
+      "tiers": {
+        "1": {
+          "name": "DeepSeek deep (legacy tier1)",
+          "provider": "flash-max-direct",
+          "model": "deepseek-v4-flash",
+          "reasoning": "max"
+        },
+        "2": {
+          "name": "DeepSeek deep (legacy tier2)",
+          "provider": "flash-max-direct",
+          "model": "deepseek-v4-flash",
+          "reasoning": "max"
+        },
+        "3": {
+          "name": "DeepSeek normal (legacy tier3)",
+          "provider": "flash-high-direct",
+          "model": "deepseek-v4-flash",
+          "reasoning": "high"
+        }
+      }
+    }
+  },
+  "executionClasses": {
+    "deterministic": {
+      "role": null,
+      "writable": false,
+      "requiresUserApproval": false,
+      "reasoning": null
+    },
+    "engineer_normal": {
+      "role": "primaryEngineer",
+      "writable": true,
+      "requiresUserApproval": false
+    },
+    "engineer_deep": {
+      "role": "deepEngineer",
+      "writable": true,
+      "requiresUserApproval": false
+    },
+    "reviewer": {
+      "role": "reviewer",
+      "writable": false,
+      "requiresUserApproval": false
+    },
+    "solver": {
+      "role": "solver",
+      "writable": true,
+      "requiresUserApproval": true
+    }
+  },
+  "executionClassAliases": {
+    "deepseek_normal": "engineer_normal",
+    "deepseek_deep": "engineer_deep",
+    "codex_review": "reviewer",
+    "codex_solve": "solver"
+  },
+  "legacyTierMap": {
+    "tier3": "engineer_normal",
+    "tier2": "engineer_deep",
+    "tier1": "reviewer"
+  },
+  "initialRules": [
+    {
+      "id": "critical-boundary",
+      "executionClass": "engineer_deep",
+      "risk": "critical",
+      "reviewRequired": true,
+      "reason": "Critical security, concurrency, migration, authentication, or permission boundaries start with deeper engineering work and require bounded review.",
+      "patterns": [
+        "\\b(auth|authentication|authorization|permission architecture|credential boundary|security boundary|cryptograph|encryption|database migration|migration safety|concurrency correctness)\\b"
+      ]
+    },
+    {
+      "id": "mechanical-deterministic",
+      "executionClass": "deterministic",
+      "risk": "low",
+      "reviewRequired": false,
+      "reason": "A purely mechanical fact or verification operation needs no model.",
+      "patterns": [
+        "^(run|show|list|check|verify)\\s+(tests?|lint|typecheck|build|status|diff)(\\s|$)"
+      ]
+    }
+  ],
+  "escalation": {
+    "sameFailureThreshold": 2,
+    "immediateReviewSignals": [
+      "critical-security-boundary",
+      "concurrency-uncertainty",
+      "migration-safety",
+      "auth-permission-architecture",
+      "user-codex"
+    ],
+    "nonEscalatingSignals": [
+      "none",
+      "progress",
+      "minor-error",
+      "attempt-failure",
+      "verification-failure"
+    ]
+  },
+  "engineering": {
+    "stepRouting": {
+      "defaultRole": "engineer_normal",
+      "escalationReasons": [
+        "architecture-decision",
+        "conflicting-evidence",
+        "repeated-failure-new-hypothesis",
+        "security-sensitive",
+        "high-risk-refactor",
+        "migration-design",
+        "cross-system-contract",
+        "ambiguous-requirements",
+        "complex-debugging",
+        "provider-runtime-boundary",
+        "unknown-high-impact-behavior",
+        "incompatible-invariants",
+        "uncertain-persistence-semantics"
+      ],
+      "note": "Step routing is task-local and deterministic (scripts/Engineering). The task-level classification remains planning/UI metadata and never permanently pins model invocations. The reviewer is never part of this mechanism."
+    },
+    "completionRequiresVerifiedRequirements": true
+  },
+  "codex": {
+    "automaticReview": {
+      "enforceLimits": false,
+      "maxCallsPerTask": 1,
+      "maxFiles": 8,
+      "maxDiffLines": 2500,
+      "maxContextTokens": 30000,
+      "maxOutputTokens": 2500
+    },
+    "writable": {
+      "default": false
+    },
+    "fullRepo": {
+      "default": false,
+      "requiresUserApproval": true
+    }
+  }
+}
