@@ -1,14 +1,15 @@
 # ArthurLabs Ecosystem
 
-Monorepo for the ArthurLabs products: **Nexus**, an AI engineering harness; **Sentry**, a local-first AI QA desktop app; and the **ArthurLabs website**.
+Monorepo for the ArthurLabs products: **Nexus**, an AI engineering harness; **Sentry**, a local-first AI QA desktop app; **A.R.T.H.U.R.**, a local-first knowledge app; and the **ArthurLabs website**.
 
 | Project | Path | What it is | Stack |
 | --- | --- | --- | --- |
 | **Nexus** | [`systems/nexus`](systems/nexus) | AI engineering assistant. A deterministic controller owns routing, attempts, verification and completion; the model implements. Ships in two editions: **Nexus DSH** and **Nexus Native** (see below). | Rust, Tauri v2, React, TypeScript, PowerShell/POSIX installers |
 | **Sentry** | [`systems/sentry`](systems/sentry) | Local-first AI QA. OpenCode, DeepSeek and GLM (via Claude Code) independently investigate one immutable project snapshot and return findings, evidence, token usage and persistent run history. | TypeScript, pnpm + Turbo monorepo, Electron desktop, CLI |
+| **A.R.T.H.U.R.** | [`systems/arthur`](systems/arthur) | Local-first knowledge app. Captures text and Android voice, distills it into knowledge objects with source provenance, projects, relations and immutable revision history, with recall and review-first evolution. One native runtime owns an app-local SQLite store. | Tauri v2, React, TypeScript, Rust, Android |
 | **Website** | [`website`](website) | Marketing site for the ArthurLabs product line (Suite, Studio, Nexus, Sentry, Hardware). | Next.js, React, Tailwind, GSAP, Playwright |
 
-Studio and Hardware appear as pages on the website only. Their implementations are not in this repository. Import history: [Nexus](docs/integration/NEXUS-IMPORT-REPORT.md), [Sentry](docs/integration/SENTRY-IMPORT-REPORT.md).
+Studio and Hardware appear as pages on the website only. Their implementations are not in this repository. Import history: [Nexus](docs/integration/NEXUS-IMPORT-REPORT.md), [Sentry](docs/integration/SENTRY-IMPORT-REPORT.md), [A.R.T.H.U.R.](docs/integration/ARTHUR-IMPORT-REPORT.md).
 
 ## Repository layout
 
@@ -22,10 +23,14 @@ Studio and Hardware appear as pages on the website only. Their implementations a
 │   │   ├── bin/, config/, scripts/  `aih` commands, profiles, registry config, helpers (DSH)
 │   │   ├── docs/               Architecture, operations, Linux guide
 │   │   └── setup.sh, setup.ps1 Installers (Linux, Windows) for Nexus DSH
-│   └── sentry/
+│   ├── sentry/
 │       ├── apps/               desktop, cli, runtime
 │       ├── packages/           run-engine, snapshot-engine, harnesses (claude-code, deepseek, opencode), persistence, ...
 │       └── docs/               Setup, security, architecture, ADRs
+│   └── arthur/
+│       ├── apps/arthur         Tauri app (React UI + Rust runtime + SQLite store), Android
+│       ├── packages/, src/     Shared packages and the older CLI/HTTP TypeScript runtime (frozen)
+│       └── docs/, hardware/    Architecture, milestone gates, hardware notes
 ├── website/                    Next.js site (self-contained)
 ├── docs/integration/           Import and validation reports
 └── .github/workflows/          CI: Nexus release workflow
@@ -123,6 +128,27 @@ pnpm --filter @qa/desktop dev:electron
 
 Development needs a Linux or WSL environment with systemd user services, bubblewrap and socat. See [`CONTRIBUTING.md`](systems/sentry/CONTRIBUTING.md) and the [documentation index](systems/sentry/docs/README.md).
 
+## A.R.T.H.U.R.
+
+A.R.T.H.U.R. keeps your knowledge in an app-local SQLite store owned by one native runtime; the UI reaches it through `ArthurClient` and native commands. Model responses only *propose* candidates. Native code validates authority, source spans and expected revisions before anything is committed. Cloud features need provider credentials and can send relevant content to the selected provider.
+
+- **Status:** in development. M05 synchronization is a dormant qualification candidate, not an enabled feature. Production stays on schema v9 with closed trust/LAN activation. See [M05 readiness](systems/arthur/docs/architecture/m05-activation-readiness.md).
+- **Legacy runtime:** the older CLI/HTTP TypeScript runtime under `src/` is under a [frozen subsystem policy](systems/arthur/docs/competition/FROZEN_SUBSYSTEMS.md) and is not the app's authoritative store.
+
+Develop (Node.js 24.13.1 and Rust 1.99.1 in CI):
+
+```sh
+cd systems/arthur
+npm ci
+npm run arthur:install
+npm run arthur:dev                # browser preview with a native-free client (no SQLite)
+cd apps/arthur && npm run tauri -- dev   # the real native app
+```
+
+Android builds need the JDK, Android SDK/NDK and the Rust Android target. See [`systems/arthur/README.md`](systems/arthur/README.md) and [`apps/arthur/README.md`](systems/arthur/apps/arthur/README.md).
+
+Checks (from `systems/arthur`): `npm run test:architecture` and `npm run arthur:check`, plus `cargo fmt`, `cargo clippy` and `cargo test` against `apps/arthur/src-tauri/Cargo.toml` as listed in its README.
+
 ## Website
 
 ```sh
@@ -152,6 +178,7 @@ Published builds are listed under [Releases](https://github.com/Arthur-Labs-AI/A
 - Commits follow Conventional Commits with a scope: `feat(native): …`, `fix(registry): …`, `docs: …`, `test(native): …`.
 - Branches are named `type/short-slug`, for example `feat/nexus-release-workflow`.
 - Work in the subproject you are changing and run its checks before opening a PR.
+- A.R.T.H.U.R. enforces architecture boundaries in CI (`npm run test:architecture`); run it before opening a PR.
 - Sentry has its own rules (branching, review, agent instruction files): read [`systems/sentry/CONTRIBUTING.md`](systems/sentry/CONTRIBUTING.md) first.
 
 ## Security
@@ -163,4 +190,5 @@ Never commit provider keys, `auth.json`, `.env` files, logs, or session captures
 Licenses are per project:
 
 - **Sentry:** MIT, see [`systems/sentry/LICENSE`](systems/sentry/LICENSE).
+- **A.R.T.H.U.R.:** `UNLICENSED` in its `package.json` (proprietary, no open-source license).
 - **Nexus and website:** no license file yet. Until one is added, all rights are reserved by the authors.
