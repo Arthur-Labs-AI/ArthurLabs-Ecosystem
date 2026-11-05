@@ -24,9 +24,9 @@ Studio and Hardware appear as pages on the website only. Their implementations a
 │   │   ├── docs/               Architecture, operations, Linux guide
 │   │   └── setup.sh, setup.ps1 Installers (Linux, Windows) for Nexus DSH
 │   ├── sentry/
-│       ├── apps/               desktop, cli, runtime
-│       ├── packages/           run-engine, snapshot-engine, harnesses (claude-code, deepseek, opencode), persistence, ...
-│       └── docs/               Setup, security, architecture, ADRs
+│   │   ├── apps/               desktop, cli, runtime
+│   │   ├── packages/           run-engine, snapshot-engine, harnesses (claude-code, deepseek, opencode), persistence, ...
+│   │   └── docs/               Setup, security, architecture, ADRs
 │   └── arthur/
 │       ├── apps/arthur         Tauri app (React UI + Rust runtime + SQLite store), Android
 │       ├── packages/, src/     Shared packages and the older CLI/HTTP TypeScript runtime (frozen)
