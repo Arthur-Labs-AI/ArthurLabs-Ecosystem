@@ -1,0 +1,45 @@
+.policy {
+  width: min(calc(100% - 3rem), 46rem);
+  margin-inline: auto;
+  padding-block: calc(var(--nav) + clamp(2.5rem, 7vw, 5rem)) 5rem;
+}
+
+.policy h1 {
+  margin-bottom: 1rem;
+  font-size: clamp(2.35rem, 6vw, 4.5rem);
+  line-height: 1.05;
+  white-space: normal;
+}
+
+.policy section {
+  margin-top: 2rem;
+}
+
+.policy h2 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.3rem, 3vw, 1.65rem);
+  letter-spacing: -0.025em;
+}
+
+.policy p,
+.policy ul {
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.policy ul {
+  margin-block: 0.75rem;
+  padding-inline-start: 1.4rem;
+  list-style: disc;
+}
+
+.policy li + li {
+  margin-top: 0.5rem;
+}
+
+.policy a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  overflow-wrap: anywhere;
+}
